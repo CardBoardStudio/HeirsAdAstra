@@ -271,7 +271,7 @@ for(const attacker of [0,1]) for(const stage of ['escape','tactic','committed','
   while(reload.saved().pendingCombat){assert(choices++<8);const buttons=reload.dom.lastQuery('[data-combat-action]');assert(buttons.length,'Must offer the human a legal continuation');buttons[0].click();reload.settle();}
   assert(!reload.dialog('combat').open);assert(!reload.saved().pendingMove);
   assert.equal(reload.saved().players[attacker].inPlay.filter(c=>c.id==='dialog-combat-move').length,1);
-  assert.equal(reload.saved().log.filter(line=>line.includes('moved a group from')).length,1,'Movement completes once despite reload and repeated close');
+  assert.equal(reload.saved().log.filter(line=>/ moved .+ from /.test(line)).length,1,'Movement completes once despite reload and repeated close');
   assert(reload.saved().lastCombat.volleys.length>0);
   assert(reload.dialog('message').open,'Final report opens automatically');
   const final=reload.saved().lastCombat;

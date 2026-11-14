@@ -14,7 +14,7 @@ function engine() {
   return {port,adapter};
 }
 const {port,adapter}=engine();
-assert.equal(adapter.rulesVersion,'galactic-reach/32.37');
+assert.equal(adapter.rulesVersion,'galactic-reach/33.38');
 const before=JSON.stringify(port.state);
 adapter.legalActions(0);adapter.observe(0);
 assert.equal(JSON.stringify(port.state),before,'Observation and legality must not mutate state');
@@ -89,3 +89,5 @@ console.log('Upgraded orders: unit minimums, +1 range, full-cost construction, o
 // Card and balance suites without their own CI step (the workflow file is maintainer-edited).
 require('./test-capacity-cards.cjs');
 require('./test-balance-package.cjs');
+// 33.38 Split Moves (#movement) runs here too, so CI covers it without a workflow edit.
+require('./test-split-moves.cjs');

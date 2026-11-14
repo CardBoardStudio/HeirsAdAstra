@@ -33,6 +33,11 @@ function fixture(kind) {
     Object.assign(state.players[0],{passed:true,storageUpgrades:2,resources:{matter:4,energy:4,biomass:4,data:4}});
   } else if (kind==='mixed') {
     state.fleets={'-9,0':{0:{settler:8,explorer:5,fleet:10}},'-8,0':{0:{fleet:10}},'-7,0':{0:{fleet:3,explorer:2}},'9,0':{2:{settler:2,explorer:1,fleet:2},1:{explorer:2}}};
+  } else if (kind==='split') {
+    Object.assign(state,{phase:'operations',turnStage:'prep',activePlayer:0});
+    state.fleets={'0,0':{0:{settler:1,explorer:1,fleet:2}}};
+    state.players.forEach((p,id)=>{p.passed=id!==0;});
+    state.players[0].hand=[{id:'qa-move',key:'move',starter:true},{id:'qa-next',key:'move',starter:true}];
   } else if (kind==='overflow') engine.addResources(state.players[0],{matter:10,energy:6});
   else if (kind==='combat') {
     Object.assign(state,{phase:'operations',turnStage:'action',activePlayer:0});
@@ -74,8 +79,9 @@ http.createServer(async (req,res)=>{
     if(path.extname(filename)==='.html') {
       let html=content.toString();
       if(path.basename(filename)==='index.html') {
-        const saved=JSON.stringify(JSON.stringify(fixture(url.searchParams.get('fixture')||'fresh'))).replace(/</g,'\\u003c');
-        html=html.replace('  <script src="table.js',`<script>localStorage.removeItem('galactic-reach-turn-history-v30');localStorage.removeItem('galactic-reach-history-v29');localStorage.setItem('galactic-reach-save-v29',${saved});</script>\n  <script src="table.js`);
+        const state=fixture(url.searchParams.get('fixture')||'fresh');
+        const saved=JSON.stringify(JSON.stringify(state)).replace(/</g,'\\u003c');
+        html=html.replace('  <script src="table.js',`<script>localStorage.removeItem('galactic-reach-turn-history-v${state.version}');localStorage.removeItem('galactic-reach-history-v${state.version}');localStorage.setItem('galactic-reach-save-v${state.version}',${saved});</script>\n  <script src="table.js`);
       }
       content=html.replace('</body>','<script src="/__audit/axe.min.js"></script><script src="/__audit/runner.js"></script></body>');
     }

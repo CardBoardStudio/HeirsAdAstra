@@ -53,6 +53,13 @@ for (const key of ['colonize', 'colonyPods']) {
   bot.hand = [{ key: 'colonize', id: 'rival-col' }]; ops(g, 1); e.runAiOperation();
   assert.equal(s.planets[center].owner, 1, 'The rival captures with its escort');
 }
+// Split moves: a rival's last Fleet stays with a Settler that can capture where it stands.
+{
+  const g = game(), { s, e } = g; big(s.players[1]);
+  const center = s.clusters[0].center; s.fleets = { [center]: { 1: { settler: 1, explorer: 0, fleet: 1 } } };
+  const move = e.chooseAiMove(1, { key: 'move', id: 'mv' });
+  assert(!move || move.source !== center || move.units?.fleet === 0, 'The escort stays on the capturable center');
+}
 
 // #victory: a decisive combat victory is worth 2 Prestige; the observation says so.
 {
