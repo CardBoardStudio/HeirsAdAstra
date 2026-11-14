@@ -605,7 +605,8 @@ test('units remain visible on hidden moons and ordinary space without revealing 
   const empty=['2,0','0,2','-2,0','0,-2'].find(key=>!state.planets[key]);assert(empty);
   state.fleets[coord]={2:{explorer:1,fleet:2}};state.fleets[empty]={3:{settler:1}};
   writeSave(storage,state);const game=boot(storage);
-  for(const [key,name] of [[coord,'Violet Assembly'],[empty,'Helios Compact']]) {
+  // 34.39: solo rivals are dealt to seats at random, so read each seat's faction name.
+  for(const [key,name] of [[coord,state.players[2].name],[empty,state.players[3].name]]) {
     const hex=game.dom.hex(key);assert(hex.querySelector('.hex-fleets').innerHTML.includes('hex-fleet-group'));
     assert(hex.getAttribute('aria-label').includes(name));hex.click();assert(game.dom.element('inspect-facts').innerHTML.includes(name));
   }
@@ -693,7 +694,7 @@ test('decisive combat awards Prestige once and the saved report preserves it', (
  while(game.saved().pendingCombat){assert(choices++<8);game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();}
  assert.equal(game.saved().players[0].combatVictories,1);
  assert.equal(game.saved().lastCombat.prestigeWinner,0);
- assert.match(game.dom.element('message-body').textContent,/gained 1 Prestige/);
+ assert.match(game.dom.element('message-body').textContent,/gained 2 Prestige/);
  assert(game.dialog('message').open);
  const reloaded=boot(storage);assert(reloaded.dialog('message').open);
  assert.equal(reloaded.saved().players[0].combatVictories,1);
@@ -711,10 +712,10 @@ test('point buttons show all scoring components and ignore yards and purchases',
  const game=boot(storage),before=storage.snapshot(),randomBefore=game.randomCalls();
  const button=game.dom.lastQuery('[data-score-player]').find(b=>b.dataset.scorePlayer==='0');
  assert(button);button.click();assert(game.dialog('prestige').open);
- assert.match(game.dom.element('prestige-title').textContent,/14 Prestige/);
+ assert.match(game.dom.element('prestige-title').textContent,/15 Prestige/,'34.39: a decisive win scores 2');
  const rows=game.dom.element('prestige-breakdown').innerHTML;
  assert.match(rows,/Colonies · 3 each<\/dt><dd>9/);assert(!rows.includes('Expansion bonus'));
- assert.match(rows,/Excavated relics · 2 each<\/dt><dd>4/);assert.match(rows,/Decisive combat victories<\/dt><dd>1/);
+ assert.match(rows,/Excavated relics · 2 each<\/dt><dd>4/);assert.match(rows,/Decisive combat victories · 2 each<\/dt><dd>2/);
  assert(!/Shipyard|Purchased/.test(rows));game.click('close-prestige');
  assert.deepEqual(storage.snapshot(),before);assert.equal(game.randomCalls(),randomBefore);
 });
@@ -770,6 +771,22 @@ test('New game asks for the Prestige target; Cancel keeps the current game', () 
  game.click('new-game-button');game.dom.element('new-game-target').value='30';game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
  assert.equal(game.saved().victoryTarget,30);assert.equal(game.saved().round,1);assert.equal(game.dom.element('victory-target-text').textContent,'30 Prestige');
  assert.equal(boot(storage).saved().victoryTarget,30,'The chosen target is saved with the game');
+});
+
+// 34.39 #setup: solo rivals are dealt to seats at random; New game names your neighbor (seat 1).
+test('New game shows the neighbor it deals; rivals keep their profiles in any seat', () => {
+ const storage=createStorage(),game=boot(storage),profiles={'Ember Directorate':'military','Violet Assembly':'economy','Helios Compact':'expansion'};
+ const check=s=>{assert.deepEqual(s.players.slice(1).map(p=>p.name).sort(),Object.keys(profiles).sort());s.players.slice(1).forEach(p=>assert.equal(p.strategy,profiles[p.name]));};
+ check(game.saved());assert(game.saved().log.some(e=>String(e.text||e).includes(`Your neighbor this game is ${game.saved().players[1].name}`)));
+ const seen=new Set();
+ for(let n=0;n<12;n++){
+  game.click('new-game-button');const shown=game.dom.element('new-game-neighbor').innerHTML;
+  game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
+  const s=game.saved();check(s);assert(shown.includes(`Your neighbor: ${s.players[1].name} (`),'The dialog names the rival dealt to seat 1');
+  assert.equal(s.players[1].color,{'Ember Directorate':'#ff9f6e','Violet Assembly':'#a58cff','Helios Compact':'#f2cf66'}[s.players[1].name],'A faction keeps its colour');
+  seen.add(s.players[1].name);
+ }
+ assert(seen.size>=2,'The neighbor varies between games');
 });
 
 test('Undo retains the audit and records which events it reverses, including across reload', () => {

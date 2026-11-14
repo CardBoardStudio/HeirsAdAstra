@@ -56,7 +56,7 @@ function target(s,coord){const i=s.clusters.length,[q,r]=coord.split(',').map(Nu
  assert.equal(e.chooseAiMove(1,p.hand[0]),null,'Pathfinder cannot choose its forbidden attack');const before=JSON.stringify(s);e.runAiOperation();assert.notEqual(JSON.stringify(s),before);assert(p.inPlay.some(c=>c.id==='pathfinder'));assert.equal(p.resources.data,2,'An unavailable order may be converted normally instead; no illegal Move was spent');
 }
 // 31.36 #victory: the target is a table setting, 40 by default; a table may choose 20.
-for(const [target,points] of [[undefined,39],[undefined,40],[undefined,41],[20,19],[20,20],[20,21]]){const{e,s}=game();if(target)s.victoryTarget=target;s.players[0].combatVictories=points-3;assert.equal(e.calculatePrestige(0),points);e.finishRound();assert.equal(s.winner,points>=(target||40)?0:null);}
+for(const [target,points] of [[undefined,39],[undefined,40],[undefined,41],[20,19],[20,20],[20,21]]){const{e,s}=game();if(target)s.victoryTarget=target;s.players[0].cardPrestige=points-3;assert.equal(e.calculatePrestige(0),points);e.finishRound();assert.equal(s.winner,points>=(target||40)?0:null);}
 {
  const{e,s}=game();assert.equal(e.DEFAULT_VICTORY_TARGET,40);assert.equal(s.victoryTarget,40);assert.equal(e.victoryTarget(),40);assert.equal(s.version,32);assert.equal(s.rulesRevision,37);assert.equal(e.SAVE_KEY,'galactic-reach-save-v32');assert.equal(e.TURN_HISTORY_KEY,'galactic-reach-turn-history-v32');
  assert.deepEqual(plain(e.STRUCTURES.starbase.cost),{matter:2,energy:1,biomass:1,data:1});assert.deepEqual(plain(e.EXCAVATION_COST),{matter:1,energy:1,data:2});
