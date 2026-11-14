@@ -27,6 +27,40 @@ pub fn shared_rules(rules: &str) -> Option<&'static str> {
     SHARED_RULES.iter().find(|r| **r == rules).copied()
 }
 pub const RULES: &str = "galactic-reach/33.38";
+/// How many rules-changing (`compat: breaking`) entries were pending in
+/// `changes/` when this was built (see build.rs). A dev build of `main` names its
+/// rules [`dev_rules`], so each breaking merge starts a new dev revision and a dev
+/// table keeps the engine it was dealt with (docs/release.md#dev-channel).
+pub const DEV_SERIES: &str = env!("GALACTIC_REACH_DEV_SERIES");
+/// The rules a dev build deals: `<RULES>+dev.<n>`. It never equals a released
+/// revision, so dev tables cannot be mistaken for released ones.
+pub fn dev_rules() -> String {
+    format!("{RULES}+dev.{DEV_SERIES}")
+}
+/// Engine sources for rules that are not compiled into this server: a dev
+/// server keeps each dev revision's [`APP_SOURCE`] and [`ADAPTER_SOURCE`] while a
+/// table still plays it.
+#[derive(Clone, Copy)]
+pub struct Sources<'a> {
+    pub app: &'a str,
+    pub adapter: &'a str,
+}
+/// The current engine (`prototypes/galactic-reach/app.js`).
+pub const APP_SOURCE: &str = ENGINE;
+/// The current headless adapter (`prototypes/galactic-reach/adapter.js`).
+pub const ADAPTER_SOURCE: &str = ADAPTER;
+/// A `'static` copy of `rules`, made once per distinct name (a dev server meets a
+/// handful of dev revisions).
+fn intern(rules: &str) -> &'static str {
+    static NAMES: std::sync::Mutex<Vec<&'static str>> = std::sync::Mutex::new(Vec::new());
+    let mut names = NAMES.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(name) = names.iter().find(|n| **n == rules) {
+        return name;
+    }
+    let name: &'static str = Box::leak(rules.to_owned().into_boxed_str());
+    names.push(name);
+    name
+}
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
 pub const EXPERIMENT: &str = "Split Moves playtest";
 mod legacy_v1;
@@ -132,6 +166,7 @@ impl GalacticReach {
         Self::boot(
             timeout,
             rules,
+            None,
             move |ctx| {
                 ctx.globals().set(
                     "gameRandom",
@@ -166,10 +201,30 @@ impl GalacticReach {
     ) -> Result<Self, String> {
         let rules = shared_rules(rules)
             .ok_or_else(|| format!("Shared tables cannot run {rules} on this server."))?;
-        Self::shared_from(rules, seats, victory_target, resume, shuffle)
+        Self::shared_from(rules, None, seats, victory_target, resume, shuffle)
+    }
+    /// [`Self::shared_on`] for rules this server does not compile in: a dev
+    /// revision the server kept, booted from its stored `sources`.
+    pub fn shared_source(
+        rules: &str,
+        sources: Sources,
+        seats: &[(String, bool); 4],
+        victory_target: u32,
+        resume: Option<&str>,
+        shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
+    ) -> Result<Self, String> {
+        Self::shared_from(
+            intern(rules),
+            Some(sources),
+            seats,
+            victory_target,
+            resume,
+            shuffle,
+        )
     }
     fn shared_from(
         rules: &'static str,
+        sources: Option<Sources>,
         seats: &[(String, bool); 4],
         victory_target: u32,
         resume: Option<&str>,
@@ -195,6 +250,7 @@ impl GalacticReach {
         Self::boot(
             SHARED_STEP,
             rules,
+            sources,
             move |ctx| {
                 ctx.globals().set(
                     "authorityShuffle",
@@ -255,6 +311,7 @@ impl GalacticReach {
     fn boot(
         timeout: Duration,
         rules: &'static str,
+        sources: Option<Sources>,
         globals: impl FnOnce(&rquickjs::Ctx) -> rquickjs::Result<()>,
         start: &str,
     ) -> Result<Self, String> {
@@ -268,70 +325,76 @@ impl GalacticReach {
         context
             .with(|ctx| {
                 globals(&ctx)?;
-                ctx.eval::<(), _>(match rules {
-                    RULES => ADAPTER,
-                    "galactic-reach/17.22" => include_str!("../rules/v17-adapter.js"),
-                    "galactic-reach/18.23" => include_str!("../rules/v18-adapter.js"),
-                    "galactic-reach/19.24" => include_str!("../rules/v19-adapter.js"),
-                    "galactic-reach/20.25" => include_str!("../rules/v20-adapter.js"),
-                    "galactic-reach/21.26" => include_str!("../rules/v21-adapter.js"),
-                    "galactic-reach/22.27" => include_str!("../rules/v22-adapter.js"),
-                    "galactic-reach/23.28" => include_str!("../rules/v23-adapter.js"),
-                    "galactic-reach/24.29" => include_str!("../rules/v24-adapter.js"),
-                    "galactic-reach/25.30" => include_str!("../rules/v25-adapter.js"),
-                    "galactic-reach/26.31" => include_str!("../rules/v26-adapter.js"),
-                    "galactic-reach/27.32" => include_str!("../rules/v27-adapter.js"),
-                    "galactic-reach/28.33" => include_str!("../rules/v28-adapter.js"),
-                    "galactic-reach/29.34" => include_str!("../rules/v29-adapter.js"),
-                    "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
-                    "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
-                    "galactic-reach/32.37" => include_str!("../rules/v32-adapter.js"),
-                    "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
-                    "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
-                    "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
-                    "galactic-reach/13.18" => include_str!("../rules/v13-adapter.js"),
-                    "galactic-reach/12.17" => include_str!("../rules/v12-adapter.js"),
-                    "galactic-reach/11.16" => include_str!("../rules/v11-adapter.js"),
-                    "galactic-reach/10.15" => include_str!("../rules/v10-adapter.js"),
-                    "galactic-reach/9.14" => include_str!("../rules/v9-adapter.js"),
-                    "galactic-reach/8.13" => include_str!("../rules/v8-adapter.js"),
-                    "galactic-reach/7.12" => include_str!("../rules/v7-adapter.js"),
-                    "galactic-reach/6.11" => include_str!("../rules/v6-adapter.js"),
-                    "galactic-reach/5.10" => include_str!("../rules/v5-adapter.js"),
-                    _ => include_str!("../rules/v4-adapter.js"),
+                ctx.eval::<(), _>(match (sources, rules) {
+                    (Some(s), _) => s.adapter,
+                    (None, rules) => match rules {
+                        RULES => ADAPTER,
+                        "galactic-reach/17.22" => include_str!("../rules/v17-adapter.js"),
+                        "galactic-reach/18.23" => include_str!("../rules/v18-adapter.js"),
+                        "galactic-reach/19.24" => include_str!("../rules/v19-adapter.js"),
+                        "galactic-reach/20.25" => include_str!("../rules/v20-adapter.js"),
+                        "galactic-reach/21.26" => include_str!("../rules/v21-adapter.js"),
+                        "galactic-reach/22.27" => include_str!("../rules/v22-adapter.js"),
+                        "galactic-reach/23.28" => include_str!("../rules/v23-adapter.js"),
+                        "galactic-reach/24.29" => include_str!("../rules/v24-adapter.js"),
+                        "galactic-reach/25.30" => include_str!("../rules/v25-adapter.js"),
+                        "galactic-reach/26.31" => include_str!("../rules/v26-adapter.js"),
+                        "galactic-reach/27.32" => include_str!("../rules/v27-adapter.js"),
+                        "galactic-reach/28.33" => include_str!("../rules/v28-adapter.js"),
+                        "galactic-reach/29.34" => include_str!("../rules/v29-adapter.js"),
+                        "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
+                        "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
+                        "galactic-reach/32.37" => include_str!("../rules/v32-adapter.js"),
+                        "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
+                        "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
+                        "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
+                        "galactic-reach/13.18" => include_str!("../rules/v13-adapter.js"),
+                        "galactic-reach/12.17" => include_str!("../rules/v12-adapter.js"),
+                        "galactic-reach/11.16" => include_str!("../rules/v11-adapter.js"),
+                        "galactic-reach/10.15" => include_str!("../rules/v10-adapter.js"),
+                        "galactic-reach/9.14" => include_str!("../rules/v9-adapter.js"),
+                        "galactic-reach/8.13" => include_str!("../rules/v8-adapter.js"),
+                        "galactic-reach/7.12" => include_str!("../rules/v7-adapter.js"),
+                        "galactic-reach/6.11" => include_str!("../rules/v6-adapter.js"),
+                        "galactic-reach/5.10" => include_str!("../rules/v5-adapter.js"),
+                        _ => include_str!("../rules/v4-adapter.js"),
+                    },
                 })?;
                 ctx.eval::<(), _>(include_str!("../rules/replay-view.js"))?;
-                ctx.eval::<(), _>(match rules {
-                    RULES => ENGINE,
-                    "galactic-reach/17.22" => include_str!("../rules/v17-app.js"),
-                    "galactic-reach/18.23" => include_str!("../rules/v18-app.js"),
-                    "galactic-reach/19.24" => include_str!("../rules/v19-app.js"),
-                    "galactic-reach/20.25" => include_str!("../rules/v20-app.js"),
-                    "galactic-reach/21.26" => include_str!("../rules/v21-app.js"),
-                    "galactic-reach/22.27" => include_str!("../rules/v22-app.js"),
-                    "galactic-reach/23.28" => include_str!("../rules/v23-app.js"),
-                    "galactic-reach/24.29" => include_str!("../rules/v24-app.js"),
-                    "galactic-reach/25.30" => include_str!("../rules/v25-app.js"),
-                    "galactic-reach/26.31" => include_str!("../rules/v26-app.js"),
-                    "galactic-reach/27.32" => include_str!("../rules/v27-app.js"),
-                    "galactic-reach/28.33" => include_str!("../rules/v28-app.js"),
-                    "galactic-reach/29.34" => include_str!("../rules/v29-app.js"),
-                    "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
-                    "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
-                    "galactic-reach/32.37" => include_str!("../rules/v32-app.js"),
-                    "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
-                    "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
-                    "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
-                    "galactic-reach/13.18" => include_str!("../rules/v13-app.js"),
-                    "galactic-reach/12.17" => include_str!("../rules/v12-app.js"),
-                    "galactic-reach/11.16" => include_str!("../rules/v11-app.js"),
-                    "galactic-reach/10.15" => include_str!("../rules/v10-app.js"),
-                    "galactic-reach/9.14" => include_str!("../rules/v9-app.js"),
-                    "galactic-reach/8.13" => include_str!("../rules/v8-app.js"),
-                    "galactic-reach/7.12" => include_str!("../rules/v7-app.js"),
-                    "galactic-reach/6.11" => include_str!("../rules/v6-app.js"),
-                    "galactic-reach/5.10" => include_str!("../rules/v5-app.js"),
-                    _ => include_str!("../rules/v4-app.js"),
+                ctx.eval::<(), _>(match (sources, rules) {
+                    (Some(s), _) => s.app,
+                    (None, rules) => match rules {
+                        RULES => ENGINE,
+                        "galactic-reach/17.22" => include_str!("../rules/v17-app.js"),
+                        "galactic-reach/18.23" => include_str!("../rules/v18-app.js"),
+                        "galactic-reach/19.24" => include_str!("../rules/v19-app.js"),
+                        "galactic-reach/20.25" => include_str!("../rules/v20-app.js"),
+                        "galactic-reach/21.26" => include_str!("../rules/v21-app.js"),
+                        "galactic-reach/22.27" => include_str!("../rules/v22-app.js"),
+                        "galactic-reach/23.28" => include_str!("../rules/v23-app.js"),
+                        "galactic-reach/24.29" => include_str!("../rules/v24-app.js"),
+                        "galactic-reach/25.30" => include_str!("../rules/v25-app.js"),
+                        "galactic-reach/26.31" => include_str!("../rules/v26-app.js"),
+                        "galactic-reach/27.32" => include_str!("../rules/v27-app.js"),
+                        "galactic-reach/28.33" => include_str!("../rules/v28-app.js"),
+                        "galactic-reach/29.34" => include_str!("../rules/v29-app.js"),
+                        "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
+                        "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
+                        "galactic-reach/32.37" => include_str!("../rules/v32-app.js"),
+                        "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
+                        "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
+                        "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
+                        "galactic-reach/13.18" => include_str!("../rules/v13-app.js"),
+                        "galactic-reach/12.17" => include_str!("../rules/v12-app.js"),
+                        "galactic-reach/11.16" => include_str!("../rules/v11-app.js"),
+                        "galactic-reach/10.15" => include_str!("../rules/v10-app.js"),
+                        "galactic-reach/9.14" => include_str!("../rules/v9-app.js"),
+                        "galactic-reach/8.13" => include_str!("../rules/v8-app.js"),
+                        "galactic-reach/7.12" => include_str!("../rules/v7-app.js"),
+                        "galactic-reach/6.11" => include_str!("../rules/v6-app.js"),
+                        "galactic-reach/5.10" => include_str!("../rules/v5-app.js"),
+                        _ => include_str!("../rules/v4-app.js"),
+                    },
                 })?;
                 ctx.eval::<(), _>(start)
             })
