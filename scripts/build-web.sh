@@ -215,4 +215,7 @@ for asset in app.js adapter.js index.html styles.css replay.js rulebook.html rul
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/29.34/table.js
 # Testnet seat (Nido + zero-knowledge private draws) for the current tabletop.
-./zk/build-web.sh "$PWD/dist/galactic-reach/zk"
+# The Docker image builds it in its own Node stage and sets SKIP_ZK_SEAT=1 here.
+if [ -z "${SKIP_ZK_SEAT:-}" ]; then
+  ./zk/build-web.sh "$PWD/dist/galactic-reach/zk"
+fi
