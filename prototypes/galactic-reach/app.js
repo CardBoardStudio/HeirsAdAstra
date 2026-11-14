@@ -16,8 +16,8 @@ function createGalacticReach(options = {}) {
   }
   const clearTimeout = headless ? () => {} : globalThis.clearTimeout.bind(globalThis);
 
-  const SAVE_FORMAT_VERSION = 32;
-  const RULES_REVISION = 37;
+  const SAVE_FORMAT_VERSION = 33;
+  const RULES_REVISION = 38;
   const SAVE_KEY = `galactic-reach-save-v${SAVE_FORMAT_VERSION}`;
   const TURN_HISTORY_KEY = `galactic-reach-turn-history-v${SAVE_FORMAT_VERSION}`;
   const HISTORY_KEY = `galactic-reach-history-v${SAVE_FORMAT_VERSION}`;
@@ -112,7 +112,7 @@ function createGalacticReach(options = {}) {
   const BASIC_CARDS = {
     colonize: { name: 'Colonize', kind: 'Basic', accent: 'var(--biomass)', resource: { biomass: 1 }, order: 'colonize', text: 'Establish a Colony with a Settler on a world’s center hex, then permanently trash Colonize.' },
     construct: { name: 'Construct', kind: 'Basic', accent: 'var(--matter)', resource: { matter: 1 }, order: 'construct', text: 'Build on any empty planet hex adjacent to your Colony, or commission one ship.', cost: { matter: 1, data: 1 } },
-    move: { name: 'Move', kind: 'Basic', accent: 'var(--energy)', resource: { energy: 1 }, order: 'move', text: 'Move one ship group or Explorer team at its own speed.', cost: { energy: 1, data: 1 } },
+    move: { name: 'Move', kind: 'Basic', accent: 'var(--energy)', resource: { energy: 1 }, order: 'move', text: 'Move the units you choose from one hex (combat ships or Explorers) at the slowest one’s speed.', cost: { energy: 1, data: 1 } },
     probe: { name: 'Probe', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'probe', text: 'From your Explorer anywhere on the map, privately locate its nearest unlocated remaining relic. Keep the Explorer; this Probe is replaced by an Excavate card in your discard.' },
     excavate: { name: 'Excavate', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'excavate', text: 'At your Explorer’s located relic, pay 1 Matter, 1 Energy, and 2 Data. Choose a relic card into discard and gain 2 Prestige. Remove the relic and trash this card; consume one Explorer.' }
   };
@@ -815,6 +815,22 @@ function createGalacticReach(options = {}) {
     return clone(fleet);
   }
 
+  // Rules #movement (33.38): a Move order moves any chosen units of one faction on one hex.
+  // `units` counts each type; without it, `moveGroup` names the whole group (all combat
+  // ships, or the Explorer team). Combat ships and Explorers never move in the same order.
+  function moveSelection(fleet, options = {}) {
+    if (!fleet) return null;
+    const requested = options.units || fleetGroup(fleet, options.moveGroup || (combatShipCount(fleet) ? 'ships' : 'explorer'));
+    const chosen = { settler: 0, explorer: 0, fleet: 0 };
+    for (const type of Object.keys(SHIP_STATS)) {
+      const amount = requested[type] ?? 0;
+      if (!Number.isInteger(amount) || amount < 0 || amount > (fleet[type] || 0)) return null;
+      chosen[type] = amount;
+    }
+    if (!fleetCount(chosen) || (chosen.explorer && combatShipCount(chosen))) return null;
+    return chosen;
+  }
+
   function formatFleet(fleet) {
     if (!fleet || !fleetCount(fleet)) return 'No ships';
     const parts = [];
@@ -1446,7 +1462,6 @@ function createGalacticReach(options = {}) {
     state.actionCardId = null;
     state.actionOptions = {};
     state.moveSource = null;
-    state.moveChoiceSource = null;
     state.reachable = [];
   }
 
@@ -1540,7 +1555,7 @@ function createGalacticReach(options = {}) {
       }
     }
     if (definition.order==='excavate') openExcavationRewards();
-    toast(definition.order === 'move' ? 'Select one of your fleets or Explorer teams.' : definition.order === 'construct' ? 'Select an empty planet hex adjacent to your Colony, an existing structure, or a Shipyard.' : definition.order === 'probe' ? 'Select one of your Explorers anywhere on the map to locate its nearest unlocated relic.' : definition.order === 'excavate' ? 'Select your Explorer’s located relic site, then choose a reward in the Relics tab.' : 'Select an eligible planet containing your Settler.');
+    toast(definition.order === 'move' ? 'Select a hex with your units. Untick any you want to leave behind.' : definition.order === 'construct' ? 'Select an empty planet hex adjacent to your Colony, an existing structure, or a Shipyard.' : definition.order === 'probe' ? 'Select one of your Explorers anywhere on the map to locate its nearest unlocated relic.' : definition.order === 'excavate' ? 'Select your Explorer’s located relic site, then choose a reward in the Relics tab.' : 'Select an eligible planet containing your Settler.');
     render();
     if (definition.order==='excavate') saveGame();
   }
@@ -1806,33 +1821,93 @@ function createGalacticReach(options = {}) {
   }
 
   function handleHumanMoveSelection(key) {
-    if (!state.moveSource) {
-      const fleet = getFleet(key,ME);
-      if (!fleetCount(fleet)) { toast('Select a hex containing one of your fleets.'); return; }
-      if ((fleet.explorer || 0) > 0 && combatShipCount(fleet) > 0) {
-        state.moveChoiceSource = key;
-        toast('Choose whether this Move sends the ships or the Explorer team.');
-        return;
-      }
-      prepareHumanMove(key,(fleet.explorer || 0) > 0 ? 'explorer' : 'ships');
+    if (state.moveSource && state.reachable.includes(key)) {
+      const card=state.players[ME].hand.find(c=>c.id===state.actionCardId);
+      performMoveOrder(ME,state.moveSource,key,card,state.actionOptions);
       return;
     }
-    if (!state.reachable.includes(key)) { toast('That destination is outside this fleet’s range.'); return; }
-    const card=state.players[ME].hand.find(c=>c.id===state.actionCardId);
-    performMoveOrder(ME,state.moveSource,key,card,state.actionOptions);
+    if (state.moveSource===key) return;
+    // Rules #movement: selecting one of your hexes chooses it as the source, with every
+    // combat ship ticked (or the Explorer team when no combat ship is there).
+    if (!fleetCount(getFleet(key,ME))) {
+      toast(state.moveSource ? 'That destination is outside the chosen units’ range.' : 'Select a hex containing one of your fleets.');
+      return;
+    }
+    prepareHumanMove(key);
   }
 
-  function prepareHumanMove(key, group) {
-    if (state.pendingCombat) return;
-    const moving = fleetGroup(getFleet(key,ME),group);
-    if (!fleetCount(moving)) return;
-    state.moveChoiceSource = null;
+  // Ticks `units` (counts per type, or a whole 'ships'/'explorer' group; default: all
+  // combat ships, else the Explorer team)
+  // at `key` and highlights where they can reach at the slowest chosen unit's speed.
+  function prepareHumanMove(key, units = null) {
+    if (state.pendingCombat) return false;
+    const fleet = getFleet(key,ME);
+    const moving = moveSelection(fleet,typeof units === 'string' ? {moveGroup:units} : units ? {units} : {});
+    if (!moving) return false;
     state.moveSource = key;
-    state.actionOptions.moveGroup = group;
+    state.actionOptions.units = moving;
+    state.actionOptions.moveGroup = moving.explorer ? 'explorer' : 'ships';
     const range = movementRange(moving,state.actionOptions);
     state.reachable = reachableFrom(key,ME,range,avoidsHostile(state.actionOptions.tag),moving);
-    toast(`This ${group==='explorer'?'Explorer team':'fleet'} can move up to ${range} hexes. Select a highlighted destination.`);
+    toast(`${formatFleet(moving)} can move up to ${range} hex${range===1?'':'es'}. Select a highlighted destination, or untick units in Sector Scan.`);
     render();
+    return true;
+  }
+
+  // Ticks or unticks one unit type's count in the chosen group. Choosing an Explorer
+  // clears the combat ships and vice versa: Explorers travel as their own team.
+  function setMoveUnits(type, amount) {
+    const fleet=getFleet(state.moveSource,ME), current=state.actionOptions.units;
+    if (!fleet || !current || !SHIP_STATS[type]) return false;
+    const active=document.activeElement;
+    const focusSelector=active?.dataset?.moveUnit===type ? `[data-move-unit="${type}"]` : active?.dataset?.moveCount===type ? `[data-move-count="${type}"]` : null;
+    const restoreFocus=()=>{if(focusSelector)document.querySelector(focusSelector)?.focus();};
+    const next={...current,[type]:Math.max(0,Math.min(fleet[type]||0,amount))};
+    if (type==='explorer' && next.explorer) { next.settler=0; next.fleet=0; }
+    if (type!=='explorer' && next[type]) next.explorer=0;
+    if (!fleetCount(next)) { toast('Keep at least one unit ticked, or cancel the order.'); render(); restoreFocus(); return false; }
+    const prepared=prepareHumanMove(state.moveSource,next);
+    restoreFocus();
+    return prepared;
+  }
+
+  // Sector Scan checklist: one row per unit type at the chosen source. The box ticks the
+  // whole type; with several units of a type, the number sets how many of them move.
+  function moveUnitPicker(key) {
+    const fleet=getFleet(key,ME), chosen=state.actionOptions.units;
+    if (!fleet || !chosen) return null;
+    const box=document.createElement('fieldset');
+    box.className='move-picker';
+    const range=movementRange(chosen,state.actionOptions);
+    box.innerHTML=`<legend>Units moving · speed ${range}</legend><p class="muted">Untick units to leave them here. The group moves at its slowest chosen unit’s speed. Explorers travel as their own team.</p>`;
+    for (const type of Object.keys(SHIP_STATS)) {
+      const total=fleet[type]||0;
+      if (!total) continue;
+      const row=document.createElement('div');
+      row.className='move-picker-row';
+      const label=document.createElement('label');
+      const tick=document.createElement('input');
+      tick.type='checkbox';
+      tick.checked=chosen[type]>0;
+      tick.dataset.moveUnit=type;
+      tick.addEventListener('change',()=>setMoveUnits(type,tick.checked?total:0));
+      label.append(tick,` ${SHIP_STATS[type].name}${total===1?'':'s'} · speed ${SHIP_STATS[type].move}`);
+      row.appendChild(label);
+      if (total>1) {
+        // A select commits on choice; a number field would wait for blur and lose a quick map click.
+        const count=document.createElement('select');
+        for (let n=1;n<=total;n++) count.add(new Option(String(n),String(n),false,n===(chosen[type]||total)));
+        count.disabled=!chosen[type];
+        count.dataset.moveCount=type;
+        count.setAttribute('aria-label',`${SHIP_STATS[type].name}s moving, of ${total}`);
+        count.addEventListener('change',()=>setMoveUnits(type,Number(count.value)));
+        const of=document.createElement('span');
+        of.className='muted'; of.textContent=`of ${total}`;
+        row.append(count,of);
+      }
+      box.appendChild(row);
+    }
+    return box;
   }
 
   function discardActionCard(playerId) {
@@ -1846,7 +1921,8 @@ function createGalacticReach(options = {}) {
 
   function executeMove(playerId, source, destination, options = {}) {
     const sourceFleet = getFleet(source,playerId);
-    const sourceSnapshot = fleetGroup(sourceFleet,options.moveGroup || 'all');
+    const sourceSnapshot = options.units ? moveSelection(sourceFleet,options) : fleetGroup(sourceFleet,options.moveGroup || 'all');
+    if (!sourceSnapshot) return false;
     if (state.pendingCombat || !sourceFleet || !fleetCount(sourceSnapshot)) return false;
     Object.keys(SHIP_STATS).forEach(type => { sourceFleet[type] = Math.max(0,(sourceFleet[type] || 0) - (sourceSnapshot[type] || 0)); });
     if (!fleetCount(sourceFleet)) {
@@ -2175,11 +2251,12 @@ function createGalacticReach(options = {}) {
 
   function performMoveOrder(playerId,source,destination,card,options={}) {
     if (state.pendingConstruct || state.pendingCombat || state.pendingMove || state.phase!=='operations' || state.activePlayer!==playerId || overflowPlayer()>=0 || !state.players[playerId].hand.some(c=>c.id===card?.id) || ALL_CARDS[card.key].order!=='move') return false;
-    const moving=fleetGroup(getFleet(source,playerId),options.moveGroup || 'all');
+    const moving=moveSelection(getFleet(source,playerId),options);
+    if (!moving) return false;
     if (!reachableFrom(source,playerId,movementRange(moving,card),avoidsHostile(options.tag),moving).includes(destination)) return false;
-    state.pendingMove={playerId,source,destination,cardId:card.id,message:`${state.players[playerId].name} moved a group from ${nameForCoord(source)} to ${nameForCoord(destination)}.`};
+    state.pendingMove={playerId,source,destination,cardId:card.id,message:`${state.players[playerId].name} moved ${formatFleet(moving)} from ${nameForCoord(source)} to ${nameForCoord(destination)}.`};
     removeHandCard(state.players[playerId],card.id);
-    executeMove(playerId,source,destination,options);
+    executeMove(playerId,source,destination,{...options,units:moving});
     finishMoveOrder();
     return true;
   }
@@ -2737,10 +2814,16 @@ function createGalacticReach(options = {}) {
       const risk=moveGroup==='ships'?aiThreat(playerId,moving,destination,source):0;
       const current=moveGroup==='ships'?aiThreat(playerId,moving,source,source):0;
       if (moving.settler && risk>.6 && risk>=current) return;
-      targets.push({source,destination,moveGroup,score:value-2*Math.ceil(path.length/range)+(path.length<=range?4:0)-risk*(moving.settler?55:35),goal});
+      targets.push({source,destination,moveGroup,units:fleetGroup(moving,moveGroup),score:value-2*Math.ceil(path.length/range)+(path.length<=range?4:0)-risk*(moving.settler?55:35),goal});
     };
     for (const [source,g] of groups) {
       const f=g[playerId],ships=fleetGroup(f,'ships'),explorers=fleetGroup(f,'explorer');
+      // 33.38 #movement: Fleets may leave their Settlers behind, but only Settlers that are
+      // safe on their own; with no Settler here the hunters are simply all the Fleets.
+      const settlersSafe=f.settler && f.fleet && aiThreat(playerId,{settler:f.settler,explorer:0,fleet:0},source,source)<=.3;
+      // 34.39 #combat: on an enemy center this group can capture, one Fleet stays with the Settler.
+      const guard=f.settler && canCaptureAt(source,playerId) ? 1 : 0;
+      const hunters=f.fleet>guard && (!f.settler || guard || settlersSafe) ? {settler:0,explorer:0,fleet:f.fleet-guard} : null;
       const danger=aiThreat(playerId,ships,source,source);
       if (fleetCount(ships) && danger>.6) {
         // Retreat is a normal Move. Prefer a defended hex or merging with allies.
@@ -2751,13 +2834,13 @@ function createGalacticReach(options = {}) {
           add(source,ships,destination,63+allied*3+(owned?3:0),'ships',true);
         }
       }
-      if (f.fleet && !f.settler) for (const [at,other] of groups) {
+      if (hunters) for (const [at,other] of groups) {
         const ally=other[playerId];
         if (at===source || !(ally.fleet||ally.settler)) continue;
         const enemies=Object.entries(state.fleets).flatMap(([coord,fs])=>Object.entries(fs).filter(([id,x])=>+id!==playerId&&x.fleet).map(([,x])=>({coord,fleet:x.fleet})));
         const needsMass=enemies.some(x=>x.fleet>=(f.fleet||0));
         const escort=ally.settler && aiThreat(playerId,ally,at,at)>.3;
-        if (escort || needsMass && ally.fleet && !ally.settler) add(source,ships,at,escort?52:military?39:32,'ships',true);
+        if (escort || needsMass && ally.fleet && !ally.settler) add(source,hunters,at,escort?52:military?39:32,'ships',true);
       }
       if (f.settler && !(isColonySite(source) && (state.planets[source].owner===null||canCaptureAt(source,playerId)))) {
         for (const c of state.clusters.filter(c=>c.kind==='world')) {
@@ -2770,15 +2853,15 @@ function createGalacticReach(options = {}) {
           if (groups.some(([at,other])=>at!==source&&other[playerId].settler&&hexDistance(at,c.center)<hexDistance(source,c.center))) continue;
           add(source,ships,c.center,42+(expansion?5:0)+(capture?military?8:2:0),'ships',avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag));
         }
-      } else if (f.fleet && !f.settler) {
+      } else if (hunters) {
         for (const [at,other] of Object.entries(state.fleets)) {
           const enemy=Object.entries(other).find(([id,fleet])=>+id!==playerId&&fleetCount(fleet));if (!enemy) continue;
           const [owner,fleet]=enemy,canEscape=fleet.explorer && state.players[owner].resources.energy>=fleet.explorer;
-          if (canEscape || !aiCanFight(playerId,ships,at)) continue;
-          add(source,ships,at,military?39:29,'ships',avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag));
+          if (canEscape || !aiCanFight(playerId,hunters,at)) continue;
+          add(source,hunters,at,military?39:29,'ships',avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag));
         }
         if (countPlacedShips(playerId,'settler')) for (const c of state.clusters.filter(c=>c.kind==='world'&&state.planets[c.center].owner!==null&&state.planets[c.center].owner!==playerId&&state.planets[c.center].occupiedBy!==playerId)) {
-          add(source,ships,c.center,military?26:22,'ships',avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag));
+          add(source,hunters,c.center,military?26:22,'ships',avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag));
         }
       }
       if (f.explorer && aiRelicsRemain()) {
@@ -2834,7 +2917,7 @@ function createGalacticReach(options = {}) {
     aiRespondToTrades(id);
     const moveCards=p.hand.filter(c=>ALL_CARDS[c.key].order==='move'),moves=moveCards.map(card=>({card,move:chooseAiMove(id,card)})).filter(x=>x.move).sort((a,b)=>b.move.score-a.move.score),best=moves[0];
     const construct=aiConstructCard(p),build=construct&&chooseAiBuild(id);
-    const moveNow=()=>best&&performMoveOrder(id,best.move.source,best.move.destination,best.card,{tag:ALL_CARDS[best.card.key].tag,moveGroup:best.move.moveGroup});
+    const moveNow=()=>best&&performMoveOrder(id,best.move.source,best.move.destination,best.card,{tag:ALL_CARDS[best.card.key].tag,moveGroup:best.move.moveGroup,units:best.move.units});
     if (best&&(!build?.funding||best.move.score>=build.score)&&moveNow()) return;
     if (build&&aiUseResources(p,construct.id,constructionCost(id,build.coord,build.kind,build.discount))&&performConstructOrder(id,build.coord,build.kind,construct)) {if(state.pendingConstruct)aiSecondConstruct(id);return;}
     if (best&&p.hand.some(c=>c.id===best.card.id)&&moveNow()) return;
@@ -3212,6 +3295,7 @@ function createGalacticReach(options = {}) {
     if (existing) existing.remove();
     const node = document.createElement('div');
     node.className = 'toast';
+    node.setAttribute('role','status');
     if (cost) node.innerHTML = `<span>${message}</span>${resourceDots(cost)}${suffix ? `<span>${suffix}</span>` : ''}`;
     else node.textContent = message;
     document.body.appendChild(node);
@@ -3521,9 +3605,9 @@ function createGalacticReach(options = {}) {
       actions.appendChild(actionButton('Finish without building',()=>finishColonyBuild(ME)));
     }
     if (!state.pendingCombat && state.phase==='operations' && state.activePlayer===ME && ['action','construct-again'].includes(state.turnStage)) {
-      if (state.actionMode==='move' && state.moveChoiceSource===key) {
-        actions.appendChild(actionButton('Move Explorers',()=>prepareHumanMove(key,'explorer')));
-        actions.appendChild(actionButton('Move Ships',()=>prepareHumanMove(key,'ships')));
+      if (state.actionMode==='move' && state.moveSource===key) {
+        const picker=moveUnitPicker(key);
+        if (picker) actions.appendChild(picker);
       }
       if (state.actionMode==='construct' && planet) {
         if (canBuildStructureAt(ME,key)) Object.keys(STRUCTURES).forEach(kind=>actions.appendChild(buildButton(`Build ${STRUCTURES[kind].name}`,kind)));
@@ -3985,7 +4069,15 @@ function createGalacticReach(options = {}) {
     if (!hex) return;
     const vw=document.documentElement.clientWidth, vh=window.innerHeight, gap=12;
     panel.style.width=`${Math.min(370,vw-24)}px`;
-    const rect=hex.getBoundingClientRect(), width=panel.offsetWidth, height=panel.offsetHeight;
+    let rect=hex.getBoundingClientRect();
+    const width=panel.offsetWidth, height=panel.offsetHeight;
+    // While choosing a Move's units, keep the highlighted destinations clickable (#movement):
+    // anchor beside the source and every reachable hex, if that side has room.
+    if (state.actionMode==='move' && state.moveSource===state.selected) {
+      const area=[hex,...document.querySelectorAll('.hex.target')].map(h=>h.getBoundingClientRect());
+      const box={left:Math.min(...area.map(r=>r.left)),right:Math.max(...area.map(r=>r.right)),top:rect.top,bottom:rect.bottom};
+      if (box.right+gap+width<=vw-gap || box.left-gap-width>=gap) rect=box;
+    }
     let left=rect.right+gap, top=rect.top;
     if (left+width>vw-gap) left=rect.left-width-gap;
     if (left<gap) { left=(vw-width)/2; top=rect.bottom+gap; if(top+height>vh-gap) top=rect.top-height-gap; }
@@ -4184,7 +4276,11 @@ function createGalacticReach(options = {}) {
       const legal = mine(id) && checkExcavate(id,coord,cardId,relicId,true);
       return dryRun || !legal ? legal : send({type:'excavate',card:cardId,coord,relic:relicId});
     };
-    performMoveOrder = (id, source, destination, card, opts = {}) => mine(id) && !!card && send({type:'move',card:card.id,source,destination,moveGroup:opts.moveGroup});
+    // 33.38 #movement: the chosen units travel with the command (rules #shared-tables).
+    performMoveOrder = (id, source, destination, card, opts = {}) => {
+      const units = mine(id) && !!card && moveSelection(getFleet(source,ME),opts);
+      return !!units && send({type:'move',card:card.id,source,destination,moveGroup:units.explorer?'explorer':'ships',units});
+    };
     performConstructOrder = (id, coord, kind, card) => mine(id) && !!card && !state.pendingConstruct && constructAt(ME,coord,kind,null,true)
       && send({type:'build',card:card.id,coord,kind});
     finishConstruct = (id, coord = null, kind = null) => mine(id) && state.pendingConstruct?.playerId === ME
@@ -4226,7 +4322,7 @@ function createGalacticReach(options = {}) {
     const keepOrder = sameTurn && !!previous.actionCardId && previous.turnStage === 'action' && !next.pendingConsortium && !next.pendingColonyBuild && !next.pendingConstruct
       && next.players[ME].hand.some(card => card.id === previous.actionCardId);
     next.selected = previous?.selected ?? null;
-    for (const key of ['actionMode','actionCardId','actionOptions','moveSource','moveChoiceSource','reachable']) next[key] = keepOrder ? previous[key] : null;
+    for (const key of ['actionMode','actionCardId','actionOptions','moveSource','reachable']) next[key] = keepOrder ? previous[key] : null;
     next.actionOptions = next.actionOptions || {};
     next.reachable = next.reachable || [];
     const combat = next.lastCombat && previous && JSON.stringify(next.lastCombat) !== JSON.stringify(previous.lastCombat)
@@ -4264,7 +4360,7 @@ function createGalacticReach(options = {}) {
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
       decommission, excavatedRelicCount, useBuyEffect, resolveHumanSpecial,
       colonizePlanet, buildUpgrade, probeRelic, excavate, buildShip, getFleet, fleetCount,
-      fleetGroup, fleetMove, fleetPower, reachableFrom, executeMove, performMoveOrder, combatActor, combatView, combatActions, applyCombatAction, nearestUnscannedRelicCluster,
+      fleetGroup, moveSelection, fleetMove, fleetPower, reachableFrom, executeMove, performMoveOrder, combatActor, combatView, combatActions, applyCombatAction, nearestUnscannedRelicCluster,
       clusterKnown, clusterRevealed, clusterScanned, relicKnown, relicCoordInCluster, calculatePrestige, colonyPlanets,
       totalResources, playerCapacity, resourceLimits, resourceExcess, totalResourceExcess, storageAllocations, validStorageAllocation, overflowPlayer, discardOverflow,
       canConsortiumGain, canConsortiumExchange, consortiumGain, consortiumExchange, finishConsortium,

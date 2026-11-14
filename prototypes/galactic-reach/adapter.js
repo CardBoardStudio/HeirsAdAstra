@@ -121,16 +121,16 @@ function createGalacticAdapter(e) {
           for (const kind of [...Object.keys(e.STRUCTURES),...Object.keys(e.SHIP_STATS)])
             if (e.constructAt(seat,coord,kind,discountResource,true)) actions.push({type:'build',...base,coord,kind,discountResource});
         });
+        // 33.38 #movement: any chosen units of the hex, combat ships or Explorers, at the
+        // slowest chosen unit's speed. The whole group is listed first for each source.
         if (def.order === 'move') Object.entries(state.fleets).forEach(([source, group]) => {
           if (!group[seat]) return;
-          for (const moveGroup of ['ships', 'explorer']) {
-            const moving = e.fleetGroup(group[seat], moveGroup);
-            if (!e.fleetCount(moving)) continue;
-            const range = e.movementRange(moving,card);
-            e.reachableFrom(source, seat, range, e.avoidsHostile(def.tag), moving).forEach(destination => {
-              actions.push({ type: 'move', ...base, source, destination, moveGroup });
+          moveSubsets(group[seat]).forEach(units => {
+            const range = e.movementRange(units,card);
+            e.reachableFrom(source, seat, range, e.avoidsHostile(def.tag), units).forEach(destination => {
+              actions.push({ type: 'move', ...base, source, destination, moveGroup: units.explorer ? 'explorer' : 'ships', units });
             });
-          }
+          });
         });
         if (def.order === 'probe') Object.keys(state.fleets).forEach(coord=>{
           if(e.probeRelic(seat,coord,card.id,true)) actions.push({type:'probe',...base,coord});
@@ -158,7 +158,28 @@ function createGalacticAdapter(e) {
     cached = actions;
     return e.clone(actions);
   }
-  function applyAction(seat, action) {
+  // Every unit choice a Move order allows at one hex (rules #movement): combat ships
+  // in any counts, or Explorers in any count, never both. Largest groups come first.
+  function moveSubsets(fleet) {
+    const subsets = [];
+    for (let settler = fleet.settler || 0; settler >= 0; settler--)
+      for (let ships = fleet.fleet || 0; ships >= 0; ships--)
+        if (settler + ships) subsets.push({ settler, explorer: 0, fleet: ships });
+    for (let explorer = fleet.explorer || 0; explorer > 0; explorer--) subsets.push({ settler: 0, explorer, fleet: 0 });
+    return subsets;
+  }
+  // A Move command may name only `moveGroup` (the whole group, as before 33.38) or give
+  // `units`; both become the one canonical shape listed by legalActions.
+  function canonicalMove(seat, action) {
+    if (action?.type !== 'move') return action;
+    const fleet = s().fleets[action.source]?.[seat];
+    const units = action.units ? Object.fromEntries(['settler', 'explorer', 'fleet'].map(type => [type, action.units[type] ?? 0]))
+      : fleet && e.fleetGroup(fleet, action.moveGroup === 'explorer' ? 'explorer' : 'ships');
+    if (!units) return action;
+    return { ...action, units, moveGroup: units.explorer ? 'explorer' : 'ships' };
+  }
+  function applyAction(seat, rawAction) {
+    const action = canonicalMove(seat, rawAction);
     // Match against authoritative commands, so malformed/stale/wrong-seat commands
     // cannot reach low-level mutation primitives or consume randomness.
     const stable = value => value && typeof value === 'object' ? (Array.isArray(value) ? value.map(stable) : Object.fromEntries(Object.keys(value).sort().map(k => [k, stable(value[k])]))) : value;
@@ -193,7 +214,7 @@ function createGalacticAdapter(e) {
       case 'colony_build': e.finishColonyBuild(seat,action.coord,action.kind); return;
       case 'colonize': e.applyColonizeOrder(seat, action.coord, card); return;
       case 'build': e.performConstructOrder(seat,action.coord,action.kind,card); return;
-      case 'move': e.performMoveOrder(seat, action.source, action.destination, card, { tag: def.tag, moveGroup: action.moveGroup }); return;
+      case 'move': e.performMoveOrder(seat, action.source, action.destination, card, { tag: def.tag, moveGroup: action.moveGroup, units: action.units }); return;
       case 'probe': e.probeRelic(seat,action.coord,action.card); return;
       case 'excavate': e.excavate(seat,action.coord,action.card,action.relic); return;
       case 'special': e.resolveHumanSpecial(card, def, seat, action.trash ?? action.allocation); return;
@@ -273,6 +294,6 @@ function createGalacticAdapter(e) {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/32.37', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
+  return { rulesVersion: 'galactic-reach/33.38', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;
