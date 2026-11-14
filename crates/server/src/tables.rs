@@ -440,16 +440,6 @@ mod tests {
             joined["blocked"].is_null(),
             "two people and two rivals fill the table"
         );
-        let fewer = call(
-            &a,
-            "POST",
-            &format!("{lobby}/settings"),
-            &host,
-            json!({"ai_rivals":1,"difficulty":"standard"}),
-        )
-        .await
-        .2;
-        assert!(fewer["blocked"].as_str().unwrap().contains("four factions"));
         let shelf = call(&a, "GET", "/api/tables", &friend, json!({})).await.2;
         assert!(
             shelf
@@ -458,12 +448,7 @@ mod tests {
                 .iter()
                 .any(|t| t["id"] == id.as_str() && t["guest"] == true && t["status"] == "waiting")
         );
-        assert_eq!(
-            call(&a, "POST", &format!("{lobby}/start"), &host, json!({}))
-                .await
-                .0,
-            StatusCode::CONFLICT
-        );
+        // Starting with the friend seated opens a shared table (shared::tests covers it).
         assert_eq!(
             call(
                 &a,
@@ -490,37 +475,26 @@ mod tests {
             "only two AI seats are free"
         );
         call(&a, "POST", &format!("{lobby}/leave"), &friend, json!({})).await;
-        let easy = call(
-            &a,
-            "POST",
-            &format!("{lobby}/settings"),
-            &host,
-            json!({"ai_rivals":2,"difficulty":"easy"}),
-        )
-        .await
-        .2;
-        assert!(easy["blocked"].is_string());
+        // Rivals are fixed: Standard rivals fill every seat a person has not taken.
+        let room = call(&a, "GET", &lobby, &host, json!({})).await.2;
         assert_eq!(
-            call(
-                &a,
-                "POST",
-                &format!("{lobby}/settings"),
-                &host,
-                json!({"ai_rivals":0,"difficulty":"standard"})
-            )
-            .await
-            .0,
-            StatusCode::BAD_REQUEST,
-            "a solo host needs at least one rival"
+            room["ai_rivals"], 3,
+            "the friend's seat returns to an AI rival"
         );
-        call(
-            &a,
-            "POST",
-            &format!("{lobby}/settings"),
-            &host,
-            json!({"ai_rivals":3,"difficulty":"standard"}),
-        )
-        .await;
+        assert_eq!(room["difficulty"], "standard");
+        assert!(room["blocked"].is_null());
+        for choice in [
+            json!({"ai_rivals":2,"difficulty":"standard"}),
+            json!({"ai_rivals":3,"difficulty":"easy"}),
+        ] {
+            assert_eq!(
+                call(&a, "POST", &format!("{lobby}/settings"), &host, choice)
+                    .await
+                    .0,
+                StatusCode::BAD_REQUEST,
+                "fewer or Easy rivals are not offered"
+            );
+        }
         assert_eq!(
             call(&a, "GET", "/api/tables", &host, json!({})).await.2[0]["status"],
             "waiting"

@@ -20,7 +20,6 @@ let session,
   lobby,
   lobbyError,
   lobbyTimer,
-  lobbySaving,
   busy = false,
   pendingSeries;
 let arenaGame = new URLSearchParams(location.search).get("game") === "galactic-reach" ? "galactic-reach" : "voidwright";
@@ -48,7 +47,7 @@ function pollLobby() {
   clearTimeout(lobbyTimer);
   if (page() !== "lobby" || !lobby || lobby.status !== "waiting") return;
   lobbyTimer = setTimeout(async () => {
-    if (page() !== "lobby" || busy || lobbySaving) return pollLobby();
+    if (page() !== "lobby" || busy) return pollLobby();
     await loadLobby(); render();
   }, 4000);
 }
@@ -146,7 +145,7 @@ function tablesView() {
     `<div class="split"><section class="panel"><h2>Saved games</h2>${tableList()}</section><section class="panel"><h2>Create a table</h2>${profile ? `<form id="table-form"><label for="table-game">Game</label><select id="table-game" name="game"><option value="galactic-reach" ${arenaGame === "galactic-reach" ? "selected" : ""}>Galactic Reach</option><option value="voidwright" ${arenaGame === "voidwright" ? "selected" : ""}>Voidwright</option></select><p class="hint" id="table-rules-hint">${rulesHint(arenaGame)}</p><label for="table-name">Table name</label><input id="table-name" name="name" required maxlength="60" placeholder="Friday expedition"><div id="voidwright-options" ${arenaGame !== "voidwright" ? "hidden" : ""}><label for="table-mode">Play with</label><select id="table-mode" name="mode"><option value="practice">Kepler AI</option><option value="friends">Friends · share the table link</option></select></div><p class="form-note" id="table-description">${tableDescription(arenaGame)}</p><button class="primary">Create and open table →</button></form>` : '<p>Sign in to create a table saved to your account.</p><a class="primary" href="#account">Sign in →</a><hr class="divider"><a class="text-link" href="/galactic-reach/">Play Galactic Reach as a guest →</a>'}</section></div>`;
 }
 function tableDescription(game) {
-  return game === "galactic-reach" ? "Opens a waiting room first: share the invite link, watch seats fill, choose AI rivals and difficulty, then Start. Unrated and saved to your account. Your guest game stays separate." : "Play a 20-round practice game or open a table for friends. Each player needs an account. Tables are unrated.";
+  return game === "galactic-reach" ? "Opens a waiting room first: share the invite link, watch seats fill, then Start. Standard AI rivals fill the remaining seats. Unrated and saved to your account. Your guest game stays separate." : "Play a 20-round practice game or open a table for friends. Each player needs an account. Tables are unrated.";
 }
 // Read the current rules from the server's engine, never a hard-coded label.
 function rulesHint(game) {
@@ -164,8 +163,8 @@ function lobbyView() {
   if (!session?.user) return head("GALACTIC REACH · WAITING ROOM", "You’re invited to a table.", "Sign in to take a seat. Nido or your recovery key both work.") + `<section class="panel"><a class="primary" href="/?return_to=${encodeURIComponent("/?game=galactic-reach" + location.hash)}#account">Sign in to join →</a></section>`;
   if (!lobby) return head("GALACTIC REACH · WAITING ROOM", "This waiting room isn’t available.", esc(lobbyError || "Check the link with the host.")) + `<a class="text-link" href="#tables">← Your tables</a>`;
   const started = lobby.status !== "waiting";
-  const options = Array.from({length: lobby.max_ai_rivals - lobby.min_ai_rivals + 1}, (_, i) => lobby.min_ai_rivals + i);
-  const settings = lobby.host && !started ? `<form id="lobby-settings" class="lobby-settings"><label for="lobby-ai">AI rivals</label><select id="lobby-ai" name="ai_rivals">${options.map(n => `<option value="${n}" ${n === lobby.ai_rivals ? "selected" : ""}>${n}</option>`).join("")}</select><label for="lobby-difficulty">Difficulty</label><select id="lobby-difficulty" name="difficulty">${lobby.difficulties.map(d => `<option value="${esc(d.id)}" ${d.id === lobby.difficulty ? "selected" : ""}>${esc(d.name)}: ${esc(d.description)}</option>`).join("")}</select><p class="form-note">Friends who join take open seats first, then AI seats.</p></form>` : `<p class="form-note">The host chooses ${lobby.ai_rivals} AI rival${lobby.ai_rivals === 1 ? "" : "s"} · ${esc(lobby.difficulties.find(d => d.id === lobby.difficulty)?.name || lobby.difficulty)}.</p>`;
+  // Rivals are fixed for now (captain, 2026-11-14): Standard AI rivals fill every seat not taken by a player.
+  const settings = `<p class="form-note">${lobby.ai_rivals} Standard AI rival${lobby.ai_rivals === 1 ? "" : "s"} (Vanguard, Architect, Pathfinder) fill the seat${lobby.ai_rivals === 1 ? "" : "s"} not taken by players. Friends who join take an AI seat.</p>`;
   const invite = lobby.host && !started ? `<div class="lobby-invite"><label for="lobby-invite-link">Invite link</label><div class="lobby-invite-row"><input id="lobby-invite-link" readonly value="${esc(lobby.invite_url)}"><button class="secondary" id="copy-lobby-invite" type="button">Copy link</button></div><p class="form-note">Anyone with this link can take a seat after signing in. Share it privately.</p></div>` : "";
   const start = started
     ? (lobby.table_url && (lobby.host || lobby.shared) ? `<a class="primary" href="${esc(lobby.table_url)}">Open the game →</a>` : `<p class="form-note">The host started this table solo before you joined.</p>`)
@@ -299,15 +298,6 @@ function bind() {
     $("#table-rules-hint").innerHTML = rulesHint(e.target.value);
   });
   const room = route => `/api/tables/${lobbyRoute()?.id}/lobby${route}`;
-  // Settings save on their own and redraw only the room, so quick successive
-  // changes are never swallowed by a full-page refresh.
-  for (const id of ["#lobby-ai", "#lobby-difficulty"]) $(id)?.addEventListener("change", async () => {
-    const body = {ai_rivals:Number($("#lobby-ai").value), difficulty:$("#lobby-difficulty").value};
-    lobbySaving = true;
-    try { lobby = await api(room("/settings"), body); notice(""); }
-    catch (e) { notice(e.message, true); await loadLobby(); }
-    finally { lobbySaving = false; render(); }
-  });
   onClick("#lobby-join", async () => { lobby = await api(room("/join"), {invite:lobbyRoute().invite}); location.hash = `#lobby/${lobbyRoute().id}`; });
   onClick("#lobby-leave", async () => { await api(room("/leave"), {}); location.hash = "#tables"; });
   onClick("#lobby-start", async () => { lobby = await api(room("/start"), {}); if (lobby.table_url) location.assign(lobby.table_url); });
