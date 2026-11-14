@@ -142,7 +142,7 @@ struct Live {
     engine: GalacticReach,
     feed: Rc<RefCell<Feed>>,
     head: u64,
-    agents: HashMap<usize, BuiltinAgent>,
+    agents: HashMap<usize, Box<dyn PlayerAgent<GalacticReach>>>,
     played: Vec<Played>,
 }
 impl Live {
@@ -196,30 +196,73 @@ impl Live {
     }
 }
 
-/// Builds the engine for `table`, folding `events` (empty for a new table).
+/// What players see when a table cannot be rebuilt on this server: its log no
+/// longer replays (the rules engine changed under it) and no stored snapshot
+/// covers the change.
+pub const EARLIER_BUILD: &str = "This shared table was dealt with an earlier build of these rules, and this server can no longer replay it. Finish it on the server it started on, or start a new table.";
+
+/// Builds the engine for `table` from its log (empty for a new table). It
+/// resumes from the newest stored snapshot that no later undo reaches behind,
+/// replaying only the events after it, so a save-compatible engine edit does not
+/// strand the table; without a usable snapshot it replays the whole log.
 fn build(
     table: Table,
     events: Vec<Event>,
+    snapshots: Vec<(u64, Value)>,
     authority: Arc<dyn HiddenInfoAuthority>,
 ) -> Result<Live, String> {
     if table.authority != authority.name() {
         return Err(format!("This table was dealt by {}.", table.authority));
     }
-    if !galactic_reach::SHARED_RULES.contains(&table.rules.as_str()) {
-        return Err(format!(
-            "This shared table plays {}, and shared play does not support those rules.",
-            table.rules
-        ));
+    // An `undo` event cancels its seat's actions after `to`.
+    let undone: Vec<(u64, u64)> = events
+        .iter()
+        .filter(|e| e.kind == "undo")
+        .filter_map(|e| Some((e.public["to"].as_u64()?, e.seq)))
+        .collect();
+    let usable = snapshots
+        .iter()
+        .find(|(seq, _)| undone.iter().all(|(to, at)| at <= seq || to >= seq));
+    if let Some((seq, snapshot)) = usable {
+        match fold(
+            &table,
+            &events,
+            Some((*seq, snapshot)),
+            &undone,
+            authority.clone(),
+        ) {
+            Ok(live) => return Ok(live),
+            Err(e) => {
+                tracing::warn!(table=%table.id, seq, error=%e, "snapshot did not resume; replaying the whole log")
+            }
+        }
     }
+    fold(&table, &events, None, &undone, authority)
+}
+
+/// Replays `events` after `from` (a snapshot and the event it was taken after),
+/// or from a fresh deal. Undo never reaches a shuffle, so every logged
+/// permutation after the starting point is still consumed in order.
+fn fold(
+    table: &Table,
+    events: &[Event],
+    from: Option<(u64, &Value)>,
+    undone: &[(u64, u64)],
+    authority: Arc<dyn HiddenInfoAuthority>,
+) -> Result<Live, String> {
+    let start = from.map(|(seq, _)| seq).unwrap_or(0);
     let head = events.last().map(|e| e.seq).unwrap_or(0);
-    let (shuffles, rest): (Vec<Event>, Vec<Event>) =
-        events.into_iter().partition(|e| e.kind == "shuffle");
+    let cancelled = |seq: u64| undone.iter().any(|(to, at)| seq > *to && seq < *at);
     let feed = Rc::new(RefCell::new(Feed {
         table: table.id.clone(),
         authority,
-        logged: shuffles.into(),
+        logged: events
+            .iter()
+            .filter(|e| e.kind == "shuffle" && e.seq > start)
+            .cloned()
+            .collect(),
         fresh: vec![],
-        count: 0,
+        count: from.and_then(|(_, s)| s["shuffles"].as_u64()).unwrap_or(0),
         error: None,
     }));
     let source = feed.clone();
@@ -227,45 +270,44 @@ fn build(
         let seat = &table.seats[i];
         (seat.name.clone(), seat.human())
     });
-    let engine = GalacticReach::shared(
-        &table.rules,
-        &seats,
-        table.victory_target,
-        move |n, purpose| {
-            let mut feed = source.borrow_mut();
-            feed.next(n, purpose).unwrap_or_else(|e| {
-                feed.error = Some(e);
-                vec![]
-            })
-        },
-    )?;
+    let shuffle = move |n: usize, purpose: &str| {
+        let mut feed = source.borrow_mut();
+        feed.next(n, purpose).unwrap_or_else(|e| {
+            feed.error = Some(e);
+            vec![]
+        })
+    };
+    // The table plays the rules revision it was dealt with, on that revision's
+    // archived engine once the current rules move on (as solo tables do).
+    let resume = match from {
+        Some((_, snapshot)) => Some(
+            snapshot["engine"]
+                .as_str()
+                .ok_or("A stored snapshot has no engine state.")?,
+        ),
+        None => None,
+    };
+    let engine =
+        GalacticReach::shared_on(&table.rules, &seats, table.victory_target, resume, shuffle)?;
     let mut live = Live {
-        table,
+        table: table.clone(),
         engine,
         feed,
         head,
         agents: HashMap::new(),
         played: vec![],
     };
-    // An `undo` event cancels its seat's actions after `to`. Undo never reaches
-    // a shuffle, so every logged permutation is still consumed in order.
-    let undone: Vec<(u64, u64)> = rest
+    for event in events
         .iter()
-        .filter(|e| e.kind == "undo")
-        .filter_map(|e| Some((e.public["to"].as_u64()?, e.seq)))
-        .collect();
-    for event in rest.iter().filter(|e| e.kind == "action") {
-        if undone
-            .iter()
-            .any(|(to, at)| event.seq > *to && event.seq < *at)
-        {
-            continue;
-        }
-        live.engine.extend_deadline(SHARED_STEP);
+        .filter(|e| e.kind == "action" && !cancelled(e.seq))
+    {
         let seat = event.seat.ok_or("A logged action has no seat.")?;
-        live.engine
-            .apply_action(seat, event.public["action"].clone())
-            .map_err(|e| format!("Table log event {} no longer applies: {e}", event.seq))?;
+        if event.seq > start {
+            live.engine.extend_deadline(SHARED_STEP);
+            live.engine
+                .apply_action(seat, event.public["action"].clone())
+                .map_err(|e| format!("Table log event {} no longer applies: {e}", event.seq))?;
+        }
         live.played
             .push(Played::from(event.seq, seat, &event.public));
     }
@@ -332,13 +374,21 @@ impl Tables {
                 .map_err(broken)?
                 .ok_or(Refusal::NotFound)?;
             let events = self.log.read(id).map_err(broken)?;
-            if !galactic_reach::SHARED_RULES.contains(&table.rules.as_str()) {
+            if galactic_reach::shared_rules(&table.rules).is_none() {
                 return Err(Refusal::Conflict(format!(
-                    "This shared table plays {}. Shared play does not support those rules, so it cannot continue on this server.",
+                    "This shared table plays {}, which this server cannot run.",
                     table.rules
                 )));
             }
-            let live = build(table, events, self.authority.clone()).map_err(broken)?;
+            let snapshots = self.log.snapshots(id).map_err(broken)?;
+            let live = build(table, events, snapshots, self.authority.clone()).map_err(|e| {
+                if e.starts_with("Table log event") || e.contains("other rules") {
+                    tracing::error!(table=%id, error=%e, "shared table no longer replays");
+                    Refusal::Conflict(EARLIER_BUILD.into())
+                } else {
+                    broken(e)
+                }
+            })?;
             self.live.insert(id.into(), live);
         }
         let live = self.live.get_mut(id).ok_or(Refusal::NotFound)?;
@@ -373,15 +423,42 @@ impl Tables {
             live.head = head;
             Ok(head)
         })();
+        if outcome.is_ok() {
+            self.save_snapshot(id);
+        }
         if outcome.is_err() {
             self.live.remove(id);
         }
         outcome
     }
+    /// Stores the live position at the table's head (see `TableLog::save_snapshot`).
+    /// A missed snapshot costs only a longer replay, so failures are logged, not raised.
+    fn save_snapshot(&mut self, id: &str) {
+        let Some(live) = self.live.get(id) else {
+            return;
+        };
+        let saved = live.engine.snapshot().and_then(|engine| {
+            let shuffles = live.feed.borrow().count;
+            self.log.save_snapshot(
+                id,
+                live.head,
+                &json!({"engine": engine, "shuffles": shuffles}),
+            )
+        });
+        if let Err(e) = saved {
+            tracing::warn!(table=%id, error=%e, "could not store a shared-table snapshot");
+        }
+    }
+    /// Loads a table and stores a snapshot at its head (server `snapshot-shared`).
+    fn checkpoint(&mut self, id: &str) -> Result<u64, Refusal> {
+        let head = self.live(id)?.head;
+        self.save_snapshot(id);
+        Ok(head)
+    }
     fn open(&mut self, mut table: Table) -> Result<u64, Refusal> {
         table.authority = self.authority.name().into();
         let id = table.id.clone();
-        let live = build(table.clone(), vec![], self.authority.clone()).map_err(broken)?;
+        let live = build(table.clone(), vec![], vec![], self.authority.clone()).map_err(broken)?;
         self.log.create(&table).map_err(broken)?;
         self.live.insert(id.clone(), live);
         self.commit(&id, vec![])
@@ -404,6 +481,7 @@ impl Tables {
         };
         Ok(json!({
             "id": live.table.id, "name": live.table.name, "rules_version": live.table.rules,
+            "client_path": client_path(&live.table.rules),
             "authority": live.table.authority, "status": live.table.status, "seq": live.head,
             "seat": seat, "active": active,
             "seats": live.table.seats.iter().map(|s| json!({"seat":s.seat,"name":s.name,"human":s.human(),"you":s.seat==seat})).collect::<Vec<_>>(),
@@ -501,11 +579,35 @@ impl Tables {
             public: json!({"to": window.to, "actions": window.actions}),
             private: None,
         };
-        let appended = self.log.append(id, seq, &[event]);
-        // Fold again either way: the position is now the log without those actions.
-        self.live.remove(id);
-        let head = appended.map_err(Refusal::Conflict)?;
-        self.live(id)?;
+        // Build the rolled-back position before recording the undo. It must come
+        // from a stored snapshot or a replay this build can do; a table moved here
+        // from an earlier build may have neither for the start of this turn.
+        let table = live.table.clone();
+        let mut events = self.log.read(id).map_err(broken)?;
+        events.push(Event {
+            seq: seq + 1,
+            kind: "undo".into(),
+            seat: Some(seat),
+            public: event.public.clone(),
+            private: None,
+            hash: String::new(),
+        });
+        let snapshots = self.log.snapshots(id).map_err(broken)?;
+        let rolled_back = build(table, events, snapshots, self.authority.clone()).map_err(|e| {
+            tracing::warn!(table=%id, error=%e, "undo refused: no rebuildable position");
+            Refusal::Conflict(
+                "Undo is not available here: this table moved to a newer build of the rules after your turn began."
+                    .into(),
+            )
+        })?;
+        let head = self
+            .log
+            .append(id, seq, &[event])
+            .map_err(Refusal::Conflict)?;
+        let mut rolled_back = rolled_back;
+        rolled_back.head = head;
+        self.live.insert(id.into(), rolled_back);
+        self.save_snapshot(id);
         Ok(json!({"seq": head, "undone": window.actions, "stop": window.stop}))
     }
     /// Plays one decision for an AI seat. Returns whether an AI seat acts next.
@@ -517,13 +619,26 @@ impl Tables {
         let Some(policy) = live.table.seats[seat].policy.clone() else {
             return Ok(false);
         };
-        let strategy =
-            rival(&policy).ok_or_else(|| broken(format!("Unknown AI policy {policy}.")))?;
-        let agent = live.agents.entry(seat).or_insert_with(|| {
-            let mut seed = [0u8; 32];
-            rand::rngs::OsRng.fill_bytes(&mut seed);
-            BuiltinAgent::new(strategy, seed)
-        });
+        let agent = match live.agents.entry(seat) {
+            std::collections::hash_map::Entry::Occupied(slot) => slot.into_mut(),
+            std::collections::hash_map::Entry::Vacant(slot) => {
+                let mut seed = [0u8; 32];
+                rand::rngs::OsRng.fill_bytes(&mut seed);
+                // The exact policy the table was dealt with (archived agents
+                // included), else the current version of the same profile.
+                let agent = galactic_reach::agent(&policy, seed)
+                    .or_else(|_| {
+                        rival(&policy)
+                            .map(|s| {
+                                Box::new(BuiltinAgent::new(s, seed))
+                                    as Box<dyn PlayerAgent<GalacticReach>>
+                            })
+                            .ok_or_else(|| format!("Unknown AI policy {policy}."))
+                    })
+                    .map_err(broken)?;
+                slot.insert(agent)
+            }
+        };
         let observation = live
             .engine
             .observe(seat)
@@ -698,6 +813,21 @@ impl Service {
         self.announce(id, result["seq"].as_u64().unwrap_or_default());
         Ok(result)
     }
+    /// Stores a snapshot of every unfinished table, folding each with this build's
+    /// engine. Run it with the build a table was dealt on before moving that
+    /// table to a save-compatible newer build.
+    pub async fn snapshot_all(self: &Arc<Self>) -> Vec<(String, Result<u64, Refusal>)> {
+        let ids: Vec<String> = match self.log.active_tables() {
+            Ok(ids) => ids,
+            Err(e) => return vec![(String::new(), Err(broken(e)))],
+        };
+        let mut done = vec![];
+        for id in ids {
+            let key = id.clone();
+            done.push((id, self.call(move |t| t.checkpoint(&key)).await));
+        }
+        done
+    }
     pub async fn report(self: &Arc<Self>, id: &str, account: &str) -> Result<Value, Refusal> {
         let (id, account) = (id.to_string(), account.to_string());
         self.call(move |t| t.report(&id, &account)).await
@@ -758,6 +888,19 @@ impl Service {
                 running.remove(&id);
             }
         });
+    }
+}
+
+/// The browser that plays a table's rules revision: the current game, or the
+/// revision's archived copy (as solo tables open theirs).
+pub fn client_path(rules: &str) -> String {
+    if rules == galactic_reach::RULES {
+        "/galactic-reach/".into()
+    } else {
+        format!(
+            "/galactic-reach/rules/{}/",
+            rules.rsplit('/').next().unwrap_or(rules)
+        )
     }
 }
 

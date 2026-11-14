@@ -254,6 +254,11 @@ function createGalacticAdapter(e) {
       }
     };
   }
+  // Everything a shared table needs to resume this game later (the full state,
+  // secrets included, plus the counters kept outside it). Server-side only.
+  function snapshotState() {
+    return e.clone({ state: s(), turnSerial: e.turnSerial, cardSerial: e.cardSerial });
+  }
   // Legal choices a seat's browser cannot check from its private view alone.
   function hints(seat) {
     return { probe: legalActions(seat).filter(a => a.type === 'probe').map(a => ({card: a.card, coord: a.coord})) };
@@ -262,6 +267,6 @@ function createGalacticAdapter(e) {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/32.37', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark };
+  return { rulesVersion: 'galactic-reach/32.37', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;
