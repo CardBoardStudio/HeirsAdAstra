@@ -1158,10 +1158,13 @@ function createGalacticReach(options = {}) {
     return [...movementRoutes(source,player,range,cannotAttack).keys()].filter(coord=>coord!==source);
   }
   // Public travel distance for planning only. Probe keeps ordinary hex distance.
+  let travelMetricLinks=null,travelMetricCache=new Map();
   function travelDistance(a,b) {
+    if(travelMetricLinks!==state.portalLinks){travelMetricLinks=state.portalLinks;travelMetricCache.clear();}
+    const pair=[a,b].sort().join("|");if(travelMetricCache.has(pair))return travelMetricCache.get(pair);
     let best=hexDistance(a,b);
     for(const [entry,exit] of Object.entries(state.portalLinks||{}))best=Math.min(best,hexDistance(a,entry)+PORTAL_MOVEMENT_COST+hexDistance(exit,b));
-    return best;
+    travelMetricCache.set(pair,best);return best;
   }
 
   // Every newly acquired card enters discard; draws and returns of owned cards
