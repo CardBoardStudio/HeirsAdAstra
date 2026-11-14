@@ -366,10 +366,11 @@ pub async fn start(
         return Err(ApiError(StatusCode::CONFLICT, reason.into()));
     }
     if !lobby.guests.is_empty() {
-        // Seats follow join order: the host first, then friends, then AI rivals.
+        // People take random seats (rulebook #shared-tables); AI rivals fill the rest.
         let people: Vec<(String, String)> = std::iter::once(lobby.owner.clone())
             .chain(lobby.guests.iter().cloned())
             .collect();
+        let seats = crate::shared::random_seats(&people, &mut rand::thread_rng());
         app.shared
             .open(crate::shared::log::Table {
                 id: id.clone(),
@@ -377,7 +378,7 @@ pub async fn start(
                 rules: galactic_reach::RULES.into(),
                 authority: String::new(),
                 status: "active".into(),
-                seats: crate::shared::seats(&people),
+                seats,
                 victory_target: lobby.victory_target,
             })
             .await?;

@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 function game(prefix='prototypes/galactic-reach/'){
  const c=vm.createContext({});let e,seed=1729;
- let app=read(prefix+'app.js').replace('      clone, deckContents,','      drawCards, useReaction, runAiOperation, runAiBuy, aiCards, clone, deckContents,');
+ let app=read(prefix+'app.js').replace('      clone, deckContents,',`      drawCards, useReaction, runAiOperation, runAiBuy, aiCards, ${prefix==='prototypes/galactic-reach/'?'aiArchivePurgeChoice, ':''}clone, deckContents,`);
  vm.runInContext(read(prefix+'adapter.js')+app,c);const factory=c.createGalacticAdapter;c.createGalacticAdapter=x=>{e=x;return factory(x);};
  c.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});
  const s=e.state,p=s.players[0];Object.assign(s,{phase:'operations',activePlayer:0});Object.assign(p,{hand:[],deck:[],discard:[],resources:{matter:20,energy:20,biomass:20,data:20},storageUpgrades:20,resourceLimits:{matter:1000,energy:1000,biomass:1000,data:1000}});
@@ -36,13 +36,35 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
  assert(!all(p).some(c=>c.id==='trashed'));assert(p.inPlay.some(c=>c.id==='protected'));assert(p.inPlay.some(c=>c.id==='broker'));assert(p.hand.some(c=>c.id==='drawn'));
 }
 {
- // 31.36 Archive Purge (N17): trash up to two level I starters from discard, never cards in play or upgraded starters.
+ // 34.39 Archive Purge (N17): choose up to two level I starters in discard to trash, never cards in play or upgraded starters.
  const g=game(),{p}=g;p.hand=[card('archivePurge','purge')];p.inPlay=[{key:'move',id:'protected',starter:true}];
  p.discard=[{key:'construct',id:'trash-1',starter:true},{key:'move',id:'kept',starter:true,upgraded:true},{key:'move',id:'trash-2',starter:true},{key:'construct',id:'third',starter:true}];
- action(g,'special','purge');
- assert(!all(p).some(c=>['trash-1','trash-2'].includes(c.id)),'The first two level I starters in discard are trashed');
- assert(all(p).some(c=>c.id==='kept')&&all(p).some(c=>c.id==='third'),'Upgraded and further starters stay');
+ const choices=g.adapter().legalActions(0).filter(x=>x.type==='special'&&x.card==='purge').map(x=>Array.from(x.trash));
+ assert.equal(choices.length,7,'None, one of three, or two of three (discard order)');
+ assert(choices.every(t=>!t.includes('kept')&&!t.includes('protected')),'Upgraded starters and cards in play are never offered');
+ assert(choices.some(t=>t.length===0),'Trashing none is a choice');
+ assert(!choices.some(t=>t.join()==='third,trash-2'),'One spelling per choice: discard order');
+ action(g,'special','purge',x=>x.trash.join()==='trash-2,third');
+ assert(!all(p).some(c=>['trash-2','third'].includes(c.id)),'The chosen starters are trashed');
+ assert(all(p).some(c=>c.id==='kept')&&all(p).some(c=>c.id==='trash-1'),'Unchosen and upgraded starters stay');
  assert(p.inPlay.some(c=>c.id==='protected')&&p.inPlay.some(c=>c.id==='purge'));assert.equal(p.hand.length,1,'Then draw one');
+}
+{
+ // Without a choice the order is refused and the card stays in hand; trashing none still draws.
+ const g=game(),{e,p}=g;p.hand=[card('archivePurge','purge')];p.deck=[card('move','next')];p.discard=[{key:'move',id:'m',starter:true}];
+ assert.equal(e.resolveHumanSpecial(p.hand[0],e.ALL_CARDS.archivePurge,0,null),false);assert(p.hand.some(c=>c.id==='purge'));
+ assert.equal(e.resolveHumanSpecial(p.hand[0],e.ALL_CARDS.archivePurge,0,['m','m']),false,'No duplicates');
+ action(g,'special','purge',x=>x.trash.length===0);assert(p.discard.some(c=>c.id==='m'));assert(p.hand.some(c=>c.id==='next'));
+}
+{
+ // Browser rivals trash only surplus starters: they keep 3 Move-order and 2 Construct-order cards.
+ const g=game(),{e,p}=g,choose=()=>Array.from(e.aiArchivePurgeChoice(0,2));
+ p.hand=[];p.deck=[];p.inPlay=[];p.discard=[{key:'move',id:'m1',starter:true},{key:'construct',id:'c1',starter:true},{key:'move',id:'m2',starter:true},{key:'construct',id:'c2',starter:true}];
+ assert.deepEqual(choose(),[],'Two of each: nothing to spare');
+ p.deck=[{key:'move',id:'m3',starter:true},{key:'move',id:'m4',starter:true},{key:'construct',id:'c3',starter:true}];
+ assert.deepEqual(choose(),['m1','c1'],'One surplus Move and one surplus Construct');
+ p.deck.push({key:'ionThrusters',id:'ion'},{key:'slipstreamCharts',id:'slip'});
+ assert.deepEqual(choose(),['m1','c1'],'At most two');
 }
 {
  const g=game(),{p,e}=g;p.hand=[card('aegisOfSilentArchitects','reaction')];assert(e.useReaction(0,'prevent'));assert.equal(p.hand.length,0);assert(p.inPlay.some(c=>c.id==='reaction'));e.drawCards(p,3);assert.equal(p.hand.length,0);assert.equal(e.useReaction(0,'prevent'),null,'A used reaction cannot trigger again');

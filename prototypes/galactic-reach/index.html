@@ -102,7 +102,7 @@
           <dl>
             <dt>Colonies</dt><dd>3 each. No pair bonus.</dd>
             <dt>Relics</dt><dd>2 per relic excavated.</dd>
-            <dt>Combat</dt><dd>1 per fight won with all enemy units destroyed. None if any escape or retreat.</dd>
+            <dt>Combat</dt><dd>2 per fight won with all enemy units destroyed. None if any escape or retreat.</dd>
             <dt>Cards</dt><dd>Permanent Prestige printed on Wonders, Ascendancy Codex, Genesis Charter and Victory Doctrine.</dd>
           </dl>
           <p>Reach <strong id="victory-target-text">40 Prestige</strong>, set when this game was created. Victory is checked at round end.</p>
@@ -241,6 +241,7 @@
       <label for="new-game-target">Prestige target</label>
       <select id="new-game-target"></select>
       <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 40.</p>
+      <p id="new-game-neighbor" class="new-game-neighbor"></p>
       <div class="dialog-actions"><button class="button button-ghost" value="cancel" type="submit">Cancel</button><button class="button button-primary" value="start" type="submit" id="new-game-start">Start new game</button></div>
     </form>
   </dialog>
@@ -280,6 +281,16 @@
       <div id="storage-allocation-options" class="storage-allocation-grid"></div>
       <p id="storage-allocation-status" role="status" aria-live="polite"></p>
       <button type="submit" class="button button-primary" id="storage-allocation-confirm" disabled>Confirm allocation</button>
+    </form>
+  </dialog>
+
+  <dialog id="archive-purge-dialog" class="choice-dialog" aria-labelledby="archive-purge-title" aria-describedby="archive-purge-help">
+    <div class="dialog-heading"><div><div class="eyebrow">ARCHIVE PURGE</div><h2 id="archive-purge-title">Choose starters to trash</h2></div><button type="button" class="button button-ghost dialog-close" id="archive-purge-cancel">Cancel</button></div>
+    <p id="archive-purge-help">Choose up to two level I starter cards in your discard pile. They leave your deck for good. Then draw one card. Move and Construct are not sold in the market.</p>
+    <form id="archive-purge-form">
+      <fieldset class="archive-purge-options"><legend class="sr-only">Level I starters in your discard pile</legend><div id="archive-purge-options"></div></fieldset>
+      <p id="archive-purge-status" role="status" aria-live="polite"></p>
+      <button type="submit" class="button button-primary" id="archive-purge-confirm">Trash and draw</button>
     </form>
   </dialog>
 

@@ -1212,6 +1212,14 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 .storage-allocation-option small { display:block; margin-top:5px; color:var(--muted); font-weight:400; font-size:12px; }
 .storage-allocation-option input { width:64px; min-height:42px; padding:8px; }
 #storage-allocation-status { color:var(--gold); }
+.archive-purge-options { border:0; margin:16px 0; padding:0; }
+#archive-purge-options { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+.archive-purge-option { display:flex; align-items:center; gap:10px; padding:12px 14px; border:1px solid var(--line-bright); border-radius:7px; background:#162d30; font-weight:650; }
+.archive-purge-option small { display:block; color:var(--muted); font-weight:400; font-size:12px; }
+.archive-purge-option input { width:20px; height:20px; }
+.archive-purge-option:has(input:disabled) { opacity:.55; }
+#archive-purge-status { color:var(--gold); }
+.new-game-neighbor { margin:14px 0 0; padding:10px 12px; border:1px solid var(--line-bright); border-radius:7px; background:#162d30; }
 
 /* Desktop pieces share the hex interior. A lone piece fills it; only crowded
    hexes divide that space, including buildings and located relic markers. */

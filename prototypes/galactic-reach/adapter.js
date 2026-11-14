@@ -16,7 +16,11 @@ function createGalacticAdapter(e) {
     return e.clone({
       combat: e.combatView(seat), seat, round: state.round, victoryTarget: e.victoryTarget(),
       // 32.37: public card prices and Harvester yield, so server rivals need no rules-specific tables.
-      harvesterYield: e.HARVESTER_YIELD, marketCosts: state.market.map(card => e.ALL_CARDS[card.key]?.cost || {}), phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
+      harvesterYield: e.HARVESTER_YIELD, marketCosts: state.market.map(card => e.ALL_CARDS[card.key]?.cost || {}),
+      // 34.39: printed Wonder Prestige, military card stats and the capture rule, published for the same reason.
+      marketPrestige: state.market.map(card => e.ALL_CARDS[card.key]?.gainPrestige || 0),
+      tacticStats: Object.fromEntries(Object.entries(e.MILITARY_CARDS).map(([key, c]) => [key, { attack: c.attack || 0, shield: c.shield || 0, pierce: !!c.pierce }])),
+      combatVictoryPrestige: e.COMBAT_VICTORY_PRESTIGE, captureNeedsFleet: true, phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
         id, resources: p.resources, relicsExcavated: e.excavatedRelicCount(id), combatVictories: p.combatVictories || 0, cardPrestige: p.cardPrestige || 0, military: p.military, storageUpgrades: p.storageUpgrades, storagePurchases: p.storagePurchases || 0, storageUpgradeCost: e.storageUpgradeCost(id),
         prestige: e.calculatePrestige(id), capacity: e.playerCapacity(id), resourceLimits: e.resourceLimits(id),
@@ -138,6 +142,8 @@ function createGalacticAdapter(e) {
         });
         if (def.order === 'special') {
           if(def.tag==='alienCradle') for(const allocation of e.storageAllocations(e.RELIC_STORAGE_POINTS)) actions.push({type:'special',...base,allocation});
+          // Archive Purge: each choice of up to two level I starters in discard, in discard order.
+          else if(def.effect?.trashStarters) for(const trash of e.archivePurgeChoices(seat,def.effect.trashStarters)) actions.push({type:'special',...base,trash});
           else actions.push({ type: 'special', ...base });
         }
       });
@@ -190,7 +196,7 @@ function createGalacticAdapter(e) {
       case 'move': e.performMoveOrder(seat, action.source, action.destination, card, { tag: def.tag, moveGroup: action.moveGroup }); return;
       case 'probe': e.probeRelic(seat,action.coord,action.card); return;
       case 'excavate': e.excavate(seat,action.coord,action.card,action.relic); return;
-      case 'special': e.resolveHumanSpecial(card, def, seat, action.allocation); return;
+      case 'special': e.resolveHumanSpecial(card, def, seat, action.trash ?? action.allocation); return;
       default: throw new Error('Unknown action.');
     }
     e.removeHandCard(p, action.card);

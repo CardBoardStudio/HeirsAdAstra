@@ -16,9 +16,9 @@ for(let n=0;n<32;n++){
  assert.equal(current.a.rulesVersion,'galactic-reach/32.37');assert.equal(old.a.rulesVersion,'galactic-reach/20.25');
  // 31.36 replaces the market supply (72 cards, new serials) and adds a Prestige target; the map,
  // factions, decks and opening position still match 20.25. Supply-dependent fields are excluded.
- const supply=['advancedDeck','market','marketDiscard','relicDeck','relicRow','victoryTarget'],newPlayer=['military','cardPrestige','buyDiscountEach','buyDiscountData','marketManipulated','resources'];
+ const supply=['advancedDeck','market','marketDiscard','relicDeck','relicRow','victoryTarget'],newPlayer=['military','cardPrestige','buyDiscountEach','buyHubDiscounts','buyDiscountData','marketManipulated','resources'];
  const normalize=g=>{const s=plain(g.s);supply.forEach(k=>delete s[k]);s.players.forEach(p=>{delete p.storagePurchases;delete p.inPlay;delete p.resourceLimits;delete p.buyStartInPlayIds;newPlayer.forEach(k=>delete p[k]);});delete s.pendingConstruct;Object.values(s.planets).forEach(p=>delete p.occupiedBy);return {...s,version:0,rulesRevision:0,visibilityRevision:0};};assert.deepEqual(normalize(current),normalize(old));
- const observation=g=>{const v=plain(g.a.observe(0));['market','relicRow','relicDeckCount','victoryTarget'].forEach(k=>delete v[k]);['harvesterYield','marketCosts'].forEach(k=>delete v[k]);v.players.forEach(p=>{delete p.cardPrestige;delete p.military;delete p.resources;});delete v.pendingConstruct;Object.values(v.planets).forEach(p=>delete p.occupiedBy);v.clusters.forEach(c=>delete c.located);v.players.forEach(p=>{delete p.storagePurchases;delete p.storageUpgradeCost;delete p.inPlay;delete p.resourceLimits;p.capacity=0;p.prestige=0;});return v;};assert.deepEqual(observation(current),observation(old));const stable=g=>plain(g.a.legalActions(0)).filter(x=>!['trade_offer','bank_trade','discard_resources','resource','increase_storage'].includes(x.type));assert.deepEqual(stable(current),stable(old),'Orders match; resource-dependent actions differ with the 32.37 opening (issue #41)');record.matchedSetups++;
+ const observation=g=>{const v=plain(g.a.observe(0));['market','relicRow','relicDeckCount','victoryTarget'].forEach(k=>delete v[k]);['harvesterYield','marketCosts','marketPrestige','tacticStats','combatVictoryPrestige','captureNeedsFleet'].forEach(k=>delete v[k]);v.players.forEach(p=>{delete p.cardPrestige;delete p.military;delete p.resources;});delete v.pendingConstruct;Object.values(v.planets).forEach(p=>delete p.occupiedBy);v.clusters.forEach(c=>delete c.located);v.players.forEach(p=>{delete p.storagePurchases;delete p.storageUpgradeCost;delete p.inPlay;delete p.resourceLimits;p.capacity=0;p.prestige=0;});return v;};assert.deepEqual(observation(current),observation(old));const stable=g=>plain(g.a.legalActions(0)).filter(x=>!['trade_offer','bank_trade','discard_resources','resource','increase_storage'].includes(x.type));assert.deepEqual(stable(current),stable(old),'Orders match; resource-dependent actions differ with the 32.37 opening (issue #41)');record.matchedSetups++;
 }
 {
  const g=game(),p=bot(g),center=g.s.clusters[4].center;funds(p);p.hand=[{id:'col',key:'colonize'},{id:'build',key:'construct'}];g.s.fleets={[center]:{1:{settler:1,explorer:0,fleet:0}}};
@@ -56,6 +56,9 @@ for(let n=0;n<32;n++){
  for(const c of g.s.clusters.filter(c=>c.kind==='world'))g.s.planets[c.center].owner=1;
  for(const coord of world.coords)Object.assign(g.s.planets[coord],{owner:2,occupiedBy:null,hasColony:coord===world.center,upgrade:coord===world.center?null:'harvester'});
  const [q,r]=world.center.split(',').map(Number),source=`${q-2},${r}`;g.s.fleets={[source]:{1:{settler:1,explorer:0,fleet:0}}};
+ // 34.39 #combat: a lone Settler cannot capture, so it no longer heads for the enemy center.
+ assert.notEqual(g.e.chooseAiMove(1,p.hand[0])?.goal,world.center,'A lone Settler does not chase a capture');
+ g.s.fleets={[source]:{1:{settler:1,explorer:0,fleet:1}}};
  const move=g.e.chooseAiMove(1,p.hand[0]);assert(move);assert.equal(move.goal,world.center);assert.equal(move.destination,world.center,'Pass through undefended enemy resource hexes without occupation battles');
  assert(g.a.legalActions(1).some(a=>a.type==='move'&&a.source===source&&a.destination===move.destination));record.fixtures++;
 }

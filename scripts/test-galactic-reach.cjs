@@ -86,3 +86,6 @@ const ranked=engine();ranked.port.state.winner=0;
 ranked.port.state.players.forEach((p,i)=>{p.relicsExcavated=i===0?20:10;p.resources={matter:i===3?0:1,energy:0,biomass:0,data:0};});
 assert.equal(JSON.stringify(ranked.adapter.scores()),JSON.stringify([3,2,2,0]),'Prestige ranks, resource tiebreaks, and exact ties are reflected in terminal scores');
 console.log('Upgraded orders: unit minimums, +1 range, full-cost construction, optional paid colony building, and tied placements passed.');
+// Card and balance suites without their own CI step (the workflow file is maintainer-edited).
+require('./test-capacity-cards.cjs');
+require('./test-balance-package.cjs');

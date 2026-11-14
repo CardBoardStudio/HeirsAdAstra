@@ -62,11 +62,14 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/32.37');
   p.hand = [{ key: 'procurementHub', id: 'hub' }, { key: 'tradeSyndicate', id: 'syn' }];
   p.resources.energy = 25;
   act(g, 0, 'buy_effect', a => a.card === 'hub'); assert.equal(p.buyLimit, 2);
-  act(g, 0, 'buy_effect', a => a.card === 'syn'); assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'dysonLattice'))), { matter: 3, energy: 7, data: 1 });
+  // 34.39: Procurement Hub's purchase also costs 1 less of each; with Trade Syndicate both apply.
+  assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'dysonLattice'))), { matter: 3, energy: 7, data: 1 });
+  act(g, 0, 'buy_effect', a => a.card === 'syn'); assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'dysonLattice'))), { matter: 2, energy: 6, data: 0 });
   act(g, 0, 'buy', a => a.key === 'dysonLattice');
-  assert.equal(p.cardPrestige, 6); assert.equal(g.e.calculatePrestige(0), 9, 'Colony 3 + Dyson Lattice 6');
-  assert.equal(p.resources.energy, 18, 'Trade Syndicate took 1 off each resource of the next purchase');
-  assert.equal(p.buyDiscountEach, 0, 'The discount is used up');
+  assert.equal(p.cardPrestige, 5); assert.equal(g.e.calculatePrestige(0), 8, 'Colony 3 + Dyson Lattice 5 (34.39)');
+  assert.equal(p.resources.energy, 19, 'Trade Syndicate and Procurement Hub each took 1 off each resource of the next purchase');
+  assert.equal(p.buyDiscountEach, 0, 'The discounts are used up'); assert.equal(p.buyHubDiscounts, 0);
+  assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'novaBarrage'))), { matter: 3, energy: 7 }, 'The next purchase is at full price');
   act(g, 0, 'buy', a => a.key === 'novaBarrage');
   assert(p.military.some(c => c.id === 'nova')); assert(!p.discard.some(c => c.id === 'nova'), 'Military cards never enter discard');
   assert.equal(s.market.length, 10, 'Each bought slot refills from the supply, back to ten cards');
@@ -83,7 +86,9 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/32.37');
   s.activePlayer = 0; p.hand = [{ key: 'ascendancyCodex', id: 'codex' }]; p.deck = [{ key: 'move', id: 'drawn' }];
   act(g, 0, 'special', a => a.card === 'codex'); assert.equal(p.cardPrestige, 2); assert(p.hand.some(c => c.id === 'drawn'));
   s.activePlayer = 0; p.hand = [{ key: 'miningCharter', id: 'mine' }];
+  p.deck = [{ key: 'move', id: 'charter-draw' }];
   act(g, 0, 'special', a => a.card === 'mine'); assert.equal(p.resources.matter, 3); assert.equal(p.resources.energy, 1);
+  assert(p.hand.some(c => c.id === 'charter-draw'), '34.39: Mining Charter then draws one card');
   s.activePlayer = 0; p.resources = { matter: 0, energy: 0, biomass: 0, data: 0 }; p.hand = [{ key: 'harvestCycle', id: 'harvest' }];
   act(g, 0, 'special', a => a.card === 'harvest'); assert.equal(p.resources.matter, 1, 'Harvest Cycle collects the home Colony’s production again');
   s.activePlayer = 0; p.hand = [{ key: 'commandNexus', id: 'nexus' }]; p.deck = [1, 2, 3, 4, 5].map(n => ({ key: 'move', id: `d${n}` }));
@@ -101,6 +106,8 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/32.37');
   const harvest = s.clusters[0].coords[2];
   act(g, 0, 'build', a => a.card === 'foundry' && a.coord === harvest && a.kind === 'harvester');
   assert.equal(p.resources.matter, 3, 'A 1/1/1 Harvester at −1 of each costs nothing; Orbital Foundry then adds 2 Matter');
+  // 34.39: Orbital Foundry then offers one more build at full price; finishing after one is allowed.
+  assert.equal(s.pendingConstruct?.cardName, 'Orbital Foundry'); act(g, 0, 'finish_construct'); assert.equal(s.pendingConstruct, null);
 }
 // 32.37 economy: a Harvester hex produces 2 (was 1); issue #41 costs and opening resources.
 {

@@ -140,7 +140,7 @@ assert(!r.chooseAiMove(1) || r.chooseAiMove(1).destination!=='3,0','Do not jump 
 // The end-of-round rule ends at 10 or above, and never one point below.
 for(const points of [39,40,41]) {
   // 31.36: new games default to a 40 Prestige target (rules #victory).
-  const s=fresh(100); s.players[0].combatVictories=points-3;
+  const s=fresh(100); s.players[0].cardPrestige=points-3;
   assert.equal(r.calculatePrestige(0),points);
   r.finishRound();
   assert.equal(s.winner,points>=40?0:null);
