@@ -30,6 +30,7 @@ mod legacy_v21;
 mod legacy_v22;
 mod legacy_v23;
 mod legacy_v24;
+mod legacy_v25;
 mod legacy_v3;
 mod legacy_v4;
 mod legacy_v5;
@@ -360,18 +361,18 @@ pub enum Strategy {
 impl Strategy {
     pub fn version(self) -> &'static str {
         match self {
-            Self::Military => "gr-military/25",
-            Self::Economy => "gr-economy/25",
-            Self::Expansion => "gr-expansion/25",
-            Self::Wanderer => "gr-wanderer/25",
+            Self::Military => "gr-military/26",
+            Self::Economy => "gr-economy/26",
+            Self::Expansion => "gr-expansion/26",
+            Self::Wanderer => "gr-wanderer/26",
         }
     }
     pub fn parse(version: &str) -> Option<Self> {
         match version {
-            "gr-military/25" => Some(Self::Military),
-            "gr-economy/25" => Some(Self::Economy),
-            "gr-expansion/25" => Some(Self::Expansion),
-            "gr-wanderer/25" => Some(Self::Wanderer),
+            "gr-military/26" => Some(Self::Military),
+            "gr-economy/26" => Some(Self::Economy),
+            "gr-expansion/26" => Some(Self::Expansion),
+            "gr-wanderer/26" => Some(Self::Wanderer),
             _ => None,
         }
     }
@@ -493,11 +494,6 @@ fn bot_safe_fight(view: &Value, seat: usize, moving: &Value, target: &str) -> bo
         return enemy_attack <= 1.0 && attack - 2.0 >= enemy_hull;
     }
     attack * 3.0 - 4.0 >= enemy_hull && hull > enemy_attack * 3.0 + 2.0
-}
-fn bot_in_play(me: &Value, card: &Value) -> bool {
-    me["inPlay"]
-        .as_array()
-        .is_some_and(|cards| cards.iter().any(|c| &c["id"] == card))
 }
 fn bot_limit(view: &Value, seat: usize, resource: &str) -> f64 {
     view["players"][seat]["resourceLimits"][resource]
@@ -1007,9 +1003,6 @@ impl BuiltinAgent {
             }
 
             "buy_effect" => 100.0,
-            // Policy 24 keeps its 28.33 choices: it ignores the in-play Buy
-            // upgrades and trashes added by the 28.33 #buy amendment.
-            "upgrade" | "decommission" if bot_in_play(me, &action["card"]) => -1000.0,
             "upgrade" => {
                 let cost = bot_cost(view, seat);
                 let r = action["resource"].as_str().unwrap();
@@ -1105,11 +1098,13 @@ impl BuiltinAgent {
                 number(&me["resources"][resource]) - number(&reserve[resource])
                     + number(&action["amount"]) * 0.01
             }
+            // Policy 26 (30.35 #buy): trash candidates come from discard or from play.
             "decommission" => {
                 let card = me["discard"]
                     .as_array()
-                    .unwrap()
-                    .iter()
+                    .into_iter()
+                    .chain(me["inPlay"].as_array())
+                    .flatten()
                     .find(|c| c["id"] == action["card"])
                     .unwrap();
                 let order = bot_order(card["key"].as_str().unwrap_or(""));
@@ -1237,6 +1232,9 @@ pub fn agent(version: &str, seed: [u8; 32]) -> Result<Box<dyn PlayerAgent<Galact
     }
     if let Some(strategy) = legacy_v24::Strategy::parse(version) {
         return Ok(Box::new(legacy_v24::BuiltinAgent::new(strategy, seed)));
+    }
+    if let Some(strategy) = legacy_v25::Strategy::parse(version) {
+        return Ok(Box::new(legacy_v25::BuiltinAgent::new(strategy, seed)));
     }
     Err("Unsupported Galactic Reach policy version.".into())
 }
@@ -1472,6 +1470,7 @@ mod tests {
             "gr-military/23",
             "gr-military/24",
             "gr-military/25",
+            "gr-military/26",
         ] {
             assert_eq!(agent(policy, [23; 32]).unwrap().policy_version(), policy);
         }
