@@ -16,14 +16,19 @@ use std::time::{Duration, Instant};
 /// cutover never strands a running shared game. At a cutover, archive the
 /// outgoing engine (rules/vNN-*, with `include_str!` arms in `boot`) and add its
 /// revision here.
-pub const SHARED_RULES: [&str; 3] = [RULES, "galactic-reach/31.36", "galactic-reach/30.35"];
+pub const SHARED_RULES: [&str; 4] = [
+    RULES,
+    "galactic-reach/32.37",
+    "galactic-reach/31.36",
+    "galactic-reach/30.35",
+];
 /// The [`SHARED_RULES`] entry for `rules`, if a shared table can play it.
 pub fn shared_rules(rules: &str) -> Option<&'static str> {
     SHARED_RULES.iter().find(|r| **r == rules).copied()
 }
-pub const RULES: &str = "galactic-reach/32.37";
+pub const RULES: &str = "galactic-reach/33.38";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "Cheaper Cards playtest";
+pub const EXPERIMENT: &str = "Split Moves playtest";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -116,6 +121,7 @@ impl GalacticReach {
             "galactic-reach/29.34" => "galactic-reach/29.34",
             "galactic-reach/30.35" => "galactic-reach/30.35",
             "galactic-reach/31.36" => "galactic-reach/31.36",
+            "galactic-reach/32.37" => "galactic-reach/32.37",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -279,6 +285,7 @@ impl GalacticReach {
                     "galactic-reach/29.34" => include_str!("../rules/v29-adapter.js"),
                     "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
+                    "galactic-reach/32.37" => include_str!("../rules/v32-adapter.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -311,6 +318,7 @@ impl GalacticReach {
                     "galactic-reach/29.34" => include_str!("../rules/v29-app.js"),
                     "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
+                    "galactic-reach/32.37" => include_str!("../rules/v32-app.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -1110,7 +1118,11 @@ impl BuiltinAgent {
             "move" => {
                 let from = action["source"].as_str().unwrap();
                 let to = action["destination"].as_str().unwrap();
-                let fleet = &view["fleets"][from][seat.to_string()];
+                let here_fleet = &view["fleets"][from][seat.to_string()];
+                // 33.38 #movement: a Move names the units it takes; score only those.
+                // Earlier rules list no `units` and move the whole group, as before.
+                let split = action["units"].is_object();
+                let fleet = if split { &action["units"] } else { here_fleet };
                 let explorer = action["moveGroup"] == "explorer";
                 let settlers = number(&fleet["settler"]);
                 let here = &view["planets"][from];
@@ -1205,6 +1217,12 @@ impl BuiltinAgent {
                         }
                     }
                     best -= there_risk * if settlers > 0.0 { 130.0 } else { 50.0 };
+                    // Fleets may leave Settlers behind (#movement), weighed like moving them into danger.
+                    let left = number(&here_fleet["settler"]) - settlers;
+                    if split && left > 0.0 {
+                        let stay = json!({"settler": left});
+                        best -= bot_threat(view, seat, &stay, from, from) * 130.0;
+                    }
                 }
                 best
             }
@@ -1530,6 +1548,40 @@ mod tests {
         assert!(bot_storage_budget(&view, 0).is_none());
     }
     use game_core::run_match;
+    // 33.38 #movement: a Move names its `units`; Fleets may leave a safe Settler behind.
+    #[test]
+    fn split_moves_leave_safe_settlers_and_keep_exposed_ones_escorted() {
+        let mut agent = BuiltinAgent::new(Strategy::Military, [9; 32]);
+        let mut view = json!({"seat":0,"phase":"operations","relicRow":[],
+            "players":[{"resources":{"matter":5,"energy":5,"biomass":5,"data":5},"hand":[{"id":"m","key":"move"}],"discard":[],"deckContents":[],"handCount":1,"deckCount":0,"capacity":30},{"resources":{"energy":0}},{"resources":{}},{"resources":{}}],
+            "planets":{"0,0":{"owner":null,"type":"biomass","upgrade":null,"cluster":0}},
+            "clusters":[{"center":"0,0"}],
+            "fleets":{"0,0":{"0":{"settler":1,"explorer":0,"fleet":2}},"8,0":{"1":{"settler":0,"explorer":0,"fleet":1}}}});
+        let whole = json!({"type":"move","source":"0,0","destination":"1,0","moveGroup":"ships","units":{"settler":1,"explorer":0,"fleet":2}});
+        let split = json!({"type":"move","source":"0,0","destination":"2,0","moveGroup":"ships","units":{"settler":0,"explorer":0,"fleet":2}});
+        assert!(
+            agent.score(&view, &whole) < 0.0,
+            "A Settler on its Colony site waits"
+        );
+        assert!(
+            agent.score(&view, &split) > 50.0,
+            "Fleets leave the safe Settler to hunt at Fleet speed"
+        );
+        assert_eq!(
+            agent.select_action(&view, &[whole.clone(), split.clone()]),
+            1
+        );
+        view["fleets"]["-2,0"] = json!({"1":{"settler":0,"explorer":0,"fleet":2}});
+        assert!(
+            agent.score(&view, &split) < 0.0,
+            "Fleets do not strand a Settler an enemy Fleet could reach"
+        );
+        let old = json!({"type":"move","source":"0,0","destination":"2,0","moveGroup":"ships"});
+        assert!(
+            agent.score(&view, &old) < 0.0,
+            "Without `units` (earlier rules) the whole group is scored, as before"
+        );
+    }
     #[test]
     fn scoring_policy_prefers_points_and_settler_colony_goals() {
         let agent = BuiltinAgent::new(Strategy::Military, [9; 32]);
@@ -1653,6 +1705,7 @@ mod tests {
             "galactic-reach/29.34",
             "galactic-reach/30.35",
             "galactic-reach/31.36",
+            "galactic-reach/32.37",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1688,6 +1741,7 @@ mod tests {
                             | "galactic-reach/29.34"
                             | "galactic-reach/30.35"
                             | "galactic-reach/31.36"
+                            | "galactic-reach/32.37"
                     ) {
                         0
                     } else {

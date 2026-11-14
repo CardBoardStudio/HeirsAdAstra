@@ -34,7 +34,8 @@
     const samples=['matter','energy','biomass','data'].map(resource=>{
       const hex=document.querySelector('.hex.'+resource),base=rgb(getComputedStyle(hex,'::before').backgroundColor).rgb;
       const darkTile=blend([0,0,0],base,12/255),lightTile=blend([255,255,255],base,6/255);
-      const boundary=ratio(darkTile,lightSpace),building=ratio([247,251,255],lightTile),fleetKeyline=ratio([7,16,26],darkTile);
+      const buildingColor=rgb(getComputedStyle(hex.querySelector('.hex-buildings')).color).rgb;
+      const boundary=ratio(darkTile,lightSpace),building=Math.min(ratio(buildingColor,darkTile),ratio(buildingColor,lightTile)),fleetKeyline=ratio([7,16,26],darkTile);
       return {resource,boundary:Number(boundary.toFixed(2)),building:Number(building.toFixed(2)),fleetKeyline:Number(fleetKeyline.toFixed(2)),pass:Math.min(boundary,building,fleetKeyline)>=3};
     });
     return {method:'3:1 graphical contrast, including the tile bevel’s light/dark bounds. Ships retain faction color with a dark keyline.',samples,failures:samples.filter(sample=>!sample.pass)};

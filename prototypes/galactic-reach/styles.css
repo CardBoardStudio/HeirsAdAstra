@@ -643,6 +643,13 @@ button.choice-card, label.choice-card { position: relative; display: flex; min-h
 .bank-resource-button:disabled { opacity: .45; cursor: default; }
 .context-order-list { display: grid; gap: 8px; padding-top: 8px; }
 .context-order-list .button { white-space: normal; }
+.move-picker { display: grid; gap: 6px; margin: 8px 0 0; padding: 8px 10px; border: 1px solid var(--line-bright); border-radius: 8px; }
+.move-picker legend { padding: 0 4px; font-weight: 700; color: var(--cyan); }
+.move-picker p { margin: 0; font-size: .85rem; }
+.move-picker-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.move-picker-row label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.move-picker-row select { width: 4em; background: var(--surface-2); color: var(--text); border: 1px solid var(--line); border-radius: 6px; padding: 2px 4px; }
+.move-picker input:focus-visible, .move-picker select:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
 
 /* Explicit card decisions and public voting use the same resource symbols as the board. */
 .consortium-gains { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
