@@ -885,3 +885,157 @@ async fn tables_resume_from_snapshots_and_explain_when_they_cannot() {
     let all = service.snapshot_all().await;
     assert!(all.iter().any(|(id, r)| id == "t4" && r.is_err()));
 }
+
+/// A shared table keeps the rules revision it was dealt with and plays on that
+/// revision's archived engine after the current rules move on (as solo tables
+/// do): people act, rivals move, Undo works, and the table rebuilds both from
+/// its snapshot and from the whole log. Its browser is the archived copy.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_table_dealt_on_an_archived_revision_keeps_playing_on_it() {
+    let archived = galactic_reach::SHARED_RULES
+        .iter()
+        .find(|r| **r != galactic_reach::RULES)
+        .expect("an archived revision with shared-table support");
+    let store = store_with(&["a", "b"]);
+    let log = Arc::new(SqliteTableLog(store));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    let mut t = table("t5", &[("a", "Ada"), ("b", "Bo")]);
+    t.rules = archived.to_string();
+    service.open(t).await.unwrap();
+    let ada = service.view("t5", "a").await.unwrap();
+    assert_eq!(ada["rules_version"], *archived);
+    let revision = archived.rsplit('/').next().unwrap();
+    assert_eq!(
+        ada["client_path"],
+        format!("/galactic-reach/rules/{revision}/")
+    );
+    let card = ada["state"]["players"][0]["hand"][0]["id"].clone();
+    let mut seq = service
+        .act(
+            "t5",
+            "a",
+            ada["seq"].as_u64().unwrap(),
+            vec![json!({"type":"resource","card":card})],
+        )
+        .await
+        .unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    seq = service.undo("t5", "a", seq).await.unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    for (account, steps) in [("a", ["pass", "finish_buy"]), ("b", ["pass", "finish_buy"])] {
+        for step in steps {
+            // Wait for this seat's turn (the rivals between move on the server).
+            for _ in 0..400 {
+                let v = service.view("t5", account).await.unwrap();
+                if v["active"] == v["seat"] {
+                    seq = v["seq"].as_u64().unwrap();
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(25)).await;
+            }
+            seq = service
+                .act("t5", account, seq, vec![json!({"type": step})])
+                .await
+                .unwrap()["seq"]
+                .as_u64()
+                .unwrap();
+        }
+    }
+    let mut rivals_moved = false;
+    for _ in 0..400 {
+        let events = log.read("t5").unwrap();
+        if [2, 3].iter().all(|s| {
+            events
+                .iter()
+                .any(|e| e.kind == "action" && e.seat == Some(*s))
+        }) {
+            rivals_moved = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    assert!(rivals_moved, "rivals move on the archived engine");
+    service.refolded("t5", 1).await;
+    // The current rules still open fresh tables; an unknown revision is refused plainly.
+    let mut unknown = table("t6", &[("a", "Ada")]);
+    unknown.rules = "galactic-reach/1.1".into();
+    log.create(&unknown).unwrap();
+    assert_eq!(
+        service.view("t6", "a").await,
+        Err(Refusal::Conflict(
+            "This shared table plays galactic-reach/1.1, which this server cannot run.".into()
+        ))
+    );
+}
+
+/// Undo needs a position to roll back to. If an earlier build dealt the turn and
+/// only a later snapshot exists, Undo is refused with an explanation instead of
+/// recording an undo the table could never rebuild.
+#[tokio::test]
+async fn undo_is_refused_when_no_rebuildable_position_exists() {
+    let store = store_with(&["a", "b"]);
+    let log = Arc::new(SqliteTableLog(store.clone()));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    service
+        .open(table("t7", &[("a", "Ada"), ("b", "Bo")]))
+        .await
+        .unwrap();
+    let ada = service.view("t7", "a").await.unwrap();
+    let cards = ada["state"]["players"][0]["hand"]
+        .as_array()
+        .unwrap()
+        .clone();
+    let mut seq = ada["seq"].as_u64().unwrap();
+    for card in &cards[..2] {
+        seq = service
+            .act(
+                "t7",
+                "a",
+                seq,
+                vec![json!({"type":"resource","card":card["id"]})],
+            )
+            .await
+            .unwrap()["seq"]
+            .as_u64()
+            .unwrap();
+    }
+    // As if the table moved here from an earlier build: its deal no longer
+    // replays, and only the snapshot after this turn's choices survives.
+    {
+        let db = store.0.lock().unwrap();
+        db.execute(
+            "UPDATE gr_shared_events SET private=json_set(private,'$.order',json('[0]')) WHERE table_id='t7' AND seq=1",
+            [],
+        )
+        .unwrap();
+        db.execute(
+            "DELETE FROM gr_shared_snapshots WHERE table_id='t7' AND seq<?",
+            [seq],
+        )
+        .unwrap();
+    }
+    service
+        .call(|t| {
+            t.live.remove("t7");
+            Ok(())
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        service.view("t7", "a").await.unwrap()["undo"]["available"],
+        true
+    );
+    let refused = service.undo("t7", "a", seq).await;
+    assert!(
+        matches!(&refused, Err(Refusal::Conflict(m)) if m.starts_with("Undo is not available here")),
+        "{refused:?}"
+    );
+    // Nothing was recorded, and the table still plays.
+    assert!(log.read("t7").unwrap().iter().all(|e| e.kind != "undo"));
+    service
+        .act("t7", "a", seq, vec![json!({"type":"pass"})])
+        .await
+        .unwrap();
+}
