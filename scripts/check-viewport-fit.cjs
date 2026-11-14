@@ -106,6 +106,8 @@ const chunks = [0, 10, 20, 26].map(start => MARKET.slice(start, start + 10).map(
 const CASES = [
   { name: 'operations, 5-card hand', save: operationsState(['move', 'construct', 'move', 'construct', 'move']) },
   { name: 'operations, 8-card hand', save: operationsState(longHand) },
+  { name: 'operations, raised hand card (long text)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), focus: '#hand-row .game-card:nth-child(3) button' },
+  { name: 'operations, 8-card hand raised', save: operationsState(longHand), focus: '#hand-row .game-card:nth-child(5) button' },
   { name: 'operations, market tab (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -189,8 +191,20 @@ const MEASURE = `(() => {
   const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region';
   const modal = document.querySelector('dialog[open]');
   const scope = modal || document;
+  // Hand cards are held as card tops that clip on purpose; a raised (pointed-at or focused)
+  // card is checked like any other. Each top must still show its name and gain/cost row.
+  const folded = e => e.closest('#hand-row .game-card:not(:hover):not(:focus-within)');
+  for (const top of document.querySelectorAll('#hand-row .game-card:not(:hover):not(:focus-within)')) {
+    if (!shown(top)) continue;
+    const t = top.getBoundingClientRect();
+    if (t.top < -1 || t.bottom > H + 1) problems.push('card top outside viewport: ' + label(top));
+    for (const part of top.querySelectorAll('.card-name, .card-footer, .card-effect')) {
+      const p = part.getBoundingClientRect();
+      if (p.height < 4 || p.top < t.top - 1 || p.bottom > t.bottom + 1) { problems.push('card top hides ' + label(part) + ' in ' + label(top)); break; }
+    }
+  }
   for (const e of scope.querySelectorAll('*')) {
-    if (!shown(e) || e.closest(scrollers)) continue;
+    if (!shown(e) || e.closest(scrollers) || folded(e)) continue;
     const r = e.getBoundingClientRect();
     if (r.width <= 1 && r.height <= 1) continue; // empty or visually hidden (sr-only)
     const clips = /(auto|scroll|hidden|clip)/.test(getComputedStyle(e).overflowY + getComputedStyle(e).overflowX);
@@ -209,7 +223,7 @@ const MEASURE = `(() => {
       if (c.height && (c.top < r.top - 1 || c.bottom > r.bottom + 1)) { problems.push('card content escapes: ' + label(e) + ' (' + label(child) + ')'); break; }
     }
   }
-  if (!modal) for (const hex of document.querySelectorAll('.hex')) {
+  if (!modal && !document.querySelector('#hand-row .game-card:focus-within')) for (const hex of document.querySelectorAll('.hex')) {
     const r = hex.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
     const hit = document.elementFromPoint(x, y);
     if (!hit || !hex.contains(hit) && !hit.closest('.sector-popover')) { problems.push('hex covered at ' + Math.round(x) + ',' + Math.round(y) + ' by ' + (hit ? label(hit) : 'nothing')); break; }
@@ -245,6 +259,11 @@ async function runCase(browser, origin, testCase, [width, height]) {
     const ok = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e || e.disabled) return false; e.click(); return true; })()`);
     if (!ok) { lastSlack = { px: 99 }; return [`could not click ${selector}`]; }
     await browser.evaluate('new Promise(r => setTimeout(r, 150))');
+  }
+  if (testCase.focus) {
+    const ok = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(testCase.focus)}); if (!e) return false; e.focus(); return document.activeElement === e; })()`);
+    if (!ok) return [`could not focus ${testCase.focus}`];
+    await browser.evaluate('new Promise(r => setTimeout(r, 250))');
   }
   const { problems, slack } = await browser.evaluate(MEASURE);
   lastSlack = slack;
