@@ -1275,3 +1275,10 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #capacity-value, #storage-upgrade-help { font-size:13px; line-height:1.5; }
 }
 .faction-counter { color:#fff5df; }
+
+/* Turn controls beside the hand, and the notice for turns finished automatically. */
+.section-intro .turn-notice { margin-top: 8px; padding: 6px 10px; border-left: 3px solid var(--gold); background: color-mix(in srgb, var(--gold) 12%, transparent); color: var(--text); font-size: 13px; }
+.hand-tools #pass-button, .hand-tools #hand-finish-buy-button { order: -1; }
+.upgrade-list small { margin-left: 4px; opacity: .75; }
+.upgrade-list .upgrade-waiting { opacity: .7; }
+.upgrade-list .upgrade-note { flex-basis: 100%; }

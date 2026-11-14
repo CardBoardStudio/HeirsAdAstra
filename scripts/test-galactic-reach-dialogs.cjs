@@ -902,6 +902,58 @@ test('storage allocations cancel atomically, survive commitment and undo with th
 });
 
 let failed = 0;
+// Interface automation for forced turns (feedback 2026-11-14). Rules are unchanged:
+// the engine still requires an explicit pass and finish_buy from headless seats.
+function forcedTurnStorage({resources={matter:0,energy:0,biomass:0,data:0},discard=[]}={}) {
+  const storage=createStorage(),state=boot(storage).saved();
+  Object.assign(state,{phase:'operations',activePlayer:3,turnStage:'ai',tradeOffers:[]});
+  state.players.forEach((p,id)=>{p.passed=id===1||id===2;});
+  Object.assign(state.players[3],{hand:[],resources:{matter:0,energy:0,biomass:0,data:0}});
+  Object.assign(state.players[0],{hand:[],discard,resources,passed:false});
+  writeSave(storage,state);return storage;
+}
+test('an empty hand passes to Buy, and a Buy with no possible choice finishes, with a notice and Undo',()=>{
+  const game=boot(forcedTurnStorage());game.settle();
+  const saved=game.saved(),log=saved.log.join('\n');
+  assert.match(log,/no cards left, so the table passed you to Buy/);
+  assert.match(log,/nothing to buy, upgrade, trash or exchange, so Buy finished automatically/);
+  assert(saved.round>=2,'the round finished and play continued');
+  const notice=game.dom.element('turn-notice');
+  assert.equal(notice.hidden,false);
+  assert.equal(notice.textContent,'No cards left: moved to Buy. Nothing affordable: Buy finished automatically.');
+  assert.equal(game.dom.element('undo-turn-button').disabled,false,'Undo can restore the Operations turn to post a trade instead');
+});
+test('an empty hand with something affordable stops at Buy, beside the hand',()=>{
+  const game=boot(forcedTurnStorage({resources:{matter:1,energy:0,biomass:0,data:1}}));game.settle();
+  const saved=game.saved();
+  assert.equal(saved.phase,'buy');assert.equal(saved.activePlayer,0);assert(saved.players[0].passed);
+  assert.equal(game.dom.element('market-notice').textContent,'No cards left: moved to Buy.');
+  assert.equal(game.dom.element('hand-finish-buy-button').hidden,false);
+  game.click('hand-finish-buy-button');game.settle();
+  assert.notEqual(game.saved().phase==='buy'&&game.saved().activePlayer===0,true,'Finish Buy beside the hand ends the Buy turn');
+});
+test('a hand with cards is never passed automatically',()=>{
+  const storage=forcedTurnStorage(),state=JSON.parse(storage.getItem(SAVE_KEY));
+  state.players[0].hand=[{id:'keep-me',key:'move',starter:true}];writeSave(storage,state);
+  const game=boot(storage);game.settle();
+  const saved=game.saved();
+  assert.equal(saved.phase,'operations');assert.equal(saved.activePlayer,0);assert(!saved.players[0].passed);
+  assert.equal(game.dom.element('pass-button').hidden,false,'Pass & buy is offered beside the hand');
+});
+test('starter upgrades list hand and discard, and show in-play starters as unavailable with the reason',()=>{
+  const storage=createStorage(),state=boot(storage).saved();
+  Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});
+  Object.assign(state.players[0],{passed:true,resources:{matter:2,energy:0,biomass:0,data:0},
+    hand:[{id:'up-hand',key:'move',starter:true}],discard:[{id:'up-discard',key:'construct',starter:true}],
+    inPlay:[{id:'up-play',key:'move',starter:true}],buyStartDiscardIds:['up-discard']});
+  writeSave(storage,state);
+  const game=boot(storage);
+  const html=game.dom.element('decommission-area').innerHTML;
+  assert.deepEqual([...html.matchAll(/data-upgrade-card="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-hand']);
+  assert.match(html,/in play · after cleanup/);
+  assert.match(html,/Cards in play cannot upgrade|cards in play cannot upgrade/);
+  assert.doesNotMatch(html,/All starter cards upgraded/);
+});
 for (const { name, body } of tests) {
   try {
     body();
