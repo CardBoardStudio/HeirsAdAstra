@@ -2686,7 +2686,8 @@ function createGalacticReach(options = {}) {
     }
     const surplus=()=>[...RESOURCES].sort((a,b)=>(p.resources[b]-reserve[b])-(p.resources[a]-reserve[a]));
     const yard=controlledPlanets(id).some(([,p])=>p.upgrade==='starbase');
-    const upgrade=[...p.hand,...p.discard].filter(c=>c.starter&&!c.upgraded).sort((a,b)=>Number(b.key==='construct')-Number(a.key==='construct'))[0];
+    // 30.35 #buy: rivals also upgrade starters that are in play.
+    const upgrade=[...p.hand,...p.discard,...p.inPlay].filter(c=>c.starter&&!c.upgraded).sort((a,b)=>Number(b.key==='construct')-Number(a.key==='construct'))[0];
     const immediate=findColonizeTarget(id)?{biomass:2}:Object.entries(state.fleets).some(([coord,g])=>g[id]?.explorer&&state.planets[coord]?.special==='relic'&&relicKnown(state.clusters[state.planets[coord].cluster],id))?EXCAVATION_COST:{};
     const resource=surplus().find(r=>p.resources[r]>=Math.max(1,immediate[r]||0)+2);
     if (yard&&upgrade&&resource) upgradeStarter(id,upgrade.id,resource);
@@ -2701,7 +2702,8 @@ function createGalacticReach(options = {}) {
     }
     for (let n=0;n<2;n++) {
       const cards=aiCards(id),moves=aiOrderCount(id,'move'),constructs=aiOrderCount(id,'construct'),colonize=aiOrderCount(id,'colonize'),excavateCount=aiOrderCount(id,'excavate');
-      const removable=p.discard.find(c=>p.buyStartDiscardIds.includes(c.id)&&BASIC_CARDS[c.key]&&!c.upgraded&&(c.key==='construct'?constructs>2:c.key==='move'?moves>6:c.key==='colonize'?colonize>Math.max(2,countPlacedShips(id,'settler')+1):c.key==='excavate'?!aiRelicsRemain()||excavateCount>Math.max(1,countPlacedShips(id,'explorer')+1):c.key==='probe'?!aiRelicsRemain()||aiOrderCount(id,'probe')>Math.max(1,countPlacedShips(id,'explorer')+1):false));
+      // 30.35 #buy: trash candidates include cards that were in play when Buy began.
+      const removable=[...p.discard.filter(c=>trashEligible(p,c,'discard')),...p.inPlay.filter(c=>trashEligible(p,c,'inPlay'))].find(c=>BASIC_CARDS[c.key]&&!c.upgraded&&(c.key==='construct'?constructs>2:c.key==='move'?moves>6:c.key==='colonize'?colonize>Math.max(2,countPlacedShips(id,'settler')+1):c.key==='excavate'?!aiRelicsRemain()||excavateCount>Math.max(1,countPlacedShips(id,'explorer')+1):c.key==='probe'?!aiRelicsRemain()||aiOrderCount(id,'probe')>Math.max(1,countPlacedShips(id,'explorer')+1):false));
       const give=surplus().find(r=>p.resources[r]>=reserve[r]+3);
       if (!removable||!give||cards.length<=8) break;
       if (!decommission(id,removable.id,give)) break;

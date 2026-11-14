@@ -13,7 +13,7 @@
 - `upgradeStarter` and `decommission`/`trashEligible` in `prototypes/galactic-reach/app.js`. `startBuyPhase` records the new `buyStartInPlayIds` beside `buyStartDiscardIds`.
 - Buy legal actions in `adapter.js`.
 - The Market's upgrade and trash lists, and the automatic-Buy choice check (`humanBuyHasChoice`).
-- Browser rivals (`runAiBuy`) keep their 28.33 choices: they upgrade from hand or discard and trash from discard. The native arena policies choose among the adapter's legal actions, which now include in-play cards.
+- **Rivals use the new options** (captain, 2026-11-14; [#computer-rivals](../../prototypes/galactic-reach/rulebook.html#computer-rivals)). Browser rivals (`runAiBuy`) upgrade starters from hand, discard or play, and pick surplus basic cards to trash from discard or play when Buy began. Native policy **26** (`gr-*/26`) does the same, with the same scoring for discard and in-play cards. The exact published policy 25 from `main` is archived as `crates/galactic-reach/src/legacy_v25.rs` (hash-pinned) for 29.34 matches and replays. The arena pool is `galactic-reach/30.35:…:policies-v26`.
 
 **Versioning.** This changes legal Buy decisions, so it is `playtest-breaking`. While this PR was open, `main` adopted 29.34 Streamlined Operations (#43), so this ruleset is **30.35** and builds on 29.34:
 - New games use **save format 30, rules 35** (`galactic-reach/30.35`, "In-play Buy playtest") and `-v30` browser keys.

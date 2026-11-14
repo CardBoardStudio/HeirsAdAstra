@@ -7,5 +7,6 @@
   "crates/galactic-reach/rules/v29-rulebook.css": "66776225d3838d9ca61feab5402a6af433798f0cee9f4e8a603dbaaa1c8e0b91",
   "crates/galactic-reach/rules/v29-replay.js": "bce6f7f8f7f363556d14e0daab79b0ca02318e3d11b1764d28a9c18e6b698bd4",
   "crates/galactic-reach/rules/v29-playtest-notes.js": "c2c4d6867ca1f005795a654486f687bd086938917215362f25b4c172fce1a740",
-  "crates/galactic-reach/rules/v29-playtest-notes.css": "3d8484181349c1720319d84189340fa6732ce9b7d7dee355019fc8ab0a5cef0d"
+  "crates/galactic-reach/rules/v29-playtest-notes.css": "3d8484181349c1720319d84189340fa6732ce9b7d7dee355019fc8ab0a5cef0d",
+  "crates/galactic-reach/src/legacy_v25.rs": "8daa07c519d7ff793a77c53d8b7aebef0ab03be9443b3e453024178ef62dcf39"
 }
