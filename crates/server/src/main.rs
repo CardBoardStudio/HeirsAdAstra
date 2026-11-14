@@ -7,6 +7,7 @@ mod nido;
 mod nido_chain;
 #[cfg(test)]
 mod platform_tests;
+mod shared;
 mod store;
 mod tables;
 use axum::{
@@ -40,6 +41,15 @@ struct App {
     registration_code_hash: Option<[u8; 32]>,
     origin: String,
     nido: Arc<nido::Config>,
+    shared: Arc<shared::Service>,
+}
+/// The shared-table service over this store, with the trusted server authority.
+fn table_service(store: &Arc<Store>, ai_pace: std::time::Duration) -> Arc<shared::Service> {
+    shared::Service::start(
+        Arc::new(shared::log::SqliteTableLog(store.clone())),
+        Arc::new(shared::authority::TrustedAuthority),
+        ai_pace,
+    )
 }
 #[derive(Debug)]
 struct ApiError(StatusCode, String);
@@ -517,6 +527,11 @@ fn router(app: App) -> Router {
         .route("/api/tables/{id}/lobby/leave", post(lobby::leave))
         .route("/api/tables/{id}/lobby/settings", post(lobby::settings))
         .route("/api/tables/{id}/lobby/start", post(lobby::start))
+        .route("/api/shared", get(shared::list))
+        .route("/api/shared/{id}", get(shared::view))
+        .route("/api/shared/{id}/act", post(shared::act))
+        .route("/api/shared/{id}/stream", get(shared::stream))
+        .route("/api/shared/{id}/report", get(shared::report))
         .route(
             "/api/tables/{id}/save",
             post(tables::save).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024 + 16384)),
@@ -548,12 +563,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .with_env_filter(tracing_subscriber::EnvFilter::from_default_env())
         .init();
     let config = config::Config::from_env(|key| std::env::var(key).ok())?;
+    let store = Arc::new(Store::open(
+        &std::env::var("DATABASE_PATH").unwrap_or("drawing-board.sqlite".into()),
+    )?);
     let app = App {
         #[cfg(test)]
         arena_seed: None,
-        store: Arc::new(Store::open(
-            &std::env::var("DATABASE_PATH").unwrap_or("drawing-board.sqlite".into()),
-        )?),
+        shared: table_service(&store, shared::AI_PACE),
+        store,
         dev_auth: config.dev_auth,
         preview_code_hash: config.preview_code_hash,
         registration_code_hash: config.registration_code_hash,
@@ -625,9 +642,11 @@ mod tests {
     use http_body_util::BodyExt;
     use tower::ServiceExt;
     pub(super) fn app(dev: bool) -> App {
+        let store = Arc::new(Store::open(":memory:").unwrap());
         App {
             arena_seed: None,
-            store: Arc::new(Store::open(":memory:").unwrap()),
+            shared: table_service(&store, std::time::Duration::ZERO),
+            store,
             dev_auth: dev,
             preview_code_hash: None,
             registration_code_hash: None,

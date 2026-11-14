@@ -201,10 +201,46 @@ function createGalacticAdapter(e) {
     const rows=standings();
     return s().players.map((_,seat)=>4-rows.find(row=>row.seat===seat).rank);
   }
+  // One shared-table seat's view in the live state shape the browser renders.
+  // Withheld: other seats' hands, every deck's order (counts stay public, and a
+  // seat sees its own deck as an unordered list), moons nobody has revealed,
+  // relic sectors and relic signals this seat has not located, and an opponent's
+  // committed combat tactic. Discards, cards in play, the market and units are public.
+  function privateState(seat) {
+    if (!Number.isInteger(seat) || seat < 0 || seat >= 4) return null;
+    const state = e.clone(s()), stub = n => Array.from({length:n}, () => ({hidden:true}));
+    const byKey = (a,b) => a.key < b.key ? -1 : a.key > b.key ? 1 : String(a.id) < String(b.id) ? -1 : 1;
+    state.players.forEach((p, id) => {
+      p.handCount = p.hand.length; p.deckCount = p.deck.length;
+      if (id === seat) p.deck = [...p.deck].sort(byKey);
+      else { p.hand = []; p.deck = []; }
+    });
+    state.advancedDeck = stub(state.advancedDeck.length);
+    state.relicDeckCount = state.relicDeck.length;
+    state.relicDeck = stub(state.relicDeck.length);
+    state.planets = Object.fromEntries(Object.entries(state.planets).flatMap(([coord, planet]) => {
+      const cluster = state.clusters[planet.cluster], located = e.relicKnown(cluster, seat);
+      if (!e.clusterKnown(cluster, seat) && !(located && planet.special === 'relic')) return [];
+      return [[coord, located ? planet : {...planet, special: null, relicClaimed: false}]];
+    }));
+    state.clusters = state.clusters.map(cluster => {
+      const known = e.clusterKnown(cluster, seat), located = e.relicKnown(cluster, seat);
+      const scannedBy = located ? [seat] : [];
+      return known ? {...cluster, scannedBy} : {...cluster, scannedBy, center: located ? cluster.center : null, coords: located ? cluster.coords.filter(c => state.planets[c]) : []};
+    });
+    const battle = state.pendingCombat;
+    if (battle) for (const side of ['attacker','defender'])
+      if (battle[`${side}Id`] !== seat && battle.commitments[side] !== null) battle.commitments[side] = 'hidden';
+    return state;
+  }
+  // Legal choices a seat's browser cannot check from its private view alone.
+  function hints(seat) {
+    return { probe: legalActions(seat).filter(a => a.type === 'probe').map(a => ({card: a.card, coord: a.coord})) };
+  }
   function snapshot() {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/30.35', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot };
+  return { rulesVersion: 'galactic-reach/30.35', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;
