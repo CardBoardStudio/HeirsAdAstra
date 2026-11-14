@@ -75,7 +75,7 @@ http.createServer(async (req,res)=>{
       let html=content.toString();
       if(path.basename(filename)==='index.html') {
         const saved=JSON.stringify(JSON.stringify(fixture(url.searchParams.get('fixture')||'fresh'))).replace(/</g,'\\u003c');
-        html=html.replace('  <script src="table.js',`<script>localStorage.removeItem('galactic-reach-turn-history-v29');localStorage.removeItem('galactic-reach-history-v29');localStorage.setItem('galactic-reach-save-v29',${saved});</script>\n  <script src="table.js`);
+        html=html.replace('  <script src="table.js',`<script>localStorage.removeItem('galactic-reach-turn-history-v30');localStorage.removeItem('galactic-reach-history-v29');localStorage.setItem('galactic-reach-save-v29',${saved});</script>\n  <script src="table.js`);
       }
       content=html.replace('</body>','<script src="/__audit/axe.min.js"></script><script src="/__audit/runner.js"></script></body>');
     }
