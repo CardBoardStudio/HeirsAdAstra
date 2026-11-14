@@ -492,6 +492,7 @@ async fn a_live_view_streams_the_current_seat_view_first() {
             .body(Body::empty())
             .unwrap()
     };
+    a.shared.set_ping_every(Duration::from_millis(100));
     let response = crate::router(a.clone())
         .oneshot(request(&friend))
         .await
@@ -505,6 +506,50 @@ async fn a_live_view_streams_the_current_seat_view_first() {
     let view: Value = serde_json::from_str(data).unwrap();
     assert_eq!(view["seat"], 1);
     let _ = host;
+    // A quiet stream sends `ping {seq}` so a page can spot silence or a gap.
+    async fn next(body: &mut axum::body::Body) -> String {
+        let frame = tokio::time::timeout(Duration::from_secs(5), body.frame())
+            .await
+            .expect("the stream keeps talking")
+            .unwrap()
+            .unwrap()
+            .into_data()
+            .unwrap();
+        String::from_utf8(frame.to_vec()).unwrap()
+    }
+    let ping = loop {
+        let text = next(&mut body).await;
+        if text.starts_with("event: ping\n") {
+            break text;
+        }
+    };
+    let data = ping.lines().find_map(|l| l.strip_prefix("data: ")).unwrap();
+    assert_eq!(
+        serde_json::from_str::<Value>(data).unwrap()["seq"],
+        view["seq"]
+    );
+    // A change pushes the new view to the other seat.
+    let seq = view["seq"].as_u64().unwrap();
+    a.shared
+        .act(id, &ids[0].0, seq, vec![json!({"type":"pass"})])
+        .await
+        .unwrap();
+    let pushed = loop {
+        let text = next(&mut body).await;
+        if text.starts_with("event: view\n") {
+            break text;
+        }
+    };
+    let data = pushed
+        .lines()
+        .find_map(|l| l.strip_prefix("data: "))
+        .unwrap();
+    assert!(
+        serde_json::from_str::<Value>(data).unwrap()["seq"]
+            .as_u64()
+            .unwrap()
+            > seq
+    );
     let stranger = account(&a, "Cy").await;
     assert_eq!(
         crate::router(a.clone())

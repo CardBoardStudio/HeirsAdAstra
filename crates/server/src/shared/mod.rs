@@ -585,6 +585,8 @@ pub struct Service {
     /// `(table, seq)` after every append, for live views.
     pub changes: tokio::sync::broadcast::Sender<(String, u64)>,
     ai_pace: Duration,
+    /// See [`PING_EVERY`], in milliseconds; tests shorten it.
+    ping_ms: std::sync::atomic::AtomicU64,
     ai_running: Mutex<HashSet<String>>,
 }
 impl Service {
@@ -614,8 +616,19 @@ impl Service {
             log: shelf,
             changes: tokio::sync::broadcast::channel(256).0,
             ai_pace,
+            ping_ms: (PING_EVERY.as_millis() as u64).into(),
             ai_running: Mutex::new(HashSet::new()),
         })
+    }
+    pub fn ping_every(&self) -> Duration {
+        Duration::from_millis(self.ping_ms.load(std::sync::atomic::Ordering::Relaxed))
+    }
+    #[cfg(test)]
+    pub fn set_ping_every(&self, every: Duration) {
+        self.ping_ms.store(
+            every.as_millis() as u64,
+            std::sync::atomic::Ordering::Relaxed,
+        );
     }
     async fn call<R: Send + 'static>(
         &self,
@@ -841,42 +854,76 @@ pub async fn report(
     Ok(Json(app.shared.report(&id, &u.id).await?))
 }
 
-/// Server-sent events: the seat's private view now, then after every change.
-/// A reconnecting browser simply receives the current view again.
+/// How often an otherwise quiet stream sends a `ping` carrying the table's
+/// latest sequence number. A proxy (tailscale serve) can keep a browser's stream
+/// open after the server behind it restarted, delivering nothing and raising no
+/// error; the ping lets the page notice silence and missed changes and resync.
+pub const PING_EVERY: Duration = Duration::from_secs(10);
+
+/// Server-sent events: the seat's private view now, then after every change,
+/// with a `ping {seq}` whenever the stream is otherwise quiet.
 pub async fn stream(
     State(app): State<App>,
     headers: HeaderMap,
     Path(id): Path<String>,
-) -> ApiResult<Sse<impl futures_util::Stream<Item = Result<SseEvent, std::convert::Infallible>>>> {
+) -> ApiResult<impl IntoResponse> {
     let u = user(&app, &headers)?;
+    // Subscribe before reading the first view, so no change can fall in between.
+    let changes = app.shared.changes.subscribe();
     let first = app.shared.view(&id, &u.id).await?;
     app.shared.kick(&id);
-    let changes = app.shared.changes.subscribe();
-    let state = (Some(first), changes, app, id, u.id);
-    let events =
-        futures_util::stream::unfold(state, |(first, mut changes, app, id, account)| async move {
-            let view = match first {
-                Some(view) => view,
-                None => {
-                    loop {
-                        use tokio::sync::broadcast::error::RecvError;
-                        match changes.recv().await {
-                            Ok((table, _)) if table == id => break,
-                            Ok(_) | Err(RecvError::Lagged(_)) => continue,
-                            Err(RecvError::Closed) => return None,
-                        }
+    let seq = first["seq"].as_u64().unwrap_or_default();
+    let ping = app.shared.ping_every();
+    let state = (Some(first), changes, app, id, u.id, seq);
+    let events = futures_util::stream::unfold(
+        state,
+        move |(first, mut changes, app, id, account, mut seq)| async move {
+            use tokio::sync::broadcast::error::RecvError;
+            if let Some(view) = first {
+                let event = SseEvent::default().event("view").data(view.to_string());
+                return Some((
+                    Ok::<_, std::convert::Infallible>(event),
+                    (None, changes, app, id, account, seq),
+                ));
+            }
+            let changed = loop {
+                match tokio::time::timeout(ping, changes.recv()).await {
+                    Ok(Ok((table, at))) if table == id => {
+                        seq = seq.max(at);
+                        break true;
                     }
-                    // Coalesce a burst of changes into one refresh.
-                    while let Ok((table, _)) = changes.try_recv() {
-                        let _ = table;
-                    }
-                    app.shared.view(&id, &account).await.ok()?
+                    Ok(Ok(_)) => continue,
+                    // Missed messages: refresh rather than risk a stale view.
+                    Ok(Err(RecvError::Lagged(_))) => break true,
+                    Ok(Err(RecvError::Closed)) => return None,
+                    Err(_) => break false,
                 }
             };
-            let event = SseEvent::default().event("view").data(view.to_string());
-            Some((Ok(event), (None, changes, app, id, account)))
-        });
-    Ok(Sse::new(events).keep_alive(KeepAlive::default()))
+            let event = if changed {
+                // Coalesce a burst of changes into one refresh.
+                while let Ok((table, at)) = changes.try_recv() {
+                    if table == id {
+                        seq = seq.max(at);
+                    }
+                }
+                let view = app.shared.view(&id, &account).await.ok()?;
+                seq = view["seq"].as_u64().unwrap_or(seq);
+                SseEvent::default().event("view").data(view.to_string())
+            } else {
+                SseEvent::default()
+                    .event("ping")
+                    .data(json!({"seq": seq}).to_string())
+            };
+            Some((Ok(event), (None, changes, app, id, account, seq)))
+        },
+    );
+    let mut response = Sse::new(events)
+        .keep_alive(KeepAlive::default())
+        .into_response();
+    response
+        .headers_mut()
+        .insert("x-accel-buffering", "no".parse().unwrap());
+    Ok(response)
 }
 
 #[cfg(test)]

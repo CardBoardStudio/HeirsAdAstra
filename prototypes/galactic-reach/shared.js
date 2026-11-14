@@ -81,13 +81,48 @@
         setTimeout(() => URL.revokeObjectURL(url), 1000);
       } catch (error) { status.textContent = error.message; }
     }
-    function listen() {
-      stream = new EventSource(`/api/shared/${id}/stream`);
-      stream.addEventListener('view', event => { try { adopt(JSON.parse(event.data)); } catch { /* Ignore a malformed frame; the next one resyncs. */ } });
-      stream.addEventListener('open', () => { if (current) describe(current); });
-      stream.addEventListener('error', () => { status.textContent = 'Connection lost. Reconnecting…'; });
+    // Live updates. The server sends `view` after every change and a `ping {seq}`
+    // every 10 s when quiet. A proxy can leave a stream open but silent after the
+    // server restarts, with no error, so the page watches for silence itself:
+    // no message for 25 s, a ping showing a newer seq, a closed stream, the tab
+    // becoming visible again, or the network returning all reconnect and resync.
+    let lastMessage = Date.now(), retry = 0, retryTimer = null;
+    function resync() { refresh().catch(() => { /* The next reconnect tries again. */ }); }
+    function reconnect(reason) {
+      stream?.close(); stream = null; clearTimeout(retryTimer);
+      if (reason) status.textContent = reason;
+      retryTimer = setTimeout(listen, Math.min(10000, 1000 * 2 ** retry++));
     }
-    const leave = () => { stream?.close(); location.assign('/?game=galactic-reach#tables'); };
+    function listen() {
+      stream?.close();
+      lastMessage = Date.now();
+      stream = new EventSource(`/api/shared/${id}/stream`);
+      stream.addEventListener('view', event => {
+        lastMessage = Date.now(); retry = 0;
+        try { adopt(JSON.parse(event.data)); } catch { /* Ignore a malformed frame; the next one resyncs. */ }
+      });
+      stream.addEventListener('ping', event => {
+        lastMessage = Date.now(); retry = 0;
+        try { if (current && JSON.parse(event.data).seq > current.seq) resync(); } catch { /* A ping only nudges a resync. */ }
+      });
+      stream.addEventListener('open', () => { lastMessage = Date.now(); if (current) describe(current); });
+      stream.addEventListener('error', () => {
+        // EventSource retries by itself unless the response was an error page (a
+        // 502 while the server restarts), which closes it for good.
+        if (stream?.readyState === EventSource.CLOSED) reconnect('Connection lost. Reconnecting…');
+        else status.textContent = 'Connection lost. Reconnecting…';
+      });
+    }
+    setInterval(() => {
+      if (stream && Date.now() - lastMessage > 25000) { reconnect('Reconnecting to the table…'); resync(); }
+    }, 5000);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') return;
+      resync();
+      if (!stream || stream.readyState === EventSource.CLOSED || Date.now() - lastMessage > 15000) reconnect();
+    });
+    window.addEventListener('online', () => { resync(); reconnect(); });
+    const leave = () => { clearTimeout(retryTimer); stream?.close(); stream = null; location.assign('/?game=galactic-reach#tables'); };
     bar.querySelector('a').addEventListener('click', event => { event.preventDefault(); leave(); });
     try {
       if (!/^[a-f0-9]{32}$/.test(id)) throw new Error('Invalid table link. Return to Your tables.');
