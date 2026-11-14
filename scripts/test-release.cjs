@@ -37,8 +37,13 @@ try {
   const release = (...args) => execFileSync(process.execPath, [path.join(repo, 'scripts/release.cjs'), ...args], { cwd: repo, encoding: 'utf8' });
   execFileSync('git', ['clone', '--quiet', '--no-local', root, repo]);
   // Bring this checkout's (possibly uncommitted) tooling into the clone.
-  for (const rel of ['scripts/release.cjs', `prototypes/galactic-reach/index.html`]) fs.copyFileSync(path.join(root, rel), path.join(repo, rel));
-  git('-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '--quiet', '-am', 'tooling');
+  const local = execFileSync('git', ['ls-files', '-m', '-o', '--exclude-standard'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
+  for (const rel of local) {
+    fs.mkdirSync(path.dirname(path.join(repo, rel)), { recursive: true });
+    if (fs.existsSync(path.join(root, rel))) fs.copyFileSync(path.join(root, rel), path.join(repo, rel));
+  }
+  git('add', '-A');
+  git('-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '--quiet', '--allow-empty', '-m', 'tooling');
   git('branch', 'stable');
   const app = () => fs.readFileSync(path.join(repo, 'prototypes/galactic-reach/app.js'), 'utf8');
   const from = /SAVE_FORMAT_VERSION = (\d+);[\s\S]*?RULES_REVISION = (\d+);/.exec(app()).slice(1).map(Number);
@@ -55,7 +60,9 @@ try {
   assert.equal(fs.readFileSync(archived, 'utf8'), git('show', 'stable:prototypes/galactic-reach/app.js'), 'the released engine, byte for byte');
   const lib = fs.readFileSync(path.join(repo, 'crates/galactic-reach/src/lib.rs'), 'utf8');
   assert.match(lib, new RegExp(`pub const RULES: &str = "galactic-reach/${to.join('.')}";`));
-  assert.match(lib, new RegExp(`RULES,\\n\\s*"galactic-reach/${from.join('.')}",`), 'shared tables keep the old revision');
+  const shared = /SHARED_RULES: \[&str; (\d+)\] = \[\n([\s\S]*?)\n\];/.exec(lib);
+  assert.equal(shared[2].split('\n').filter(l => l.includes(`"galactic-reach/${from.join('.')}"`)).length, 1, 'shared tables keep the old revision once');
+  assert.equal(Number(shared[1]), shared[2].split('\n').length, 'SHARED_RULES length matches');
   assert.match(lib, new RegExp(`"galactic-reach/${from.join('.')}" => include_str!\\("\\.\\./rules/v${from[0]}-app\\.js"\\)`));
   const notes = fs.readFileSync(path.join(repo, 'docs/releases.md'), 'utf8');
   assert.match(notes, new RegExp(`## ${to.join('.')} · Harbor playtest`));

@@ -117,13 +117,12 @@ function bump(ref, from, to) {
   let lib = read(LIB);
   lib = lib.replace(`pub const RULES: &str = "${from.rules}";`, `pub const RULES: &str = "${to.rules}";`)
     .replace(`pub const EXPERIMENT: &str = "${from.name}";`, `pub const EXPERIMENT: &str = "${to.name}";`);
-  const shared = /pub const SHARED_RULES: \[&str; (\d+)\] = \[\n(\s*)RULES,\n/.exec(lib);
-  if (!shared) fail(`${LIB}: SHARED_RULES no longer starts with RULES`);
-  if (!lib.includes(`RULES,\n${shared[2]}"${from.rules}",`)) {
-    lib = lib.replace(shared[0], `pub const SHARED_RULES: [&str; ${Number(shared[1]) + 1}] = [\n${shared[2]}RULES,\n${shared[2]}"${from.rules}",\n`);
-  }
   if (!lib.includes(`"${prev}"`)) fail(`${LIB} does not name the previous archive ${prev}; add ${from.rules} by hand`);
+  // Every line naming the previous archive (SHARED_RULES, with_rules, the
+  // include_str! arms, test lists) gets a twin for the newly archived revision.
   lib = cloneAfter(lib, new RegExp(`"${escape(prev)}"`), line => line.split(prev).join(from.rules).split(v(from.save - 1)).join(v(from.save)));
+  lib = lib.replace(/pub const SHARED_RULES: \[&str; \d+\] = \[\n([\s\S]*?)\n\];/, (_, body) =>
+    `pub const SHARED_RULES: [&str; ${body.split('\n').length}] = [\n${body}\n];`);
   write(LIB, lib);
   // 3. Saved solo tables accept the new version pair.
   replaceIn('crates/server/src/tables.rs', [
