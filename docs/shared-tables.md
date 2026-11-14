@@ -52,6 +52,6 @@ What still blocks that swap: the circuit covers draws from one seat's deck, whil
 
 - No seat timeouts: a table waits for an absent person.
 - The game report opens only after the game ends.
-- Seats are fixed at Start; nobody can join or leave a started table.
+- Seats are dealt at random at Start (rulebook #shared-tables) and then fixed; nobody can join or leave a started table.
 - On shutdown the server ends every live stream and exits within 5 seconds. Graceful shutdown would otherwise wait forever on open streams, and the old process would keep serving a frozen copy of each table to its browsers.
 - One server process per database: the table service keeps live engines in memory and serializes each table's writes.
