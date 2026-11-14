@@ -72,6 +72,7 @@ Run `./scripts/build-web.sh` again after UI changes, then reload the browser. Ba
 | `ACCOUNT_REGISTRATION_CODE` | unset | Private enrollment code (24+ characters); local development needs none, Render previews can use their preview code |
 | `NIDO_AUTH` | `1` | Enable current Nido testnet wallets; `0` disables sign-in |
 | `NIDO_RPC_URL` | Stellar testnet RPC | Trusted HTTPS testnet RPC used for live wallet verification |
+| `NIDO_WALLET_HOST` | `test.nido.fyi` | Nido wallet host; e.g. `362.test.nido.fyi` for a Nido PR preview (see `docs/nido-auth.md`) |
 | `RUST_LOG` | unset | Server diagnostic filter, e.g. `info` |
 
 For a shared deployment, serve through HTTPS, set `APP_ORIGIN` to its exact public origin, leave `DEV_AUTH` unset, and configure an account enrollment code or use Nido sign-in. A loopback bind does not prevent a reverse proxy from exposing development sign-in: do not publish a process started with `scripts/dev.sh`. Back up the SQLite database with SQLite-aware backup tooling. Run a single server process per database for this prototype.

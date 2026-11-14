@@ -1,6 +1,6 @@
 // "Testnet seat" tab for the 27.32 tabletop: sit with a real Nido testnet
-// account (test.nido.fyi), approve this table once, then get a privately
-// dealt hand whose fairness the table contract checks on chain.
+// account, approve this table once, then get a privately dealt hand whose
+// fairness the table contract checks on chain.
 //
 // Flow: Sit with Nido → Nido's account picker (no passkey) → Nido's grant page
 // (the one passkey approval) → back here. The grant installs one rule on the
@@ -83,10 +83,20 @@ function describe(e) {
 }
 
 // ---- Nido round trips (full-page redirects; the tabletop saves locally) ------
+// The wallet is whatever the server signs in with (NIDO_WALLET_HOST, published
+// in /api/session), so a Nido PR preview such as 362.test.nido.fyi needs no
+// rebuild. Served without the app (zk/web/serve.mjs), it is test.nido.fyi.
+const WALLET_DEFAULT = { host: 'test.nido.fyi', connect_url: 'https://test.nido.fyi/connect/', account_url: 'https://{account}.test.nido.fyi' };
+let wallet = WALLET_DEFAULT;
+const walletReady = fetch('/api/session', { credentials: 'same-origin' })
+  .then((r) => (r.ok ? r.json() : {}))
+  .then((s) => { if (s?.nido_wallet?.connect_url) wallet = s.nido_wallet; })
+  .catch(() => {});
+const accountUrl = (account, path) => wallet.account_url.replace('{account}', account.toLowerCase()) + path;
 const here = () => { const u = new URL(location.href); for (const k of ['nido_address', 'nido_connect', 'delegation', 'code']) u.searchParams.delete(k); u.hash = ''; return u.toString(); };
 
 function connect() {
-  const u = new URL('https://test.nido.fyi/connect/');
+  const u = new URL(wallet.connect_url);
   u.searchParams.set('dapp', location.origin);
   u.searchParams.set('return', here());
   if (me?.account) u.searchParams.set('previous', me.account);
@@ -94,7 +104,7 @@ function connect() {
 }
 
 function grantUrl() {
-  const u = new URL(`https://${me.account.toLowerCase()}.test.nido.fyi/security/delegate-doc/`);
+  const u = new URL(accountUrl(me.account, '/security/delegate-doc/'));
   const p = u.searchParams;
   p.set('origin', location.origin); p.set('return', here()); p.set('pubkey', me.session.pubHex); p.set('duration', '24h');
   p.set('label', 'galactic-reach'); p.set('target', GAME); p.set('functions', 'sit,draw,play,cleanup'); p.set('limit', 'none');
@@ -105,9 +115,10 @@ async function sitClicked() {
   if (busy) return;
   busy = true; ui.sit.disabled = true;
   try {
+    await walletReady;
     me = { phase: 'connecting', log: me?.log ?? [], account: me?.account };
     await save();
-    say('Opening Nido so you can choose your testnet account…');
+    say(`Opening Nido (${wallet.host}) so you can choose your testnet account…`);
     connect();
   } catch (e) { busy = false; ui.sit.disabled = false; say(describe(e)); console.error(e); }
 }
@@ -252,6 +263,7 @@ async function leave() {
 
 // ---- start ------------------------------------------------------------------
 async function resume() {
+  await walletReady;
   me = (await load()) ?? null;
   const q = new URLSearchParams(location.search);
   const back = ['nido_address', 'nido_connect', 'delegation'].some((k) => q.has(k));
@@ -287,5 +299,5 @@ async function resume() {
 ui.sit.addEventListener('click', sitClicked);
 ui.round.addEventListener('click', endRound);
 ui.leave.addEventListener('click', leave);
-globalThis.grZkSeat = { get state() { return me; }, metrics, GAME };
+globalThis.grZkSeat = { get state() { return me; }, get wallet() { return wallet; }, metrics, GAME };
 resume().catch((e) => { say(describe(e)); console.error(e); });
