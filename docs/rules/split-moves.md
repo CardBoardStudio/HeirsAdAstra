@@ -1,6 +1,6 @@
 # Split Moves (33.38 playtest)
 
-**Request.** On 2026-11-14 the captain asked: when two units share a hex, can you separate them and move just one? This would land as a new PR after the 31.36 merges (#42, #45, #46). Under the 31.36 rules a Move order selected a whole group: every combat ship on the hex, or its Explorer team. "You cannot split individual ships from the selected group." The captain wanted everything to move together by default, with the option to deselect ships.
+**Request.** On 2026-11-14 the captain asked: when two units share a hex, can you separate them and move just one? This would land as a new PR after the 31.36 merges (#42, #45, #46), and builds on #47 (shared revision pinning) and #48 (32.37 Cheaper Cards). Under the earlier rules a Move order selected a whole group: every combat ship on the hex, or its Explorer team. "You cannot split individual ships from the selected group." The captain wanted everything to move together by default, with the option to deselect ships.
 
 **Rule** ([#movement](../../prototypes/galactic-reach/rulebook.html#movement), [#split-moves](../../prototypes/galactic-reach/rulebook.html#split-moves), [#orders](../../prototypes/galactic-reach/rulebook.html#orders), [#computer-rivals](../../prototypes/galactic-reach/rulebook.html#computer-rivals)):
 
