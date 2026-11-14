@@ -142,7 +142,7 @@ async fn protect(State(app): State<App>, request: axum::extract::Request, next: 
             return ApiError(StatusCode::FORBIDDEN, "Origin not allowed.".into()).into_response();
         }
     }
-    // The tabletop proves its Testnet seat draws in the browser; bb.js
+    // The 27.32 tabletop proves its Testnet seat draws in the browser; bb.js
     // needs cross-origin isolation (SharedArrayBuffer) to use threads.
     let isolate = request.uri().path().starts_with("/galactic-reach/");
     let check = if request.uri().path().starts_with("/api/")

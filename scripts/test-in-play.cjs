@@ -68,16 +68,7 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
 const replayRoutes=vm.runInNewContext('('+read('prototypes/lab/replay.js').match(/const REPLAY_PATHS=(.*);/)[1]+')');
 assert.equal(replayRoutes['galactic-reach/26.31'],'/galactic-reach/rules/26.31/','Pinned replay opens its archived browser');
 assert.equal(replayRoutes['galactic-reach/27.32'],'/galactic-reach/rules/27.32/','27.32 replay opens its archived In play browser');
-// 29.34 archives the exact published 28.33 engine; there, cards in play still cannot upgrade or be trashed.
-for(const [file,hash] of Object.entries(JSON.parse(read('scripts/in-play-buy-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,`${file} must stay the published 28.33 asset`);
-{
- const g=game('crates/galactic-reach/rules/v28-'),{p,s}=g;assert.equal(g.adapter().rulesVersion,'galactic-reach/28.33');
- p.hand=[{key:'move',id:'old-used',starter:true},{key:'construct',id:'old-kept',starter:true}];action(g,'resource','old-used');action(g,'pass');assert.equal(s.phase,'buy');
- const legal=g.adapter().legalActions(0);
- assert(!legal.some(a=>['upgrade','decommission'].includes(a.type)&&a.card==='old-used'),'28.33 tables keep the published Buy rule');
- assert(legal.some(a=>a.type==='upgrade'&&a.card==='old-kept'),'28.33 still upgrades from hand');
-}
 for(const [file,hash] of Object.entries(JSON.parse(read('scripts/in-play-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,file);
 console.log('Cards in play: conversions/orders, pre-effect draw commitment, explicit discards, recovery/trashing isolation, public/private observations, reactions, Buy timing, shared cleanup, rival conversions and frozen26.31/policy22 passed.');
 
-assert.equal(replayRoutes['galactic-reach/28.33'],'/galactic-reach/rules/28.33/','28.33 replay opens its archived browser');assert.equal(replayRoutes['galactic-reach/29.34'],'/galactic-reach/');
+assert.equal(replayRoutes['galactic-reach/28.33'],'/galactic-reach/');

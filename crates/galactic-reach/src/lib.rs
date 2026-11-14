@@ -8,9 +8,9 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::time::{Duration, Instant};
 
-pub const RULES: &str = "galactic-reach/29.34";
+pub const RULES: &str = "galactic-reach/28.33";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "In-play Buy playtest";
+pub const EXPERIMENT: &str = "Resource Capacities playtest";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -95,7 +95,6 @@ impl GalacticReach {
             "galactic-reach/25.30" => "galactic-reach/25.30",
             "galactic-reach/26.31" => "galactic-reach/26.31",
             "galactic-reach/27.32" => "galactic-reach/27.32",
-            "galactic-reach/28.33" => "galactic-reach/28.33",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -128,7 +127,6 @@ impl GalacticReach {
                     "galactic-reach/25.30" => include_str!("../rules/v25-adapter.js"),
                     "galactic-reach/26.31" => include_str!("../rules/v26-adapter.js"),
                     "galactic-reach/27.32" => include_str!("../rules/v27-adapter.js"),
-                    "galactic-reach/28.33" => include_str!("../rules/v28-adapter.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -157,7 +155,6 @@ impl GalacticReach {
                     "galactic-reach/25.30" => include_str!("../rules/v25-app.js"),
                     "galactic-reach/26.31" => include_str!("../rules/v26-app.js"),
                     "galactic-reach/27.32" => include_str!("../rules/v27-app.js"),
-                    "galactic-reach/28.33" => include_str!("../rules/v28-app.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -943,7 +940,7 @@ impl BuiltinAgent {
 
             "buy_effect" => 100.0,
             // Policy 24 keeps its 28.33 choices: it ignores the in-play Buy
-            // upgrades and trashes added in 29.34 (#buy).
+            // upgrades and trashes added by the 28.33 #buy amendment.
             "upgrade" | "decommission" if bot_in_play(me, &action["card"]) => -1000.0,
             "upgrade" => {
                 let cost = bot_cost(view, seat);
@@ -1333,7 +1330,6 @@ mod tests {
             "galactic-reach/25.30",
             "galactic-reach/26.31",
             "galactic-reach/27.32",
-            "galactic-reach/28.33",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1365,7 +1361,6 @@ mod tests {
                             | "galactic-reach/25.30"
                             | "galactic-reach/26.31"
                             | "galactic-reach/27.32"
-                            | "galactic-reach/28.33"
                     ) {
                         0
                     } else {

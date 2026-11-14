@@ -26,7 +26,7 @@ node scripts/balance-simulations.cjs 1         # AI-vs-AI balance harness; raise
 
 ## Rules and scope
 
-The [canonical rulebook](rulebook.html) describes the current **29.34 In-play Buy playtest** game: four factions race to 20 Prestige through exploration, construction, deck building, trade, excavation, and combat. Open `/galactic-reach/rulebook.html` on the deployed site, or `/rulebook.html` on the standalone local server above. It requires no account and is packaged with every PR preview.
+The [canonical rulebook](rulebook.html) describes the current **Cards in Play27.32 experiment** game: four factions race to 20 Prestige through exploration, construction, deck building, trade, excavation, and combat. Open `/galactic-reach/rulebook.html` on the deployed site, or `/rulebook.html` on the standalone local server above. It requires no account and is packaged with every PR preview.
 
 Read the [rules maintenance guide](../../docs/rules/README.md) before changing the game. Logic changes must include a rulebook update in the same PR. The [implementation notes](../../docs/rules/implementation-notes.md) record known printed-text discrepancies; the [tutorial brief](../../docs/rules/tutorial.md) describes the later interactive learning experience.
 
@@ -59,5 +59,3 @@ The25.30 Storage Planning experiment improves feasible reserves, public-producti
 The26.31 Single-use Orders experiment permanently trashes a successfully used Probe. Conversion still discards it, and failed or canceled attempts keep it. Save26/rules31/native22 preserve full25.30 and native21; policy weights remain unchanged. The25.30 balance study predates this change. See [single-use Probe](../../docs/rules/single-use-orders.md).
 
 The 27.32 Cards in Play experiment keeps used orders, conversions, Buy effects and reactions outside discard until shared round cleanup. Explicit discards/returns, newly gained-card discard and single-use trash effects remain exceptions. Save27/rules32/native23 preserve26.31 and policy22. See [card timing](rulebook.html#round) and [validation](../../docs/rules/in-play.md).
-
-The 29.34 In-play Buy playtest lets you upgrade a starter that is in play, and trash a card that was in play when your Buy turn began, as well as hand and discard. Save29/rules34 preserve the exact 28.33 browser and engine at `/galactic-reach/rules/28.33/` with native policy 24 unchanged. See [Buy](rulebook.html#buy) and [in-play Buy](../../docs/rules/in-play-buy.md).

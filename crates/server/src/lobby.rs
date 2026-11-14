@@ -2,7 +2,7 @@
 //! fill as signed-in friends join, and the host chooses the number of AI rivals
 //! and their difficulty before Start.
 //!
-//! The current browser engine seats exactly one human against three standard
+//! The 28.33 browser engine seats exactly one human against three standard
 //! rivals. Start therefore opens the table only for that configuration; other
 //! choices are kept with the table and Start explains what is still missing.
 use crate::*;
@@ -108,7 +108,7 @@ impl Lobby {
             )
         } else if self.ai_rivals != 3 {
             Some(
-                "The current rules always seat three rivals. Fewer rivals needs a rules change, which is not made yet.",
+                "The 28.33 rules always seat three rivals. Fewer rivals needs a rules change, which is not made yet.",
             )
         } else if self.difficulty != "standard" {
             Some("Easy rivals (Wanderer) play in the AI arena but not yet in the browser game.")

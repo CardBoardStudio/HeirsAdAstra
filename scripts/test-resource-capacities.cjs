@@ -11,7 +11,7 @@ function game(old=false) {
 }
 function act(g,type,filter=()=>true,seat=g.adapter().activeSeat()) {const adapter=g.adapter(),action=adapter.legalActions(seat).find(a=>a.type===type&&filter(a));assert(action,`Missing legal ${type}`);adapter.applyAction(seat,action);return action;}
 {
- const g=game();assert.equal(g.s.version,29);assert.equal(g.s.rulesRevision,34);assert.equal(g.adapter().rulesVersion,'galactic-reach/29.34');
+ const g=game();assert.equal(g.s.version,28);assert.equal(g.s.rulesRevision,33);assert.equal(g.adapter().rulesVersion,'galactic-reach/28.33');
  for(const p of g.s.players)assert.deepEqual(plain(p.resourceLimits),{matter:4,energy:4,biomass:4,data:4});
  assert.deepEqual(plain(g.p.resources),{matter:1,energy:0,biomass:2,data:0});assert.equal(g.e.calculatePrestige(0),3);
  assert.deepEqual(plain(g.adapter().observe(1).players[0].resourceLimits),{matter:4,energy:4,biomass:4,data:4});
