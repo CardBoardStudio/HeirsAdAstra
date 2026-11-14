@@ -227,7 +227,7 @@ fn build(
         let seat = &table.seats[i];
         (seat.name.clone(), seat.human())
     });
-    let engine = GalacticReach::shared(&seats, move |n, purpose| {
+    let engine = GalacticReach::shared(&seats, table.victory_target, move |n, purpose| {
         let mut feed = source.borrow_mut();
         feed.next(n, purpose).unwrap_or_else(|e| {
             feed.error = Some(e);

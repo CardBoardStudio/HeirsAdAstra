@@ -10,9 +10,9 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-pub const RULES: &str = "galactic-reach/30.35";
+pub const RULES: &str = "galactic-reach/31.36";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "In-play Buy playtest";
+pub const EXPERIMENT: &str = "Capacity Cards experiment";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -103,6 +103,7 @@ impl GalacticReach {
             "galactic-reach/27.32" => "galactic-reach/27.32",
             "galactic-reach/28.33" => "galactic-reach/28.33",
             "galactic-reach/29.34" => "galactic-reach/29.34",
+            "galactic-reach/30.35" => "galactic-reach/30.35",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -130,6 +131,7 @@ impl GalacticReach {
     /// batch of work: a shared table lives far longer than one match budget.
     pub fn shared(
         seats: &[(String, bool); 4],
+        victory_target: u32,
         shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
     ) -> Result<Self, String> {
         let shuffle = RefCell::new(shuffle);
@@ -153,9 +155,10 @@ impl GalacticReach {
                 )
             },
             &format!(
-                "globalThis.game = createGalacticReach({{headless: true, shuffle: authorityShuffle, names: {}, controllers: {}}});",
+                "globalThis.game = createGalacticReach({{headless: true, shuffle: authorityShuffle, names: {}, controllers: {}, victoryTarget: {}}});",
                 json!(names),
-                json!(controllers)
+                json!(controllers),
+                victory_target
             ),
         )
     }
@@ -219,6 +222,7 @@ impl GalacticReach {
                     "galactic-reach/27.32" => include_str!("../rules/v27-adapter.js"),
                     "galactic-reach/28.33" => include_str!("../rules/v28-adapter.js"),
                     "galactic-reach/29.34" => include_str!("../rules/v29-adapter.js"),
+                    "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -249,6 +253,7 @@ impl GalacticReach {
                     "galactic-reach/27.32" => include_str!("../rules/v27-app.js"),
                     "galactic-reach/28.33" => include_str!("../rules/v28-app.js"),
                     "galactic-reach/29.34" => include_str!("../rules/v29-app.js"),
+                    "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -406,6 +411,120 @@ fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
         .map(|g| number(&g[seat.to_string()][kind]))
         .sum()
 }
+/// 31.36 Capacity Cards market (rules #cards): key, price in Matter, Energy, Biomass,
+/// Data, printed Prestige (reusable Prestige weighted x3) and whether it joins the
+/// military deck. Policy 26 meets these keys only in 31.36 games, so its play under
+/// earlier rules is unchanged.
+const CAPACITY_CARDS: [(&str, [f64; 4], f64, bool); 36] = [
+    ("ionThrusters", [0.0, 5.0, 0.0, 1.0], 0.0, false),
+    ("slipstreamCharts", [0.0, 1.0, 0.0, 5.0], 0.0, false),
+    ("strikeVector", [2.0, 6.0, 0.0, 0.0], 0.0, false),
+    ("foldSpaceGate", [0.0, 10.0, 0.0, 4.0], 0.0, false),
+    ("prefabYards", [5.0, 1.0, 0.0, 0.0], 0.0, false),
+    ("orbitalFoundry", [7.0, 2.0, 0.0, 1.0], 0.0, false),
+    ("worldEngine", [10.0, 3.0, 3.0, 0.0], 0.0, false),
+    ("seedArk", [1.0, 0.0, 5.0, 0.0], 0.0, false),
+    ("colonyPods", [0.0, 2.0, 7.0, 0.0], 0.0, false),
+    ("genesisCharter", [4.0, 0.0, 11.0, 2.0], 2.0, false),
+    ("miningCharter", [5.0, 0.0, 0.0, 1.0], 0.0, false),
+    ("bioReactor", [0.0, 2.0, 5.0, 0.0], 0.0, false),
+    ("dataHaven", [0.0, 1.0, 0.0, 6.0], 0.0, false),
+    ("harvestCycle", [3.0, 0.0, 6.0, 0.0], 0.0, false),
+    ("quartermaster", [2.0, 5.0, 1.0, 0.0], 0.0, false),
+    ("strategyCore", [0.0, 2.0, 0.0, 6.0], 0.0, false),
+    ("archivePurge", [0.0, 0.0, 2.0, 5.0], 0.0, false),
+    ("commandNexus", [0.0, 4.0, 0.0, 9.0], 0.0, false),
+    ("cargoExpansion", [6.0, 0.0, 0.0, 2.0], 0.0, false),
+    ("hyperspaceVaults", [4.0, 2.0, 0.0, 9.0], 0.0, false),
+    ("procurementHub", [0.0, 0.0, 2.0, 6.0], 0.0, false),
+    ("tradeSyndicate", [0.0, 5.0, 0.0, 2.0], 0.0, false),
+    ("monumentOfAccord", [8.0, 0.0, 4.0, 3.0], 3.0, false),
+    ("senateSeat", [0.0, 5.0, 2.0, 9.0], 4.0, false),
+    ("dysonLattice", [6.0, 12.0, 0.0, 4.0], 6.0, false),
+    ("ascendancyCodex", [0.0, 3.0, 6.0, 12.0], 6.0, false),
+    ("railBattery", [5.0, 1.0, 0.0, 0.0], 0.0, true),
+    ("deflectorGrid", [1.0, 5.0, 0.0, 0.0], 0.0, true),
+    ("flakScreen", [6.0, 0.0, 2.0, 0.0], 0.0, true),
+    ("boardingMarines", [2.0, 0.0, 6.0, 0.0], 0.0, true),
+    ("torpedoSpread", [0.0, 7.0, 0.0, 2.0], 0.0, true),
+    ("hardlightBulwark", [7.0, 2.0, 0.0, 0.0], 0.0, true),
+    ("phaseLance", [0.0, 8.0, 0.0, 3.0], 0.0, true),
+    ("novaBarrage", [5.0, 10.0, 0.0, 0.0], 0.0, true),
+    ("aegisLattice", [10.0, 4.0, 0.0, 0.0], 0.0, true),
+    ("victoryDoctrine", [2.0, 4.0, 0.0, 9.0], 2.0, true),
+];
+/// Printed attack, shield and pierce of the 31.36 military cards (rules #military-deck).
+const CAPACITY_TACTICS: [(&str, f64, f64, bool); 10] = [
+    ("railBattery", 2.0, 0.0, false),
+    ("deflectorGrid", 0.0, 3.0, false),
+    ("flakScreen", 1.0, 2.0, false),
+    ("boardingMarines", 1.0, 0.0, false),
+    ("torpedoSpread", 3.0, 0.0, false),
+    ("hardlightBulwark", 0.0, 5.0, false),
+    ("phaseLance", 2.0, 0.0, true),
+    ("novaBarrage", 5.0, 0.0, false),
+    ("aegisLattice", 0.0, 8.0, false),
+    ("victoryDoctrine", 2.0, 0.0, false),
+];
+const RESOURCE_KEYS: [&str; 4] = ["matter", "energy", "biomass", "data"];
+fn capacity_card(key: &str) -> Option<([f64; 4], f64, bool)> {
+    CAPACITY_CARDS
+        .iter()
+        .find(|c| c.0 == key)
+        .map(|c| (c.1, c.2, c.3))
+}
+/// Hits, shields and pierce of a combat tactic: the two basic tactics or a military card.
+fn tactic_stats(key: &str) -> (f64, f64, bool) {
+    match key {
+        "concentratedFire" => (1.0, 0.0, false),
+        "defensiveScreen" => (0.0, 2.0, false),
+        _ => CAPACITY_TACTICS
+            .iter()
+            .find(|t| t.0 == key)
+            .map_or((1.0, 0.0, false), |t| (t.1, t.2, t.3)),
+    }
+}
+/// The table's Prestige target (31.36 #victory-target); earlier rules race to 20.
+fn victory_target(view: &Value) -> f64 {
+    view["victoryTarget"].as_f64().unwrap_or(20.0)
+}
+/// How much a 31.36 rival values a market card: its price (the set is priced by
+/// power), its printed Prestige, minus copies it already owns.
+fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
+    let (cost, prestige, military) = capacity_card(key)?;
+    let me = &view["players"][seat];
+    if military && bot_units(view, seat, "fleet") == 0.0 {
+        return None;
+    }
+    let owned = ["hand", "discard", "inPlay", "military"]
+        .iter()
+        .flat_map(|pile| me[*pile].as_array().into_iter().flatten())
+        .filter(|c| c["key"] == key)
+        .count() as f64
+        + me["deckContents"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|g| g["key"] == key)
+            .map(|g| number(&g["count"]))
+            .sum::<f64>();
+    Some(10.0 + cost.iter().sum::<f64>() + prestige * 5.0 - owned * 8.0)
+}
+/// The resource limits a rival still needs for its best-valued market card.
+fn capacity_need(view: &Value, seat: usize) -> Option<[f64; 4]> {
+    let target = view["market"]
+        .as_array()?
+        .iter()
+        .filter_map(|c| {
+            let key = c["key"].as_str()?;
+            Some((capacity_value(view, seat, key)?, capacity_card(key)?.0))
+        })
+        .max_by(|a, b| a.0.total_cmp(&b.0))?
+        .1;
+    let need: [f64; 4] =
+        std::array::from_fn(|i| (target[i] - bot_limit(view, seat, RESOURCE_KEYS[i])).max(0.0));
+    need.iter().any(|n| *n > 0.0).then_some(need)
+}
 fn bot_order(key: &str) -> &str {
     match key {
         "move"
@@ -414,9 +533,19 @@ fn bot_order(key: &str) -> &str {
         | "fleetOverdrive"
         | "coordinatedAssault"
         | "phaseShearDrive"
-        | "obeliskOfAnnihilation" => "move",
-        "construct" | "modularConstruction" | "orbitalShipyards" => "construct",
-        "colonize" | "dropColonyModules" | "genesisSeedVault" => "colonize",
+        | "obeliskOfAnnihilation"
+        | "ionThrusters"
+        | "slipstreamCharts"
+        | "strikeVector"
+        | "foldSpaceGate" => "move",
+        "construct"
+        | "modularConstruction"
+        | "orbitalShipyards"
+        | "prefabYards"
+        | "orbitalFoundry"
+        | "worldEngine" => "construct",
+        "colonize" | "dropColonyModules" | "genesisSeedVault" | "seedArk" | "colonyPods"
+        | "genesisCharter" => "colonize",
         "excavate" => "excavate",
         "probe" => "probe",
         _ => "other",
@@ -559,7 +688,8 @@ fn bot_storage_budget(view: &Value, seat: usize) -> Option<(Value, Value)> {
         .iter()
         .map(|p| number(&p["prestige"]))
         .fold(0.0_f64, f64::max);
-    if leader >= 20.0 {
+    let target = victory_target(view);
+    if leader >= target {
         return None;
     }
     let cost = me["storageUpgradeCost"].as_object()?;
@@ -574,7 +704,7 @@ fn bot_storage_budget(view: &Value, seat: usize) -> Option<(Value, Value)> {
             (number(&me["resources"][*r]) + number(&income[*r]) - bot_limit(view, seat, r)).max(0.0)
         })
         .sum();
-    let horizon = ((20.0 - leader) / 4.0).ceil().clamp(1.0, 4.0);
+    let horizon = ((target - leader) / 4.0).ceil().clamp(1.0, 4.0);
     if pressure.min(4.0) * horizon <= cost.values().map(number).sum::<f64>() {
         return None;
     }
@@ -732,12 +862,17 @@ impl BuiltinAgent {
                         .filter(|key| **key == "concentratedFire")
                         .count() as f64;
                 let probability = fire / (4.0 - used.len() as f64);
-                let screen = action["tactic"] == "defensiveScreen";
-                let dealt = (own_attack + if screen { 0.0 } else { 1.0 }
-                    - (1.0 - probability) * 2.0)
-                    .max(0.0);
-                let received =
-                    (enemy_attack + probability - if screen { 2.0 } else { 0.0 }).max(0.0);
+                // Printed stats: basic tactics, or a 31.36 military card (Phase Lance pierces).
+                let (hits, shield, pierce) = tactic_stats(action["tactic"].as_str().unwrap_or(""));
+                let screen = shield > 0.0;
+                let dealt = (own_attack + hits
+                    - if pierce {
+                        0.0
+                    } else {
+                        (1.0 - probability) * 2.0
+                    })
+                .max(0.0);
+                let received = (enemy_attack + probability - shield).max(0.0);
                 50.0 + dealt - received * 0.75 + if dealt >= enemy_hull { 8.0 } else { 0.0 }
                     - if received >= own_hull { 10.0 } else { 0.0 }
                     + if screen && side == "defender" && combat["volley"] == 3 {
@@ -999,6 +1134,21 @@ impl BuiltinAgent {
             }
             "probe" => 150.0,
             "excavate" => 160.0,
+            // 31.36: permanent Prestige, capacity and big draws come first.
+            "special"
+                if matches!(
+                    action["key"].as_str(),
+                    Some(
+                        "ascendancyCodex"
+                            | "cargoExpansion"
+                            | "hyperspaceVaults"
+                            | "commandNexus"
+                            | "strategyCore"
+                    )
+                ) =>
+            {
+                95.0
+            }
             "special" => {
                 50.0 + if action["key"] == "cradleOfLostSuns" {
                     bot_allocation_value(view, seat, action, false) * 0.1
@@ -1021,6 +1171,14 @@ impl BuiltinAgent {
                     }
                 } else {
                     -5.0
+                }
+            }
+            "buy" if capacity_card(action["key"].as_str().unwrap_or("")).is_some() => {
+                let key = action["key"].as_str().unwrap_or("");
+                if bot_yards(view, seat) == 0 {
+                    -10.0
+                } else {
+                    capacity_value(view, seat, key).map_or(-10.0, |v| 60.0 + v)
                 }
             }
             "buy" => {
@@ -1048,6 +1206,16 @@ impl BuiltinAgent {
                 }
             }
             "finish_construct" => -20.0,
+            // 31.36: during Buy, raise the limits the best market card needs.
+            "increase_storage" if view["phase"] == "buy" && capacity_need(view, seat).is_some() => {
+                let need = capacity_need(view, seat).unwrap();
+                130.0
+                    + RESOURCE_KEYS
+                        .iter()
+                        .enumerate()
+                        .map(|(i, r)| number(&action["allocation"][*r]).min(need[i]) * 10.0)
+                        .sum::<f64>()
+            }
             "increase_storage" => {
                 let worthwhile =
                     bot_storage_budget(view, seat).is_some_and(|(cost, protection)| {
@@ -1407,6 +1575,7 @@ mod tests {
             "galactic-reach/27.32",
             "galactic-reach/28.33",
             "galactic-reach/29.34",
+            "galactic-reach/30.35",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1440,6 +1609,7 @@ mod tests {
                             | "galactic-reach/27.32"
                             | "galactic-reach/28.33"
                             | "galactic-reach/29.34"
+                            | "galactic-reach/30.35"
                     ) {
                         0
                     } else {
@@ -1550,6 +1720,51 @@ mod tests {
         assert_eq!(result.scores.len(), 4);
         assert_eq!(result.scores.iter().copied().fold(0.0, f64::max), 3.0);
         assert!(result.scores.iter().all(|s| (0.0..=3.0).contains(s)));
+    }
+    // 31.36 (#rival-cards): the reference rivals that run shared tables buy the new
+    // cards, raise their limits toward them, play them and use military tactics.
+    #[test]
+    fn reference_policies_buy_and_play_capacity_cards() {
+        let mut game = GalacticReach::new([8; 32]).unwrap();
+        let mut agents: Vec<BuiltinAgent> = [
+            Strategy::Military,
+            Strategy::Economy,
+            Strategy::Expansion,
+            Strategy::Military,
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(i, s)| BuiltinAgent::new(s, [i as u8; 32]))
+        .collect();
+        let (mut bought, mut storage, mut played, mut tactics) = (0, 0, 0, 0);
+        for _ in 0..12000 {
+            let Some(seat) = game.active_seat() else {
+                break;
+            };
+            let view = game.observe(seat).unwrap();
+            let legal = game.legal_actions(seat);
+            let action = legal[agents[seat].select_action(&view, &legal)].clone();
+            let key = action["key"].as_str().unwrap_or("");
+            match action["type"].as_str().unwrap_or("") {
+                "buy" if capacity_card(key).is_some() => bought += 1,
+                "increase_storage" => storage += 1,
+                "special" | "move" | "build" | "colonize" if capacity_card(key).is_some() => {
+                    played += 1
+                }
+                "combat_tactic" if CAPACITY_TACTICS.iter().any(|t| action["tactic"] == t.0) => {
+                    tactics += 1
+                }
+                _ => {}
+            }
+            game.apply_action(seat, action).unwrap();
+        }
+        eprintln!(
+            "capacity cards: bought {bought}, capacity {storage}, played {played}, military tactics {tactics}"
+        );
+        assert!(game.scores().is_some(), "the 40-point match finishes");
+        assert!(bought >= 4, "rivals buy new market cards ({bought})");
+        assert!(storage >= 4, "rivals raise their limits ({storage})");
+        assert!(played >= 2, "rivals play new cards ({played})");
     }
     #[test]
     fn execution_deadline_interrupts_javascript() {

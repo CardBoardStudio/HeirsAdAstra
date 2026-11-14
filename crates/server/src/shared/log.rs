@@ -32,6 +32,8 @@ pub struct Table {
     /// `active` or `finished`.
     pub status: String,
     pub seats: Vec<Seat>,
+    /// Prestige target chosen in the waiting room (rules 31.36 #victory-target).
+    pub victory_target: u32,
 }
 
 /// What happened, in log order:
@@ -87,7 +89,18 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
         seq INTEGER NOT NULL, kind TEXT NOT NULL, seat INTEGER, public TEXT NOT NULL, private TEXT,
         previous_hash TEXT NOT NULL, hash TEXT NOT NULL, created INTEGER NOT NULL,
         PRIMARY KEY(table_id,seq));",
-    )
+    )?;
+    // Additive: shared tables dealt before the Prestige-target setting keep 40.
+    let has_target = db
+        .prepare("PRAGMA table_info(gr_shared_tables)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .any(|c| c.as_deref() == Ok("victory_target"));
+    if !has_target {
+        db.execute_batch(
+            "ALTER TABLE gr_shared_tables ADD COLUMN victory_target INTEGER NOT NULL DEFAULT 40;",
+        )?;
+    }
+    Ok(())
 }
 
 pub struct SqliteTableLog(pub Arc<Store>);
@@ -115,7 +128,7 @@ fn seats(db: &Connection, id: &str) -> Result<Vec<Seat>, String> {
 fn load(db: &Connection, id: &str) -> Result<Option<Table>, String> {
     let row = db
         .query_row(
-            "SELECT name,rules,authority,status FROM gr_shared_tables WHERE id=?",
+            "SELECT name,rules,authority,status,victory_target FROM gr_shared_tables WHERE id=?",
             [id],
             |r| {
                 Ok((
@@ -123,12 +136,13 @@ fn load(db: &Connection, id: &str) -> Result<Option<Table>, String> {
                     r.get::<_, String>(1)?,
                     r.get::<_, String>(2)?,
                     r.get::<_, String>(3)?,
+                    r.get::<_, u32>(4)?,
                 ))
             },
         )
         .optional()
         .map_err(sql)?;
-    let Some((name, rules, authority, status)) = row else {
+    let Some((name, rules, authority, status, victory_target)) = row else {
         return Ok(None);
     };
     Ok(Some(Table {
@@ -138,6 +152,7 @@ fn load(db: &Connection, id: &str) -> Result<Option<Table>, String> {
         authority,
         status,
         seats: seats(db, id)?,
+        victory_target,
     }))
 }
 /// Domain-separated chain: each event commits to its predecessor. Checked
@@ -161,8 +176,8 @@ impl TableLog for SqliteTableLog {
         let tx = db.transaction().map_err(sql)?;
         let now = crate::now();
         tx.execute(
-            "INSERT INTO gr_shared_tables(id,name,rules,authority,status,created,updated) VALUES(?,?,?,?,?,?,?)",
-            params![table.id, table.name, table.rules, table.authority, table.status, now, now],
+            "INSERT INTO gr_shared_tables(id,name,rules,authority,status,created,updated,victory_target) VALUES(?,?,?,?,?,?,?,?)",
+            params![table.id, table.name, table.rules, table.authority, table.status, now, now, table.victory_target],
         )
         .map_err(sql)?;
         for seat in &table.seats {

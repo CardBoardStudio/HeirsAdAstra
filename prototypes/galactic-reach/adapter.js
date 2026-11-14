@@ -14,9 +14,9 @@ function createGalacticAdapter(e) {
     if (!Number.isInteger(seat) || seat < 0 || seat >= 4) return null;
     const state = s();
     return e.clone({
-      combat: e.combatView(seat), seat, round: state.round, phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
+      combat: e.combatView(seat), seat, round: state.round, victoryTarget: e.victoryTarget(), phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
-        id, resources: p.resources, relicsExcavated: e.excavatedRelicCount(id), combatVictories: p.combatVictories || 0, storageUpgrades: p.storageUpgrades, storagePurchases: p.storagePurchases || 0, storageUpgradeCost: e.storageUpgradeCost(id),
+        id, resources: p.resources, relicsExcavated: e.excavatedRelicCount(id), combatVictories: p.combatVictories || 0, cardPrestige: p.cardPrestige || 0, military: p.military, storageUpgrades: p.storageUpgrades, storagePurchases: p.storagePurchases || 0, storageUpgradeCost: e.storageUpgradeCost(id),
         prestige: e.calculatePrestige(id), capacity: e.playerCapacity(id), resourceLimits: e.resourceLimits(id),
         hand: id === seat ? p.hand : undefined, discard: p.discard, inPlay: p.inPlay,
         handCount: p.hand.length, deckCount: p.deck.length, deckContents: id === seat ? e.deckContents(p) : undefined,
@@ -60,12 +60,10 @@ function createGalacticAdapter(e) {
     } else if (state.phase === 'buy') {
       actions.push({ type: 'finish_buy' });
       if (p.bought < p.buyLimit) {
+        // 31.36: only the ten-card market is for sale (rules #buy).
         state.market.forEach((card, index) => {
-          if (e.canAfford(p, e.ALL_CARDS[card.key].cost, p.buyDiscountData > 0 ? 1 : 0))
+          if (e.canAfford(p, e.purchaseCost(p, card.key)))
             actions.push({ type: 'buy', source: 'market', index, key: card.key });
-        });
-        e.BASIC_MARKET.map(key=>[key,e.BASIC_CARDS[key]]).forEach(([key, def]) => {
-          if (e.canAfford(p, def.cost, p.buyDiscountData > 0 ? 1 : 0)) actions.push({ type: 'buy', source: 'basic', key });
         });
       }
       [...p.hand, ...p.discard, ...p.inPlay].forEach(card => {
@@ -74,7 +72,7 @@ function createGalacticAdapter(e) {
       });
       p.hand.forEach(card => {
         const effect = e.ALL_CARDS[card.key].buyEffect;
-        if (effect && (effect !== 'manipulation' || !p.marketManipulated)) actions.push({ type: 'buy_effect', card: card.id });
+        if (effect) actions.push({ type: 'buy_effect', card: card.id });
       });
       // Cards in discard or in play when this Buy began may be trashed.
       [...p.discard.filter(card => p.buyStartDiscardIds.includes(card.id)), ...p.inPlay.filter(card => (p.buyStartInPlayIds || []).includes(card.id))].forEach(card => {
@@ -112,8 +110,10 @@ function createGalacticAdapter(e) {
           if (e.colonizePlanet(seat, coord, { tag: def.tag }, true)) actions.push({ type: 'colonize', ...base, coord });
         });
         if (def.order === 'construct') Object.keys(state.planets).forEach(coord => {
+          // 31.36 Construct cards print their own discount (Prefab Yards, World Engine); see #cards.
+          const discountResource = e.buildDiscountOptions(card)[0];
           for (const kind of [...Object.keys(e.STRUCTURES),...Object.keys(e.SHIP_STATS)])
-            if (e.constructAt(seat,coord,kind,null,true)) actions.push({type:'build',...base,coord,kind,discountResource:null});
+            if (e.constructAt(seat,coord,kind,discountResource,true)) actions.push({type:'build',...base,coord,kind,discountResource});
         });
         if (def.order === 'move') Object.entries(state.fleets).forEach(([source, group]) => {
           if (!group[seat]) return;
@@ -121,7 +121,7 @@ function createGalacticAdapter(e) {
             const moving = e.fleetGroup(group[seat], moveGroup);
             if (!e.fleetCount(moving)) continue;
             const range = e.movementRange(moving,card);
-            e.reachableFrom(source, seat, range, def.tag === 'pathfinder', moving).forEach(destination => {
+            e.reachableFrom(source, seat, range, e.avoidsHostile(def.tag), moving).forEach(destination => {
               actions.push({ type: 'move', ...base, source, destination, moveGroup });
             });
           }
@@ -260,6 +260,6 @@ function createGalacticAdapter(e) {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/30.35', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark };
+  return { rulesVersion: 'galactic-reach/31.36', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;
