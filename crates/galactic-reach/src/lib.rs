@@ -6,6 +6,8 @@ use rand::{Rng, SeedableRng, rngs::StdRng};
 use rquickjs::{Context, Runtime};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 pub const RULES: &str = "galactic-reach/30.35";
@@ -40,6 +42,8 @@ pub use replay::Trace;
 const ENGINE: &str = include_str!("../../../prototypes/galactic-reach/app.js");
 const ADAPTER: &str = include_str!("../../../prototypes/galactic-reach/adapter.js");
 const MATCH_TIMEOUT: Duration = Duration::from_secs(300);
+/// A shared table's per-request budget, renewed with `extend_deadline`.
+pub const SHARED_STEP: Duration = Duration::from_secs(20);
 pub const SIMULATION_TIMEOUT: &str = "Galactic Reach simulation exceeded its time limit.";
 fn execution_error(deadline: Instant, error: impl ToString) -> String {
     if Instant::now() >= deadline {
@@ -57,7 +61,7 @@ struct Snapshot {
 }
 pub struct GalacticReach {
     context: Context,
-    deadline: Instant,
+    deadline: Rc<Cell<Instant>>,
     snapshot: Snapshot,
     rules: &'static str,
     trace: Option<Trace>,
@@ -103,20 +107,97 @@ impl GalacticReach {
         Self::initialize(seed, MATCH_TIMEOUT, rules)
     }
     fn initialize(seed: [u8; 32], timeout: Duration, rules: &'static str) -> Result<Self, String> {
-        let runtime = Runtime::new().map_err(|e| e.to_string())?;
-        runtime.set_memory_limit(64 * 1024 * 1024);
-        runtime.set_max_stack_size(1024 * 1024);
-        let deadline = Instant::now() + timeout;
-        runtime.set_interrupt_handler(Some(Box::new(move || Instant::now() >= deadline)));
-        let context = Context::full(&runtime).map_err(|e| e.to_string())?;
-        context
-            .with(|ctx| {
-                // Seeded RNG is owned by the game, never by a policy observation.
-                let rng = std::cell::RefCell::new(StdRng::from_seed(seed));
+        // Seeded RNG is owned by the game, never by a policy observation.
+        let rng = RefCell::new(StdRng::from_seed(seed));
+        Self::boot(
+            timeout,
+            rules,
+            move |ctx| {
                 ctx.globals().set(
                     "gameRandom",
                     rquickjs::Function::new(ctx.clone(), move || rng.borrow_mut().r#gen::<f64>())?,
-                )?;
+                )
+            },
+            "globalThis.game = createGalacticReach({headless: true, random: gameRandom});",
+        )
+    }
+    /// A shared multi-human table on the current rules. The engine draws no
+    /// randomness of its own: every shuffle is a permutation of `0..n` returned by
+    /// `shuffle(n, purpose)`, which the table's hidden-information authority
+    /// supplies (or replays from the table log). `seats` names each faction and
+    /// says whether a person plays it. Call [`Self::extend_deadline`] before each
+    /// batch of work: a shared table lives far longer than one match budget.
+    pub fn shared(
+        seats: &[(String, bool); 4],
+        shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
+    ) -> Result<Self, String> {
+        let shuffle = RefCell::new(shuffle);
+        let names: Vec<&str> = seats.iter().map(|s| s.0.as_str()).collect();
+        let controllers: Vec<&str> = seats
+            .iter()
+            .map(|s| if s.1 { "human" } else { "ai" })
+            .collect();
+        Self::boot(
+            SHARED_STEP,
+            RULES,
+            move |ctx| {
+                ctx.globals().set(
+                    "authorityShuffle",
+                    rquickjs::Function::new(ctx.clone(), move |n: u32, purpose: String| {
+                        (shuffle.borrow_mut())(n as usize, &purpose)
+                            .into_iter()
+                            .map(|i| i as u32)
+                            .collect::<Vec<u32>>()
+                    })?,
+                )
+            },
+            &format!(
+                "globalThis.game = createGalacticReach({{headless: true, shuffle: authorityShuffle, names: {}, controllers: {}}});",
+                json!(names),
+                json!(controllers)
+            ),
+        )
+    }
+    /// Gives the engine `budget` of wall-clock time from now.
+    pub fn extend_deadline(&self, budget: Duration) {
+        self.deadline.set(Instant::now() + budget);
+    }
+    /// The live state shape one seat's browser renders, with every other seat's
+    /// hidden information removed (see `privateState` in adapter.js).
+    pub fn private_state(&self, seat: usize) -> Result<Value, String> {
+        self.eval_json(&format!("JSON.stringify(game.privateState({seat}))"))
+    }
+    /// Legal choices a seat cannot check from its private state alone.
+    pub fn hints(&self, seat: usize) -> Result<Value, String> {
+        self.eval_json(&format!("JSON.stringify(game.hints({seat}))"))
+    }
+    fn eval_json(&self, script: &str) -> Result<Value, String> {
+        let deadline = self.deadline.get();
+        if Instant::now() >= deadline {
+            return Err(SIMULATION_TIMEOUT.into());
+        }
+        let json = self
+            .context
+            .with(|ctx| ctx.eval::<String, _>(script))
+            .map_err(|e| execution_error(deadline, e))?;
+        serde_json::from_str(&json).map_err(|e| e.to_string())
+    }
+    fn boot(
+        timeout: Duration,
+        rules: &'static str,
+        globals: impl FnOnce(&rquickjs::Ctx) -> rquickjs::Result<()>,
+        start: &str,
+    ) -> Result<Self, String> {
+        let runtime = Runtime::new().map_err(|e| e.to_string())?;
+        runtime.set_memory_limit(64 * 1024 * 1024);
+        runtime.set_max_stack_size(1024 * 1024);
+        let deadline = Rc::new(Cell::new(Instant::now() + timeout));
+        let limit = deadline.clone();
+        runtime.set_interrupt_handler(Some(Box::new(move || Instant::now() >= limit.get())));
+        let context = Context::full(&runtime).map_err(|e| e.to_string())?;
+        context
+            .with(|ctx| {
+                globals(&ctx)?;
                 ctx.eval::<(), _>(match rules {
                     RULES => ADAPTER,
                     "galactic-reach/17.22" => include_str!("../rules/v17-adapter.js"),
@@ -176,17 +257,15 @@ impl GalacticReach {
                     "galactic-reach/5.10" => include_str!("../rules/v5-app.js"),
                     _ => include_str!("../rules/v4-app.js"),
                 })?;
-                ctx.eval::<(), _>(
-                    "globalThis.game = createGalacticReach({headless: true, random: gameRandom});",
-                )
+                ctx.eval::<(), _>(start)
             })
             .map_err(|e| {
                 execution_error(
-                    deadline,
+                    deadline.get(),
                     format!("Galactic Reach initialization failed: {e}"),
                 )
             })?;
-        let snapshot = Self::read_snapshot(&context, deadline)?;
+        let snapshot = Self::read_snapshot(&context, deadline.get())?;
         Ok(Self {
             context,
             deadline,
@@ -203,14 +282,7 @@ impl GalacticReach {
         self.trace.take()
     }
     fn replay_view(&self) -> Result<Value, String> {
-        if Instant::now() >= self.deadline {
-            return Err(SIMULATION_TIMEOUT.into());
-        }
-        let json = self
-            .context
-            .with(|ctx| ctx.eval::<String, _>("JSON.stringify(game.replayView())"))
-            .map_err(|e| execution_error(self.deadline, e))?;
-        serde_json::from_str(&json).map_err(|e| e.to_string())
+        self.eval_json("JSON.stringify(game.replayView())")
     }
     fn read_snapshot(context: &Context, deadline: Instant) -> Result<Snapshot, String> {
         if Instant::now() >= deadline {
@@ -254,7 +326,8 @@ impl GameAdapter for GalacticReach {
         }
     }
     fn apply_action(&mut self, seat: usize, action: Value) -> Result<(), String> {
-        if Instant::now() >= self.deadline {
+        let deadline = self.deadline.get();
+        if Instant::now() >= deadline {
             return Err(SIMULATION_TIMEOUT.into());
         }
         if self.snapshot.active != Some(seat) || !self.snapshot.legal.contains(&action) {
@@ -262,10 +335,8 @@ impl GameAdapter for GalacticReach {
         }
         self.context
             .with(|ctx| ctx.eval::<(), _>(format!("game.applyAction({seat}, {});", action)))
-            .map_err(|e| {
-                execution_error(self.deadline, format!("Galactic Reach action failed: {e}"))
-            })?;
-        self.snapshot = Self::read_snapshot(&self.context, self.deadline)?;
+            .map_err(|e| execution_error(deadline, format!("Galactic Reach action failed: {e}")))?;
+        self.snapshot = Self::read_snapshot(&self.context, self.deadline.get())?;
         if self.trace.is_some() {
             let view = self.replay_view()?;
             if let Some(trace) = self.trace.as_mut() {
@@ -1487,7 +1558,7 @@ mod tests {
         let mut game = GalacticReach::new([17; 32]).unwrap();
         let before = game.observe(0).unwrap();
         let action = game.legal_actions(0)[0].clone();
-        game.deadline = Instant::now();
+        game.deadline.set(Instant::now());
         assert_eq!(
             game.apply_action(0, action).unwrap_err(),
             SIMULATION_TIMEOUT

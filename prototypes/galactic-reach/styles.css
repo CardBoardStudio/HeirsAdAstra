@@ -504,6 +504,12 @@ button.choice-card, label.choice-card { position: relative; display: flex; min-h
 .table-save-bar { position:relative; display:flex; flex-wrap:wrap; align-items:center; gap:12px; padding:16px 24px; border-bottom:1px solid #27445c; background:#101b2b; color:#dbeaf8; }
 .table-save-bar strong { overflow-wrap:anywhere; }
 .table-save-bar #table-sync { flex:1; min-width:160px; font-size:13px; }
+/* Shared table: who sits where and whose move it is. */
+.shared-seats { display:flex; flex-wrap:wrap; gap:8px; margin:0; padding:0; list-style:none; }
+.shared-seats li { display:flex; flex-direction:column; padding:4px 10px; border:1px solid #27445c; border-left:4px solid var(--player); border-radius:6px; font-size:13px; line-height:1.25; }
+.shared-seats li small { color:#9fb6cc; font-size:11px; }
+.shared-seats li.acting { border-color:var(--player); box-shadow:0 0 0 1px var(--player); }
+.shared-seats li.you { font-weight:700; }
 .app-shell[inert] { opacity:.45; }
 
 @media (max-width: 760px) {

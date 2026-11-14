@@ -2,9 +2,10 @@
 //! fill as signed-in friends join, and the host chooses the number of AI rivals
 //! and their difficulty before Start.
 //!
-//! The 28.33 browser engine seats exactly one human against three standard
-//! rivals. Start therefore opens the table only for that configuration; other
-//! choices are kept with the table and Start explains what is still missing.
+//! The current rules seat four factions with standard rivals. Start opens a solo
+//! browser table for one person, or a shared table (the `shared` table service)
+//! when friends have taken seats. Other choices are kept with the table and
+//! Start explains what is still missing.
 use crate::*;
 use axum::extract::Query;
 use rusqlite::{Connection, OptionalExtension, params};
@@ -15,7 +16,7 @@ pub const DIFFICULTIES: [(&str, &str, &str); 2] = [
     (
         "standard",
         "Standard",
-        "Vanguard, Architect and Pathfinder, the rivals in today's browser game.",
+        "Vanguard, Architect and Pathfinder. With friends seated, the table service plays them with the AI arena's matching policies.",
     ),
     (
         "easy",
@@ -69,8 +70,9 @@ pub fn status(db: &Connection, table_id: &str) -> ApiResult<Option<String>> {
 pub fn joined(db: &Connection, user_id: &str) -> ApiResult<Vec<serde_json::Value>> {
     let mut query = db
         .prepare(
-            "SELECT t.id,t.name,l.status,(SELECT count(*) FROM gr_lobby_seats s2 WHERE s2.table_id=t.id)
+            "SELECT t.id,t.name,coalesce(g.status,l.status),(SELECT count(*) FROM gr_lobby_seats s2 WHERE s2.table_id=t.id),g.id IS NOT NULL
              FROM gr_lobby_seats s JOIN gr_lobbies l USING(table_id) JOIN solo_tables t ON t.id=s.table_id
+             LEFT JOIN gr_shared_tables g ON g.id=t.id
              WHERE s.user_id=? ORDER BY s.joined DESC",
         )
         .map_err(internal)?;
@@ -78,7 +80,8 @@ pub fn joined(db: &Connection, user_id: &str) -> ApiResult<Vec<serde_json::Value
         .query_map([user_id], |r| {
             Ok(json!({"id":r.get::<_,String>(0)?,"name":r.get::<_,String>(1)?,"game":"galactic-reach",
                 "rules_version":galactic_reach::RULES,"status":r.get::<_,String>(2)?,
-                "players":1+r.get::<_,u32>(3)?,"round":1,"guest":true,"url":url(&r.get::<_,String>(0)?)}))
+                "players":1+r.get::<_,u32>(3)?,"round":1,"guest":true,
+                "url":if r.get::<_,bool>(4)? {crate::shared::url(&r.get::<_,String>(0)?)} else {url(&r.get::<_,String>(0)?)}}))
         })
         .map_err(internal)?;
     rows.collect::<Result<_, _>>().map_err(internal)
@@ -92,6 +95,8 @@ struct Lobby {
     difficulty: String,
     status: String,
     guests: Vec<(String, String)>,
+    /// Started as a shared table (friends seated), not a solo browser table.
+    shared: bool,
 }
 impl Lobby {
     fn humans(&self) -> u32 {
@@ -102,14 +107,12 @@ impl Lobby {
     }
     /// Why Start cannot open this configuration yet, if it cannot.
     fn blocked(&self) -> Option<&'static str> {
-        if !self.guests.is_empty() {
-            Some(
-                "Galactic Reach seats one human per game today. Friends can wait here, but a shared game needs the multiplayer table service, which is not built yet.",
-            )
-        } else if self.ai_rivals != 3 {
-            Some(
-                "The 28.33 rules always seat three rivals. Fewer rivals needs a rules change, which is not made yet.",
-            )
+        if self.humans() + self.ai_rivals != SEATS {
+            Some(if self.guests.is_empty() {
+                "The current rules always seat three rivals. Fewer rivals needs a rules change, which is not made yet."
+            } else {
+                "The current rules always seat four factions. Fill every empty seat with an AI rival."
+            })
         } else if self.difficulty != "standard" {
             Some("Easy rivals (Wanderer) play in the AI arena but not yet in the browser game.")
         } else {
@@ -134,6 +137,7 @@ fn load(db: &Connection, id: &str) -> ApiResult<Lobby> {
                     difficulty: r.get(5)?,
                     status: r.get(6)?,
                     guests: vec![],
+                    shared: false,
                 })
             },
         )
@@ -151,6 +155,7 @@ fn load(db: &Connection, id: &str) -> ApiResult<Lobby> {
         .map_err(internal)?
         .collect::<Result<_, _>>()
         .map_err(internal)?;
+    lobby.shared = crate::shared::status(db, id)?.is_some();
     Ok(lobby)
 }
 
@@ -173,7 +178,8 @@ fn view(app: &App, id: &str, lobby: &Lobby, me: &str) -> serde_json::Value {
         "difficulties":DIFFICULTIES.iter().map(|(id,name,about)|json!({"id":id,"name":name,"description":about})).collect::<Vec<_>>(),
         "seats":seats,"blocked":lobby.blocked(),
         "invite_url":host.then(|| format!("{}/?game=galactic-reach#lobby/{id}/{}", app.origin, lobby.invite)),
-        "table_url":(lobby.status=="started").then(|| format!("/galactic-reach/?table={id}")),
+        "shared": lobby.shared,
+        "table_url":(lobby.status=="started").then(|| if lobby.shared { crate::shared::url(id) } else { format!("/galactic-reach/?table={id}") }),
     })
 }
 
@@ -320,11 +326,30 @@ pub async fn start(
     Path(id): Path<String>,
 ) -> ApiResult<Json<serde_json::Value>> {
     let u = user(&app, &headers)?;
-    let db = app.store.0.lock().map_err(internal)?;
-    let lobby = host_lobby(&db, &id, &u.id)?;
+    let lobby = {
+        let db = app.store.0.lock().map_err(internal)?;
+        host_lobby(&db, &id, &u.id)?
+    };
     if let Some(reason) = lobby.blocked() {
         return Err(ApiError(StatusCode::CONFLICT, reason.into()));
     }
+    if !lobby.guests.is_empty() {
+        // Seats follow join order: the host first, then friends, then AI rivals.
+        let people: Vec<(String, String)> = std::iter::once(lobby.owner.clone())
+            .chain(lobby.guests.iter().cloned())
+            .collect();
+        app.shared
+            .open(crate::shared::log::Table {
+                id: id.clone(),
+                name: lobby.name.clone(),
+                rules: galactic_reach::RULES.into(),
+                authority: String::new(),
+                status: "active".into(),
+                seats: crate::shared::seats(&people),
+            })
+            .await?;
+    }
+    let db = app.store.0.lock().map_err(internal)?;
     db.execute(
         "UPDATE gr_lobbies SET status='started' WHERE table_id=?",
         [&id],

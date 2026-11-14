@@ -26,7 +26,7 @@ let session,
 let arenaGame = new URLSearchParams(location.search).get("game") === "galactic-reach" ? "galactic-reach" : "voidwright";
 const returnPath = (() => {
   const path = new URLSearchParams(location.search).get("return_to") || "";
-  return /^(?:\/galactic-reach\/\?table=[a-f0-9]{32}|\/voidwright\/(?:#table\/[a-f0-9]{32})?|\/\?game=galactic-reach#lobby\/[a-f0-9]{32}(?:\/[a-f0-9]{64})?)$/.test(path) ? path : "";
+  return /^(?:\/galactic-reach\/\?(?:table|shared)=[a-f0-9]{32}|\/voidwright\/(?:#table\/[a-f0-9]{32})?|\/\?game=galactic-reach#lobby\/[a-f0-9]{32}(?:\/[a-f0-9]{64})?)$/.test(path) ? path : "";
 })();
 const arenaInfo = () => catalog.games.find(g => g.id === arenaGame);
 const arenaPolicies = () => catalog.policies.filter(p => p.game === arenaGame);
@@ -168,7 +168,7 @@ function lobbyView() {
   const settings = lobby.host && !started ? `<form id="lobby-settings" class="lobby-settings"><label for="lobby-ai">AI rivals</label><select id="lobby-ai" name="ai_rivals">${options.map(n => `<option value="${n}" ${n === lobby.ai_rivals ? "selected" : ""}>${n}</option>`).join("")}</select><label for="lobby-difficulty">Difficulty</label><select id="lobby-difficulty" name="difficulty">${lobby.difficulties.map(d => `<option value="${esc(d.id)}" ${d.id === lobby.difficulty ? "selected" : ""}>${esc(d.name)}: ${esc(d.description)}</option>`).join("")}</select><p class="form-note">Friends who join take open seats first, then AI seats.</p></form>` : `<p class="form-note">The host chooses ${lobby.ai_rivals} AI rival${lobby.ai_rivals === 1 ? "" : "s"} · ${esc(lobby.difficulties.find(d => d.id === lobby.difficulty)?.name || lobby.difficulty)}.</p>`;
   const invite = lobby.host && !started ? `<div class="lobby-invite"><label for="lobby-invite-link">Invite link</label><div class="lobby-invite-row"><input id="lobby-invite-link" readonly value="${esc(lobby.invite_url)}"><button class="secondary" id="copy-lobby-invite" type="button">Copy link</button></div><p class="form-note">Anyone with this link can take a seat after signing in. Share it privately.</p></div>` : "";
   const start = started
-    ? (lobby.host && lobby.table_url ? `<a class="primary" href="${esc(lobby.table_url)}">Open the game →</a>` : `<p class="form-note">The host started this table. Shared play isn’t available yet, so the host is playing it solo.</p>`)
+    ? (lobby.table_url && (lobby.host || lobby.shared) ? `<a class="primary" href="${esc(lobby.table_url)}">Open the game →</a>` : `<p class="form-note">The host started this table solo before you joined.</p>`)
     : lobby.host ? `<button class="primary" id="lobby-start" ${lobby.blocked ? "disabled" : ""}>Start the game →</button>${lobby.blocked ? `<p class="form-note lobby-blocked" role="status">${esc(lobby.blocked)}</p>` : ""}`
     : lobby.member ? `<p class="form-note" role="status">You have a seat. Waiting for the host to start.${lobby.blocked ? ` ${esc(lobby.blocked)}` : ""}</p><button class="secondary" id="lobby-leave">Leave this table</button>`
     : `<button class="primary" id="lobby-join">Take a seat →</button>`;
