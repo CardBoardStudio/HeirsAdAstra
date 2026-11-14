@@ -17,20 +17,40 @@ let session,
   invitations = [],
   invitation,
   inviteError,
+  lobby,
+  lobbyError,
+  lobbyTimer,
   busy = false,
   pendingSeries;
 let arenaGame = new URLSearchParams(location.search).get("game") === "galactic-reach" ? "galactic-reach" : "voidwright";
 const returnPath = (() => {
   const path = new URLSearchParams(location.search).get("return_to") || "";
-  return /^(?:\/galactic-reach\/\?table=[a-f0-9]{32}|\/voidwright\/(?:#table\/[a-f0-9]{32})?)$/.test(path) ? path : "";
+  return /^(?:\/galactic-reach\/\?table=[a-f0-9]{32}|\/voidwright\/(?:#table\/[a-f0-9]{32})?|\/\?game=galactic-reach#lobby\/[a-f0-9]{32}(?:\/[a-f0-9]{64})?)$/.test(path) ? path : "";
 })();
 const arenaInfo = () => catalog.games.find(g => g.id === arenaGame);
 const arenaPolicies = () => catalog.policies.filter(p => p.game === arenaGame);
 const page = () =>
   ["arena", "account", "tables", "admin"].includes(location.hash.slice(1))
     ? location.hash.slice(1)
-    : location.hash.startsWith("#invite/") ? "invite" : "library";
+    : location.hash.startsWith("#invite/") ? "invite" : location.hash.startsWith("#lobby/") ? "lobby" : "library";
 const inviteToken = () => /^#invite\/([a-f0-9]{64})$/.exec(location.hash)?.[1];
+// Galactic Reach waiting room: #lobby/<table>[/<invite>].
+const lobbyRoute = () => { const m = /^#lobby\/([a-f0-9]{32})(?:\/([a-f0-9]{64}))?$/.exec(location.hash); return m ? {id:m[1], invite:m[2] || ""} : null; };
+async function loadLobby() {
+  const route = lobbyRoute();
+  if (!route || !session?.user) { lobby = null; lobbyError = route ? null : "This waiting-room link is incomplete."; return; }
+  try { lobby = await api(`/api/tables/${route.id}/lobby${route.invite ? `?invite=${route.invite}` : ""}`); lobbyError = null; }
+  catch (e) { lobby = null; lobbyError = e.message; }
+}
+// Seats fill as friends join; refresh the room while it is open.
+function pollLobby() {
+  clearTimeout(lobbyTimer);
+  if (page() !== "lobby" || !lobby || lobby.status !== "waiting") return;
+  lobbyTimer = setTimeout(async () => {
+    if (page() !== "lobby" || busy) return pollLobby();
+    await loadLobby(); render();
+  }, 4000);
+}
 // Preserve pre-platform Voidwright invitations.
 if (/^#table\/[a-f0-9]{32}$/i.test(location.hash))
   location.replace("/voidwright/" + location.hash);
@@ -74,6 +94,7 @@ async function refresh() {
     try { invitation = await api("/api/invites/inspect", {token:inviteToken()}); inviteError = null; }
     catch (e) { invitation = null; inviteError = e.message; }
   }
+  if (page() === "lobby") await loadLobby();
   catalog ??= await api("/api/catalog");
   render();
 }
@@ -117,14 +138,41 @@ function libraryView() {
 function tableList() {
   if (!profile) return `<div class="empty"><span aria-hidden="true">◎</span><h3>A seat with your name on it.</h3><p>Sign in to save named tables and return from another browser.</p><a class="secondary" href="#account">Sign in or create an account</a></div>`;
   if (!tables.length) return '<div class="empty"><h3>Your first table is waiting.</h3><p>Create a named game of Galactic Reach or Voidwright. It will be waiting here when you return.</p></div>';
-  return tables.map(g => `<a class="table-link" href="${esc(g.url)}"><div><strong>${esc(g.name)}</strong><small>${g.game === "galactic-reach" ? "Galactic Reach · Solo + 3 AI" : `Voidwright · ${g.players} players`} · Rules ${esc((g.rules_version || "unknown").split("/").pop())} · Round ${g.round} · ${esc(g.status)}</small></div><span>${g.status === "new" ? "Start" : "Open"} table ↗</span></a>`).join("");
+  return tables.map(g => `<a class="table-link" href="${esc(g.url)}"><div><strong>${esc(g.name)}</strong><small>${g.game === "galactic-reach" ? (g.guest ? `Galactic Reach · invited · ${g.players} at the table` : "Galactic Reach · Solo + 3 AI") : `Voidwright · ${g.players} players`} · Rules ${esc((g.rules_version || "unknown").split("/").pop())} · ${g.status === "waiting" ? "Waiting room" : `Round ${g.round} · ${esc(g.status)}`}</small></div><span>${g.status === "waiting" ? "Open waiting room" : g.status === "new" ? "Start table" : "Open table"} ↗</span></a>`).join("");
 }
 function tablesView() {
   return head("A PLACE TO PICK UP WHERE YOU LEFT OFF", "Your tables.", "Name a game and return whenever you’re ready. Each table keeps the rules version it started with.") +
-    `<div class="split"><section class="panel"><h2>Saved games</h2>${tableList()}</section><section class="panel"><h2>Create a table</h2>${profile ? `<form id="table-form"><label for="table-game">Game</label><select id="table-game" name="game"><option value="galactic-reach" ${arenaGame === "galactic-reach" ? "selected" : ""}>Galactic Reach</option><option value="voidwright" ${arenaGame === "voidwright" ? "selected" : ""}>Voidwright</option></select><p class="hint">New Galactic Reach tables use rules 26.31 · Single-use Orders experiment. Start a new game.</p><label for="table-name">Table name</label><input id="table-name" name="name" required maxlength="60" placeholder="Friday expedition"><div id="voidwright-options" ${arenaGame !== "voidwright" ? "hidden" : ""}><label for="table-mode">Play with</label><select id="table-mode" name="mode"><option value="practice">Kepler AI</option><option value="friends">Friends · share the table link</option></select></div><p class="form-note" id="table-description">${tableDescription(arenaGame)}</p><button class="primary">Create and open table →</button></form>` : '<p>Sign in to create a table saved to your account.</p><a class="primary" href="#account">Sign in →</a><hr class="divider"><a class="text-link" href="/galactic-reach/">Play Galactic Reach as a guest →</a>'}</section></div>`;
+    `<div class="split"><section class="panel"><h2>Saved games</h2>${tableList()}</section><section class="panel"><h2>Create a table</h2>${profile ? `<form id="table-form"><label for="table-game">Game</label><select id="table-game" name="game"><option value="galactic-reach" ${arenaGame === "galactic-reach" ? "selected" : ""}>Galactic Reach</option><option value="voidwright" ${arenaGame === "voidwright" ? "selected" : ""}>Voidwright</option></select><p class="hint" id="table-rules-hint">${rulesHint(arenaGame)}</p><label for="table-name">Table name</label><input id="table-name" name="name" required maxlength="60" placeholder="Friday expedition"><div id="voidwright-options" ${arenaGame !== "voidwright" ? "hidden" : ""}><label for="table-mode">Play with</label><select id="table-mode" name="mode"><option value="practice">Kepler AI</option><option value="friends">Friends · share the table link</option></select></div><p class="form-note" id="table-description">${tableDescription(arenaGame)}</p><button class="primary">Create and open table →</button></form>` : '<p>Sign in to create a table saved to your account.</p><a class="primary" href="#account">Sign in →</a><hr class="divider"><a class="text-link" href="/galactic-reach/">Play Galactic Reach as a guest →</a>'}</section></div>`;
 }
 function tableDescription(game) {
-  return game === "galactic-reach" ? "Your faction against three AIs. Private, unrated, and saved to your account. Your guest game stays separate." : "Play a 20-round practice game or open a table for friends. Each player needs an account. Tables are unrated.";
+  return game === "galactic-reach" ? "Opens a waiting room first: share the invite link, watch seats fill, then Start. Standard AI rivals fill the remaining seats. Unrated and saved to your account. Your guest game stays separate." : "Play a 20-round practice game or open a table for friends. Each player needs an account. Tables are unrated.";
+}
+// Read the current rules from the server's engine, never a hard-coded label.
+function rulesHint(game) {
+  const info = catalog?.games.find(g => g.id === game);
+  if (!info) return "";
+  const version = (info.rules_version || "").split("/").pop();
+  return game === "galactic-reach" ? `New Galactic Reach tables use rules ${esc(version)} · ${esc(info.experiment || "")}. Start a new game.` : `New Voidwright tables use rules ${esc(version)}.`;
+}
+const seatLabel = seat => seat.kind === "host" ? `${esc(seat.name)}${seat.you ? " (you)" : ""}<small>Host</small>`
+  : seat.kind === "friend" ? `${esc(seat.name)}${seat.you ? " (you)" : ""}<small>Friend · signed in</small>`
+  : seat.kind === "ai" ? `AI rival<small>${esc(lobby.difficulties.find(d => d.id === seat.difficulty)?.name || seat.difficulty)}</small>`
+  : `Open seat<small>Waiting for a friend</small>`;
+function lobbyView() {
+  const route = lobbyRoute();
+  if (!session?.user) return head("GALACTIC REACH · WAITING ROOM", "You’re invited to a table.", "Sign in to take a seat. Nido or your recovery key both work.") + `<section class="panel"><a class="primary" href="/?return_to=${encodeURIComponent("/?game=galactic-reach" + location.hash)}#account">Sign in to join →</a></section>`;
+  if (!lobby) return head("GALACTIC REACH · WAITING ROOM", "This waiting room isn’t available.", esc(lobbyError || "Check the link with the host.")) + `<a class="text-link" href="#tables">← Your tables</a>`;
+  const started = lobby.status !== "waiting";
+  // Rivals are fixed for now (captain, 2026-11-14): Standard AI rivals fill every seat not taken by a player.
+  const settings = `<p class="form-note">${lobby.ai_rivals} Standard AI rival${lobby.ai_rivals === 1 ? "" : "s"} (Vanguard, Architect, Pathfinder) fill the seat${lobby.ai_rivals === 1 ? "" : "s"} not taken by players. Friends who join take an AI seat.</p>`;
+  const invite = lobby.host && !started ? `<div class="lobby-invite"><label for="lobby-invite-link">Invite link</label><div class="lobby-invite-row"><input id="lobby-invite-link" readonly value="${esc(lobby.invite_url)}"><button class="secondary" id="copy-lobby-invite" type="button">Copy link</button></div><p class="form-note">Anyone with this link can take a seat after signing in. Share it privately.</p></div>` : "";
+  const start = started
+    ? (lobby.host && lobby.table_url ? `<a class="primary" href="${esc(lobby.table_url)}">Open the game →</a>` : `<p class="form-note">The host started this table. Shared play isn’t available yet, so the host is playing it solo.</p>`)
+    : lobby.host ? `<button class="primary" id="lobby-start" ${lobby.blocked ? "disabled" : ""}>Start the game →</button>${lobby.blocked ? `<p class="form-note lobby-blocked" role="status">${esc(lobby.blocked)}</p>` : ""}`
+    : lobby.member ? `<p class="form-note" role="status">You have a seat. Waiting for the host to start.${lobby.blocked ? ` ${esc(lobby.blocked)}` : ""}</p><button class="secondary" id="lobby-leave">Leave this table</button>`
+    : `<button class="primary" id="lobby-join">Take a seat →</button>`;
+  return head("GALACTIC REACH · WAITING ROOM", esc(lobby.name), started ? "This table has started." : "Seats fill as friends join. The host starts the game.", `Rules ${esc(lobby.rules_version.split("/").pop())}`) +
+    `<div class="split"><section class="panel"><h2>Seats</h2><ol class="lobby-seats">${lobby.seats.map(seat => `<li class="lobby-seat ${seat.kind}">${seatLabel(seat)}</li>`).join("")}</ol></section><section class="panel"><h2>${lobby.host ? "Host controls" : "Table"}</h2>${invite}${settings}${start}</section></div><p><a class="text-link" href="#tables">← Your tables</a></p>`;
 }
 function roster() {
   if (!arena.bots.length)
@@ -173,7 +221,7 @@ function accountView() {
         "Your tables, your AI players, and your account settings.",
         "SIGNED IN",
       ) +
-      `<div class="split"><section class="panel"><div class="eyebrow">PLAYER PROFILE</div><h2>Your identity</h2><form id="profile-form"><label for="profile-name">Display name</label><input name="name" id="profile-name" value="${esc(profile.name)}" required maxlength="32"><button class="primary">Save display name</button></form><hr class="divider"><div class="detail-list"><div><span>Sign-in method</span><b>${profile.has_recovery_key ? "Private recovery key" : profile.development ? "Temporary playtest identity" : "Nido wallet"}</b></div><div><span>Active browser sessions</span><b>${profile.sessions}</b></div><div><span>AI players in your lab</span><b>${arena.bots.length} (${esc(arenaInfo().name)})</b></div></div><small class="mono">${esc(profile.id)}</small>${profile.development ? '<p class="hint">This is a temporary identity. To keep a recoverable account, sign out and create an account with a recovery key.</p>' : ""}</section><section class="panel"><div class="eyebrow">ACCOUNT ACCESS</div><h2>Keep your seat secure.</h2><p>Sessions expire after 24 hours. ${profile.has_recovery_key ? "Use your saved recovery key to return to this same account." : profile.id.startsWith("nido:") ? "Sign in with this Nido wallet to return. Wallet recovery and passkeys are managed in Nido." : "Return with your usual sign-in method."}</p>${profile.id.startsWith("nido:") ? `<p><a class="text-link" href="https://${encodeURIComponent(profile.id.slice(5).toLowerCase())}.nido.fyi/" target="_blank" rel="noopener noreferrer">Manage your Nido wallet ↗</a></p>` : ""}<button class="secondary" id="revoke">Sign out other sessions</button>${profile.has_recovery_key ? `<hr class="divider"><h3>Replace your recovery key</h3><p>Your old key will stop working and all other sessions will be signed out. Save the new key before leaving this page.</p><button class="secondary" id="rotate">Replace recovery key</button>` : ""}<hr class="divider"><button class="secondary" id="logout">Sign out of this browser</button></section></div>`
+      `<div class="split"><section class="panel"><div class="eyebrow">PLAYER PROFILE</div><h2>Your identity</h2><form id="profile-form"><label for="profile-name">Display name</label><input name="name" id="profile-name" value="${esc(profile.name)}" required maxlength="32"><button class="primary">Save display name</button></form><hr class="divider"><div class="detail-list"><div><span>Sign-in method</span><b>${profile.has_recovery_key ? "Private recovery key" : profile.development ? "Temporary playtest identity" : "Nido wallet"}</b></div><div><span>Active browser sessions</span><b>${profile.sessions}</b></div><div><span>AI players in your lab</span><b>${arena.bots.length} (${esc(arenaInfo().name)})</b></div></div><small class="mono">${esc(profile.id)}</small>${profile.development ? '<p class="hint">This is a temporary identity. To keep a recoverable account, sign out and create an account with a recovery key.</p>' : ""}</section><section class="panel"><div class="eyebrow">ACCOUNT ACCESS</div><h2>Keep your seat secure.</h2><p>Sessions expire after 24 hours. ${profile.has_recovery_key ? "Use your saved recovery key to return to this same account." : profile.id.startsWith("nido:") ? "Sign in with this Nido wallet to return. Wallet recovery and passkeys are managed in Nido." : "Return with your usual sign-in method."}</p>${profile.id.startsWith("nido:") ? `<p><a class="text-link" href="${esc((session.nido_wallet?.account_url ?? "https://{account}.test.nido.fyi").replace("{account}", encodeURIComponent(profile.id.slice(5).toLowerCase())))}/" target="_blank" rel="noopener noreferrer">Manage your Nido wallet ↗</a></p>` : ""}<button class="secondary" id="revoke">Sign out other sessions</button>${profile.has_recovery_key ? `<hr class="divider"><h3>Replace your recovery key</h3><p>Your old key will stop working and all other sessions will be signed out. Save the new key before leaving this page.</p><button class="secondary" id="rotate">Replace recovery key</button>` : ""}<hr class="divider"><button class="secondary" id="logout">Sign out of this browser</button></section></div>`
     );
   return (
     head(
@@ -218,13 +266,15 @@ function render() {
     admin: "Invitations",
     tables: "Your tables",
     invite: "Your invitation",
+    lobby: "Waiting room",
   }[current];
   $("#admin-nav").hidden = !profile?.is_admin;
   $("#account-link").innerHTML = profile
     ? `<span class="avatar">${esc(profile.name.slice(0, 1).toUpperCase())}</span>${esc(profile.name)}`
     : "Sign in <span>↗</span>";
-  $("#main").innerHTML = ({arena:arenaView,account:accountView,library:libraryView,admin:adminView,invite:inviteView,tables:tablesView}[current])();
+  $("#main").innerHTML = ({arena:arenaView,account:accountView,library:libraryView,admin:adminView,invite:inviteView,tables:tablesView,lobby:lobbyView}[current])();
   bind();
+  pollLobby();
 }
 function onForm(id, work) {
   $(id)?.addEventListener("submit", (e) => {
@@ -239,12 +289,21 @@ function onClick(id, work) {
 function bind() {
   bindReplays(api,async()=>{matches=await api("/api/arena/matches");});
   onForm("#table-form", async body => {
-    const table = await api("/api/tables", {game:body.game,name:body.name,practice:body.mode === "practice",round_limit:20});
+    const table = await api("/api/tables", {game:body.game,name:body.name,practice:body.mode === "practice",round_limit:20,lobby:body.game === "galactic-reach"});
     location.assign(table.url);
   });
   $("#table-game")?.addEventListener("change", e => {
     $("#voidwright-options").hidden = e.target.value !== "voidwright";
     $("#table-description").textContent = tableDescription(e.target.value);
+    $("#table-rules-hint").innerHTML = rulesHint(e.target.value);
+  });
+  const room = route => `/api/tables/${lobbyRoute()?.id}/lobby${route}`;
+  onClick("#lobby-join", async () => { lobby = await api(room("/join"), {invite:lobbyRoute().invite}); location.hash = `#lobby/${lobbyRoute().id}`; });
+  onClick("#lobby-leave", async () => { await api(room("/leave"), {}); location.hash = "#tables"; });
+  onClick("#lobby-start", async () => { lobby = await api(room("/start"), {}); if (lobby.table_url) location.assign(lobby.table_url); });
+  $("#copy-lobby-invite")?.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText($("#lobby-invite-link").value); $("#copy-lobby-invite").textContent = "Copied"; }
+    catch { $("#lobby-invite-link").select(); }
   });
   onForm("#invite-form", async body => {
     const result = await api("/api/admin/invites", {...body, days:Number(body.days),max_uses:Number(body.max_uses)});
@@ -392,7 +451,7 @@ $(".skip").addEventListener("click", (event) => {
   $("#main").scrollIntoView();
 });
 window.addEventListener("hashchange", () => {
-  if (page() === "invite") { refresh().catch(e => notice(e.message, true)); return; }
+  if (page() === "invite" || page() === "lobby") { refresh().catch(e => notice(e.message, true)); return; }
   if (catalog) {
     render();
     $("#main").focus();

@@ -1,6 +1,6 @@
 # Galactic Reach rules maintenance
 
-The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 29.34 / Streamlined Operations playtest**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
+The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 30.35 / In-play Buy playtest**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
 
 ## Read, change, verify
 
@@ -85,3 +85,5 @@ The25.30 Storage Planning experiment preserves24.29 nearest-Probe and human rule
 The26.31 Single-use Orders experiment permanently trashes a successfully used Probe. Conversion still discards it, and failed or canceled attempts keep it. Save26/rules31/native22 preserve full25.30 and native21; policy weights remain unchanged. The25.30 balance study predates this change. See [single-use Probe](single-use-orders.md).
 
 The 27.32 Cards in Play experiment holds used orders, conversions, Buy effects and reactions in a public saved inPlay zone until shared round cleanup. Explicit discards/returns, gained-card discard and single-use trash effects remain exceptions. Save 27/rules 32/native 23 preserve full 26.31 and policy 22. See [card timing and validation](in-play.md).
+
+The 30.35 In-play Buy playtest builds on 29.34 Streamlined Operations: during your Buy turn, a starter in play can upgrade, and a card in play when Buy began can be trashed. Save30/rules35 archive the exact 29.34 browser, manual and engine (`crates/galactic-reach/rules/v29-*`, hashes in `scripts/in-play-buy-archive-hashes.json`). Rivals use the new options with native policy 26; policy 25 is archived as `legacy_v25.rs`. 30.35 also makes an Explorer bring only Probe, which becomes Excavate after a successful probe. See [in-play Buy](in-play-buy.md).

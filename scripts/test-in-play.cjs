@@ -41,10 +41,23 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
  const g=game(),{p,s}=g;p.hand=[card('move','converted'),card('procurementNetwork','buy-card'),card('construct','unplayed')];
  action(g,'resource','converted');action(g,'pass');action(g,'buy_effect','buy-card');
  assert.equal(p.inPlay.length,2);assert.equal(p.discard.length,0);
- assert(!g.adapter().legalActions(0).some(a=>['upgrade','decommission'].includes(a.type)&&a.card==='converted'));
+ // 28.33 amendment (#buy): a card in play when Buy began may be trashed; one put in play during this Buy may not.
+ assert(g.adapter().legalActions(0).some(a=>a.type==='decommission'&&a.card==='converted'),'A card converted before passing can be trashed during Buy');
+ assert(!g.adapter().legalActions(0).some(a=>a.type==='decommission'&&a.card==='buy-card'),'A Buy effect used this Buy turn cannot be trashed');
+ assert(!g.adapter().legalActions(0).some(a=>a.type==='upgrade'&&a.card==='converted'),'Only original starters upgrade');
  p.relicsExcavated=10;action(g,'finish_buy');assert.equal(p.inPlay.length,2,'Finishing your Buy does not clean up your cards');assert.equal(p.hand.length,1);
  for(let seat=1;seat<4;seat++){let a=g.adapter();a.applyAction(seat,a.legalActions(seat).find(x=>x.type==='pass'));a=g.adapter();a.applyAction(seat,a.legalActions(seat).find(x=>x.type==='finish_buy'));}
  assert.equal(s.winner,0);assert.equal(p.hand.length,0);assert.equal(p.inPlay.length,0);assert.deepEqual(Array.from(p.discard,c=>c.id).sort(),['buy-card','converted','unplayed']);
+}
+{
+ // 28.33 amendment (#buy): upgrade and trash original starters that are in play.
+ const g=game(),{p,s}=g;p.hand=[{key:'move',id:'used-move',starter:true},{key:'construct',id:'used-construct',starter:true}];
+ action(g,'resource','used-move');action(g,'resource','used-construct');action(g,'pass');assert.equal(s.phase,'buy');
+ assert.deepEqual(Array.from(p.inPlay,c=>c.id),['used-move','used-construct']);
+ action(g,'upgrade','used-move',a=>a.resource==='energy');assert.equal(p.inPlay.find(c=>c.id==='used-move').upgraded,true,'The starter upgrades where it is, in play');
+ const before=p.resources.matter;action(g,'decommission','used-construct',a=>a.resource==='matter');
+ assert(!all(p).some(c=>c.id==='used-construct'),'Trashing removes the in-play card permanently');assert.equal(p.resources.matter,before-3);
+ assert(p.inPlay.some(c=>c.id==='used-move'));
 }
 {
  const g=game(),{p,s,e}=g;p.hand=[];s.activePlayer=1;const bot=s.players[1];Object.assign(bot,{hand:[card('move','bot-convert')],deck:[],discard:[],inPlay:[]});e.runAiOperation();assert(bot.inPlay.some(c=>c.id==='bot-convert'),'Browser rivals also retain conversions in play');
@@ -55,9 +68,25 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
 const replayRoutes=vm.runInNewContext('('+read('prototypes/lab/replay.js').match(/const REPLAY_PATHS=(.*);/)[1]+')');
 assert.equal(replayRoutes['galactic-reach/26.31'],'/galactic-reach/rules/26.31/','Pinned replay opens its archived browser');
 assert.equal(replayRoutes['galactic-reach/27.32'],'/galactic-reach/rules/27.32/','27.32 replay opens its archived In play browser');
+{
+ // 30.35 #computer-rivals: browser rivals also upgrade a starter that is in play during Buy.
+ const g=game(),{s,e}=g;const bot=s.players[1];s.phase='buy';s.activePlayer=1;
+ Object.assign(bot,{hand:[],deck:[],discard:[],inPlay:[{key:'construct',id:'bot-used',starter:true}],resources:{matter:4,energy:4,biomass:4,data:4},buyStartDiscardIds:[],buyStartInPlayIds:['bot-used'],passed:true});
+ const yard=Object.keys(s.planets)[0];Object.assign(s.planets[yard],{owner:1,upgrade:'starbase',occupiedBy:null});
+ e.runAiBuy();assert.equal(bot.inPlay.find(c=>c.id==='bot-used')?.upgraded,true,'A rival upgraded its in-play starter');
+}
+// 30.35 archives the exact published 29.34 engine; there, cards in play still cannot upgrade or be trashed.
+for(const [file,hash] of Object.entries(JSON.parse(read('scripts/in-play-buy-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,`${file} must stay the published 29.34 asset`);
+{
+ const g=game('crates/galactic-reach/rules/v29-'),{p,s}=g;assert.equal(g.adapter().rulesVersion,'galactic-reach/29.34');
+ p.hand=[{key:'move',id:'old-used',starter:true},{key:'construct',id:'old-kept',starter:true}];action(g,'resource','old-used');action(g,'pass');assert.equal(s.phase,'buy');
+ const legal=g.adapter().legalActions(0);
+ assert(!legal.some(a=>['upgrade','decommission'].includes(a.type)&&a.card==='old-used'),'29.34 tables keep the published Buy rule');
+ assert(legal.some(a=>a.type==='upgrade'&&a.card==='old-kept'),'29.34 still upgrades from hand');
+}
 for(const [file,hash] of Object.entries(JSON.parse(read('scripts/in-play-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,file);
 console.log('Cards in play: conversions/orders, pre-effect draw commitment, explicit discards, recovery/trashing isolation, public/private observations, reactions, Buy timing, shared cleanup, rival conversions and frozen26.31/policy22 passed.');
 
 assert.equal(replayRoutes['galactic-reach/28.33'],'/galactic-reach/rules/28.33/');
 
-assert.equal(replayRoutes['galactic-reach/29.34'],'/galactic-reach/');
+assert.equal(replayRoutes['galactic-reach/29.34'],'/galactic-reach/rules/29.34/','29.34 replay opens its archived browser');assert.equal(replayRoutes['galactic-reach/30.35'],'/galactic-reach/');

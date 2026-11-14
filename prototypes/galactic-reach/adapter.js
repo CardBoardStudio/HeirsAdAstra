@@ -68,7 +68,7 @@ function createGalacticAdapter(e) {
           if (e.canAfford(p, def.cost, p.buyDiscountData > 0 ? 1 : 0)) actions.push({ type: 'buy', source: 'basic', key });
         });
       }
-      [...p.hand, ...p.discard].forEach(card => {
+      [...p.hand, ...p.discard, ...p.inPlay].forEach(card => {
         if (card.starter && !card.upgraded) for (const resource of e.RESOURCES)
           if (p.resources[resource] >= 2) actions.push({type:'upgrade',card:card.id,resource});
       });
@@ -76,8 +76,9 @@ function createGalacticAdapter(e) {
         const effect = e.ALL_CARDS[card.key].buyEffect;
         if (effect && (effect !== 'manipulation' || !p.marketManipulated)) actions.push({ type: 'buy_effect', card: card.id });
       });
-      p.discard.forEach(card => {
-        if (p.buyStartDiscardIds.includes(card.id)) for (const resource of e.RESOURCES)
+      // Cards in discard or in play when this Buy began may be trashed.
+      [...p.discard.filter(card => p.buyStartDiscardIds.includes(card.id)), ...p.inPlay.filter(card => (p.buyStartInPlayIds || []).includes(card.id))].forEach(card => {
+        for (const resource of e.RESOURCES)
           if (p.resources[resource] >= 3) actions.push({type:'decommission',card:card.id,resource});
       });
     } else if (state.phase === 'operations') {
@@ -208,6 +209,6 @@ function createGalacticAdapter(e) {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/29.34', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot };
+  return { rulesVersion: 'galactic-reach/30.35', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;

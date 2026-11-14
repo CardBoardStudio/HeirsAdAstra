@@ -63,8 +63,17 @@ pub async fn list(
         } else {
             "finished"
         };
-        result.push(json!({"id":id,"name":name,"game":"galactic-reach","rules_version":rules,"status":status,"players":4,"round":save["state"]["round"].as_u64().unwrap_or(1),"url":table_url("galactic-reach",&id),"updated":updated}));
+        let waiting =
+            save.is_null() && crate::lobby::status(&db, &id)?.as_deref() == Some("waiting");
+        let (status, url) = if waiting {
+            ("waiting", crate::lobby::url(&id))
+        } else {
+            (status, table_url("galactic-reach", &id))
+        };
+        result.push(json!({"id":id,"name":name,"game":"galactic-reach","rules_version":rules,"status":status,"players":4,"round":save["state"]["round"].as_u64().unwrap_or(1),"url":url,"updated":updated}));
     }
+    drop(query);
+    result.extend(crate::lobby::joined(&db, &u.id)?);
     let mut query = db
         .prepare("SELECT state FROM games ORDER BY rowid DESC")
         .map_err(internal)?;
@@ -87,6 +96,9 @@ pub struct Create {
     practice: bool,
     #[serde(default = "rounds")]
     round_limit: u16,
+    /// Galactic Reach: open a waiting room (invite link, seats, rivals) before Start.
+    #[serde(default)]
+    lobby: bool,
 }
 fn rounds() -> u16 {
     20
@@ -137,6 +149,10 @@ pub async fn create(
         params![id, u.id, name, now(), now(),galactic_reach::RULES],
     )
     .map_err(internal)?;
+    if input.lobby {
+        crate::lobby::open(&db, &id)?;
+        return Ok(Json(json!({"id":id,"url":crate::lobby::url(&id)})));
+    }
     Ok(Json(json!({"id":id,"url":table_url("galactic-reach",&id)})))
 }
 fn load(
@@ -162,7 +178,10 @@ pub async fn get(
     Path(id): Path<String>,
 ) -> ApiResult<Json<serde_json::Value>> {
     let u = user(&app, &headers)?;
-    let (name, state, revision, rules) = load(&*app.store.0.lock().map_err(internal)?, &id, &u.id)?;
+    let db = app.store.0.lock().map_err(internal)?;
+    let (name, state, revision, rules) = load(&db, &id, &u.id)?;
+    let lobby = crate::lobby::status(&db, &id)?;
+    drop(db);
     let save: serde_json::Value = state
         .as_deref()
         .map(serde_json::from_str)
@@ -170,7 +189,7 @@ pub async fn get(
         .map_err(internal)?
         .unwrap_or_default();
     Ok(Json(
-        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"save":save}),
+        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"save":save,"lobby":lobby,"lobby_url":crate::lobby::url(&id)}),
     ))
 }
 #[derive(Deserialize)]
@@ -205,7 +224,8 @@ fn validate(save: &serde_json::Value) -> ApiResult<()> {
         || (s["version"] == 26 && s["rulesRevision"] == 31)
         || (s["version"] == 27 && s["rulesRevision"] == 32)
         || (s["version"] == 28 && s["rulesRevision"] == 33)
-        || (s["version"] == 29 && s["rulesRevision"] == 34))
+        || (s["version"] == 29 && s["rulesRevision"] == 34)
+        || (s["version"] == 30 && s["rulesRevision"] == 35))
         || (s["version"].as_u64().unwrap_or(0) >= 12 && s["phase"] == "directive")
         || (s["version"].as_u64().is_some_and(|v| v >= 9) && s["phase"] == "policy")
         || s["players"].as_array().is_none_or(|p| p.len() != 4)
@@ -345,6 +365,163 @@ mod tests {
             .into()
     }
     #[tokio::test]
+    async fn galactic_reach_waiting_room_invites_seats_and_starts() {
+        let a = app(true);
+        let host = account(&a, "Host").await;
+        let friend = account(&a, "Friend").await;
+        let stranger = account(&a, "Stranger").await;
+        let (s, _, t) = call(
+            &a,
+            "POST",
+            "/api/tables",
+            &host,
+            json!({"game":"galactic-reach","name":"Friday","lobby":true}),
+        )
+        .await;
+        assert_eq!(s, StatusCode::OK);
+        let id = t["id"].as_str().unwrap().to_string();
+        assert_eq!(t["url"], format!("/?game=galactic-reach#lobby/{id}"));
+        let lobby = format!("/api/tables/{id}/lobby");
+        let room = call(&a, "GET", &lobby, &host, json!({})).await.2;
+        assert_eq!(room["host"], true);
+        assert_eq!(room["seats"].as_array().unwrap().len(), 4);
+        assert!(
+            room["blocked"].is_null(),
+            "solo host with three standard rivals can start"
+        );
+        let invite_url = room["invite_url"].as_str().unwrap().to_string();
+        let invite = invite_url.rsplit('/').next().unwrap().to_string();
+        assert_eq!(
+            call(&a, "GET", &lobby, &stranger, json!({})).await.0,
+            StatusCode::NOT_FOUND
+        );
+        assert_eq!(
+            call(
+                &a,
+                "POST",
+                &format!("{lobby}/join"),
+                &stranger,
+                json!({"invite":"0".repeat(64)})
+            )
+            .await
+            .0,
+            StatusCode::NOT_FOUND
+        );
+        let preview = call(
+            &a,
+            "GET",
+            &format!("{lobby}?invite={invite}"),
+            &friend,
+            json!({}),
+        )
+        .await
+        .2;
+        assert_eq!(preview["member"], false);
+        assert!(
+            preview["invite_url"].is_null(),
+            "only the host sees the invite"
+        );
+        let joined = call(
+            &a,
+            "POST",
+            &format!("{lobby}/join"),
+            &friend,
+            json!({"invite":invite}),
+        )
+        .await
+        .2;
+        assert_eq!(joined["member"], true);
+        assert_eq!(joined["ai_rivals"], 2, "a friend takes an AI seat");
+        assert!(joined["blocked"].as_str().unwrap().contains("one human"));
+        let shelf = call(&a, "GET", "/api/tables", &friend, json!({})).await.2;
+        assert!(
+            shelf
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|t| t["id"] == id.as_str() && t["guest"] == true && t["status"] == "waiting")
+        );
+        assert_eq!(
+            call(&a, "POST", &format!("{lobby}/start"), &host, json!({}))
+                .await
+                .0,
+            StatusCode::CONFLICT
+        );
+        assert_eq!(
+            call(
+                &a,
+                "POST",
+                &format!("{lobby}/settings"),
+                &friend,
+                json!({"ai_rivals":1,"difficulty":"easy"})
+            )
+            .await
+            .0,
+            StatusCode::FORBIDDEN
+        );
+        assert_eq!(
+            call(
+                &a,
+                "POST",
+                &format!("{lobby}/settings"),
+                &host,
+                json!({"ai_rivals":3,"difficulty":"standard"})
+            )
+            .await
+            .0,
+            StatusCode::BAD_REQUEST,
+            "only two AI seats are free"
+        );
+        call(&a, "POST", &format!("{lobby}/leave"), &friend, json!({})).await;
+        // Rivals are fixed: Standard rivals fill every seat a person has not taken.
+        let room = call(&a, "GET", &lobby, &host, json!({})).await.2;
+        assert_eq!(
+            room["ai_rivals"], 3,
+            "the friend's seat returns to an AI rival"
+        );
+        assert_eq!(room["difficulty"], "standard");
+        assert!(room["blocked"].is_null());
+        for choice in [
+            json!({"ai_rivals":2,"difficulty":"standard"}),
+            json!({"ai_rivals":3,"difficulty":"easy"}),
+        ] {
+            assert_eq!(
+                call(&a, "POST", &format!("{lobby}/settings"), &host, choice)
+                    .await
+                    .0,
+                StatusCode::BAD_REQUEST,
+                "fewer or Easy rivals are not offered"
+            );
+        }
+        assert_eq!(
+            call(&a, "GET", "/api/tables", &host, json!({})).await.2[0]["status"],
+            "waiting"
+        );
+        let started = call(&a, "POST", &format!("{lobby}/start"), &host, json!({}))
+            .await
+            .2;
+        assert_eq!(started["table_url"], format!("/galactic-reach/?table={id}"));
+        assert_eq!(
+            call(&a, "GET", &format!("/api/tables/{id}"), &host, json!({}))
+                .await
+                .2["lobby"],
+            "started"
+        );
+        assert_eq!(
+            call(
+                &a,
+                "POST",
+                &format!("{lobby}/join"),
+                &stranger,
+                json!({"invite":invite})
+            )
+            .await
+            .0,
+            StatusCode::BAD_REQUEST,
+            "no joining after Start"
+        );
+    }
+    #[tokio::test]
     async fn table_shelf_is_private_persistent_and_saves_use_revisions() {
         let path = std::env::temp_dir().join(format!("table-test-{}.sqlite", uuid::Uuid::new_v4()));
         let mut a = app(true);
@@ -371,7 +548,7 @@ mod tests {
             galactic_reach::RULES
         );
         // A realistic size above the normal 16 KiB request limit is accepted here only.
-        let save = json!({"state":{"version":29,"rulesRevision":34,"players":[{},{},{},{}],"planets":{},"fleets":{},"clusters":[],"round":3,"activePlayer":0,"phase":"operations","winner":null,"log":"x".repeat(40000)},"turnHistory":{"pending":null,"undo":null},"gameHistory":{"format":1,"complete":true,"events":[{"text":"x".repeat(1100000)}]}});
+        let save = json!({"state":{"version":30,"rulesRevision":35,"players":[{},{},{},{}],"planets":{},"fleets":{},"clusters":[],"round":3,"activePlayer":0,"phase":"operations","winner":null,"log":"x".repeat(40000)},"turnHistory":{"pending":null,"undo":null},"gameHistory":{"format":1,"complete":true,"events":[{"text":"x".repeat(1100000)}]}});
         let body = json!({"revision":0,"save":save});
         let mut wrong = body.clone();
         wrong["save"]["state"]["version"] = json!(5);

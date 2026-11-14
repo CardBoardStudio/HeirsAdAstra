@@ -8,6 +8,7 @@ Nido is enabled by default. Set `APP_ORIGIN` to the exact externally reachable H
 
 - `NIDO_AUTH=0` disables wallet sign-in and invalidates wallet sessions on their next API request.
 - `NIDO_RPC_URL` optionally selects another trusted **HTTPS testnet RPC**. Its reported network passphrase is checked on every ownership lookup. This does not switch the wallet to another network.
+- `NIDO_WALLET_HOST` (default `test.nido.fyi`) picks the Nido wallet. Every wallet URL comes from it: the connect page `https://<host>/connect/`, each account's pages (sign, security, delegate-doc) at `https://<account>.<host>/`, and the RP ID and origin that sign-in assertions must carry. A numbered Nido PR preview such as `362.test.nido.fyi` puts accounts at `<account>--362.test.nido.fyi`, so set `NIDO_WALLET_HOST=362.test.nido.fyi` to sign in with that preview. The server publishes the derived URLs as `nido_wallet` in `GET /api/session`; the lab's "Manage your Nido wallet" link and the Galactic Reach Testnet seat use them. Passkeys belong to one wallet host, so an account created on `test.nido.fyi` cannot approve on a preview, and the reverse; create the account on the wallet you configure. A preview must use the same account Wasm and verifier as the pins below; `nido.fyi` (mainnet) is rejected.
 - `NIDO_SIGNERS_FILE` is retired. Remove it; startup rejects it with an explanation rather than silently continuing static-key authentication.
 
 The Tailscale origin can stay private to your tailnet: the wallet returns through your browser, so Nido's servers do not need access to Drawing Board. Use the same browser throughout the redirect and return.
@@ -16,19 +17,19 @@ The Tailscale origin can stay private to your tailnet: the wallet returns throug
 
 The server reads the wallet's deployed Wasm and `configuration()` through Stellar RPC. It accepts a **non-expiring, policy-free self-admin rule with exactly one external P-256 passkey**, using Nido's current Perch WebAuthn verifier. Multiple independent admin rules are supported. Scoped session keys, delegated signers, multisig rules, attached policies, active recovery freezes, archived accounts, and unknown/older account implementations fail closed with an account-page explanation. Nido's message protocol supplies one primary-passkey assertion; it cannot prove a multisig quorum. This integration does not submit or authorize a blockchain transaction.
 
-The pins match Nido's October 9 deployment:
+The pins match Nido's current testnet deployment (Nido `main` at `673394e5`, 2026-11-13). Testnet wallets live at `test.nido.fyi` (`https://test.nido.fyi/connect/` and `https://<account>.test.nido.fyi/sign/`) unless `NIDO_WALLET_HOST` says otherwise. Nido PR #362's preview (`362.test.nido.fyi`, head `4ef84a11`, checked 2026-11-14) ships the same two pins. Since Nido's 2026-10-26 mainnet switchover, `nido.fyi` is the mainnet wallet and is not used here.
 
-- Account Wasm: `bbb30174bbd85a2956a2f6146a156769621254011a6bdcac707cf787ce7bcd52`
-- WebAuthn verifier: `CBCCINHRMS3COAV5RHTCUASZLOEC52FCOBR3HMU4FKWJTAHWZTVFTHHY`
+- Account Wasm: `2c976bfd98678f3b6fcf5514420a81ef5e5b9fc1c5b6c60ec6f2dd64448479d5`
+- WebAuthn verifier: `CDEV5YPS5IITPLQPYTKJGWBNZ2YZ7FQZIJNSHUMJRBE4QWYK2IVK4EJT`
 - Network: `Test SDF Network ; September 2015`
 
-A future Nido account upgrade requires reviewing and updating these pins and the decoder in `crates/server/src/nido_chain.rs`. An older wallet is not automatically upgraded by this app. A testnet reset may also require a new wallet; this integration is not a mainnet identity service.
+Wallets created on the October 9 deployment are archived on testnet and need a new wallet. A future Nido account upgrade requires reviewing and updating these pins and the decoder in `crates/server/src/nido_chain.rs`. An older wallet is not automatically upgraded by this app. A testnet reset may also require a new wallet; this integration is not a mainnet identity service.
 
 ## Authentication and session lifecycle
 
 1. A five-minute random challenge is bound to an HttpOnly, SameSite=Lax browser cookie. Only its hash is stored. The original game/account destination is stored server-side and restricted to local game pages.
 2. The wallet returns its address. Drawing Board validates its checksum and live authority before requesting a signature over the app origin, testnet network, address, nonce, and expiry.
-3. Nido signs `SHA-256("Nido signed message (v1):\n" || message)`. Drawing Board re-reads live wallet authority, checks the envelope, exact account origin and RP hash, WebAuthn challenge, user presence and verification, and P-256 signature. A public key supplied by the browser is never itself an identity authority.
+3. Nido signs (the RP ID and origin are the account's wallet host, `<account>.test.nido.fyi` by default) `SHA-256("Nido signed message (v1):\n" || message)`. Drawing Board re-reads live wallet authority, checks the envelope, exact account origin and RP hash, WebAuthn challenge, user presence and verification, and P-256 signature. A public key supplied by the browser is never itself an identity authority.
 4. Challenge consumption, persistent account creation, and session issuance are atomic. Replay, expiry, cancellation, and invalid proofs cannot issue a session. Errors return to the account UI; successful sign-in returns to the selected destination.
 5. Accounts retain the existing `nido:<address>` IDs and display names. Sessions use the same 24-hour expiry, ten-session cap, logout, and revoke-other-sessions controls as recovery-key accounts.
 6. Wallet sessions retain the verified public key and recheck live authority on API use after 60 seconds. Removed keys, recovery freezes, and unsupported upgrades invalidate the session. A network outage denies requests after the cached authorization expires; it never extends stale authority. Static-key-era sessions require fresh authentication. Other account types remain usable during RPC outages.
@@ -50,5 +51,5 @@ Protocol inspected at Nido commit `27b044bc5546738c6e2c10d221414a37c86a2804`:
 - [Message domain and challenge](https://github.com/nidohq/nido/blob/27b044bc5546738c6e2c10d221414a37c86a2804/packages/frontend/src/lib/messageSigning.ts)
 - [Assertion envelope](https://github.com/nidohq/nido/blob/27b044bc5546738c6e2c10d221414a37c86a2804/packages/frontend/src/lib/walletSign.ts)
 - [Redirect URLs](https://github.com/nidohq/nido/blob/27b044bc5546738c6e2c10d221414a37c86a2804/packages/stellar-wallets-kit-module/src/urls.ts)
-- [Deployed contracts](https://github.com/nidohq/nido/blob/27b044bc5546738c6e2c10d221414a37c86a2804/packages/passkey-sdk/src/perch/deployment.ts)
+- [Deployed contracts](https://github.com/nidohq/nido/blob/673394e5/packages/passkey-sdk/src/perch/deployment.ts)
 - [Perch configuration interface](https://github.com/stellar-registry/perch/blob/bb746f9d03c593f0d5a2518c6900e00c938f95ec/crates/perch-smart-account/src/lib.rs)

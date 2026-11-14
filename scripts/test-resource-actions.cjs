@@ -169,9 +169,10 @@ function card(key,upgraded=false){return {...r.makeCard(key,true),upgraded};}
   assert.equal(p.bought,1);assert.equal(p.resources.data,0);assert.equal(p.resources.energy,0,'AI paid the same 4:1 exchange and card price');
 }
 {
-  const s=fresh();tabs.length=0;r.startOperationsTurn();assert.equal(tabs.at(-1),'hand');
+  // Hold a card: an empty hand now passes to Buy automatically (rulebook #automatic-turns).
+  const s=fresh();s.players[0].hand=[card('move',true)];tabs.length=0;r.startOperationsTurn();assert.equal(tabs.at(-1),'hand');
   r.passOperations(0);assert.equal(tabs.at(-1),'market');
-  r.nextBuyPlayer();s.activePlayer=0;s.players[0].passed=false;r.startOperationsTurn();assert.equal(tabs.at(-1),'hand');
+  r.nextBuyPlayer();s.activePlayer=0;s.players[0].passed=false;s.players[0].hand=[card('move',true)];r.startOperationsTurn();assert.equal(tabs.at(-1),'hand');
   const names=['You','A','B','C'];
   assert.match(r.describeDecision(0,{type:'bank_trade',giveType:'energy',getType:'data'},s,names).text,/4 Energy → 1 Data/);
   assert.match(r.describeDecision(0,{type:'discard_resources',resource:'matter',amount:2},s,names).text,/Discard 2 Matter/);
