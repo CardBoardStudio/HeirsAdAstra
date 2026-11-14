@@ -72,7 +72,19 @@ pub trait TableLog: Send + Sync {
     fn append(&self, id: &str, head: u64, events: &[NewEvent]) -> Result<u64, String>;
     fn read(&self, id: &str) -> Result<Vec<Event>, String>;
     fn finish(&self, id: &str) -> Result<(), String>;
+    /// Stores a resumable position taken after event `seq`. Like a solo save it
+    /// holds the whole state, secrets included, and stays on the server. It lets
+    /// a table continue after a save-compatible engine edit that would change a
+    /// replay of older events. The newest few are kept.
+    fn save_snapshot(&self, id: &str, seq: u64, snapshot: &Value) -> Result<(), String>;
+    /// Stored positions, newest first.
+    fn snapshots(&self, id: &str) -> Result<Vec<(u64, Value)>, String>;
+    /// Ids of every unfinished table.
+    fn active_tables(&self) -> Result<Vec<String>, String>;
 }
+
+/// Snapshots kept per table: enough to cover any Undo window.
+const SNAPSHOTS_KEPT: u64 = 64;
 
 pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
     db.execute_batch(
@@ -88,6 +100,10 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
         table_id TEXT NOT NULL REFERENCES gr_shared_tables(id) ON DELETE CASCADE,
         seq INTEGER NOT NULL, kind TEXT NOT NULL, seat INTEGER, public TEXT NOT NULL, private TEXT,
         previous_hash TEXT NOT NULL, hash TEXT NOT NULL, created INTEGER NOT NULL,
+        PRIMARY KEY(table_id,seq));
+        CREATE TABLE IF NOT EXISTS gr_shared_snapshots(
+        table_id TEXT NOT NULL REFERENCES gr_shared_tables(id) ON DELETE CASCADE,
+        seq INTEGER NOT NULL, data TEXT NOT NULL, created INTEGER NOT NULL,
         PRIMARY KEY(table_id,seq));",
     )?;
     // Additive: shared tables dealt before the Prestige-target setting keep 40.
@@ -281,6 +297,47 @@ impl TableLog for SqliteTableLog {
             })
         })
         .collect()
+    }
+    fn save_snapshot(&self, id: &str, seq: u64, snapshot: &Value) -> Result<(), String> {
+        let db = self.0.0.lock().map_err(sql)?;
+        db.execute(
+            "INSERT INTO gr_shared_snapshots(table_id,seq,data,created) VALUES(?,?,?,?)
+             ON CONFLICT(table_id,seq) DO UPDATE SET data=excluded.data",
+            params![id, seq, snapshot.to_string(), crate::now()],
+        )
+        .map_err(sql)?;
+        db.execute(
+            "DELETE FROM gr_shared_snapshots WHERE table_id=? AND seq NOT IN
+             (SELECT seq FROM gr_shared_snapshots WHERE table_id=? ORDER BY seq DESC LIMIT ?)",
+            params![id, id, SNAPSHOTS_KEPT],
+        )
+        .map(|_| ())
+        .map_err(sql)
+    }
+    fn snapshots(&self, id: &str) -> Result<Vec<(u64, Value)>, String> {
+        let db = self.0.0.lock().map_err(sql)?;
+        let mut query = db
+            .prepare("SELECT seq,data FROM gr_shared_snapshots WHERE table_id=? ORDER BY seq DESC")
+            .map_err(sql)?;
+        let rows = query
+            .query_map([id], |r| Ok((r.get::<_, u64>(0)?, r.get::<_, String>(1)?)))
+            .map_err(sql)?;
+        rows.map(|row| {
+            let (seq, data) = row.map_err(sql)?;
+            Ok((seq, serde_json::from_str(&data).map_err(sql)?))
+        })
+        .collect()
+    }
+    fn active_tables(&self) -> Result<Vec<String>, String> {
+        let db = self.0.0.lock().map_err(sql)?;
+        let mut query = db
+            .prepare("SELECT id FROM gr_shared_tables WHERE status='active' ORDER BY updated DESC")
+            .map_err(sql)?;
+        query
+            .query_map([], |r| r.get(0))
+            .map_err(sql)?
+            .collect::<Result<_, _>>()
+            .map_err(sql)
     }
     fn finish(&self, id: &str) -> Result<(), String> {
         self.0

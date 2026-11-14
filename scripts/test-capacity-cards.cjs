@@ -31,8 +31,11 @@ for (const [key, def] of Object.entries(cards)) {
   assert.equal(!!def.military, def.code[0] === 'M');
 }
 const prices = Object.values(cards).map(c => Object.values(c.cost).reduce((n, x) => n + x, 0));
-assert(Math.min(...prices) <= 7 && Math.max(...prices) >= 20, 'Prices range from just above starting capacity to top-end cards');
-assert.equal(catalog.rulesVersion,'galactic-reach/32.37');
+// 32.37 (Cheaper Cards): about 30% cheaper, from exactly 5 of one resource (one upgrade) to 14.
+assert.equal(Math.min(...prices), 5, 'The cheapest cards cost exactly 5 of one resource');
+assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
+assert.equal(prices.reduce((n, p) => n + p, 0), 266, 'The set costs 266 resources (31.36: 376, 29% less)');
+assert.equal(catalog.rulesVersion, 'galactic-reach/33.38');
 
 // Setup: ten face-up cards from one 72-card supply that mixes both decks; target defaults to 40.
 {
@@ -59,10 +62,10 @@ assert.equal(catalog.rulesVersion,'galactic-reach/32.37');
   p.hand = [{ key: 'procurementHub', id: 'hub' }, { key: 'tradeSyndicate', id: 'syn' }];
   p.resources.energy = 25;
   act(g, 0, 'buy_effect', a => a.card === 'hub'); assert.equal(p.buyLimit, 2);
-  act(g, 0, 'buy_effect', a => a.card === 'syn'); assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'dysonLattice'))), { energy: 11, matter: 5, data: 3 });
+  act(g, 0, 'buy_effect', a => a.card === 'syn'); assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'dysonLattice'))), { matter: 3, energy: 7, data: 1 });
   act(g, 0, 'buy', a => a.key === 'dysonLattice');
   assert.equal(p.cardPrestige, 6); assert.equal(g.e.calculatePrestige(0), 9, 'Colony 3 + Dyson Lattice 6');
-  assert.equal(p.resources.energy, 14, 'Trade Syndicate took 1 off each resource of the next purchase');
+  assert.equal(p.resources.energy, 18, 'Trade Syndicate took 1 off each resource of the next purchase');
   assert.equal(p.buyDiscountEach, 0, 'The discount is used up');
   act(g, 0, 'buy', a => a.key === 'novaBarrage');
   assert(p.military.some(c => c.id === 'nova')); assert(!p.discard.some(c => c.id === 'nova'), 'Military cards never enter discard');
@@ -98,6 +101,23 @@ assert.equal(catalog.rulesVersion,'galactic-reach/32.37');
   const harvest = s.clusters[0].coords[2];
   act(g, 0, 'build', a => a.card === 'foundry' && a.coord === harvest && a.kind === 'harvester');
   assert.equal(p.resources.matter, 3, 'A 1/1/1 Harvester at −1 of each costs nothing; Orbital Foundry then adds 2 Matter');
+}
+// 32.37 economy: a Harvester hex produces 2 (was 1); issue #41 costs and opening resources.
+{
+  const g = game(), { s, e } = g;
+  assert.equal(e.HARVESTER_YIELD, 2);
+  assert.deepEqual(JSON.parse(JSON.stringify(e.SHIP_STATS.settler.cost)), { matter: 1, energy: 1, biomass: 1 });
+  assert.deepEqual(JSON.parse(JSON.stringify(e.STRUCTURES.harvester.cost)), { matter: 1, energy: 1, data: 1 });
+  for (const p of s.players) assert.deepEqual({ biomass: p.resources.biomass, data: p.resources.data }, { biomass: 1, data: 1 }, 'Every faction starts with 1 Biomass and 1 Data');
+  const hex = s.clusters[0].coords[1]; Object.assign(s.planets[hex], { owner: 0, upgrade: 'harvester', occupiedBy: null });
+  const type = s.planets[hex].type, before = s.players[0].resources[type];
+  s.players[0].resourceLimits[type] = 20; s.phase = 'buy'; s.activePlayer = 0;
+  for (const p of s.players) { p.passed = true; p.hand = []; }
+  let guard = 0; while (s.round === 1 && guard++ < 20) { const a = g.adapter(); const seat = a.activeSeat(); a.applyAction(seat, a.legalActions(seat).find(x => x.type === 'finish_buy') || a.legalActions(seat)[0]); }
+  assert.equal(s.round, 2);
+  const view = g.adapter().observe(0);
+  assert.equal(view.harvesterYield, 2); assert.equal(view.marketCosts.length, view.market.length, 'Server rivals read printed prices');
+  assert(s.players[0].resources[type] >= before + 2, 'The Harvester hex produced 2 at the round start');
 }
 // Rivals: value, save toward and raise capacity for a target card, then buy it.
 {

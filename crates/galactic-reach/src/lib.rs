@@ -10,9 +10,25 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-pub const RULES: &str = "galactic-reach/32.37";
+/// Rules a shared table may play: the current rules and every archived engine
+/// that carries the shared-table hooks (authority shuffles, private views, Undo
+/// marks). A table keeps the rules it was dealt with, as solo tables do, so a
+/// cutover never strands a running shared game. At a cutover, archive the
+/// outgoing engine (rules/vNN-*, with `include_str!` arms in `boot`) and add its
+/// revision here.
+pub const SHARED_RULES: [&str; 4] = [
+    RULES,
+    "galactic-reach/32.37",
+    "galactic-reach/31.36",
+    "galactic-reach/30.35",
+];
+/// The [`SHARED_RULES`] entry for `rules`, if a shared table can play it.
+pub fn shared_rules(rules: &str) -> Option<&'static str> {
+    SHARED_RULES.iter().find(|r| **r == rules).copied()
+}
+pub const RULES: &str = "galactic-reach/33.38";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "Split Moves experiment";
+pub const EXPERIMENT: &str = "Split Moves playtest";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -105,6 +121,7 @@ impl GalacticReach {
             "galactic-reach/29.34" => "galactic-reach/29.34",
             "galactic-reach/30.35" => "galactic-reach/30.35",
             "galactic-reach/31.36" => "galactic-reach/31.36",
+            "galactic-reach/32.37" => "galactic-reach/32.37",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -131,11 +148,45 @@ impl GalacticReach {
     /// says whether a person plays it. Call [`Self::extend_deadline`] before each
     /// batch of work: a shared table lives far longer than one match budget.
     pub fn shared(
+        rules: &str,
         seats: &[(String, bool); 4],
         victory_target: u32,
         shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
     ) -> Result<Self, String> {
+        Self::shared_on(rules, seats, victory_target, None, shuffle)
+    }
+    /// [`Self::shared`] resumed from a [`Self::snapshot`] (`resume`) instead of a
+    /// fresh deal, the way a solo save loads.
+    pub fn shared_on(
+        rules: &str,
+        seats: &[(String, bool); 4],
+        victory_target: u32,
+        resume: Option<&str>,
+        shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
+    ) -> Result<Self, String> {
+        let rules = shared_rules(rules)
+            .ok_or_else(|| format!("Shared tables cannot run {rules} on this server."))?;
+        Self::shared_from(rules, seats, victory_target, resume, shuffle)
+    }
+    fn shared_from(
+        rules: &'static str,
+        seats: &[(String, bool); 4],
+        victory_target: u32,
+        resume: Option<&str>,
+        shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
+    ) -> Result<Self, String> {
         let shuffle = RefCell::new(shuffle);
+        // The snapshot is spliced in as the engine's own JSON text. Parsing it into
+        // a serde_json::Value would sort object keys, and the rules iterate some
+        // objects (planets by coordinate) in order, so a resumed game would drift.
+        let resume = match resume {
+            Some(text) => {
+                serde_json::from_str::<serde::de::IgnoredAny>(text)
+                    .map_err(|e| format!("Unreadable snapshot: {e}"))?;
+                text
+            }
+            None => "null",
+        };
         let names: Vec<&str> = seats.iter().map(|s| s.0.as_str()).collect();
         let controllers: Vec<&str> = seats
             .iter()
@@ -143,7 +194,7 @@ impl GalacticReach {
             .collect();
         Self::boot(
             SHARED_STEP,
-            RULES,
+            rules,
             move |ctx| {
                 ctx.globals().set(
                     "authorityShuffle",
@@ -156,10 +207,11 @@ impl GalacticReach {
                 )
             },
             &format!(
-                "globalThis.game = createGalacticReach({{headless: true, shuffle: authorityShuffle, names: {}, controllers: {}, victoryTarget: {}}});",
+                "globalThis.game = createGalacticReach({{headless: true, shuffle: authorityShuffle, names: {}, controllers: {}, victoryTarget: {}, resume: {}}});",
                 json!(names),
                 json!(controllers),
-                victory_target
+                victory_target,
+                resume
             ),
         )
     }
@@ -171,6 +223,14 @@ impl GalacticReach {
     /// hidden information removed (see `privateState` in adapter.js).
     pub fn private_state(&self, seat: usize) -> Result<Value, String> {
         self.eval_json(&format!("JSON.stringify(game.privateState({seat}))"))
+    }
+    /// The whole position, secrets included, for [`Self::shared_on`], as the
+    /// engine's JSON text (keep it as text: object key order matters to the rules).
+    pub fn snapshot(&self) -> Result<String, String> {
+        let deadline = self.deadline.get();
+        self.context
+            .with(|ctx| ctx.eval::<String, _>("JSON.stringify(game.snapshotState())"))
+            .map_err(|e| execution_error(deadline, e))
     }
     /// The current turn and a summary of everything an action could reveal; a
     /// shared table compares it before and after each action to place Undo checkpoints.
@@ -225,6 +285,7 @@ impl GalacticReach {
                     "galactic-reach/29.34" => include_str!("../rules/v29-adapter.js"),
                     "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
+                    "galactic-reach/32.37" => include_str!("../rules/v32-adapter.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -257,6 +318,7 @@ impl GalacticReach {
                     "galactic-reach/29.34" => include_str!("../rules/v29-app.js"),
                     "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
+                    "galactic-reach/32.37" => include_str!("../rules/v32-app.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -493,8 +555,19 @@ fn victory_target(view: &Value) -> f64 {
 }
 /// How much a 31.36 rival values a market card: its price (the set is priced by
 /// power), its printed Prestige, minus copies it already owns.
+/// A market card's price: the observation's printed costs when the rules publish them
+/// (32.37 `marketCosts`), otherwise the 31.36 table.
+fn observed_cost(view: &Value, key: &str) -> Option<[f64; 4]> {
+    let market = view["market"].as_array()?;
+    let costs = view["marketCosts"].as_array()?;
+    let index = market.iter().position(|c| c["key"] == key)?;
+    Some(std::array::from_fn(|i| {
+        number(&costs[index][RESOURCE_KEYS[i]])
+    }))
+}
 fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
-    let (cost, prestige, military) = capacity_card(key)?;
+    let (table_cost, prestige, military) = capacity_card(key)?;
+    let cost = observed_cost(view, key).unwrap_or(table_cost);
     let me = &view["players"][seat];
     if military && bot_units(view, seat, "fleet") == 0.0 {
         return None;
@@ -520,7 +593,10 @@ fn capacity_need(view: &Value, seat: usize) -> Option<[f64; 4]> {
         .iter()
         .filter_map(|c| {
             let key = c["key"].as_str()?;
-            Some((capacity_value(view, seat, key)?, capacity_card(key)?.0))
+            Some((
+                capacity_value(view, seat, key)?,
+                observed_cost(view, key).or_else(|| capacity_card(key).map(|c| c.0))?,
+            ))
         })
         .max_by(|a, b| a.0.total_cmp(&b.0))?
         .1;
@@ -646,7 +722,12 @@ fn bot_income(view: &Value, seat: usize) -> Value {
         }
         let mut amount = 0.0;
         if p["owner"] == json!(seat) {
-            amount += 1.0;
+            // 32.37 Harvesters yield `harvesterYield` (2); earlier rules yield 1.
+            amount += if p["upgrade"] == "harvester" {
+                view["harvesterYield"].as_f64().unwrap_or(1.0)
+            } else {
+                1.0
+            };
         }
         let fleet = &view["fleets"][coord][seat.to_string()];
         if number(&fleet["settler"]) + number(&fleet["fleet"]) > 0.0 {
@@ -1038,7 +1119,7 @@ impl BuiltinAgent {
                 let from = action["source"].as_str().unwrap();
                 let to = action["destination"].as_str().unwrap();
                 let here_fleet = &view["fleets"][from][seat.to_string()];
-                // 32.37 #movement: a Move names the units it takes; score only those.
+                // 33.38 #movement: a Move names the units it takes; score only those.
                 // Earlier rules list no `units` and move the whole group, as before.
                 let split = action["units"].is_object();
                 let fleet = if split { &action["units"] } else { here_fleet };
@@ -1467,7 +1548,7 @@ mod tests {
         assert!(bot_storage_budget(&view, 0).is_none());
     }
     use game_core::run_match;
-    // 32.37 #movement: a Move names its `units`; Fleets may leave a safe Settler behind.
+    // 33.38 #movement: a Move names its `units`; Fleets may leave a safe Settler behind.
     #[test]
     fn split_moves_leave_safe_settlers_and_keep_exposed_ones_escorted() {
         let mut agent = BuiltinAgent::new(Strategy::Military, [9; 32]);
@@ -1624,6 +1705,7 @@ mod tests {
             "galactic-reach/29.34",
             "galactic-reach/30.35",
             "galactic-reach/31.36",
+            "galactic-reach/32.37",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1659,6 +1741,7 @@ mod tests {
                             | "galactic-reach/29.34"
                             | "galactic-reach/30.35"
                             | "galactic-reach/31.36"
+                            | "galactic-reach/32.37"
                     ) {
                         0
                     } else {
@@ -1814,6 +1897,68 @@ mod tests {
         assert!(bought >= 4, "rivals buy new market cards ({bought})");
         assert!(storage >= 4, "rivals raise their limits ({storage})");
         assert!(played >= 2, "rivals play new cards ({played})");
+    }
+    /// A shared table resumes from its snapshot text exactly: every revision in
+    /// SHARED_RULES boots, and a resumed engine re-snapshots byte for byte (object
+    /// key order included, which the rules depend on) and plays on identically.
+    #[test]
+    fn shared_tables_resume_exactly_on_every_shared_revision() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+        for rules in SHARED_RULES {
+            let log: Rc<RefCell<Vec<Vec<usize>>>> = Rc::default();
+            let mut rng = StdRng::from_seed([9; 32]);
+            let record = log.clone();
+            let seats: [(String, bool); 4] = std::array::from_fn(|i| (format!("P{i}"), i < 2));
+            let mut game = GalacticReach::shared(rules, &seats, 20, move |n, _| {
+                let mut order: Vec<usize> = (0..n).collect();
+                rand::seq::SliceRandom::shuffle(order.as_mut_slice(), &mut rng);
+                record.borrow_mut().push(order.clone());
+                order
+            })
+            .unwrap();
+            assert_eq!(game.rules_version(), rules);
+            let mut agents: Vec<BuiltinAgent> = (0..4)
+                .map(|i| BuiltinAgent::new(Strategy::Economy, [i; 32]))
+                .collect();
+            let mut step = |g: &mut GalacticReach| {
+                let seat = g.active_seat().unwrap();
+                let legal = g.legal_actions(seat);
+                let pick = agents[seat].select_action(&g.observe(seat).unwrap(), &legal);
+                g.apply_action(seat, legal[pick].clone()).unwrap();
+                legal[pick].clone()
+            };
+            for _ in 0..120 {
+                step(&mut game);
+            }
+            let text = game.snapshot().unwrap();
+            let used = log.borrow().len();
+            let replay = log.clone();
+            let mut next = used;
+            let mut resumed =
+                GalacticReach::shared_on(rules, &seats, 20, Some(&text), move |n, _| {
+                    let order = replay.borrow()[next].clone();
+                    assert_eq!(order.len(), n);
+                    next += 1;
+                    order
+                })
+                .unwrap();
+            assert_eq!(
+                resumed.snapshot().unwrap(),
+                text,
+                "{rules}: resumed snapshot is identical"
+            );
+            for _ in 0..150 {
+                let action = step(&mut game);
+                let seat = resumed.active_seat().unwrap();
+                resumed.apply_action(seat, action).unwrap();
+            }
+            assert_eq!(
+                resumed.snapshot().unwrap(),
+                game.snapshot().unwrap(),
+                "{rules}: plays on identically"
+            );
+        }
     }
     #[test]
     fn execution_deadline_interrupts_javascript() {

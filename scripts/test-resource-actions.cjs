@@ -166,9 +166,9 @@ function card(key,upgraded=false){return {...r.makeCard(key,true),upgraded};}
   assert.equal(r.bankPlanForCost(p,{energy:2,data:1}),null,'Reserve resources needed for the purchase');
   Object.assign(s.planets[s.clusters[0].coords[1]],{owner:0,occupiedBy:null,upgrade:'starbase'});
   p.hand=[];p.deck=[];p.discard=[];
-  // 31.36: basic cards are not sold; Ion Thrusters (5 Energy, 1 Data) needs a raised Energy limit.
-  p.resourceLimits={matter:4,energy:9,biomass:4,data:4};p.resources={matter:0,energy:9,biomass:0,data:0};
-  s.phase='buy';p.passed=true;s.market=[{key:'ionThrusters',id:'ion-1'}];s.advancedDeck=[];s.marketDiscard=[];r.runAiBuy();
+  // 31.36+: basic cards are not sold; Fold-Space Gate (32.37: 7 Energy, 2 Data) needs a raised Energy limit.
+  p.resourceLimits={matter:4,energy:12,biomass:4,data:4};p.resources={matter:0,energy:11,biomass:0,data:1};
+  s.phase='buy';p.passed=true;s.market=[{key:'foldSpaceGate',id:'ion-1'}];s.advancedDeck=[];s.marketDiscard=[];r.runAiBuy();
   assert.equal(p.bought,1);assert.equal(p.resources.data,0);assert.equal(p.resources.energy,0,'AI paid the same 4:1 exchange and card price');
   assert(p.discard.some(c=>c.id==='ion-1'),'A bought normal card enters discard');
 }

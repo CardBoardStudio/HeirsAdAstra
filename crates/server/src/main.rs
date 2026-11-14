@@ -602,6 +602,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
+    if std::env::args().nth(1).as_deref() == Some("snapshot-shared") {
+        // Snapshot every unfinished shared table with this build, so a
+        // save-compatible newer build can resume them (docs/shared-tables.md).
+        let mut failed = 0;
+        for (id, outcome) in app.shared.snapshot_all().await {
+            match outcome {
+                Ok(seq) => println!("{id}: snapshot at event {seq}"),
+                Err(e) => {
+                    failed += 1;
+                    println!("{id}: not snapshotted: {e:?}");
+                }
+            }
+        }
+        if failed > 0 {
+            return Err(format!("{failed} tables could not be snapshotted.").into());
+        }
+        return Ok(());
+    }
     if std::env::args().nth(1).as_deref() == Some("index-replays") {
         let owner = std::env::args()
             .nth(2)

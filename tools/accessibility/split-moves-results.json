@@ -1,0 +1,69 @@
+{
+  "rules": "33.38",
+  "scope": "Desktop picker at 1280/1024 and canonical rulebook at 1024; raw gradient review items retained. Keyboard checkbox/Tab/count operation and focus retention checked manually; no spoken screen-reader evaluation.",
+  "reports": [
+    {
+      "case": "split-hand-sector-popover-1024",
+      "viewport": {
+        "width": 1024,
+        "height": 900
+      },
+      "testedAt": "2026-11-14T21:11:46.375Z",
+      "sourceHashes": {
+        "app.js": "c951d58f67bcbdd48ca37e846d3f0ed30e2086b3b614a1bf2a8c9d95bcf54523",
+        "index.html": "c7bc0100171a6130ce43eb39eef5ad63387f4a81b005e6ef30580a074cd76dfa",
+        "styles.css": "13dff7ea826ed14355618f00f8588311dcbb548611ad1f2ef72abcbca63889da",
+        "rulebook.html": "79586b43f365eb3d4251f83c7266d572026da40a8c41b91b24d956707dbbbcd5",
+        "rulebook.css": "66776225d3838d9ca61feab5402a6af433798f0cee9f4e8a603dbaaa1c8e0b91",
+        "playtest-notes.js": "c2c4d6867ca1f005795a654486f687bd086938917215362f25b4c172fce1a740",
+        "playtest-notes.css": "3d8484181349c1720319d84189340fa6732ce9b7d7dee355019fc8ab0a5cef0d"
+      },
+      "violations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    },
+    {
+      "case": "fresh-rulebook-page-1024",
+      "viewport": {
+        "width": 1024,
+        "height": 900
+      },
+      "testedAt": "2026-11-14T21:12:06.584Z",
+      "sourceHashes": {
+        "app.js": "c951d58f67bcbdd48ca37e846d3f0ed30e2086b3b614a1bf2a8c9d95bcf54523",
+        "index.html": "c7bc0100171a6130ce43eb39eef5ad63387f4a81b005e6ef30580a074cd76dfa",
+        "styles.css": "13dff7ea826ed14355618f00f8588311dcbb548611ad1f2ef72abcbca63889da",
+        "rulebook.html": "79586b43f365eb3d4251f83c7266d572026da40a8c41b91b24d956707dbbbcd5",
+        "rulebook.css": "66776225d3838d9ca61feab5402a6af433798f0cee9f4e8a603dbaaa1c8e0b91",
+        "playtest-notes.js": "c2c4d6867ca1f005795a654486f687bd086938917215362f25b4c172fce1a740",
+        "playtest-notes.css": "3d8484181349c1720319d84189340fa6732ce9b7d7dee355019fc8ab0a5cef0d"
+      },
+      "violations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    },
+    {
+      "case": "split-hand-sector-popover-1280",
+      "viewport": {
+        "width": 1280,
+        "height": 720
+      },
+      "testedAt": "2026-11-14T21:11:34.523Z",
+      "sourceHashes": {
+        "app.js": "c951d58f67bcbdd48ca37e846d3f0ed30e2086b3b614a1bf2a8c9d95bcf54523",
+        "index.html": "c7bc0100171a6130ce43eb39eef5ad63387f4a81b005e6ef30580a074cd76dfa",
+        "styles.css": "13dff7ea826ed14355618f00f8588311dcbb548611ad1f2ef72abcbca63889da",
+        "rulebook.html": "79586b43f365eb3d4251f83c7266d572026da40a8c41b91b24d956707dbbbcd5",
+        "rulebook.css": "66776225d3838d9ca61feab5402a6af433798f0cee9f4e8a603dbaaa1c8e0b91",
+        "playtest-notes.js": "c2c4d6867ca1f005795a654486f687bd086938917215362f25b4c172fce1a740",
+        "playtest-notes.css": "3d8484181349c1720319d84189340fa6732ce9b7d7dee355019fc8ab0a5cef0d"
+      },
+      "violations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    }
+  ]
+}
