@@ -32,7 +32,7 @@ for (const [key, def] of Object.entries(cards)) {
 }
 const prices = Object.values(cards).map(c => Object.values(c.cost).reduce((n, x) => n + x, 0));
 assert(Math.min(...prices) <= 7 && Math.max(...prices) >= 20, 'Prices range from just above starting capacity to top-end cards');
-assert.equal(catalog.rulesVersion, 'galactic-reach/31.36');
+assert.equal(catalog.rulesVersion,'galactic-reach/32.37');
 
 // Setup: ten face-up cards from one 72-card supply that mixes both decks; target defaults to 40.
 {

@@ -779,3 +779,70 @@ async fn server_rivals_move_on_the_current_rules_even_with_older_policy_versions
         assert!(service.view(id, "a").await.unwrap()["ai_error"].is_null());
     }
 }
+
+/// 32.37 #movement: a seat's browser sends the chosen `units` with its Move (the
+/// shape `performMoveOrder` sends from app.js); the table accepts it, and the units
+/// left behind stay on their hex. A reference policy plays the human seat until a
+/// split is on offer.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_shared_move_can_leave_units_behind() {
+    let store = store_with(&["a"]);
+    let log = Arc::new(SqliteTableLog(store));
+    let service = Service::start(log, Arc::new(TrustedAuthority), Duration::ZERO);
+    service.open(table("split", &[("a", "Ada")])).await.unwrap();
+    let mut agent = BuiltinAgent::new(Strategy::Military, [5; 32]);
+    let n = |v: &Value| v.as_f64().unwrap_or(0.0);
+    let ships = |v: &Value| n(&v["settler"]) + n(&v["fleet"]);
+    for _ in 0..4000 {
+        let (seat, observation, legal) = service.turn("split").await.expect("game still running");
+        if seat != 0 {
+            tokio::time::sleep(Duration::from_millis(2)).await;
+            continue;
+        }
+        let seq = service.view("split", "a").await.unwrap()["seq"]
+            .as_u64()
+            .unwrap();
+        let here = |a: &Value| observation["fleets"][a["source"].as_str().unwrap()]["0"].clone();
+        let split = legal.iter().find(|a| {
+            a["type"] == "move"
+                && n(&a["units"]["explorer"]) == 0.0
+                && ships(&a["units"]) < ships(&here(a))
+        });
+        let Some(split) = split else {
+            let i = agent.select_action(&observation, &legal);
+            service
+                .act("split", "a", seq, vec![legal[i].clone()])
+                .await
+                .unwrap();
+            continue;
+        };
+        let (source, before) = (split["source"].as_str().unwrap(), here(split));
+        let intent = json!({"type":"move","card":split["card"],"source":source,
+            "destination":split["destination"],"moveGroup":split["moveGroup"],"units":split["units"]});
+        service.act("split", "a", seq, vec![intent]).await.unwrap();
+        let left = &service.view("split", "a").await.unwrap()["state"]["fleets"][source]["0"];
+        for kind in ["settler", "fleet"] {
+            assert_eq!(
+                n(&left[kind]),
+                n(&before[kind]) - n(&split["units"][kind]),
+                "unchosen {kind}s stay at {source}"
+            );
+        }
+        assert!(
+            matches!(
+                service
+                    .act(
+                        "split",
+                        "a",
+                        seq,
+                        vec![json!({"type":"move","source":source,"units":{"fleet":0.5}})]
+                    )
+                    .await,
+                Err(Refusal::Conflict(_) | Refusal::Bad(_))
+            ),
+            "a stale or malformed choice is refused"
+        );
+        return;
+    }
+    panic!("the reference policy never had a split Move on offer");
+}

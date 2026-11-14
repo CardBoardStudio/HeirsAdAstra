@@ -4,7 +4,7 @@ const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'
 function game(prefix='prototypes/galactic-reach/',seed=17){const c=vm.createContext({});vm.runInContext(read(prefix+'adapter.js')+read(prefix+'app.js').replace('      clone, deckContents,','      chooseAiMove, moonLayoutCount:()=>moonLayoutChoices.length, clone, deckContents,'),c);let e;const factory=c.createGalacticAdapter;c.createGalacticAdapter=p=>{e=p;return factory(p);};const a=c.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});return{a,e,s:e.state,adapter:()=>factory(e)};}
 function terrain(a,seat){const view=a.observe(seat);return plain({planets:view.planets,clusters:view.clusters});}
 {
- const g=game();assert.equal(g.a.rulesVersion,'galactic-reach/31.36');assert.equal(g.s.version,31);assert.equal(g.s.rulesRevision,36);
+ const g=game();assert.equal(g.a.rulesVersion,'galactic-reach/32.37');assert.equal(g.s.version,32);assert.equal(g.s.rulesRevision,37);
  assert.equal(g.s.visibilityRevision,4);assert.equal(g.e.moonLayoutCount(),2225);assert.equal(g.s.clusters.length,17);
  for(let seat=0;seat<4;seat++){
   const view=g.a.observe(seat);assert.equal(Object.keys(view.planets).length,91);
