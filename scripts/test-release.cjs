@@ -77,7 +77,7 @@ try {
   add('late-fix.md', 'breaking', 'Late fix');
   release('cut', '--released', 'stable');
   assert.match(app(), new RegExp(`SAVE_FORMAT_VERSION = ${to[0]};`), 'still one bump');
-  assert.equal((fs.readFileSync(path.join(repo, 'docs/releases.md'), 'utf8').match(/^## /gm) || []).length, 1);
+  assert.equal((fs.readFileSync(path.join(repo, 'docs/releases.md'), 'utf8').match(new RegExp(`^## ${to.join('.')} `, 'gm')) || []).length, 1, 'one section for the release');
   assert.match(fs.readFileSync(path.join(repo, 'prototypes/galactic-reach/index.html'), 'utf8'), /Harbors refit Fleets[\s\S]*Late fix/);
   assert.throws(() => release('cut', '--released', 'stable'), /nothing new/);
 } finally {
