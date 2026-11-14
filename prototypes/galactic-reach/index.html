@@ -6,6 +6,14 @@
   <meta name="theme-color" content="#101d22">
   <title>Galactic Reach · 28.33 · Tabletop playtest</title>
   <meta name="description" content="Play Galactic Reach against three computer-controlled rival factions.">
+  <script type="importmap">{"imports":{
+    "@aztec/bb.js":"/zk/node_modules/@aztec/bb.js/dest/browser/index.js",
+    "@noir-lang/noir_js":"/zk/node_modules/@noir-lang/noir_js/lib/index.mjs",
+    "@noir-lang/acvm_js":"/zk/node_modules/@noir-lang/acvm_js/web/acvm_js.js",
+    "@noir-lang/noirc_abi":"/zk/node_modules/@noir-lang/noirc_abi/web/noirc_abi_wasm.js",
+    "pako":"/zk/node_modules/pako/dist/pako.esm.mjs"
+  }}</script>
+  <link rel="stylesheet" href="/zk/web/seat.css">
   <link rel="stylesheet" href="styles.css?v=table-corners-a11y-28-33-1">
   <link rel="stylesheet" href="playtest-notes.css?v=1">
 </head>
@@ -159,8 +167,17 @@
           <button class="console-tab" id="trade-tab" type="button" data-tab="trade" role="tab" aria-selected="false" aria-controls="trade-panel" tabindex="-1">Trade</button>
           <button class="console-tab" id="fleet-tab" type="button" data-tab="fleet" role="tab" aria-selected="false" aria-controls="fleet-panel" tabindex="-1">Fleet</button>
           <button class="console-tab" id="relics-tab" type="button" data-tab="relics" role="tab" aria-selected="false" aria-controls="relics-panel" tabindex="-1">Relics</button>
+          <button class="console-tab" id="chain-tab" type="button" data-tab="chain" role="tab" aria-selected="false" aria-controls="chain-panel" tabindex="-1">Testnet seat</button>
         </div>
         <div class="console-body">
+          <div class="tab-panel" id="chain-panel" data-panel="chain" role="tabpanel" aria-labelledby="chain-tab" tabindex="0" hidden>
+            <div class="panel-heading"><div><div class="eyebrow">STELLAR TESTNET · PROTOTYPE</div><h2>Play this seat on chain</h2><p>Your hand stays private. The table checks every draw, so nobody can stack a deck, including you.</p></div>
+              <div class="hand-tools"><button class="button" id="chain-sit" type="button">Sit with Nido</button></div></div>
+            <div id="chain-approval" class="chain-approval"></div>
+            <p id="chain-status" class="chain-status" role="status">One approval seats you for 24 hours. After that, moves need no prompts.</p>
+            <div class="card-row" id="chain-hand"></div>
+            <details class="chain-details"><summary>Table record</summary><ol id="chain-log" class="chain-log"></ol></details>
+          </div>
           <div class="tab-panel active" id="hand-panel" data-panel="hand" role="tabpanel" aria-labelledby="hand-tab" tabindex="0">
             <div class="section-intro">
               <div><div class="eyebrow">YOUR NEXT MOVE</div><h2 id="hand-title">Your hand</h2><p id="hand-help">Cards may be converted into resources at any time during your Operations turn, or used for their printed order.</p></div>
@@ -332,6 +349,7 @@
   <script src="table.js?v=cards-in-play-28-33"></script>
   <script src="replay.js?v=cards-in-play-28-33"></script>
   <script src="app.js?v=table-corners-a11y-28-33-1"></script>
+  <script type="module" src="/zk/web/dist/seat.js"></script>
   <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="28.33"></script>
 </body>
 </html>

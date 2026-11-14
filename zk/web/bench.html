@@ -1,0 +1,17 @@
+<!doctype html><meta charset="utf-8"><title>gr_draw browser bench</title>
+<script type="importmap">{"imports":{"@aztec/bb.js":"/zk/node_modules/@aztec/bb.js/dest/browser/index.js","@noir-lang/noir_js":"/zk/node_modules/@noir-lang/noir_js/lib/index.mjs","@noir-lang/acvm_js":"/zk/node_modules/@noir-lang/acvm_js/web/acvm_js.js","@noir-lang/noirc_abi":"/zk/node_modules/@noir-lang/noirc_abi/web/noirc_abi_wasm.js","pako":"/zk/node_modules/pako/dist/pako.esm.mjs"}}</script>
+<script type="module">
+import * as gr from '/zk/lib/grzk.mjs';
+globalThis.bench = async (threads, runs = 5) => {
+  const t0 = performance.now();
+  await gr.init();
+  const circuit = await (await fetch('/zk/circuits/gr_draw/target/gr_draw.json')).json();
+  const base = { seed: gr.randomField(), deck: gr.STARTER_DECK, deckSalt: 0n, tableSeat: 17n, beacon: gr.randomField(), nonce: 1n, n: 5, discard: Array(gr.T).fill(0) };
+  const plan = gr.planDraw({ ...base, discard: [...base.discard] });
+  const inputs = gr.circuitInputs(base, plan);
+  const out = [];
+  for (let i = 0; i < runs; i++) { const r = await gr.prove(circuit, inputs, { threads }); out.push({ w: Math.round(r.witnessMs), p: Math.round(r.proveMs) }); }
+  const ok = await gr.verify({ proof: (await gr.prove(circuit, inputs, { threads })).proof, publicInputs: [] }).catch(() => 'n/a');
+  return JSON.stringify({ threads, isolated: crossOriginIsolated, firstLoadMs: Math.round(performance.now() - t0 - out.reduce((a, b) => a + b.w + b.p, 0)), runs: out });
+};
+</script>

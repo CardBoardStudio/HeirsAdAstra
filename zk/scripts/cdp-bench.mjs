@@ -1,0 +1,12 @@
+const [,, url, threads] = process.argv;
+setTimeout(() => { console.log('bench timeout'); process.exit(2); }, 240000);
+const ver = await (await fetch('http://127.0.0.1:9333/json/version')).json();
+const ws = new WebSocket(ver.webSocketDebuggerUrl); await new Promise((r) => ws.addEventListener('open', r, { once: true }));
+let id = 0; const w = new Map(); ws.addEventListener('message', (m) => { const d = JSON.parse(m.data); if (d.id && w.has(d.id)) { w.get(d.id)(d); w.delete(d.id); } });
+const send = (method, params = {}, sessionId) => new Promise((r) => { const i = ++id; w.set(i, r); ws.send(JSON.stringify({ id: i, method, params, sessionId })); });
+const { result: { targetId } } = await send('Target.createTarget', { url: 'about:blank' });
+const { result: { sessionId } } = await send('Target.attachToTarget', { targetId, flatten: true });
+await send('Page.navigate', { url }, sessionId); await new Promise((r) => setTimeout(r, 2500));
+const r = await send('Runtime.evaluate', { expression: `bench(${threads})`, awaitPromise: true, returnByValue: true, timeout: 230000 }, sessionId);
+console.log(r.result?.result?.value ?? JSON.stringify(r.result?.exceptionDetails?.exception?.description ?? r).slice(0, 400));
+await send('Target.closeTarget', { targetId }); process.exit(0);

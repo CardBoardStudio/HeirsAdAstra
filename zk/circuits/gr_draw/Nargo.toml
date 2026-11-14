@@ -1,0 +1,9 @@
+[package]
+name = "gr_draw"
+type = "bin"
+compiler_version = ">=1.0.0"
+
+[dependencies]
+# Same Poseidon2 as Perch's ZK recovery: matches soroban-poseidon's
+# Poseidon2Sponge::<4, Bn254Fr> on the Soroban host.
+poseidon = { path = "../../vendor/noir-poseidon" }
