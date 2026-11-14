@@ -13,9 +13,9 @@ function funds(p){p.storageUpgrades=100;p.resourceLimits={matter:1000,energy:100
 const record={fixtures:0,matchedSetups:0};
 for(let n=0;n<32;n++){
  const current=game(undefined,20261111+n*7919),old=game('crates/galactic-reach/rules/v20-',20261111+n*7919);
- assert.equal(current.a.rulesVersion,'galactic-reach/28.33');assert.equal(old.a.rulesVersion,'galactic-reach/20.25');
- const normalize=g=>{const s=plain(g.s);s.players.forEach(p=>{delete p.storagePurchases;delete p.inPlay;delete p.resourceLimits;});return {...s,version:0,rulesRevision:0,visibilityRevision:0};};assert.deepEqual(normalize(current),normalize(old));assert.equal(current.calls(),old.calls());
- const observation=g=>{const v=plain(g.a.observe(0));v.clusters.forEach(c=>delete c.located);v.players.forEach(p=>{delete p.storagePurchases;delete p.storageUpgradeCost;delete p.inPlay;delete p.resourceLimits;p.capacity=0;p.prestige=0;});return v;};assert.deepEqual(observation(current),observation(old));assert.deepEqual(plain(current.a.legalActions(0)),plain(old.a.legalActions(0)));record.matchedSetups++;
+ assert.equal(current.a.rulesVersion,'galactic-reach/29.34');assert.equal(old.a.rulesVersion,'galactic-reach/20.25');
+ const normalize=g=>{const s=plain(g.s);s.players.forEach(p=>{delete p.storagePurchases;delete p.inPlay;delete p.resourceLimits;});delete s.pendingConstruct;Object.values(s.planets).forEach(p=>delete p.occupiedBy);return {...s,version:0,rulesRevision:0,visibilityRevision:0};};assert.deepEqual(normalize(current),normalize(old));assert.equal(current.calls(),old.calls());
+ const observation=g=>{const v=plain(g.a.observe(0));delete v.pendingConstruct;Object.values(v.planets).forEach(p=>delete p.occupiedBy);v.clusters.forEach(c=>delete c.located);v.players.forEach(p=>{delete p.storagePurchases;delete p.storageUpgradeCost;delete p.inPlay;delete p.resourceLimits;p.capacity=0;p.prestige=0;});return v;};assert.deepEqual(observation(current),observation(old));assert.deepEqual(plain(current.a.legalActions(0)),plain(old.a.legalActions(0)));record.matchedSetups++;
 }
 {
  const g=game(),p=bot(g),center=g.s.clusters[4].center;funds(p);p.hand=[{id:'col',key:'colonize'},{id:'build',key:'construct'}];g.s.fleets={[center]:{1:{settler:1,explorer:0,fleet:0}}};
@@ -53,7 +53,7 @@ for(let n=0;n<32;n++){
  for(const c of g.s.clusters.filter(c=>c.kind==='world'))g.s.planets[c.center].owner=1;
  for(const coord of world.coords)Object.assign(g.s.planets[coord],{owner:2,occupiedBy:null,hasColony:coord===world.center,upgrade:coord===world.center?null:'harvester'});
  const [q,r]=world.center.split(',').map(Number),source=`${q-2},${r}`;g.s.fleets={[source]:{1:{settler:1,explorer:0,fleet:0}}};
- const move=g.e.chooseAiMove(1,p.hand[0]);assert(move);assert.equal(move.goal,world.center);assert.notEqual(move.destination,world.center,'Stop at the first hostile intermediate hex');
+ const move=g.e.chooseAiMove(1,p.hand[0]);assert(move);assert.equal(move.goal,world.center);assert.equal(move.destination,world.center,'Pass through undefended enemy resource hexes without occupation battles');
  assert(g.a.legalActions(1).some(a=>a.type==='move'&&a.source===source&&a.destination===move.destination));record.fixtures++;
 }
 {

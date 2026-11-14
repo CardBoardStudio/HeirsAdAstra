@@ -31,7 +31,7 @@ function createGalacticAdapter(e) {
         ? {kind:c.kind,center:c.center,coords:c.coords,surveyed:e.clusterRevealed(c,seat),located:e.relicKnown(c,seat)}
         : {kind:'unknown',center:null,coords:[],surveyed:false,located:e.relicKnown(c,seat)}),
       fleets: state.fleets, market: state.market, relicRow: state.relicRow, relicDeckCount: state.relicDeck.length,
-      pendingConsortium: state.pendingConsortium, tradeOffers: state.tradeOffers, pendingColonyBuild: state.pendingColonyBuild
+      pendingConsortium: state.pendingConsortium, tradeOffers: state.tradeOffers, pendingConstruct: state.pendingConstruct, pendingColonyBuild: state.pendingColonyBuild
     });
   }
   function legalActions(seat) {
@@ -41,19 +41,18 @@ function createGalacticAdapter(e) {
     if (state.pendingCombat) {
       cached=e.combatActions(seat);return e.clone(cached);
     }
-    if (e.overflowPlayer() >= 0) {
-      const excess = e.resourceExcess(seat);
-      for (const resource of e.RESOURCES) for (let amount = 1; amount <= excess[resource]; amount++)
-        actions.push({type:'discard_overflow',resource,amount});
-      cached = actions;
-      return e.clone(actions);
-    } else if (state.phase === 'operations' && state.pendingConsortium) {
+    if (state.phase === 'operations' && state.pendingConsortium) {
       for (const resource of e.RESOURCES) {
         if (e.canConsortiumGain(seat,resource)) actions.push({type:'consortium_gain',resource});
         for (const getType of e.RESOURCES) if (e.canConsortiumExchange(seat,resource,getType)) actions.push({type:'consortium_exchange',giveType:resource,getType});
       }
       actions.push({type:state.pendingConsortium.trades ? 'finish_consortium' : 'cancel_consortium'});
 
+    } else if (state.pendingConstruct) {
+      actions.push({type:'finish_construct'});
+      for(const coord of Object.keys(state.planets))for(const kind of [...Object.keys(e.STRUCTURES),...Object.keys(e.SHIP_STATS)])
+        if(e.canSecondConstruct(seat,coord,kind))actions.push({type:'second_build',coord,kind});
+      p.hand.forEach(card=>{const gain=e.cardResources(card),def=e.ALL_CARDS[card.key];if(def.wildcard)gain.data=(gain.data||0)+def.wildcard;actions.push({type:'resource',card:card.id,key:card.key,gain});});
     } else if (state.phase === 'buy') {
       actions.push({ type: 'finish_buy' });
       if (p.bought < p.buyLimit) {
@@ -108,10 +107,8 @@ function createGalacticAdapter(e) {
           if (e.colonizePlanet(seat, coord, { tag: def.tag }, true)) actions.push({ type: 'colonize', ...base, coord });
         });
         if (def.order === 'construct') Object.keys(state.planets).forEach(coord => {
-          for (const discountResource of card.upgraded ? e.RESOURCES : [null]) {
-            for (const kind of [...Object.keys(e.STRUCTURES),...Object.keys(e.SHIP_STATS)])
-              if (e.constructAt(seat,coord,kind,discountResource,true)) actions.push({type:'build',...base,coord,kind,discountResource});
-          }
+          for (const kind of [...Object.keys(e.STRUCTURES),...Object.keys(e.SHIP_STATS)])
+            if (e.constructAt(seat,coord,kind,null,true)) actions.push({type:'build',...base,coord,kind,discountResource:null});
         });
         if (def.order === 'move') Object.entries(state.fleets).forEach(([source, group]) => {
           if (!group[seat]) return;
@@ -177,11 +174,12 @@ function createGalacticAdapter(e) {
       case 'upgrade': e.upgradeStarter(seat, action.card, action.resource); return;
       case 'buy_effect': e.useBuyEffect(action.card, seat); return;
       case 'decommission': e.decommission(seat, action.card, action.resource); return;
-      case 'discard_overflow': e.discardOverflow(seat,{[action.resource]:action.amount}); return;
+      case 'finish_construct': e.finishConstruct(seat); return;
+      case 'second_build': e.finishConstruct(seat,action.coord,action.kind); return;
       case 'finish_colony_build': e.finishColonyBuild(seat); return;
       case 'colony_build': e.finishColonyBuild(seat,action.coord,action.kind); return;
       case 'colonize': e.applyColonizeOrder(seat, action.coord, card); return;
-      case 'build': e.constructAt(seat,action.coord,action.kind,action.discountResource); break;
+      case 'build': e.performConstructOrder(seat,action.coord,action.kind,card); return;
       case 'move': e.performMoveOrder(seat, action.source, action.destination, card, { tag: def.tag, moveGroup: action.moveGroup }); return;
       case 'probe': e.probeRelic(seat,action.coord,action.card); return;
       case 'excavate': e.excavate(seat,action.coord,action.card,action.relic); return;
@@ -206,6 +204,6 @@ function createGalacticAdapter(e) {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/28.33', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot };
+  return { rulesVersion: 'galactic-reach/29.34', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;

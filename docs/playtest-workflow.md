@@ -2,7 +2,7 @@
 
 ## Stable lane
 
-The stable playtest lane is `main`. Keep ongoing games save-compatible. Long Reach 6.11 was promoted in PR #16; old PR preview URLs are not current deployment links.
+The stable playtest lane is `main`. Keep ongoing games save-compatible. New games use Streamlined Operations 29.34. The preceding 28.33 release and earlier pinned games retain their archived engines; old PR preview URLs are not current deployment links.
 
 Create save-compatible work on `codex/<short-name>` from the latest `origin/main` head, open a PR against `main`, and apply `playtest-safe`. This includes accessibility, layout, wording, diagnostics, and fixes that preserve available decisions and saved-state meaning. Keep existing guest saves, pinned tables, and replays playable.
 

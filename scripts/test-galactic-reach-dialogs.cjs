@@ -270,18 +270,13 @@ for(const attacker of [0,1]) for(const stage of ['escape','tactic','committed','
   reportReload.click('message-continue');assert(!reportReload.saved().pendingCombatReport);
 });
 
-test('salvage overflow resolves before the saved automatic final report',()=>{
-  const storage=combatStorage(0,'tactic'),state=JSON.parse(storage.getItem(SAVE_KEY));
-  for(const seat of [0,1]) {state.players[seat].resources.matter=4;state.players[seat].hand.push({key:'salvageCrews',id:`report-salvage-${seat}`});}
-  writeSave(storage,state);let game=boot(storage),choices=0;
-  while(game.saved().pendingCombat){assert(choices++<8);game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();}
-  assert(game.saved().pendingCombatReport);assert(game.dialog('overflow').open);assert(!game.dialog('message').open,'Final report waits behind the resource choice');
-  assert.equal(game.saved().players[0].resources.matter,6);
-  game=boot(storage);assert(game.dialog('overflow').open);assert(!game.dialog('message').open);
-  game.dom.element('overflow-matter').value='2';fire(game.dom.element('overflow-matter'),'input');fire(game.dom.element('overflow-form'),'submit',{cancelable:true});game.settle();
-  assert(game.dialog('message').open);assert.equal(game.saved().players[0].resources.matter,4);
-  assert(game.dom.element('message-body').textContent.includes(game.saved().lastCombat.outcome));
-  game.click('message-continue');assert(!game.saved().pendingCombatReport);
+test('salvage caps automatically before the saved final report',()=>{
+ const storage=combatStorage(0,'tactic'),state=JSON.parse(storage.getItem(SAVE_KEY));
+ for(const seat of [0,1]){state.players[seat].resources.matter=4;state.players[seat].hand.push({key:'salvageCrews',id:`salvage-${seat}`});}
+ writeSave(storage,state);const game=boot(storage);let choices=0;
+ while(game.saved().pendingCombat){assert(choices++<8);game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();}
+ assert(game.dialog('message').open);assert(!game.dialog('overflow').open);assert.equal(game.saved().players[0].resources.matter,4);assert(game.saved().log.some(l=>l.includes('automatically discarded')));
+ const reload=boot(storage);assert(reload.dialog('message').open);assert.equal(reload.saved().players[0].resources.matter,4);reload.click('message-continue');assert(!reload.saved().pendingCombatReport);
 });
 
 test('pass opens Buy before any rival acts, and a Buy reload can finish', () => {
@@ -321,42 +316,17 @@ function overflowStorage() {
   return storage;
 }
 
-test('excess resources wait for the player and survive Escape', () => {
-  const game = boot(overflowStorage());
-  assert.equal(game.saved().players[0].resources.data, 3);
-  assert.equal(game.saved().activePlayer, 1);
-  assert(game.dialog('overflow').open);
-  game.pressEscape('overflow');
-  assert(game.dialog('overflow').open);
-  assert.deepEqual(game.saved().players[0].resources,{matter:8,energy:2,biomass:0,data:3});
+test('resource conversion discards excess without a dialog or extra choice',()=>{
+ const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:4,energy:0,biomass:0,data:0};state.players[0].hand=[{id:'auto-cap',key:'construct'}];writeSave(storage,state);
+ const game=boot(storage);game.click('convert-all-button');assert.equal(game.saved().players[0].resources.matter,4);assert(!game.dialog('overflow').open);assert.equal(game.saved().players[0].inPlay.length,1);assert(game.saved().log.some(l=>l.includes('automatically discarded 1 Matter')));
 });
 
-test('closing or reloading an overflow choice preserves the full collection', () => {
-  const storage = overflowStorage();
-  const game = boot(storage);
-  game.dialog('overflow').close();
-  game.settle();
-  assert(game.dialog('overflow').open);
-  const before = storage.getItem(SAVE_KEY);
-  const reloaded = boot(storage);
-  assert(reloaded.dialog('overflow').open);
-  assert.equal(storage.getItem(SAVE_KEY),before);
+test('automatic excess results persist across reload without a pending choice',()=>{
+ const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:4,energy:4,biomass:0,data:0};state.players[0].hand=[{id:'m',key:'construct'},{id:'e',key:'move'}];writeSave(storage,state);
+ const game=boot(storage);game.click('convert-all-button');const saved=game.saved();assert.equal(saved.players[0].hand.length,0);assert.deepEqual(saved.players[0].resources,{matter:4,energy:4,biomass:0,data:0});const reload=boot(storage);assert.deepEqual(reload.saved(),saved);assert(!reload.dialog('overflow').open);
 });
 
-test('the player can discard old resources and keep newly collected resources', () => {
-  const game = boot(overflowStorage());
-  game.dom.element('overflow-matter').value='3';
-  game.dom.element('overflow-energy').value='0';
-  game.dom.element('overflow-biomass').value='0';
-  game.dom.element('overflow-data').value='0';
-  fire(game.dom.element('overflow-matter'),'input');
-  assert.equal(game.dom.element('overflow-confirm').disabled,false);
-  fire(game.dom.element('overflow-form'),'submit',{cancelable:true});
-  game.settle();
-  assert(!game.dialog('overflow').open);
-  assert.deepEqual(game.saved().players[0].resources,{matter:5,energy:2,biomass:0,data:3});
-  assert.equal(game.saved().activePlayer,0);
-});
+test('current markup has no overflow-choice dialog',()=>{assert(!indexHtml.includes('id="overflow-dialog"'));});
 
 test('round three skips the council and proceeds to round four', () => {
   const { storage } = playFirstRound();
@@ -455,6 +425,7 @@ test('paid storage button preserves Buy and survives reload without a map buildi
   game.click('upgrade-storage-button');
   assert(game.dialog('storage-allocation').open);
   assert.deepEqual(game.saved(),before,'Opening an allocation is not a paid action');
+  for(const r of ['matter','energy','biomass','data'])game.dom.element('storage-points-'+r).value='0';
   game.dom.element('storage-points-data').value='4';fire(game.dom.element('storage-points-data'),'input');
   fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();
   assert.equal(game.saved().players[0].resourceLimits.data,8);
@@ -468,18 +439,9 @@ test('paid storage button preserves Buy and survives reload without a map buildi
   assert.equal(reloaded.dom.element('capacity-value').textContent, '0 stored · four separate limits');
 });
 
-test('converting at full storage opens the discard choice without losing the gain', () => {
-  const storage=createStorage(),state=boot(storage).saved();
-  state.players[0].resources={matter:4,energy:0,biomass:0,data:1};
-  state.players[0].hand=[{id:'full-conversion',key:'construct',starter:true},{id:'keep-conversion',key:'move',starter:true}];
-  writeSave(storage,state);
-  const game=boot(storage);
-  assert.equal(game.dom.element('convert-all-button').disabled,false);
-  game.click('convert-all-button');
-  assert(game.dialog('overflow').open);
-  assert.equal(game.saved().players[0].resources.matter,5);
-  assert.equal(game.saved().players[0].resources.data,1);
-  assert.equal(game.saved().players[0].hand.length,1);
+test('convert-all continues after automatic excess loss',()=>{
+ const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:4,energy:0,biomass:0,data:1};state.players[0].hand=[{id:'full',key:'construct'},{id:'next',key:'move'}];writeSave(storage,state);
+ const game=boot(storage);game.click('convert-all-button');assert(!game.dialog('overflow').open);assert.equal(game.saved().players[0].resources.matter,4);assert.equal(game.saved().players[0].resources.energy,1);assert.equal(game.saved().players[0].hand.length,0);
 });
 
 test('trashing uses three of the selected resource type in the live Buy UI', () => {
@@ -544,10 +506,10 @@ test('Production readout includes Harvesters and per-group collection and reacts
  const explorerData=coords('data').find(k=>k!==data);state.fleets[explorerData]={0:{explorer:1}};
  state.players[0].resources={matter:10,energy:0,biomass:0,data:0};
  writeSave(storage,state);const game=boot(storage);
- assert.deepEqual(productionNumbers(game),{matter:1,energy:2,biomass:1,data:0});
+ assert.deepEqual(productionNumbers(game),{matter:2,energy:2,biomass:1,data:1});
  assert.deepEqual(game.saved().players[0].resources,state.players[0].resources,'Forecast never collects resources or caps the gross gain');
  const updated=game.saved();updated.planets[occupiedMatter].occupiedBy=null;delete updated.fleets[occupiedMatter];updated.planets[energy].owner=null;updated.fleets[biomass][0]={explorer:1};writeSave(storage,updated);
- assert.deepEqual(productionNumbers(boot(storage)),{matter:2,energy:1,biomass:0,data:0});
+ assert.deepEqual(productionNumbers(boot(storage)),{matter:2,energy:1,biomass:0,data:1});
 });
 
 test('Probe resolves from empty space without selecting or reaching a world',()=>{
@@ -899,6 +861,22 @@ test('storage allocations cancel atomically, survive commitment and undo with th
  game.click('export-game-report');const report=game.downloads.at(-1);assert.deepEqual(report.save.state.players[0].resourceLimits,game.saved().players[0].resourceLimits);
  assert(report.save.gameHistory.events.some(e=>e.changes.some(c=>c.path.join('.')==='players.0.resourceLimits.data')));
  const reload=boot(storage);assert.deepEqual(reload.saved(),game.saved());reload.click('pass-button');reload.click('undo-turn-button');assert.deepEqual(reload.saved().players[0].resourceLimits,before.players[0].resourceLimits);
+});
+
+
+function constructTwoSave(){const storage=createStorage(),state=boot(storage).saved(),coord=state.clusters[0].coords[1];Object.assign(state,{activePlayer:0,phase:'operations',turnStage:'prep',selected:coord});state.players[0].resources={matter:4,energy:3,biomass:3,data:2};state.players[0].hand=[{id:'two-builds',key:'construct',starter:true,upgraded:true},{id:'fund-more',key:'construct'}];writeSave(storage,state);return{storage,coord};}
+function startFirstBuild(game){game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='two-builds').click();const button=game.dom.contextButton('Build Shipyard');assert(button&&!button.disabled);button.click();game.settle();}
+test('Construct II saves its optional second build and commits only once',()=>{
+ const {storage,coord}=constructTwoSave(),game=boot(storage);startFirstBuild(game);let state=game.saved();assert(state.pendingConstruct);assert.equal(state.activePlayer,0);assert.equal(state.players[0].resources.matter,2);assert.equal(state.players[0].inPlay.filter(c=>c.id==='two-builds').length,1);assert(!game.dom.element('finish-construct').hidden);assert(game.dom.element('undo-turn-button').disabled);
+ game.click('export-game-report');assert(game.downloads.at(-1).save.state.pendingConstruct);assert(game.downloads.at(-1).save.gameHistory.events.some(e=>e.changes.some(c=>c.path.join('.')==='pendingConstruct')));
+ const reload=boot(storage);assert.deepEqual(reload.saved().pendingConstruct,state.pendingConstruct);const fleet=reload.dom.contextButton('Commission Fleet');assert(fleet&&!fleet.disabled);fleet.click();reload.settle();state=reload.saved();assert(!state.pendingConstruct);assert.equal(state.fleets[coord][0].fleet,1);assert.equal(state.players[0].inPlay.filter(c=>c.id==='two-builds').length,1);assert.equal(state.players[0].resources.matter,0);
+ reload.click('undo-turn-button');assert(!reload.saved().pendingConstruct);assert(!reload.saved().planets[coord].upgrade);assert(!reload.saved().fleets[coord]?.[0]);assert.equal(reload.saved().players[0].inPlay.length,0);
+});
+test('Construct II can finish after one build following a reload',()=>{
+ const {storage,coord}=constructTwoSave(),game=boot(storage);startFirstBuild(game);const before=game.saved().players[0].resources;const reload=boot(storage);reload.click('finish-construct');assert(!reload.saved().pendingConstruct);assert.equal(reload.saved().planets[coord].upgrade,'starbase');assert.deepEqual(reload.saved().players[0].resources,before);assert.equal(reload.saved().players[0].inPlay.filter(c=>c.id==='two-builds').length,1);
+});
+test('capacity allocation defaults to one each and is immediately confirmable',()=>{
+ const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:2,energy:2,biomass:2,data:2};writeSave(storage,state);const game=boot(storage);game.click('upgrade-storage-button');for(const r of ['matter','energy','biomass','data'])assert.equal(game.dom.element('storage-points-'+r).value,'1');assert(!game.dom.element('storage-allocation-confirm').disabled);fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();assert.deepEqual(game.saved().players[0].resourceLimits,{matter:5,energy:5,biomass:5,data:5});
 });
 
 let failed = 0;

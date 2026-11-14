@@ -60,8 +60,8 @@ for(const attacker of [0,1]){
 }
 // Actual destruction when every retreat is unsafe or full; preferred origin capacity checked.
 {
- const g=fixture();g.start();stays(g);for(const coord of ['2,0','2,-1','1,-1','0,1','1,1'])g.s.fleets[coord]={2:{fleet:1}};g.s.fleets['0,0']={0:{fleet:5}};
- volley(g,'defensiveScreen','defensiveScreen');volley(g);volley(g,'defensiveScreen','defensiveScreen');assert(!g.s.fleets['1,0'][0]);assert.equal(g.s.fleets['0,0'][0].fleet,5);assert.match(g.s.lastCombat.outcome,/surviving ship was destroyed/);
+ const g=fixture();g.start();stays(g);for(const coord of ['2,0','2,-1','1,-1','0,1','1,1'])g.s.fleets[coord]={2:{fleet:1}};g.s.fleets['0,0']={2:{fleet:1}};
+ volley(g,'defensiveScreen','defensiveScreen');volley(g);volley(g,'defensiveScreen','defensiveScreen');assert(!g.s.fleets['1,0'][0]);assert.equal(g.s.fleets['0,0'][2].fleet,1);assert.match(g.s.lastCombat.outcome,/surviving ship was destroyed/);
 }
 // Defender Settler uses4 hull; attacker uses2. Fleet attack advantage is direct.
 {
@@ -76,7 +76,7 @@ for(const attacker of [0,1]){
  choose(g,{type:'combat_escape',destination:'2,0',amount:1});assert.equal(g.s.players[0].resources.energy,0);assert.equal(g.s.fleets['2,0'][0].explorer,1);assert.equal(g.s.fleets['1,0'][0].explorer,1);assert.equal(g.s.pendingCombat.attackerPieces.length,2);finish(g);
 }
 {
- const g=fixture({d:{explorer:2}});g.s.players[1].resources.energy=2;g.start();choose(g,{type:'combat_stay'});choose(g,{type:'combat_escape',destination:'2,0',amount:2});assert(!g.s.pendingCombat);assert.equal(g.s.lastCombat.volleys.length,0);assert.match(g.s.lastCombat.outcome,/seized/);assert.equal(g.s.fleets['2,0'][1].explorer,2);
+ const g=fixture({d:{explorer:2}});g.s.players[1].resources.energy=2;g.start();choose(g,{type:'combat_stay'});choose(g,{type:'combat_escape',destination:'2,0',amount:2});assert(!g.s.pendingCombat);assert.equal(g.s.lastCombat.volleys.length,0);assert.match(g.s.lastCombat.outcome,/won the battle/);assert.equal(g.s.fleets['2,0'][1].explorer,2);
 }
 {
  const g=fixture({a:{explorer:1}});g.start();assert.deepEqual(plain(g.e.combatActions(0)),[{type:'combat_stay'}]);
@@ -91,10 +91,10 @@ for(const [units,bonus] of [[{settler:1},1],[{fleet:1},3]]){
  const g=fixture({a:units,tag:'alienAssault'});g.s.players[0].hand=[{key:'warSongOfHollowStars',id:'song'}];g.start();stays(g);volley(g);const battle=g.s.pendingCombat||g.s.lastCombat;
  assert.equal(battle.volleys[0].attacker.bonus,bonus+(units.fleet?3:0));assert.equal(g.s.players[0].hand.some(c=>c.id==='song'),!units.fleet);
 }
-// Salvage overflow resumes after one move completion, never consumes a second card.
+// Salvage caps both sides automatically and completes the original move once.
 {
  const g=fixture({card:true});for(const seat of [0,1]){g.s.players[seat].hand.push({key:'salvageCrews',id:`salvage${seat}`});g.s.players[seat].resources.matter=4;}g.start();stays(g);volley(g);volley(g);
- assert.equal(g.s.activePlayer,1);assert(!g.s.pendingMove);const a=g.adapter();assert.equal(a.activeSeat(),0);assert.equal(g.s.players[0].resources.matter,6);a.applyAction(0,{type:'discard_overflow',resource:'matter',amount:2});assert.equal(a.activeSeat(),1);a.applyAction(1,{type:'discard_overflow',resource:'matter',amount:2});assert.equal(g.s.players[0].inPlay.filter(c=>c.id==='battle-move').length,1);
+ assert.equal(g.s.activePlayer,1);assert(!g.s.pendingMove);assert.equal(g.adapter().activeSeat(),1);assert.equal(g.s.players[0].resources.matter,4);assert.equal(g.s.players[1].resources.matter,4);assert.equal(g.s.players[0].inPlay.filter(c=>c.id==='battle-move').length,1);
 }
 // A JSON roundtrip resumes escape, a hidden commitment, and later damaged volleys.
 for(const stage of ['escape','committed','later']){

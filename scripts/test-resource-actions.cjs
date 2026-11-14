@@ -153,9 +153,9 @@ function card(key,upgraded=false){return {...r.makeCard(key,true),upgraded};}
 }
 {
   const s=fresh(),p=s.players[0];p.resources={matter:9,energy:0,biomass:0,data:1};const gain=card('construct',true);p.hand=[gain];
-  assert(r.playResourceMode(gain.id));assert.equal(p.hand.length,0);assert.equal(p.resources.matter,11);
+  assert(r.playResourceMode(gain.id));assert.equal(p.hand.length,0);assert.equal(p.resources.matter,10);
   r.saveGame();const pending=JSON.stringify(s);fresh();assert(r.loadGame());assert.equal(JSON.stringify(r.state),pending);
-  assert(r.discardOverflow(0,{matter:1}));assert.equal(r.state.players[0].resources.matter,10);
+  assert(!r.discardOverflow(0,{matter:1}));assert.equal(r.state.players[0].resources.matter,10);
   r.saveGame();const expected=JSON.stringify(r.state);fresh();assert(r.loadGame());assert.equal(JSON.stringify(r.state),expected);
   storage.set('galactic-reach-save-v7','parent-game');r.saveGame();assert.equal(storage.get('galactic-reach-save-v7'),'parent-game');
 }

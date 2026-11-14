@@ -186,3 +186,7 @@ Separate experiment based on corrected24.29 Probe. Rivals reserve a feasible upg
 ### Single-use Orders26.31
 
 Permanently trash Probe after a successful nearest-relic search and Colonize after successful founding or capture. Keep the Explorer for Probe. Conversions still discard; invalid/canceled attempts keep the card/action. Show +X current per-round production below every resource amount. Raise the Fleet cap6→10; other type and hex caps remain. Save26/rules31/native22 preserve25.30/native21. Existing25.30 balance results predate this change.
+
+## Streamlined Operations 29.34
+
+The five queued requests are implemented in this release: automatic excess discards, optional full-cost second builds for Construct II, no per-hex ship cap, removal of occupation/production blocking and seizing messages, and editable one-of-each capacity defaults. See the canonical rulebook and `docs/rules/streamlined-operations.md` for grounding and verification. This release preserves 28.33 games and native policy 24.

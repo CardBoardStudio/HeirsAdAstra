@@ -5,10 +5,10 @@ const vm = require('node:vm');
 const root = path.resolve(__dirname, '..');
 const plain = value => JSON.parse(JSON.stringify(value));
 
-function game() {
+function game(archived=false) {
   const context = vm.createContext({});
   for (const name of ['adapter.js', 'app.js']) {
-    vm.runInContext(fs.readFileSync(path.join(root, 'prototypes/galactic-reach', name), 'utf8'), context);
+    vm.runInContext(fs.readFileSync(path.join(root, archived?'crates/galactic-reach/rules/v28-'+name:'prototypes/galactic-reach/'+name), 'utf8'), context);
   }
   let engine;
   const factory = context.createGalacticAdapter;
@@ -20,9 +20,9 @@ function game() {
 
 {
   const { e, s, adapter } = game();
-  assert.equal(adapter().rulesVersion, 'galactic-reach/28.33');
-  assert.equal(s.version, 28);
-  assert.equal(s.rulesRevision, 33);
+  assert.equal(adapter().rulesVersion, 'galactic-reach/29.34');
+  assert.equal(s.version, 29);
+  assert.equal(s.rulesRevision, 34);
   assert(!('awards' in s));
   assert(!('DIRECTIVES' in e));
   const score = e.calculatePrestige(0);
@@ -94,7 +94,7 @@ for (const resource of ['matter', 'energy', 'biomass', 'data']) {
 }
 
 {
-  const { e, s, p, adapter } = game();
+  const { e, s, p, adapter } = game(true);
   p.resources = { matter: 8, energy: 2, biomass: 0, data: 0 };
   const result = e.addResources(p, { data: 3 });
   assert.equal(result.totalAdded, 3);
@@ -117,7 +117,7 @@ for (const resource of ['matter', 'energy', 'biomass', 'data']) {
 }
 
 {
-  const { e, s, p, adapter } = game();
+  const { e, s, p, adapter } = game(true);
   p.resources = { matter: 0, energy: 4, biomass: 0, data: 0 };
   p.hand = [{ key: 'move', id: 'convert' }, { key: 'construct', id: 'keep' }];
   const a = adapter();
@@ -134,7 +134,7 @@ for (const resource of ['matter', 'energy', 'biomass', 'data']) {
 }
 
 {
-  const { e, s, adapter } = game();
+  const { e, s, adapter } = game(true);
   s.players.forEach(player => { player.resourceLimits.matter=10; player.resources = { matter: 10, energy: 0, biomass: 0, data: 0 }; player.hand = []; });
   for (let seat = 0; seat < 4; seat++) { e.passOperations(seat); e.nextBuyPlayer(); }
   assert.equal(s.round, 2);
@@ -150,7 +150,7 @@ for (const resource of ['matter', 'energy', 'biomass', 'data']) {
 }
 
 for (const key of ['salvageCrews', 'naniteOssuary']) {
-  const { e, s, adapter } = game();
+  const { e, s, adapter } = game(true);
   s.planets = {};
   s.fleets = {
     '0,0': { 0: { settler: 0, explorer: 0, fleet: 1 } },
