@@ -1,3 +1,4 @@
+// Preserve immutable 33.38 Probe behavior; combined current semantics are in test-playtest-feedback.cjs.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
@@ -6,7 +7,7 @@ const crypto = require('node:crypto');
 const root = path.resolve(__dirname, '..');
 const read = file => fs.readFileSync(path.join(root, file), 'utf8');
 const plain = x => JSON.parse(JSON.stringify(x));
-function game(prefix = 'prototypes/galactic-reach/', seat = 0) {
+function game(prefix = 'crates/galactic-reach/rules/v33-', seat = 0) {
   const context = vm.createContext({});
   let engine, seed = 1729;
   const source = read(prefix + 'app.js').replace('      clone, deckContents,', '      drawCards, runAiOperation, clone, deckContents,');

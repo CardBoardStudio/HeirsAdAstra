@@ -243,3 +243,10 @@ cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/32.37/table.js
 if [ -z "${SKIP_ZK_SEAT:-}" ]; then
   ./zk/build-web.sh "$PWD/dist/galactic-reach/zk"
 fi
+
+# Preserve stable Split Moves 33.38 for pinned guest/shared games and replays.
+mkdir -p dist/galactic-reach/rules/33.38
+for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js cards.html shared.js playtest-notes.js playtest-notes.css; do
+  cp "crates/galactic-reach/rules/v33-$asset" "dist/galactic-reach/rules/33.38/$asset"
+done
+cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/33.38/table.js

@@ -16,8 +16,9 @@ use std::time::{Duration, Instant};
 /// cutover never strands a running shared game. At a cutover, archive the
 /// outgoing engine (rules/vNN-*, with `include_str!` arms in `boot`) and add its
 /// revision here.
-pub const SHARED_RULES: [&str; 4] = [
+pub const SHARED_RULES: [&str; 5] = [
     RULES,
+    "galactic-reach/33.38",
     "galactic-reach/32.37",
     "galactic-reach/31.36",
     "galactic-reach/30.35",
@@ -26,9 +27,9 @@ pub const SHARED_RULES: [&str; 4] = [
 pub fn shared_rules(rules: &str) -> Option<&'static str> {
     SHARED_RULES.iter().find(|r| **r == rules).copied()
 }
-pub const RULES: &str = "galactic-reach/33.38";
+pub const RULES: &str = "galactic-reach/36.41";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "Split Moves playtest";
+pub const EXPERIMENT: &str = "Playtest Feedback experiment";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -47,6 +48,7 @@ mod legacy_v22;
 mod legacy_v23;
 mod legacy_v24;
 mod legacy_v25;
+mod legacy_v26;
 mod legacy_v3;
 mod legacy_v4;
 mod legacy_v5;
@@ -93,6 +95,7 @@ impl GalacticReach {
     pub fn with_rules(seed: [u8; 32], rules: &str) -> Result<Self, String> {
         let rules = match rules {
             RULES => RULES,
+            "galactic-reach/33.38" => "galactic-reach/33.38",
             "galactic-reach/4.9" => "galactic-reach/4.9",
             "galactic-reach/5.10" => "galactic-reach/5.10",
             "galactic-reach/6.11" => "galactic-reach/6.11",
@@ -270,6 +273,7 @@ impl GalacticReach {
                 globals(&ctx)?;
                 ctx.eval::<(), _>(match rules {
                     RULES => ADAPTER,
+                    "galactic-reach/33.38" => include_str!("../rules/v33-adapter.js"),
                     "galactic-reach/17.22" => include_str!("../rules/v17-adapter.js"),
                     "galactic-reach/18.23" => include_str!("../rules/v18-adapter.js"),
                     "galactic-reach/19.24" => include_str!("../rules/v19-adapter.js"),
@@ -303,6 +307,7 @@ impl GalacticReach {
                 ctx.eval::<(), _>(include_str!("../rules/replay-view.js"))?;
                 ctx.eval::<(), _>(match rules {
                     RULES => ENGINE,
+                    "galactic-reach/33.38" => include_str!("../rules/v33-app.js"),
                     "galactic-reach/17.22" => include_str!("../rules/v17-app.js"),
                     "galactic-reach/18.23" => include_str!("../rules/v18-app.js"),
                     "galactic-reach/19.24" => include_str!("../rules/v19-app.js"),
@@ -398,7 +403,13 @@ impl GameAdapter for GalacticReach {
         if self.snapshot.active == Some(seat) {
             self.snapshot.legal.clone()
         } else {
-            vec![]
+            self.context
+                .with(|ctx| {
+                    ctx.eval::<String, _>(format!("JSON.stringify(game.legalActions({seat}))"))
+                })
+                .ok()
+                .and_then(|json| serde_json::from_str(&json).ok())
+                .unwrap_or_default()
         }
     }
     fn apply_action(&mut self, seat: usize, action: Value) -> Result<(), String> {
@@ -406,7 +417,7 @@ impl GameAdapter for GalacticReach {
         if Instant::now() >= deadline {
             return Err(SIMULATION_TIMEOUT.into());
         }
-        if self.snapshot.active != Some(seat) || !self.snapshot.legal.contains(&action) {
+        if !self.legal_actions(seat).contains(&action) {
             return Err("Illegal action.".into());
         }
         self.context
@@ -436,18 +447,18 @@ pub enum Strategy {
 impl Strategy {
     pub fn version(self) -> &'static str {
         match self {
-            Self::Military => "gr-military/26",
-            Self::Economy => "gr-economy/26",
-            Self::Expansion => "gr-expansion/26",
-            Self::Wanderer => "gr-wanderer/26",
+            Self::Military => "gr-military/27",
+            Self::Economy => "gr-economy/27",
+            Self::Expansion => "gr-expansion/27",
+            Self::Wanderer => "gr-wanderer/27",
         }
     }
     pub fn parse(version: &str) -> Option<Self> {
         match version {
-            "gr-military/26" => Some(Self::Military),
-            "gr-economy/26" => Some(Self::Economy),
-            "gr-expansion/26" => Some(Self::Expansion),
-            "gr-wanderer/26" => Some(Self::Wanderer),
+            "gr-military/27" => Some(Self::Military),
+            "gr-economy/27" => Some(Self::Economy),
+            "gr-expansion/27" => Some(Self::Expansion),
+            "gr-wanderer/27" => Some(Self::Wanderer),
             _ => None,
         }
     }
@@ -459,14 +470,17 @@ pub struct BuiltinAgent {
 fn number(v: &Value) -> f64 {
     v.as_f64().unwrap_or(0.0)
 }
+fn coord(s: &str) -> Option<(i32, i32)> {
+    let (q, r) = s.split_once(',')?;
+    Some((q.parse().ok()?, r.parse().ok()?))
+}
+fn point_distance((aq, ar): (i32, i32), (bq, br): (i32, i32)) -> f64 {
+    ((aq - bq).abs() + (ar - br).abs() + (aq + ar - bq - br).abs()) as f64 / 2.0
+}
 fn distance(a: &str, b: &str) -> f64 {
-    let coord = |s: &str| -> Vec<f64> { s.split(',').filter_map(|n| n.parse().ok()).collect() };
-    let a = coord(a);
-    let b = coord(b);
-    if a.len() != 2 || b.len() != 2 {
-        return 100.0;
-    }
-    ((a[0] - b[0]).abs() + (a[1] - b[1]).abs() + (a[0] + a[1] - b[0] - b[1]).abs()) / 2.0
+    coord(a)
+        .zip(coord(b))
+        .map_or(100.0, |(a, b)| point_distance(a, b))
 }
 fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
     view["fleets"]
@@ -480,7 +494,10 @@ fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
 /// Data, printed Prestige (reusable Prestige weighted x3) and whether it joins the
 /// military deck. Policy 26 meets these keys only in 31.36 games, so its play under
 /// earlier rules is unchanged.
-const CAPACITY_CARDS: [(&str, [f64; 4], f64, bool); 36] = [
+const CAPACITY_CARDS: [(&str, [f64; 4], f64, bool); 39] = [
+    ("signalRelay", [0.0, 2.0, 0.0, 1.0], 0.0, false),
+    ("surveyNetwork", [0.0, 0.0, 1.0, 2.0], 0.0, false),
+    ("tacticalBriefing", [1.0, 0.0, 0.0, 2.0], 0.0, false),
     ("ionThrusters", [0.0, 5.0, 0.0, 1.0], 0.0, false),
     ("slipstreamCharts", [0.0, 1.0, 0.0, 5.0], 0.0, false),
     ("strikeVector", [2.0, 6.0, 0.0, 0.0], 0.0, false),
@@ -616,15 +633,20 @@ fn bot_order(key: &str) -> &str {
         | "ionThrusters"
         | "slipstreamCharts"
         | "strikeVector"
-        | "foldSpaceGate" => "move",
+        | "foldSpaceGate"
+        | "starfarersCompass"
+        | "horizonSail"
+        | "cinderDrive" => "move",
         "construct"
         | "modularConstruction"
         | "orbitalShipyards"
         | "prefabYards"
         | "orbitalFoundry"
-        | "worldEngine" => "construct",
+        | "worldEngine"
+        | "stellarCrucible"
+        | "moonforge" => "construct",
         "colonize" | "dropColonyModules" | "genesisSeedVault" | "seedArk" | "colonyPods"
-        | "genesisCharter" => "colonize",
+        | "genesisCharter" | "evergreenArk" => "colonize",
         "excavate" => "excavate",
         "probe" => "probe",
         _ => "other",
@@ -666,7 +688,9 @@ fn bot_cost(view: &Value, seat: usize) -> Value {
         }
         if number(&f["explorer"]) > 0.0
             && p["special"] == "relic"
-            && hand.iter().any(|c| c["key"] == "excavate")
+            && hand
+                .iter()
+                .any(|c| c["key"] == "excavate" || c["key"] == "probe")
         {
             return json!({"matter":1,"energy":1,"data":2});
         }
@@ -1226,7 +1250,19 @@ impl BuiltinAgent {
                 }
                 best
             }
-            "probe" => 150.0,
+            "probe" => {
+                let known = view["planets"].as_object().is_some_and(|ps| {
+                    ps.values().any(|p| {
+                        (p["special"] == "relic" || p["relicSignal"] == true)
+                            && p["relicClaimed"] != true
+                    })
+                });
+                if view["combinedProbe"] == true && known {
+                    -10.0
+                } else {
+                    150.0
+                }
+            }
             "excavate" => 160.0,
             // 31.36: permanent Prestige, capacity and big draws come first.
             "special"
@@ -1238,6 +1274,12 @@ impl BuiltinAgent {
                             | "hyperspaceVaults"
                             | "commandNexus"
                             | "strategyCore"
+                            | "signalRelay"
+                            | "surveyNetwork"
+                            | "tacticalBriefing"
+                            | "memoryPrism"
+                            | "keepersArchive"
+                            | "foldedWarehouse"
                     )
                 ) =>
             {
@@ -1255,8 +1297,16 @@ impl BuiltinAgent {
             "upgrade" => {
                 let cost = bot_cost(view, seat);
                 let r = action["resource"].as_str().unwrap();
+                let price = me["hand"]
+                    .as_array()
+                    .into_iter()
+                    .chain(me["discard"].as_array())
+                    .chain(me["inPlay"].as_array())
+                    .flatten()
+                    .find(|c| c["id"] == action["card"])
+                    .map_or(2.0, |c| if c["upgraded"] == true { 3.0 } else { 2.0 });
                 if bot_yards(view, seat) > 0
-                    && number(&me["resources"][r]) >= (number(&cost[r]).min(2.0) + 2.0)
+                    && number(&me["resources"][r]) >= (number(&cost[r]).min(2.0) + price)
                 {
                     if action["key"] == "construct" {
                         76.0
@@ -1503,6 +1553,9 @@ pub fn agent(version: &str, seed: [u8; 32]) -> Result<Box<dyn PlayerAgent<Galact
     if let Some(strategy) = legacy_v25::Strategy::parse(version) {
         return Ok(Box::new(legacy_v25::BuiltinAgent::new(strategy, seed)));
     }
+    if let Some(strategy) = legacy_v26::Strategy::parse(version) {
+        return Ok(Box::new(legacy_v26::BuiltinAgent::new(strategy, seed)));
+    }
     Err("Unsupported Galactic Reach policy version.".into())
 }
 
@@ -1706,6 +1759,7 @@ mod tests {
             "galactic-reach/30.35",
             "galactic-reach/31.36",
             "galactic-reach/32.37",
+            "galactic-reach/33.38",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1742,6 +1796,7 @@ mod tests {
                             | "galactic-reach/30.35"
                             | "galactic-reach/31.36"
                             | "galactic-reach/32.37"
+                            | "galactic-reach/33.38"
                     ) {
                         0
                     } else {
@@ -1811,7 +1866,10 @@ mod tests {
                 .count(),
             4
         );
-        assert!(g.legal_actions(1).is_empty());
+        assert!(g.legal_actions(1).iter().all(|a| matches!(
+            a["type"].as_str(),
+            Some("resource" | "bank_trade" | "increase_storage")
+        )));
         assert!(g.apply_action(1, json!({"type":"pass"})).is_err());
         assert!(
             g.apply_action(0, json!({"type":"move", "destination":"999,999"}))

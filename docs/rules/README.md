@@ -1,6 +1,6 @@
 # Galactic Reach rules maintenance
 
-The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 33.38 / Split Moves playtest**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
+The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 36.41 / Playtest Feedback experiment**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
 
 ## Read, change, verify
 
@@ -94,3 +94,5 @@ The 31.36 Capacity Cards experiment replaces every market card with 36 new desig
 The 32.37 Cheaper Cards playtest makes every Capacity Card about 30% cheaper (376 → 266 across the set; each still needs a capacity upgrade), raises Harvester production to 2, and adopts issue #41 (Settler +1 Biomass, Harvester costs Data instead of Biomass, factions start with 1 Biomass and 1 Data). Save32/rules37 archive the exact 31.36 browser, manual and engine (`crates/galactic-reach/rules/v31-*`, hashes in `scripts/cheaper-cards-archive-hashes.json`); shared tables keep the rules they were dealt with (#47's `SHARED_RULES`, now 32.37, 31.36 and 30.35). See [the costs and balance results](cheaper-cards.md).
 
 The 33.38 Split Moves playtest keeps the 32.37 economy and changes Move orders to carry chosen unit counts. Each order moves any number of Settlers and Fleets, or any number of Explorers, at the slowest chosen unit’s speed. The rest stay behind. Browser and native rivals (policy 26) can leave safe Settlers behind. Save33/rules38 archive the exact 32.37 browser and engine (`crates/galactic-reach/rules/v32-*`, hashes in `scripts/split-moves-archive-hashes.json`). Earlier shared tables continue on their pinned 30.35, 31.36 or 32.37 engine with snapshot and Undo support. See [split moves](split-moves.md).
+
+The 36.41 feedback experiment branches from stable 33.38 independently of the unmerged 34.39 balance and 35.40 portal experiments. It combines Probe/Excavate, adds a center relic and twelve reward designs, enables off-turn economy and human-only completed-turn Undo until another human acts, adds level III starter upgrades and cheap draw-two cards, and triggers combat on hostile commissioning or a stationary Move. The canonical manual defines the new decisions; complete 33.38 assets and shared engines remain archived.

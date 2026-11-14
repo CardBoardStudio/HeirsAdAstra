@@ -14,7 +14,7 @@ function createGalacticAdapter(e) {
     if (!Number.isInteger(seat) || seat < 0 || seat >= 4) return null;
     const state = s();
     return e.clone({
-      combat: e.combatView(seat), seat, round: state.round, victoryTarget: e.victoryTarget(),
+      combat: e.combatView(seat), combinedProbe:true, seat, round: state.round, victoryTarget: e.victoryTarget(),
       // 32.37: public card prices and Harvester yield, so server rivals need no rules-specific tables.
       harvesterYield: e.HARVESTER_YIELD, marketCosts: state.market.map(card => e.ALL_CARDS[card.key]?.cost || {}), phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
@@ -37,7 +37,14 @@ function createGalacticAdapter(e) {
     });
   }
   function legalActions(seat) {
-    if (seat === null || activeSeat() !== seat) return [];
+    if(!Number.isInteger(seat)||seat<0||seat>=4||s().winner!==null)return [];
+    if(activeSeat()!==seat) {
+      if(!e.canManageResources(seat))return [];
+      const p=s().players[seat],free=p.hand.map(card=>{const gain=e.cardResources(card),def=e.ALL_CARDS[card.key];if(def.wildcard)gain.data=(gain.data||0)+def.wildcard;return {type:'resource',card:card.id,key:card.key,gain};});
+      if(e.canIncreaseStorage(seat))for(const allocation of e.storageAllocations())free.push({type:'increase_storage',allocation});
+      for(const giveType of e.RESOURCES)for(const getType of e.RESOURCES)if(e.canBankTrade(seat,giveType,getType))free.push({type:'bank_trade',giveType,getType});
+      return e.clone(free);
+    }
     if (cached) return e.clone(cached);
     const state = s(), p = state.players[seat], actions = [];
     if (state.pendingCombat) {
@@ -69,8 +76,8 @@ function createGalacticAdapter(e) {
         });
       }
       [...p.hand, ...p.discard, ...p.inPlay].forEach(card => {
-        if (card.starter && !card.upgraded) for (const resource of e.RESOURCES)
-          if (p.resources[resource] >= 2) actions.push({type:'upgrade',card:card.id,resource});
+        if (card.starter && e.starterLevel(card)<3) for (const resource of e.RESOURCES)
+          if (p.resources[resource] >= e.upgradePrice(card)) actions.push({type:'upgrade',card:card.id,resource});
       });
       p.hand.forEach(card => {
         const effect = e.ALL_CARDS[card.key].buyEffect;
@@ -131,7 +138,7 @@ function createGalacticAdapter(e) {
         if (def.order === 'probe') Object.keys(state.fleets).forEach(coord=>{
           if(e.probeRelic(seat,coord,card.id,true)) actions.push({type:'probe',...base,coord});
         });
-        if (def.order === 'excavate') Object.keys(state.planets).forEach(coord=>{
+        if (['probe','excavate'].includes(def.order)) Object.keys(state.planets).forEach(coord=>{
           state.relicRow.forEach(relic=>{
             if(e.excavate(seat,coord,card.id,relic.id,true)) actions.push({type:'excavate',...base,coord,relic:relic.id});
           });
@@ -142,6 +149,7 @@ function createGalacticAdapter(e) {
         }
       });
     }
+    if(state.phase==='buy'&&e.canManageResources(seat))p.hand.forEach(card=>actions.push({type:'resource',card:card.id,key:card.key,gain:e.cardResources(card)}));
     if (e.canIncreaseStorage(seat)) for(const allocation of e.storageAllocations()) actions.push({type:'increase_storage',allocation});
     if (e.canManageResources(seat)) {
       for (const resource of e.RESOURCES) {
@@ -197,7 +205,7 @@ function createGalacticAdapter(e) {
       case 'trade_cancel': e.cancelTrade(seat,action.offer); return;
       case 'pass': e.passOperations(seat); return;
       case 'finish_buy': e.nextBuyPlayer(); return;
-      case 'resource': e.addResources(p, action.gain); e.removeHandCard(p, action.card); return;
+      case 'resource': e.convertCard(seat,action.card); return;
       case 'buy': e.buyCard(seat, action.source, action.source === 'market' ? action.index : action.key); return;
       case 'upgrade': e.upgradeStarter(seat, action.card, action.resource); return;
       case 'buy_effect': e.useBuyEffect(action.card, seat); return;
@@ -288,6 +296,6 @@ function createGalacticAdapter(e) {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/33.38', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
+  return { rulesVersion: 'galactic-reach/36.41', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;
