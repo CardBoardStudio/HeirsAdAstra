@@ -201,5 +201,12 @@ for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css 
   cp "crates/galactic-reach/rules/v27-$asset" "dist/galactic-reach/rules/27.32/$asset"
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/27.32/table.js
+
+# Preserve 28.33 resource-capacity choices, stacking and occupation for pinned games.
+mkdir -p dist/galactic-reach/rules/28.33
+for asset in app.js adapter.js index.html styles.css replay.js rulebook.html rulebook.css playtest-notes.js playtest-notes.css; do
+  cp "crates/galactic-reach/rules/v28-$asset" "dist/galactic-reach/rules/28.33/$asset"
+done
+cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/28.33/table.js
 # Testnet seat (Nido + zero-knowledge private draws) for the current tabletop.
 ./zk/build-web.sh "$PWD/dist/galactic-reach/zk"

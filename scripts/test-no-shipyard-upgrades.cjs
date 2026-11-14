@@ -38,7 +38,7 @@ for(const upgraded of [false,true]){
  const g=game(),coords=g.s.clusters[0].coords,yard=coords[1];
  for(const coord of coords.slice(1))Object.assign(g.s.planets[coord],{owner:0,upgrade:'harvester',upgradeLevel:2});
  Object.assign(g.s.planets[yard],{upgrade:'starbase',upgradeLevel:1});
- g.s.fleets[yard]={0:{settler:0,explorer:0,fleet:5}};
+ g.s.fleets[yard]={0:{settler:8,explorer:5,fleet:10}};
  for(const strategy of ['military','economy','expansion']){g.p.strategy=strategy;assert.equal(g.chooseAiBuild(0),null);}
 }
-console.log('Single-level Shipyards: atomic direct/adapter rejection with every Construct discount, no AI upgrade plans, unchanged commissioning, 3 attack/hull, and working Harvester upgrades passed.');
+console.log('Single-level Shipyards: atomic direct/adapter rejection with every Construct discount, no AI upgrade plans, unchanged commissioning, 3 attack/hull, and no building upgrades passed.');

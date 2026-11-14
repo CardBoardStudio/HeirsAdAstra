@@ -26,7 +26,7 @@ function fixture() {
 }
 {
   const {e,a,s}=game();
-  assert.equal(a.rulesVersion,'galactic-reach/28.33');
+  assert.equal(a.rulesVersion,'galactic-reach/29.34');
   assert.equal(s.clusters.filter(c=>c.kind==='world').length,13);
   assert.equal(s.clusters.filter(c=>c.kind==='moon').length,4);
   assert.equal(Object.values(s.planets).filter(p=>p.special==='relic').length,12);
@@ -60,7 +60,7 @@ for (const index of [0,1,2]) {
   row.forEach((card,i)=>{if(i!==index)assert.equal(g.s.relicRow[i].id,card.id);});
   assert.throws(()=>g.a.applyAction(0,action),/Illegal action/,'Cannot repeat a consumed card');
 }
-for (const bad of ['missingExplorer','missingCost','wrongSeat','buy','alreadyClaimed','noRow','wrongCard','overflow']) {
+for (const bad of ['missingExplorer','missingCost','wrongSeat','buy','alreadyClaimed','noRow','wrongCard']) {
   const g=fixture();
   if(bad==='missingExplorer')g.s.fleets={};
   if(bad==='missingCost')g.p.resources.data=1;
@@ -69,7 +69,6 @@ for (const bad of ['missingExplorer','missingCost','wrongSeat','buy','alreadyCla
   if(bad==='alreadyClaimed')g.s.planets[g.coord].relicClaimed=true;
   if(bad==='noRow')g.s.relicRow=[];
   if(bad==='wrongCard')g.p.hand[0].key='construct';
-  if(bad==='overflow')g.p.resources.biomass=10;
   const before=JSON.stringify(g.s);
   assert(!g.e.excavate(0,g.coord,'dig',g.s.relicRow[0]?.id),bad);
   assert.equal(JSON.stringify(g.s),before,`${bad} is atomic`);
