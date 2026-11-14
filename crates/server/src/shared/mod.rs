@@ -142,7 +142,7 @@ struct Live {
     engine: GalacticReach,
     feed: Rc<RefCell<Feed>>,
     head: u64,
-    agents: HashMap<usize, BuiltinAgent>,
+    agents: HashMap<usize, Box<dyn PlayerAgent<GalacticReach>>>,
     played: Vec<Played>,
 }
 impl Live {
@@ -214,12 +214,6 @@ fn build(
     if table.authority != authority.name() {
         return Err(format!("This table was dealt by {}.", table.authority));
     }
-    if table.rules != galactic_reach::RULES {
-        return Err(format!(
-            "This shared table plays {}, and shared play runs only the current rules.",
-            table.rules
-        ));
-    }
     // An `undo` event cancels its seat's actions after `to`.
     let undone: Vec<(u64, u64)> = events
         .iter()
@@ -283,15 +277,18 @@ fn fold(
             vec![]
         })
     };
-    let engine = match from {
-        Some((_, snapshot)) => GalacticReach::shared_resume(
-            &seats,
-            table.victory_target,
-            &snapshot["engine"],
-            shuffle,
-        )?,
-        None => GalacticReach::shared(&seats, table.victory_target, shuffle)?,
+    // The table plays the rules revision it was dealt with, on that revision's
+    // archived engine once the current rules move on (as solo tables do).
+    let resume = match from {
+        Some((_, snapshot)) => Some(
+            snapshot["engine"]
+                .as_str()
+                .ok_or("A stored snapshot has no engine state.")?,
+        ),
+        None => None,
     };
+    let engine =
+        GalacticReach::shared_on(&table.rules, &seats, table.victory_target, resume, shuffle)?;
     let mut live = Live {
         table: table.clone(),
         engine,
@@ -377,9 +374,9 @@ impl Tables {
                 .map_err(broken)?
                 .ok_or(Refusal::NotFound)?;
             let events = self.log.read(id).map_err(broken)?;
-            if table.rules != galactic_reach::RULES {
+            if galactic_reach::shared_rules(&table.rules).is_none() {
                 return Err(Refusal::Conflict(format!(
-                    "This shared table plays {}. Shared play runs only the current rules, so it cannot continue on this server.",
+                    "This shared table plays {}, which this server cannot run.",
                     table.rules
                 )));
             }
@@ -484,6 +481,7 @@ impl Tables {
         };
         Ok(json!({
             "id": live.table.id, "name": live.table.name, "rules_version": live.table.rules,
+            "client_path": client_path(&live.table.rules),
             "authority": live.table.authority, "status": live.table.status, "seq": live.head,
             "seat": seat, "active": active,
             "seats": live.table.seats.iter().map(|s| json!({"seat":s.seat,"name":s.name,"human":s.human(),"you":s.seat==seat})).collect::<Vec<_>>(),
@@ -581,11 +579,34 @@ impl Tables {
             public: json!({"to": window.to, "actions": window.actions}),
             private: None,
         };
-        let appended = self.log.append(id, seq, &[event]);
-        // Fold again either way: the position is now the log without those actions.
-        self.live.remove(id);
-        let head = appended.map_err(Refusal::Conflict)?;
-        self.live(id)?;
+        // Build the rolled-back position before recording the undo. It must come
+        // from a stored snapshot or a replay this build can do; a table moved here
+        // from an earlier build may have neither for the start of this turn.
+        let table = live.table.clone();
+        let mut events = self.log.read(id).map_err(broken)?;
+        events.push(Event {
+            seq: seq + 1,
+            kind: "undo".into(),
+            seat: Some(seat),
+            public: event.public.clone(),
+            private: None,
+            hash: String::new(),
+        });
+        let snapshots = self.log.snapshots(id).map_err(broken)?;
+        let rolled_back = build(table, events, snapshots, self.authority.clone()).map_err(|e| {
+            tracing::warn!(table=%id, error=%e, "undo refused: no rebuildable position");
+            Refusal::Conflict(
+                "Undo is not available here: this table moved to a newer build of the rules after your turn began."
+                    .into(),
+            )
+        })?;
+        let head = self
+            .log
+            .append(id, seq, &[event])
+            .map_err(Refusal::Conflict)?;
+        let mut rolled_back = rolled_back;
+        rolled_back.head = head;
+        self.live.insert(id.into(), rolled_back);
         self.save_snapshot(id);
         Ok(json!({"seq": head, "undone": window.actions, "stop": window.stop}))
     }
@@ -598,13 +619,27 @@ impl Tables {
         let Some(policy) = live.table.seats[seat].policy.clone() else {
             return Ok(false);
         };
-        let strategy =
-            rival(&policy).ok_or_else(|| broken(format!("Unknown AI policy {policy}.")))?;
-        let agent = live.agents.entry(seat).or_insert_with(|| {
+        if !live.agents.contains_key(&seat) {
             let mut seed = [0u8; 32];
             rand::rngs::OsRng.fill_bytes(&mut seed);
-            BuiltinAgent::new(strategy, seed)
-        });
+            // The exact policy the table was dealt with (archived agents included),
+            // else the current version of the same profile.
+            let agent = galactic_reach::agent(&policy, seed)
+                .or_else(|_| {
+                    rival(&policy)
+                        .map(|s| {
+                            Box::new(BuiltinAgent::new(s, seed))
+                                as Box<dyn PlayerAgent<GalacticReach>>
+                        })
+                        .ok_or_else(|| format!("Unknown AI policy {policy}."))
+                })
+                .map_err(broken)?;
+            live.agents.insert(seat, agent);
+        }
+        let agent = live
+            .agents
+            .get_mut(&seat)
+            .ok_or_else(|| broken("No AI agent."))?;
         let observation = live
             .engine
             .observe(seat)
@@ -854,6 +889,19 @@ impl Service {
                 running.remove(&id);
             }
         });
+    }
+}
+
+/// The browser that plays a table's rules revision: the current game, or the
+/// revision's archived copy (as solo tables open theirs).
+pub fn client_path(rules: &str) -> String {
+    if rules == galactic_reach::RULES {
+        "/galactic-reach/".into()
+    } else {
+        format!(
+            "/galactic-reach/rules/{}/",
+            rules.rsplit('/').next().unwrap_or(rules)
+        )
     }
 }
 

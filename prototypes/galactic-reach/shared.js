@@ -137,6 +137,8 @@
     try {
       if (!/^[a-f0-9]{32}$/.test(id)) throw new Error('Invalid table link. Return to Your tables.');
       const view = await api(`/api/shared/${id}`);
+      // A table keeps the rules revision it was dealt with: open that revision's browser.
+      if (view.client_path && location.pathname !== view.client_path) { location.replace(`${view.client_path}?shared=${id}`); return; }
       current = view;
       bar.querySelector('#saved-table-name').textContent = view.name;
       bar.querySelector('#table-rules').textContent = `Rules ${view.rules_version.split('/')[1]} · shared`;
