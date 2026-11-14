@@ -103,7 +103,7 @@ assert.equal(replayRoutes['galactic-reach/29.34'],'/galactic-reach/rules/29.34/'
 // 31.36 archives the exact 30.35 engine: its five-card market, basic purchases and 20-point target stay.
 assert.equal(replayRoutes['galactic-reach/30.35'],'/galactic-reach/rules/30.35/','30.35 replay opens its archived browser');
 // 32.37 archives the exact 31.36 engine: original card prices, Harvester 1, 2 starting Biomass.
-assert.equal(replayRoutes['galactic-reach/31.36'],'/galactic-reach/rules/31.36/','31.36 replay opens its archived browser');assert.equal(replayRoutes['galactic-reach/33.38'],'/galactic-reach/');
+assert.equal(replayRoutes['galactic-reach/31.36'],'/galactic-reach/rules/31.36/','31.36 replay opens its archived browser');assert.equal(replayRoutes['galactic-reach/35.40'],'/galactic-reach/');
 for(const [file,hash] of Object.entries(JSON.parse(read('scripts/cheaper-cards-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,`${file} must stay the published 31.36 asset`);
 {
  const g=game('crates/galactic-reach/rules/v31-'),{e,s}=g;assert.equal(g.adapter().rulesVersion,'galactic-reach/31.36');
@@ -116,9 +116,12 @@ for(const [file,hash] of Object.entries(JSON.parse(read('scripts/capacity-cards-
  p.hand=[];action(g,'pass');assert(g.adapter().legalActions(0).some(a=>a.type==='buy'&&a.source==='basic'),'30.35 tables still sell basic cards');
 }
 {
- const g=game(),{s}=g;assert.equal(g.adapter().rulesVersion,'galactic-reach/33.38');assert.equal(s.market.length,10,'32.37 shows ten market cards');assert.equal(s.victoryTarget,40);
+ const g=game(),{s}=g;assert.equal(g.adapter().rulesVersion,'galactic-reach/35.40');assert.equal(s.market.length,10,'32.37 shows ten market cards');assert.equal(s.victoryTarget,40);
 }
 
 // 33.38 preserves the exact published 32.37 whole-group engine and client assets.
 assert.equal(replayRoutes['galactic-reach/32.37'],'/galactic-reach/rules/32.37/');
 for(const [file,hash] of Object.entries(JSON.parse(read('scripts/split-moves-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,`${file} must stay the published 32.37 asset`);
+
+assert.equal(replayRoutes['galactic-reach/33.38'],'/galactic-reach/rules/33.38/');
+for(const [file,hash] of Object.entries(JSON.parse(read('scripts/corner-portal-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,`${file} remains the 33.38 asset`);

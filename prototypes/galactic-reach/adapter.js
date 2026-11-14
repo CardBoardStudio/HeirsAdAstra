@@ -14,7 +14,7 @@ function createGalacticAdapter(e) {
     if (!Number.isInteger(seat) || seat < 0 || seat >= 4) return null;
     const state = s();
     return e.clone({
-      combat: e.combatView(seat), seat, round: state.round, victoryTarget: e.victoryTarget(),
+      portalLinks: state.portalLinks, portalMovementCost: e.PORTAL_MOVEMENT_COST, combat: e.combatView(seat), seat, round: state.round, victoryTarget: e.victoryTarget(),
       // 32.37: public card prices and Harvester yield, so server rivals need no rules-specific tables.
       harvesterYield: e.HARVESTER_YIELD, marketCosts: state.market.map(card => e.ALL_CARDS[card.key]?.cost || {}), phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
@@ -288,6 +288,6 @@ function createGalacticAdapter(e) {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/33.38', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
+  return { rulesVersion: 'galactic-reach/35.40', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;

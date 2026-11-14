@@ -1,6 +1,6 @@
 # Galactic Reach rules maintenance
 
-The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 33.38 / Split Moves playtest**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
+The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 35.40 / Corner Portal experiment**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
 
 ## Read, change, verify
 
@@ -94,3 +94,5 @@ The 31.36 Capacity Cards experiment replaces every market card with 36 new desig
 The 32.37 Cheaper Cards playtest makes every Capacity Card about 30% cheaper (376 → 266 across the set; each still needs a capacity upgrade), raises Harvester production to 2, and adopts issue #41 (Settler +1 Biomass, Harvester costs Data instead of Biomass, factions start with 1 Biomass and 1 Data). Save32/rules37 archive the exact 31.36 browser, manual and engine (`crates/galactic-reach/rules/v31-*`, hashes in `scripts/cheaper-cards-archive-hashes.json`); shared tables keep the rules they were dealt with (#47's `SHARED_RULES`, now 32.37, 31.36 and 30.35). See [the costs and balance results](cheaper-cards.md).
 
 The 33.38 Split Moves playtest keeps the 32.37 economy and changes Move orders to carry chosen unit counts. Each order moves any number of Settlers and Fleets, or any number of Explorers, at the slowest chosen unit’s speed. The rest stay behind. Browser and native rivals (policy 26) can leave safe Settlers behind. Save33/rules38 archive the exact 32.37 browser and engine (`crates/galactic-reach/rules/v32-*`, hashes in `scripts/split-moves-archive-hashes.json`). Earlier shared tables continue on their pinned 30.35, 31.36 or 32.37 engine with snapshot and Undo support. See [split moves](split-moves.md).
+
+The 35.40 Corner Portal experiment adds nine public, straight-across paired boundary links at each of the lower-left and upper-right corners. Each crossing costs 2 movement; ordinary steps cost 1. The aligned pairing reflects (q,r) to (r,q), as requested, and keeps terrain/setup RNG unchanged. Move legality and rival routes use weighted edges; Probe, escapes and retreats keep physical hex adjacency/distance. Save35/rules40 preserve the exact 33.38 browser and engine in v33-* assets. Version 34.39 is reserved for the separate, unmerged balance experiment (#50); its rules are not included here.

@@ -16,8 +16,9 @@ use std::time::{Duration, Instant};
 /// cutover never strands a running shared game. At a cutover, archive the
 /// outgoing engine (rules/vNN-*, with `include_str!` arms in `boot`) and add its
 /// revision here.
-pub const SHARED_RULES: [&str; 4] = [
+pub const SHARED_RULES: [&str; 5] = [
     RULES,
+    "galactic-reach/33.38",
     "galactic-reach/32.37",
     "galactic-reach/31.36",
     "galactic-reach/30.35",
@@ -26,9 +27,9 @@ pub const SHARED_RULES: [&str; 4] = [
 pub fn shared_rules(rules: &str) -> Option<&'static str> {
     SHARED_RULES.iter().find(|r| **r == rules).copied()
 }
-pub const RULES: &str = "galactic-reach/33.38";
+pub const RULES: &str = "galactic-reach/35.40";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "Split Moves playtest";
+pub const EXPERIMENT: &str = "Corner Portal experiment";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -122,6 +123,7 @@ impl GalacticReach {
             "galactic-reach/30.35" => "galactic-reach/30.35",
             "galactic-reach/31.36" => "galactic-reach/31.36",
             "galactic-reach/32.37" => "galactic-reach/32.37",
+            "galactic-reach/33.38" => "galactic-reach/33.38",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -286,6 +288,7 @@ impl GalacticReach {
                     "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
                     "galactic-reach/32.37" => include_str!("../rules/v32-adapter.js"),
+                    "galactic-reach/33.38" => include_str!("../rules/v33-adapter.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -319,6 +322,7 @@ impl GalacticReach {
                     "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
                     "galactic-reach/32.37" => include_str!("../rules/v32-app.js"),
+                    "galactic-reach/33.38" => include_str!("../rules/v33-app.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -467,6 +471,21 @@ fn distance(a: &str, b: &str) -> f64 {
         return 100.0;
     }
     ((a[0] - b[0]).abs() + (a[1] - b[1]).abs() + (a[0] + a[1] - b[0] - b[1]).abs()) / 2.0
+}
+// Portal information is public only in the new rules. Earlier policies retain their distance.
+fn travel_distance(view: &Value, a: &str, b: &str) -> f64 {
+    view["portalLinks"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter_map(|(entry, exit)| {
+            exit.as_str().map(|exit| {
+                distance(a, entry)
+                    + view["portalMovementCost"].as_f64().unwrap_or(2.0)
+                    + distance(exit, b)
+            })
+        })
+        .fold(distance(a, b), f64::min)
 }
 fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
     view["fleets"]
@@ -861,7 +880,7 @@ fn bot_threat(view: &Value, seat: usize, moving: &Value, destination: &str, sour
                     let fleets = number(&enemy["fleet"]);
                     if owner != &seat.to_string()
                         && fleets > 0.0
-                        && distance(coord, destination) <= range
+                        && travel_distance(view, coord, destination) <= range
                     {
                         Some(if fleets > defense { 1.0 } else { 0.0 })
                     } else {
@@ -1154,15 +1173,16 @@ impl BuiltinAgent {
                             && p["owner"] != json!(seat)
                             && bot_safe_fight(view, seat, fleet, coord)
                     };
-                    if goal && distance(from, coord) > distance(to, coord) {
+                    if goal && travel_distance(view, from, coord) > travel_distance(view, to, coord)
+                    {
                         best = best.max(
                             (if explorer {
                                 if known_relic { 90.0 } else { 70.0 }
                             } else {
                                 92.0
-                            }) + distance(from, coord)
-                                - distance(to, coord)
-                                - distance(to, coord) * 0.3,
+                            }) + travel_distance(view, from, coord)
+                                - travel_distance(view, to, coord)
+                                - travel_distance(view, to, coord) * 0.3,
                         );
                     }
                 }
@@ -1181,11 +1201,12 @@ impl BuiltinAgent {
                                 ) >= number(&other["explorer"]);
                             if !escape
                                 && bot_safe_fight(view, seat, fleet, coord)
-                                && distance(from, coord) > distance(to, coord)
+                                && travel_distance(view, from, coord)
+                                    > travel_distance(view, to, coord)
                             {
                                 best = best.max(
                                     (if military { 94.0 } else { 80.0 })
-                                        - distance(to, coord) * 0.3,
+                                        - travel_distance(view, to, coord) * 0.3,
                                 );
                             }
                         }
@@ -1204,7 +1225,8 @@ impl BuiltinAgent {
                                 && bot_threat(view, seat, ally, coord, coord) > 0.0;
                             if coord != from
                                 && (escort || number(&ally["fleet"]) > 0.0)
-                                && distance(to, coord) < distance(from, coord)
+                                && travel_distance(view, to, coord)
+                                    < travel_distance(view, from, coord)
                             {
                                 best = best.max(if escort {
                                     99.0
@@ -1548,6 +1570,25 @@ mod tests {
         assert!(bot_storage_budget(&view, 0).is_none());
     }
     use game_core::run_match;
+    #[test]
+    fn public_corner_portals_change_routes_and_visible_threats() {
+        let mut view = json!({"portalLinks":{"-10,8":"8,-10","8,-10":"-10,8"},"portalMovementCost":2,
+            "fleets":{"-10,8":{"1":{"fleet":2}}},"planets":{}});
+        assert_eq!(travel_distance(&view, "-10,8", "8,-10"), 2.0);
+        assert_eq!(travel_distance(&view, "-9,8", "8,-10"), 3.0);
+        assert_eq!(
+            bot_threat(&view, 0, &json!({"settler":1}), "8,-10", "8,-10"),
+            1.0,
+            "visible enemy Fleets threaten the opposite gate"
+        );
+        view.as_object_mut().unwrap().remove("portalLinks");
+        assert!(travel_distance(&view, "-10,8", "8,-10") > 2.0);
+        assert_eq!(
+            bot_threat(&view, 0, &json!({"settler":1}), "8,-10", "8,-10"),
+            0.0,
+            "earlier rules keep physical distance"
+        );
+    }
     // 33.38 #movement: a Move names its `units`; Fleets may leave a safe Settler behind.
     #[test]
     fn split_moves_leave_safe_settlers_and_keep_exposed_ones_escorted() {
@@ -1706,6 +1747,7 @@ mod tests {
             "galactic-reach/30.35",
             "galactic-reach/31.36",
             "galactic-reach/32.37",
+            "galactic-reach/33.38",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1742,6 +1784,7 @@ mod tests {
                             | "galactic-reach/30.35"
                             | "galactic-reach/31.36"
                             | "galactic-reach/32.37"
+                            | "galactic-reach/33.38"
                     ) {
                         0
                     } else {

@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101d22">
-  <title>Galactic Reach · 33.38 · Split Moves playtest</title>
+  <title>Galactic Reach · 35.40 · Corner Portal experiment</title>
   <meta name="description" content="Play Galactic Reach against three computer-controlled rival factions.">
   <script type="importmap">{"imports":{
     "@aztec/bb.js":"/galactic-reach/zk/vendor/bb.js/index.js",
@@ -14,7 +14,7 @@
     "pako":"/galactic-reach/zk/vendor/pako/pako.esm.mjs"
   }}</script>
   <link rel="stylesheet" href="/galactic-reach/zk/seat.css">
-  <link rel="stylesheet" href="styles.css?v=split-moves-33-38">
+  <link rel="stylesheet" href="styles.css?v=corner-portal-35-40">
   <link rel="stylesheet" href="playtest-notes.css?v=1">
 </head>
 <body>
@@ -26,7 +26,7 @@
         <div class="brand-seal" aria-hidden="true">✦</div>
         <div><div class="eyebrow">A GAME OF EXPLORATION &amp; EMPIRE</div>
         <h1>Galactic Reach</h1></div>
-        <small class="rules-badge">33.38 · playtest</small>
+        <small class="rules-badge">35.40 · experiment</small>
       </div>
       <div class="header-actions">
         <a class="button button-ghost" href="/" style="text-decoration:none">Game library</a>
@@ -37,19 +37,14 @@
       </div>
     </header>
     <details class="playtest-changes" id="playtest-changes">
-      <summary><span class="new-feature">New in this playtest</span> 33.38 Split Moves: leave some units behind when you move <span class="summary-hint">View changes</span></summary>
+      <summary><span class="new-feature">New in this playtest</span> 35.40 Corner Portal: cross the marked corners for 2 movement <span class="summary-hint">View changes</span></summary>
       <ul>
-        <li><strong>Split a group when you move:</strong> select a hex with a Move order and every combat ship there is ticked. Untick Settlers or Fleets, or lower a count, to leave them behind. The chosen units move at their slowest unit’s speed, so a Fleet that leaves its Settler moves 2. Each Move still uses one Move card. Explorers can split from each other but never travel with combat ships. <a href="rulebook.html#movement">Movement</a>.</li>
-        <li><strong>A brand-new market:</strong> every earlier advanced card is replaced by 36 new designs (26 normal, 10 military). Each costs more of at least one resource than your starting limit of 4, so raise your limits before buying. Move and Construct are no longer for sale. <a href="rulebook.html#cards">Card reference</a>.</li>
-        <li><strong>Ten face-up cards, one mixed supply:</strong> normal and military cards share the market. A bought military card joins your military deck instead of your discard pile. <a href="rulebook.html#buy">Buy</a>.</li>
-        <li><strong>Your military deck fights with you:</strong> every battle, your tactic hand is the two Fire and two Screen tactics plus each military card you own, once per battle. <a href="rulebook.html#combat">Combat</a>.</li>
-        <li><strong>Choose the Prestige target:</strong> pick 20 to 60 when you create the game; this experiment defaults to 40. Wonders and the Ascendancy Codex add permanent card Prestige. <a href="rulebook.html#victory">Victory</a>.</li>
-        <li><strong>Play with friends:</strong> host a table, share its invite link, and play in separate browsers; rivals fill the empty seats. Shared tables use these Capacity Cards rules and the table’s Prestige target. Undo works during your own turn, back to the last revealed card. <a href="rulebook.html#shared-tables">Playing with friends</a>.</li>
-        <li><strong>Probe becomes Excavate:</strong> an Explorer now brings only a Probe card. When that Probe locates a relic, it is replaced by an Excavate card in your discard. <a href="rulebook.html#orders">Orders</a>.</li>
-        <li><strong>Tell us what you liked:</strong> the <a href="cards.html" target="_blank" rel="noopener">card gallery</a> lists every card with its id (N01–N26, M01–M10) and lets you mark likes, dislikes and notes.</li>
+        <li><strong>Straight-across exits:</strong> nine marked boundary hexes at the lower-left corner connect to their aligned partners at the upper-right corner. Select an entrance to highlight its exit. <a href="rulebook.html#corner-portals">Corner portal</a>.</li>
+        <li><strong>Crossing costs 2 movement:</strong> combine ordinary steps and the crossing within your chosen ships’ Move range. Combat applies normally at the exit. <a href="rulebook.html#movement">Movement</a>.</li>
+        <li><strong>Rivals use the same routes:</strong> bots account for the public portal when moving and judging visible threats. This experiment keeps the 33.38 Split Moves rules and economy. <a href="rulebook.html#computer-rivals">Computer rivals</a>.</li>
       </ul>
       <button class="button button-ghost" id="open-relic-catalog" type="button">Preview all 12 alien relics</button>
-      <p>33.38 playtest, built on the 32.37 Cheaper Cards rules · Start a new game for these rules. Existing tables, including shared tables, keep their archived rules. <a href="rules/32.37/">Continue a 32.37 game</a> · <a href="rules/31.36/">Continue a 31.36 game</a> · <a href="rules/30.35/">Continue a 30.35 game</a>.</p>
+      <p>35.40 experiment · Start a new game for these rules. Existing tables keep their archived rules. <a href="rules/33.38/">Continue a 33.38 game</a>.</p>
     </details>
 
     <section class="game-layout">
@@ -87,7 +82,7 @@
             <li><span class="resource-swatch biomass" aria-hidden="true"></span>Biomass</li>
             <li><span class="resource-swatch data" aria-hidden="true"></span>Data</li>
           </ul>
-          <p>Worlds are public. Moons and unlocated relics stay hidden.</p>
+          <p>Worlds are public. Moons and unlocated relics stay hidden.</p><p class="portal-key"><span aria-hidden="true">⇄</span> Marked corner portals: 2 movement to cross.</p>
           <a href="rulebook.html#movement" target="_blank" rel="noopener">Reading the galaxy ↗</a>
         </section>
         <div class="board-reference">
@@ -251,7 +246,7 @@
 
   <dialog id="rules-dialog" aria-labelledby="rules-title">
     <div class="dialog-heading"><div><div class="eyebrow">QUICK REFERENCE</div><h2 id="rules-title">How to command your faction</h2></div><button class="button button-ghost dialog-close" id="close-rules" type="button" aria-label="Close rules">Close</button></div>
-    <p><a class="button button-primary" href="rulebook.html" target="_blank" rel="noopener">Read the canonical rulebook · 33.38 ↗</a></p>
+    <p><a class="button button-primary" href="rulebook.html" target="_blank" rel="noopener">Read the canonical rulebook · 35.40 ↗</a></p>
     <div class="rules-grid">
       <section><h3>Your turn</h3><p>Convert cards for resources, then use one order, offer a trade, or pass. Passing immediately starts your Buy turn. Finish Buy, then the remaining factions continue Operations.</p></section>
       <section><h3>Your round</h3><p>Produce → draw five → Operations (pass → your Buy turn) → everyone finishes → cleanup → victory check → next round.</p></section>
@@ -354,11 +349,11 @@
     <div class="relic-catalog-grid" id="relic-catalog-grid"></div>
   </dialog>
 
-  <script src="table.js?v=split-moves-33-38"></script>
-  <script src="shared.js?v=split-moves-33-38"></script>
-  <script src="replay.js?v=split-moves-33-38"></script>
-  <script src="app.js?v=split-moves-33-38"></script>
+  <script src="table.js?v=corner-portal-35-40"></script>
+  <script src="shared.js?v=corner-portal-35-40"></script>
+  <script src="replay.js?v=corner-portal-35-40"></script>
+  <script src="app.js?v=corner-portal-35-40"></script>
   <script type="module" src="/galactic-reach/zk/seat.js"></script>
-  <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="33.38"></script>
+  <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="35.40"></script>
 </body>
 </html>
