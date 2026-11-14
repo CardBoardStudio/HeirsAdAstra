@@ -1621,15 +1621,16 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #hand-row .game-card + .game-card { margin-left: min(-10px, calc((100cqw - var(--n) * var(--top-w)) / (var(--n) - 1))); }
   #hand-row .game-card > * { flex-shrink: 0; }
   #hand-row .card-type { display: none; order: -2; }
-  #hand-row .card-name { order: -1; margin: 0 0 3px; font-size: 14.5px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  #hand-row .card-footer { order: 0; margin: 0 0 4px; padding: 0; border: 0; flex-wrap: nowrap; justify-content: flex-start; align-items: center; gap: 8px; }
+  #hand-row .card-name { order: -1; margin: 0 0 2px; font-size: 14.5px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #hand-row .card-footer { order: 0; margin: 0 0 3px; padding: 0; border: 0; flex-wrap: nowrap; justify-content: flex-start; align-items: center; gap: 8px; }
   #hand-row .card-footer > span { display: flex; flex-wrap: nowrap; align-items: center; gap: 2px; }
-  #hand-row .card-footer small { font-size: 8.5px; margin-right: 1px; }
+  #hand-row .card-footer small { font-size: 9px; margin-right: 2px; }
   #hand-row .card-footer > span:empty { display: none; }
   #hand-row .resource-dots { flex-wrap: nowrap; gap: 2px; }
-  #hand-row .game-card .resource-chip { min-height: 18px; padding: 0 3px; gap: 2px; }
-  #hand-row .game-card .resource-chip strong { font-size: 11.5px; }
-  #hand-row .game-card .resource-symbol { width: 12px; height: 12px; }
+  /* Gain icons read at a glance. */
+  #hand-row .game-card .resource-chip { min-height: 24px; padding: 1px 6px 1px 4px; gap: 3px; }
+  #hand-row .game-card .resource-chip strong { font-size: 14px; }
+  #hand-row .game-card .resource-symbol { width: 18px; height: 18px; }
   #hand-row .card-effect { order: 1; flex: none; font-size: 12px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #hand-row .card-buttons { order: 2; flex-direction: row; gap: 4px; margin-top: 6px; opacity: 0; }
   #hand-row .game-card:is(:hover, :focus-within) .card-buttons { opacity: 1; }
