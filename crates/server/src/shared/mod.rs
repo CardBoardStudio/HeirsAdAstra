@@ -205,9 +205,9 @@ fn build(
     if table.authority != authority.name() {
         return Err(format!("This table was dealt by {}.", table.authority));
     }
-    if table.rules != galactic_reach::RULES {
+    if !galactic_reach::SHARED_RULES.contains(&table.rules.as_str()) {
         return Err(format!(
-            "This shared table plays {}, and shared play runs only the current rules.",
+            "This shared table plays {}, and shared play does not support those rules.",
             table.rules
         ));
     }
@@ -227,13 +227,18 @@ fn build(
         let seat = &table.seats[i];
         (seat.name.clone(), seat.human())
     });
-    let engine = GalacticReach::shared(&seats, table.victory_target, move |n, purpose| {
-        let mut feed = source.borrow_mut();
-        feed.next(n, purpose).unwrap_or_else(|e| {
-            feed.error = Some(e);
-            vec![]
-        })
-    })?;
+    let engine = GalacticReach::shared(
+        &table.rules,
+        &seats,
+        table.victory_target,
+        move |n, purpose| {
+            let mut feed = source.borrow_mut();
+            feed.next(n, purpose).unwrap_or_else(|e| {
+                feed.error = Some(e);
+                vec![]
+            })
+        },
+    )?;
     let mut live = Live {
         table,
         engine,
@@ -327,9 +332,9 @@ impl Tables {
                 .map_err(broken)?
                 .ok_or(Refusal::NotFound)?;
             let events = self.log.read(id).map_err(broken)?;
-            if table.rules != galactic_reach::RULES {
+            if !galactic_reach::SHARED_RULES.contains(&table.rules.as_str()) {
                 return Err(Refusal::Conflict(format!(
-                    "This shared table plays {}. Shared play runs only the current rules, so it cannot continue on this server.",
+                    "This shared table plays {}. Shared play does not support those rules, so it cannot continue on this server.",
                     table.rules
                 )));
             }

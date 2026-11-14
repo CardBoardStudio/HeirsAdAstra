@@ -779,3 +779,63 @@ async fn server_rivals_move_on_the_current_rules_even_with_older_policy_versions
         assert!(service.view(id, "a").await.unwrap()["ai_error"].is_null());
     }
 }
+
+// 32.37 cutover: a shared table keeps the rules it was dealt with, so a running
+// 31.36 table keeps playing on the archived 31.36 engine (old prices) and its
+// rivals keep moving. Rules without a shared-table engine are still refused.
+#[tokio::test]
+async fn archived_31_36_shared_tables_keep_playing_after_the_cutover() {
+    let store = store_with(&["a"]);
+    let log = Arc::new(SqliteTableLog(store));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    let mut t = table("archived", &[("a", "Ada")]);
+    t.rules = "galactic-reach/31.36".into();
+    service.open(t).await.unwrap();
+    let view = service.view("archived", "a").await.unwrap();
+    assert_eq!(view["rules_version"], "galactic-reach/31.36");
+    assert!(
+        galactic_reach::GalacticReach::with_rules([3; 32], "galactic-reach/31.36").is_ok(),
+        "the archived engine is embedded"
+    );
+    let seq = view["seq"].as_u64().unwrap();
+    service
+        .act(
+            "archived",
+            "a",
+            seq,
+            vec![json!({"type":"pass"}), json!({"type":"finish_buy"})],
+        )
+        .await
+        .unwrap();
+    let mut moved = false;
+    for _ in 0..400 {
+        let events = log.read("archived").unwrap();
+        if [1, 2, 3].iter().all(|s| {
+            events
+                .iter()
+                .any(|e| e.kind == "action" && e.seat == Some(*s))
+        }) {
+            moved = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    assert!(moved, "every rival at the 31.36 table moved");
+    let view = service.view("archived", "a").await.unwrap();
+    assert!(view["ai_error"].is_null());
+    let dealt = view["state"]["market"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .chain(
+            view["state"]["advancedDeck"]
+                .as_array()
+                .into_iter()
+                .flatten(),
+        )
+        .count();
+    assert!(dealt > 0, "the 31.36 market is dealt");
+    let mut old = table("too-old", &[("a", "Ada")]);
+    old.rules = "galactic-reach/30.35".into();
+    assert!(service.open(old).await.is_err() || service.view("too-old", "a").await.is_err());
+}
