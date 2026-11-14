@@ -619,27 +619,26 @@ impl Tables {
         let Some(policy) = live.table.seats[seat].policy.clone() else {
             return Ok(false);
         };
-        if !live.agents.contains_key(&seat) {
-            let mut seed = [0u8; 32];
-            rand::rngs::OsRng.fill_bytes(&mut seed);
-            // The exact policy the table was dealt with (archived agents included),
-            // else the current version of the same profile.
-            let agent = galactic_reach::agent(&policy, seed)
-                .or_else(|_| {
-                    rival(&policy)
-                        .map(|s| {
-                            Box::new(BuiltinAgent::new(s, seed))
-                                as Box<dyn PlayerAgent<GalacticReach>>
-                        })
-                        .ok_or_else(|| format!("Unknown AI policy {policy}."))
-                })
-                .map_err(broken)?;
-            live.agents.insert(seat, agent);
-        }
-        let agent = live
-            .agents
-            .get_mut(&seat)
-            .ok_or_else(|| broken("No AI agent."))?;
+        let agent = match live.agents.entry(seat) {
+            std::collections::hash_map::Entry::Occupied(slot) => slot.into_mut(),
+            std::collections::hash_map::Entry::Vacant(slot) => {
+                let mut seed = [0u8; 32];
+                rand::rngs::OsRng.fill_bytes(&mut seed);
+                // The exact policy the table was dealt with (archived agents
+                // included), else the current version of the same profile.
+                let agent = galactic_reach::agent(&policy, seed)
+                    .or_else(|_| {
+                        rival(&policy)
+                            .map(|s| {
+                                Box::new(BuiltinAgent::new(s, seed))
+                                    as Box<dyn PlayerAgent<GalacticReach>>
+                            })
+                            .ok_or_else(|| format!("Unknown AI policy {policy}."))
+                    })
+                    .map_err(broken)?;
+                slot.insert(agent)
+            }
+        };
         let observation = live
             .engine
             .observe(seat)
