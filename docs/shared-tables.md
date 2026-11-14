@@ -44,7 +44,7 @@ The `zk/` prototype already proves one seat's fair private draw (`zk/circuits/gr
 | `private_view` | Server projects each seat's view | Each browser assembles its own view from the public log plus its private seed and salts. The server, now a relay and indexer, never holds hands. |
 | `TableLog::append` | SQLite transaction with a `head` check | Contract calls: ledger order replaces `head`, and the contract stores the commitments. |
 | `reveal` | Server opens every commitment at the end | Not needed: every draw was proven when it happened. |
-| Undo | `undo` event; checkpoints at every reveal | Unchanged: an undo is a log entry, and checkpoints already stop it before any proven draw or opened commitment. |
+| Undo | Archived reveal checkpoints; 36.41 human boundaries and reused canceled shuffles | Future proofs must bind rollback boundaries and reuse the original commitment when a reversed shuffle repeats. |
 
 What still blocks that swap: the circuit covers draws from one seat's deck, while the engine also shuffles shared piles and the map; every other rule (costs, combat, scoring) would need proofs or a trusted referee; and timeouts and abandoned seats need rules (see [architecture](architecture.md#soroban-and-zkp-path)). The interfaces are small on purpose: a ZK implementation changes `authority.rs`, `log.rs` and the browser's view assembly, not the table service or the game interface.
 
