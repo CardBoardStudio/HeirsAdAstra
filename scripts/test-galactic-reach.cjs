@@ -14,7 +14,7 @@ function engine() {
   return {port,adapter};
 }
 const {port,adapter}=engine();
-assert.equal(adapter.rulesVersion,'galactic-reach/32.37');
+assert.equal(adapter.rulesVersion,'galactic-reach/33.38');
 const before=JSON.stringify(port.state);
 adapter.legalActions(0);adapter.observe(0);
 assert.equal(JSON.stringify(port.state),before,'Observation and legality must not mutate state');
@@ -86,3 +86,5 @@ const ranked=engine();ranked.port.state.winner=0;
 ranked.port.state.players.forEach((p,i)=>{p.relicsExcavated=i===0?20:10;p.resources={matter:i===3?0:1,energy:0,biomass:0,data:0};});
 assert.equal(JSON.stringify(ranked.adapter.scores()),JSON.stringify([3,2,2,0]),'Prestige ranks, resource tiebreaks, and exact ties are reflected in terminal scores');
 console.log('Upgraded orders: unit minimums, +1 range, full-cost construction, optional paid colony building, and tied placements passed.');
+// 33.38 Split Moves (#movement) runs here too, so CI covers it without a workflow edit.
+require('./test-split-moves.cjs');
