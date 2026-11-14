@@ -1167,16 +1167,18 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 .hex:focus-visible { outline: none; background: var(--gold); }
 .hex:focus-visible::before { inset: 3px; filter: brightness(1.2); }
 .hex::before { background-image: linear-gradient(145deg,#ffffff06,transparent 55%,#0000000c); }
-/* Terrain uses the legend swatches' full colours so every resource is distinct on the
-   dark board (captain, 2026-11-14: grey Matter vs green Biomass). Buildings switch to
-   dark ink on these bright fills; fleet icons keep their dark outline. */
-.hex.matter { --hex-fill: var(--matter); }
-.hex.energy { --hex-fill: var(--energy); }
-.hex.biomass { --hex-fill: var(--biomass); }
-.hex.data { --hex-fill: var(--data); }
-.hex:is(.matter,.energy,.biomass,.data) .hex-buildings { color: #0b1420; }
-.hex:is(.matter,.energy,.biomass,.data) .hex-buildings .board-icon { filter: drop-shadow(0 0 1px #ffffffb0); }
-.hex:is(.matter,.energy,.biomass,.data):hover::before { filter: brightness(1.12); }
+/* Muted tabletop terrain; Matter is neutral gray, Biomass remains visibly green. */
+.hex.matter { --hex-fill:#77828a; }
+.hex.energy { --hex-fill:#5d8798; }
+.hex.biomass { --hex-fill:#658d6b; }
+.hex.data { --hex-fill:#8d7d9d; }
+.hex:is(.matter,.energy,.biomass,.data) .hex-buildings { color:#fff9ec; }
+.hex:is(.matter,.energy,.biomass,.data) .hex-buildings .board-icon { filter:drop-shadow(0 1px 1px #07101a); }
+.hex.owned::before { inset:4px; }
+.game-card .resource-symbol, .game-card .inline-resource .resource-symbol { width:24px; height:24px; }
+.game-card .resource-chip { min-height:32px; }
+.game-card .resource-dot { min-width:26px; min-height:26px; }
+.game-card .resource-dot svg { width:22px; height:22px; }
 .hex-fleets .board-glyph { filter: drop-shadow(1px 0 0 #07101a) drop-shadow(-1px 0 0 #07101a) drop-shadow(0 1px 0 #07101a) drop-shadow(0 -1px 0 #07101a); }
 .board-icon-count::after { content: attr(data-count); }
 .game-card .button:focus-visible { outline: 3px solid #315955; outline-offset: 3px; }
