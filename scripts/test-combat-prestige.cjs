@@ -59,7 +59,7 @@ for(const d of [{explorer:1},{explorer:1,settler:1}]){
 }
 // Failed retreat destroys the remaining attacker, so the surviving defender qualifies.
 {
- const g=fixture({d:{fleet:1}});g.start();stays(g);for(const coord of ['2,0','2,-1','1,-1','0,1','1,1'])g.s.fleets[coord]={2:{fleet:1}};g.s.fleets['0,0']={0:{fleet:5}};
+ const g=fixture({d:{fleet:1}});g.start();stays(g);for(const coord of ['2,0','2,-1','1,-1','0,1','1,1'])g.s.fleets[coord]={2:{fleet:1}};g.s.fleets['0,0']={2:{fleet:1}};
  volley(g,'defensiveScreen','defensiveScreen');volley(g);volley(g,'defensiveScreen','defensiveScreen');
  assert.match(g.s.lastCombat.outcome,/surviving ship was destroyed/);awards(g,[0,1,0,0]);
 }

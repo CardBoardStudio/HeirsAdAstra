@@ -71,4 +71,6 @@ assert.equal(replayRoutes['galactic-reach/27.32'],'/galactic-reach/rules/27.32/'
 for(const [file,hash] of Object.entries(JSON.parse(read('scripts/in-play-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,file);
 console.log('Cards in play: conversions/orders, pre-effect draw commitment, explicit discards, recovery/trashing isolation, public/private observations, reactions, Buy timing, shared cleanup, rival conversions and frozen26.31/policy22 passed.');
 
-assert.equal(replayRoutes['galactic-reach/28.33'],'/galactic-reach/');
+assert.equal(replayRoutes['galactic-reach/28.33'],'/galactic-reach/rules/28.33/');
+
+assert.equal(replayRoutes['galactic-reach/29.34'],'/galactic-reach/');
