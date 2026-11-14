@@ -65,7 +65,7 @@ function assertGalaxy(s) {
     assert.equal(Object.values(s.planets).filter(p=>p.upgrade==='starbase').length,0,'No starting Shipyards');
     assert(!Object.values(s.fleets).some(group=>group[id]),'There are no starting units');
   }
-  assert.equal(Object.values(s.planets).filter(p=>p.special==='relic').length,12);
+  assert.equal(Object.values(s.planets).filter(p=>p.special==='relic').length,13);
   assert.equal(Object.values(s.planets).filter(p=>p.special==='gate').length,0);
   assert(Object.values(s.planets).every(p=>!('rich' in p)&&p.special!=='rich'),'Rich is absent, not just visually hidden');
   const homes=s.clusters.slice(0,4), worlds=s.clusters.filter(c=>c.kind==='world'&&c.id>=4), moons=s.clusters.filter(c=>c.kind==='moon');
@@ -88,7 +88,7 @@ function assertGalaxy(s) {
     assert.deepEqual(opportunity[seat].slice(0,2),[6,6]);
   }
   const center=worlds.find(w=>w.center==='0,0');assert(center);
-  assert(center.coords.every(k=>s.planets[k].special===null),'The additional world does not increase relic supply');
+  assert.equal(center.coords.filter(k=>s.planets[k].special==='relic').length,1,'The center world has one relic');
   const terrain=s.clusters.map(c=>[...c.center.split(',').map(Number),c.kind==='moon'?0:1]);
   for(let q=-10;q<=10;q++) for(let y=-10;y<=10;y++) if(Math.max(Math.abs(q),Math.abs(y),Math.abs(q+y))<=10) {
     const nearest=Math.min(...terrain.map(([a,b,radius])=>Math.max(Math.abs(q-a),Math.abs(y-b),Math.abs(q+y-a-b))-radius));
@@ -123,7 +123,7 @@ assert.equal(r.fleetMove({settler:1}),1); assert.equal(r.fleetMove({fleet:1}),2)
 assert.equal(r.fleetMove({}),0);
 fresh(9); r.state.planets={}; r.state.fleets={'0,0':{0:{explorer:1}}};
 r.prepareHumanMove('0,0','explorer');
-assert.equal(r.state.reachable.length,36);
+assert.equal(r.state.reachable.length,37);
 assert(r.state.reachable.includes('3,0')); assert(!r.state.reachable.includes('4,0'));
 r.state.actionOptions={tag:'strikeVector'}; r.prepareHumanMove('0,0','explorer');
 assert(r.state.reachable.includes('4,0')); assert(!r.state.reachable.includes('5,0'));
@@ -153,8 +153,8 @@ r.playOrder(order.id); assert.equal(r.state.actionMode,'move'); assert.equal(r.s
 r.playOrder(order.id); assert.equal(r.state.actionMode,null,'Clicking again cancels without spending the card');
 assert.equal(r.state.players[0].hand.length,1);
 const old='untouched-v4-save'; storage.set('galactic-reach-save-v4',old);
-assert.equal(r.SAVE_KEY,'galactic-reach-save-v34');
-assert.equal(r.TURN_HISTORY_KEY,'galactic-reach-turn-history-v34');
+assert.equal(r.SAVE_KEY,'galactic-reach-save-v36');
+assert.equal(r.TURN_HISTORY_KEY,'galactic-reach-turn-history-v36');
 const saved=JSON.stringify(fresh(123)); r.saveGame(); fresh(456);
 assert(r.loadGame()); assert.equal(JSON.stringify(r.state),saved,'Reload retains randomized placement');
 assert.equal(storage.get('galactic-reach-save-v4'),old);

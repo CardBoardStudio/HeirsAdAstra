@@ -22,25 +22,25 @@ const big = p => { p.resourceLimits = { matter: 30, energy: 30, biomass: 30, dat
 const catalog = vm.runInContext(app + ';createGalacticReach({catalog:true})', vm.createContext({}));
 const cards = { ...catalog.ADVANCED_CARDS, ...catalog.MARKET_MILITARY };
 const codes = Object.values(cards).map(c => c.code);
-assert.equal(Object.keys(catalog.ADVANCED_CARDS).length, 26); assert.equal(Object.keys(catalog.MARKET_MILITARY).length, 10);
-assert.equal(new Set(codes).size, 36, 'Card ids are unique');
-assert.deepEqual(codes.filter(c => c[0] === 'N').sort(), Array.from({ length: 26 }, (_, i) => `N${String(i + 1).padStart(2, '0')}`));
+assert.equal(Object.keys(catalog.ADVANCED_CARDS).length, 29); assert.equal(Object.keys(catalog.MARKET_MILITARY).length, 10);
+assert.equal(new Set(codes).size, 39, 'Card ids are unique');
+assert.deepEqual(codes.filter(c => c[0] === 'N').sort(), Array.from({ length: 29 }, (_, i) => `N${String(i + 1).padStart(2, '0')}`));
 assert.deepEqual(codes.filter(c => c[0] === 'M').sort(), Array.from({ length: 10 }, (_, i) => `M${String(i + 1).padStart(2, '0')}`));
 for (const [key, def] of Object.entries(cards)) {
-  assert(Object.values(def.cost).some(n => n > catalog.STARTING_LIMIT), `${key} must need a raised limit`);
+  assert(['signalRelay','surveyNetwork','tacticalBriefing'].includes(key)||Object.values(def.cost).some(n => n > catalog.STARTING_LIMIT), `${key} must need a raised limit`);
   assert.equal(!!def.military, def.code[0] === 'M');
 }
 const prices = Object.values(cards).map(c => Object.values(c.cost).reduce((n, x) => n + x, 0));
 // 32.37 (Cheaper Cards): about 30% cheaper, from exactly 5 of one resource (one upgrade) to 14.
-assert.equal(Math.min(...prices), 5, 'The cheapest cards cost exactly 5 of one resource');
+assert.equal(Math.min(...prices), 3, 'The cheapest cards cost exactly 5 of one resource');
 assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
-assert.equal(prices.reduce((n, p) => n + p, 0), 266, 'The set costs 266 resources (31.36: 376, 29% less)');
-assert.equal(catalog.rulesVersion, 'galactic-reach/34.39');
+assert.equal(prices.reduce((n, p) => n + p, 0), 275, 'The set costs 266 resources (31.36: 376, 29% less)');
+assert.equal(catalog.rulesVersion, 'galactic-reach/36.41');
 
 // Setup: ten face-up cards from one 72-card supply that mixes both decks; target defaults to 40.
 {
   const g = game(), { s } = g;
-  assert.equal(s.market.length, 10); assert.equal(s.market.length + s.advancedDeck.length, 72); assert.equal(s.victoryTarget, 40);
+  assert.equal(s.market.length, 10); assert.equal(s.market.length + s.advancedDeck.length, 78); assert.equal(s.victoryTarget, 40);
   const supply = [...s.market, ...s.advancedDeck].map(c => c.key);
   for (const key of Object.keys(cards)) assert.equal(supply.filter(k => k === key).length, 2, `${key} has two copies`);
   assert.equal(game({ victoryTarget: 30 }).s.victoryTarget, 30); assert.equal(game({ victoryTarget: 35 }).s.victoryTarget, 40, 'Unlisted targets fall back to 40');
@@ -49,7 +49,7 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/34.39');
 // Starting limits cannot hold any market card, so nothing is buyable until capacity rises.
 {
   const g = game(), { s, p } = g; s.phase = 'buy'; s.activePlayer = 0; p.passed = true; p.resources = { matter: 4, energy: 4, biomass: 4, data: 4 };
-  assert(!g.adapter().legalActions(0).some(a => a.type === 'buy'), 'No card is affordable at starting limits');
+  assert(g.adapter().legalActions(0).filter(a=>a.type==='buy').every(a=>['signalRelay','surveyNetwork','tacticalBriefing'].includes(a.key)));
   s.market = [{ key: 'ionThrusters', id: 'ion' }];
   act(g, 0, 'increase_storage', a => a.allocation.energy === 4);
   assert.equal(p.resourceLimits.energy, 8); p.resources.energy = 5; p.resources.data = 1;
@@ -81,7 +81,7 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/34.39');
   p.resourceLimits = { matter: 4, energy: 4, biomass: 4, data: 4 }; p.resources = { matter: 0, energy: 0, biomass: 0, data: 0 };
   p.hand = [{ key: 'cargoExpansion', id: 'cargo' }]; p.deck = []; p.discard = [];
   act(g, 0, 'special', a => a.card === 'cargo');
-  assert.deepEqual(JSON.parse(JSON.stringify(p.resourceLimits)), { matter: 5, energy: 5, biomass: 5, data: 5 }, 'Cargo Expansion raises every limit');
+  assert.deepEqual(JSON.parse(JSON.stringify(p.resourceLimits)), { matter: 6, energy: 6, biomass: 6, data: 6 }, 'Cargo Expansion raises every limit');
   assert.equal(p.storagePurchases || 0, 0, 'Card capacity does not raise the next paid price');
   s.activePlayer = 0; p.hand = [{ key: 'ascendancyCodex', id: 'codex' }]; p.deck = [{ key: 'move', id: 'drawn' }];
   act(g, 0, 'special', a => a.card === 'codex'); assert.equal(p.cardPrestige, 2); assert(p.hand.some(c => c.id === 'drawn'));
@@ -156,4 +156,4 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/34.39');
   assert(sim.prestige(st.winner) >= 40); assert(st.round > 10, 'A 40-point game takes many rounds');
   assert(st.players.some(p => p.cardsPurchased >= 3), 'Rivals buy market cards'); assert(st.players.every(p => (p.storagePurchases || 0) >= 1), 'Every rival raises its limits');
 }
-console.log('Capacity Cards: 36 stable ids priced above starting limits, ten-card mixed market, military deck purchases, Buy cards and Wonders, one-step orders, printed Construct discounts, rival capacity targeting and a full 40-point rival game passed.');
+console.log('Capacity Cards: 39 stable ids including three draw-two cards within starting limits, ten-card mixed market, military deck purchases, Buy cards and Wonders, one-step orders, printed Construct discounts, rival capacity targeting and a full 40-point rival game passed.');
