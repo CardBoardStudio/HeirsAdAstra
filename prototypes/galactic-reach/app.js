@@ -221,7 +221,7 @@ function createGalacticReach(options = {}) {
             "biomass": 3,
             "data": 1
         },
-        "text": "Gain 1 printed resource from each of up to two of your unoccupied owned planet hexes, chosen automatically. No permanent production bonus.",
+        "text": "Gain 1 printed resource from each of up to two of your owned planet hexes, chosen automatically. No permanent production bonus.",
         "lore": "The garden outlived its gods."
     },
     "cradleOfLostSuns": {
