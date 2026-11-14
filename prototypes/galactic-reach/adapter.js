@@ -49,6 +49,10 @@ function createGalacticAdapter(e) {
       actions.push({type:state.pendingConsortium.trades ? 'finish_consortium' : 'cancel_consortium'});
 
     } else if (state.pendingConstruct) {
+      state.tradeOffers.forEach(offer=>{
+        if(e.tradeResponseAllowed(seat,offer)){actions.push({type:'trade_reject',offer:offer.id});if(!e.tradeBlockReason(seat,offer))actions.push({type:'trade_accept',offer:offer.id});}
+        if(offer.status==='open'&&offer.from===seat)actions.push({type:'trade_cancel',offer:offer.id});
+      });
       actions.push({type:'finish_construct'});
       for(const coord of Object.keys(state.planets))for(const kind of [...Object.keys(e.STRUCTURES),...Object.keys(e.SHIP_STATS)])
         if(e.canSecondConstruct(seat,coord,kind))actions.push({type:'second_build',coord,kind});
