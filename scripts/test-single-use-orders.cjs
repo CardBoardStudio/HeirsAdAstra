@@ -71,13 +71,16 @@ for (const key of ['probe','colonize']) {
   assert(!(key==='probe'?g.engine.probeRelic(0,at,'keep'):g.engine.applyColonizeOrder(0,at,g.player.hand[0])));
   assert.equal(JSON.stringify(g.state),before,'Failed searches and unpaid founding keep the card and action');
 }
-for (const key of ['dropColonyModules','genesisSeedVault']) {
+// 31.36 market colony cards (rules #cards): price, Settler use and Prestige come from the card.
+for (const [key,biomassLeft,settlers,prestige] of [['colonyPods',0,1,0],['genesisSeedVault',1,1,0],['genesisCharter',1,1,2],['seedArk',0,undefined,0]]) {
   const g = game(), world = g.state.clusters[4];
   g.player.hand = [{id:'advanced',key}];g.player.resources = {matter:0,energy:0,biomass:1,data:0};
-  g.state.fleets = {[world.center]:{0:{settler:1}}};
+  g.state.fleets = {[world.center]:{0:{settler:1,explorer:1}}};
   assert(g.engine.applyColonizeOrder(0,world.center,g.player.hand[0]));
   assert(g.player.inPlay.some(c=>c.id==='advanced'),'Advanced colony cards stay in play until cleanup');
-  assert.equal(g.state.fleets[world.center][0].settler,1);
+  assert.equal(g.state.fleets[world.center][0].settler||undefined,settlers,`${key} Settler use`);
+  assert.equal(g.player.resources.biomass,biomassLeft,`${key} Biomass price`);
+  assert.equal(g.player.cardPrestige||0,prestige,`${key} card Prestige`);
 }
 for (const key of ['probe','colonize']) {
   const old = game('crates/galactic-reach/rules/v25-'), at = key==='probe'?'2,2':old.state.clusters[4].center;

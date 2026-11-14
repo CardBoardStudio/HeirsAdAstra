@@ -8,9 +8,9 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 use std::time::{Duration, Instant};
 
-pub const RULES: &str = "galactic-reach/30.35";
+pub const RULES: &str = "galactic-reach/31.36";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "In-play Buy playtest";
+pub const EXPERIMENT: &str = "Capacity Cards experiment";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -99,6 +99,7 @@ impl GalacticReach {
             "galactic-reach/27.32" => "galactic-reach/27.32",
             "galactic-reach/28.33" => "galactic-reach/28.33",
             "galactic-reach/29.34" => "galactic-reach/29.34",
+            "galactic-reach/30.35" => "galactic-reach/30.35",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -133,6 +134,7 @@ impl GalacticReach {
                     "galactic-reach/27.32" => include_str!("../rules/v27-adapter.js"),
                     "galactic-reach/28.33" => include_str!("../rules/v28-adapter.js"),
                     "galactic-reach/29.34" => include_str!("../rules/v29-adapter.js"),
+                    "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -163,6 +165,7 @@ impl GalacticReach {
                     "galactic-reach/27.32" => include_str!("../rules/v27-app.js"),
                     "galactic-reach/28.33" => include_str!("../rules/v28-app.js"),
                     "galactic-reach/29.34" => include_str!("../rules/v29-app.js"),
+                    "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -1331,6 +1334,7 @@ mod tests {
             "galactic-reach/27.32",
             "galactic-reach/28.33",
             "galactic-reach/29.34",
+            "galactic-reach/30.35",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1364,6 +1368,7 @@ mod tests {
                             | "galactic-reach/27.32"
                             | "galactic-reach/28.33"
                             | "galactic-reach/29.34"
+                            | "galactic-reach/30.35"
                     ) {
                         0
                     } else {

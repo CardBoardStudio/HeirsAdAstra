@@ -1,8 +1,9 @@
 // Exercise the authoritative combat continuation and private transport, not a mock.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const root=path.join(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8'),plain=v=>JSON.parse(JSON.stringify(v));
-function fixture({attacker=0,a={fleet:1},d={fleet:1},tag=null,card=false}={}) {
-  const c=vm.createContext({});vm.runInContext(read('prototypes/galactic-reach/adapter.js')+read('prototypes/galactic-reach/app.js'),c);
+const V30='crates/galactic-reach/rules/v30-';
+function fixture({attacker=0,a={fleet:1},d={fleet:1},tag=null,card=false,prefix='prototypes/galactic-reach/'}={}) {
+  const c=vm.createContext({});vm.runInContext(read(prefix+'adapter.js')+read(prefix+'app.js'),c);
   let e,seed=1729,calls=0;const factory=c.createGalacticAdapter;c.createGalacticAdapter=x=>{e=x;return factory(x);};
   c.createGalacticReach({headless:true,random:()=>{calls++;return((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}});
   const s=e.state,defender=attacker===0?1:0;
@@ -32,7 +33,7 @@ for(const attacker of [0,1]){
   const view=a.observe(g.defender);assert.equal(view.combat.sides.attacker.choice,undefined);assert(!JSON.stringify(view).includes('commitments'));
   const fresh=g.adapter();assert(fresh.legalActions(g.defender).every(x=>x.type==='combat_tactic'));assert.throws(()=>fresh.applyAction(g.defender,{type:'pass'}),/Illegal action/);
   choose(g,{type:'combat_tactic',tactic:'defensiveScreen'});
-  assert.deepEqual(plain(g.s.pendingCombat.volleys[0].attacker),{tactic:'concentratedFire',base:3,bonus:1,shields:0,damage:2});
+  assert.deepEqual(plain(g.s.pendingCombat.volleys[0].attacker),{tactic:'concentratedFire',base:3,bonus:1,shields:0,pierce:false,damage:2});
   assert.equal(g.s.pendingCombat.attackerPieces[0].damage,3);assert.equal(g.s.pendingCombat.defenderPieces[0].damage,2);
   assert.equal(g.calls(),rng,'Combat, inspection and rejection draw no random numbers');
   finish(g);assert.equal(g.s.activePlayer,(attacker+1)%4);assert(!g.s.pendingMove);assert.equal(g.s.players[attacker].inPlay.filter(c=>c.id==='battle-move').length,1);
@@ -83,8 +84,9 @@ for(const attacker of [0,1]){
  g.s.players[0].resources.energy=1;for(const coord of ['2,0','2,-1','1,-1','0,0','0,1','1,1'])g.s.fleets[coord]={2:{fleet:1}};assert.deepEqual(plain(g.e.combatActions(0)),[{type:'combat_stay'}]);
 }
 // Relic/regular reactions and Fleet-only offensive bonuses are consumed at reveal.
-for(const [key,bonus,shield] of [['targetingAlgorithms',2,0],['warSongOfHollowStars',4,0],['aegisOfSilentArchitects',1,4],['ablativePlating',1,2]]){
- const g=fixture();g.s.players[0].hand=[{key,id:'reaction'}];g.start();stays(g);choose(g,{type:'combat_tactic',tactic:'concentratedFire'});assert(g.s.players[0].hand.length);choose(g,{type:'combat_tactic',tactic:'concentratedFire'});
+// Targeting Algorithms and Ablative Plating left the market in 31.36; they remain in the 30.35 archive.
+for(const [key,bonus,shield,prefix] of [['targetingAlgorithms',2,0,V30],['warSongOfHollowStars',4,0],['aegisOfSilentArchitects',1,4],['ablativePlating',1,2,V30]]){
+ const g=fixture({prefix});g.s.players[0].hand=[{key,id:'reaction'}];g.start();stays(g);choose(g,{type:'combat_tactic',tactic:'concentratedFire'});assert(g.s.players[0].hand.length);choose(g,{type:'combat_tactic',tactic:'concentratedFire'});
  assert.equal(g.s.pendingCombat?.volleys[0].attacker.bonus ?? g.s.lastCombat.volleys[0].attacker.bonus,bonus);assert.equal((g.s.pendingCombat||g.s.lastCombat).volleys[0].attacker.shields,shield);assert(g.s.players[0].inPlay.some(c=>c.id==='reaction'));
 }
 for(const [units,bonus] of [[{settler:1},1],[{fleet:1},3]]){
@@ -93,7 +95,7 @@ for(const [units,bonus] of [[{settler:1},1],[{fleet:1},3]]){
 }
 // Salvage caps both sides automatically and completes the original move once.
 {
- const g=fixture({card:true});for(const seat of [0,1]){g.s.players[seat].hand.push({key:'salvageCrews',id:`salvage${seat}`});g.s.players[seat].resources.matter=4;}g.start();stays(g);volley(g);volley(g);
+ const g=fixture({card:true,prefix:V30});for(const seat of [0,1]){g.s.players[seat].hand.push({key:'salvageCrews',id:`salvage${seat}`});g.s.players[seat].resources.matter=4;}g.start();stays(g);volley(g);volley(g);
  assert.equal(g.s.activePlayer,1);assert(!g.s.pendingMove);assert.equal(g.adapter().activeSeat(),1);assert.equal(g.s.players[0].resources.matter,4);assert.equal(g.s.players[1].resources.matter,4);assert.equal(g.s.players[0].inPlay.filter(c=>c.id==='battle-move').length,1);
 }
 // A JSON roundtrip resumes escape, a hidden commitment, and later damaged volleys.
@@ -115,9 +117,40 @@ for(const stage of ['escape','committed','later']){
 // Emergency Jump keeps its explicit condition; Overdrive suppresses early Jump,
 // but the compulsory third-volley retreat still applies.
 for(const tag of [null,'overdrive']){
- const g=fixture({d:{fleet:2},tag});g.s.players[0].hand=[{key:'emergencyJump',id:'jump'}];g.start();stays(g);volley(g,'defensiveScreen','defensiveScreen');
+ const g=fixture({d:{fleet:2},tag,prefix:V30});g.s.players[0].hand=[{key:'emergencyJump',id:'jump'}];g.start();stays(g);volley(g,'defensiveScreen','defensiveScreen');
  if(tag===null){assert(!g.s.pendingCombat);assert.match(g.s.lastCombat.summary.join(' '),/Emergency Jump/);assert(g.s.players[0].inPlay.some(c=>c.id==='jump'));}
  else{assert(g.s.pendingCombat);assert(g.s.players[0].hand.some(c=>c.id==='jump'));}
+}
+// 31.36 military deck (rules #combat): bought military cards join every battle's tactic hand once.
+{
+ const g=fixture();g.s.players[0].military=[{key:'railBattery',id:'rail-1'},{key:'railBattery',id:'rail-2'},{key:'phaseLance',id:'lance'}];g.start();
+ assert.deepEqual(plain(g.s.pendingCombat.hands.attacker),{concentratedFire:2,defensiveScreen:2,railBattery:2,phaseLance:1});
+ assert.deepEqual(plain(g.s.pendingCombat.hands.defender),{concentratedFire:2,defensiveScreen:2});stays(g);
+ assert(g.e.combatActions(0).some(x=>x.tactic==='phaseLance'));assert(!g.e.combatActions(1).some(x=>x.tactic==='phaseLance'),'Only the owner holds its military cards');
+ volley(g,'phaseLance','defensiveScreen');const v=(g.s.pendingCombat||g.s.lastCombat).volleys[0].attacker;
+ assert.deepEqual(plain(v),{tactic:'phaseLance',base:3,bonus:2,shields:0,pierce:true,damage:5},'Phase Lance ignores the 2-shield Screen');
+ assert.match((g.s.pendingCombat||g.s.lastCombat).summary.at(-1),/pierced 2/);
+ if(g.s.pendingCombat){assert(!g.e.combatActions(0).some(x=>x.tactic==='phaseLance'),'Each military card is usable once per battle');finish(g);}
+ assert.equal(g.s.players[0].military.length,3,'Military cards are reused, never spent');
+ g.s.fleets={'0,0':{0:{fleet:1}},'1,0':{1:{fleet:1}}};g.start();assert.equal(g.s.pendingCombat.hands.attacker.phaseLance,1,'Restored for the next battle');finish(g);
+}
+{
+ // Boarding Marines loot after any battle; Victory Doctrine adds 2 Prestige only on a decisive win.
+ const g=fixture({d:{settler:1}});g.s.players[0].resourceLimits={matter:10,energy:10,biomass:10,data:10};
+ g.s.players[0].military=[{key:'boardingMarines',id:'marines'},{key:'victoryDoctrine',id:'doctrine'}];g.start();stays(g);
+ volley(g,'victoryDoctrine','defensiveScreen');if(g.s.pendingCombat)volley(g,'boardingMarines','defensiveScreen');finish(g);
+ assert.equal(g.s.lastCombat.prestigeWinner,0);assert.equal(g.s.players[0].combatVictories,1);assert.equal(g.s.players[0].cardPrestige,2);
+ assert.equal(g.e.calculatePrestige(0),3,'Combat 1 + Victory Doctrine 2 (the fixture has no Colony)');
+}
+{
+ const g=fixture({d:{fleet:2}});g.s.players[0].military=[{key:'victoryDoctrine',id:'doctrine'}];g.s.players[0].resourceLimits={matter:10,energy:10,biomass:10,data:10};
+ g.s.players[0].military.push({key:'boardingMarines',id:'marines'});g.start();stays(g);volley(g,'boardingMarines','concentratedFire');finish(g);
+ assert.equal(g.s.players[0].cardPrestige||0,0,'No decisive win, no Victory Doctrine Prestige');assert.equal(g.s.players[0].resources.matter,2);assert.equal(g.s.players[0].resources.data,1,'Boarding Marines loot even in defeat');
+}
+{
+ // Strike Vector (N03) adds 2 hits to the attacker's first volley only.
+ const g=fixture({tag:'strikeVector',d:{fleet:2}});g.start();stays(g);volley(g,'defensiveScreen','defensiveScreen');
+ assert.equal(g.s.pendingCombat.volleys[0].attacker.bonus,2);volley(g,'defensiveScreen','defensiveScreen');assert.equal((g.s.pendingCombat||g.s.lastCombat).volleys[1].attacker.bonus,0);
 }
 // A defending structure remains after all Explorers escape, so battle continues.
 {

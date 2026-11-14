@@ -1,5 +1,6 @@
 mod accounts;
 mod arena;
+mod card_feedback;
 mod config;
 mod invites;
 mod lobby;
@@ -522,6 +523,10 @@ fn router(app: App) -> Router {
             post(tables::save).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024 + 16384)),
         )
         .route("/api/catalog", get(arena::catalog))
+        .route(
+            "/api/galactic-reach/card-feedback",
+            get(card_feedback::status).post(card_feedback::submit),
+        )
         .route("/api/arena", get(arena::overview))
         .route("/api/arena/bots", post(arena::create_bot))
         .route("/api/arena/series", post(arena::run_series))
