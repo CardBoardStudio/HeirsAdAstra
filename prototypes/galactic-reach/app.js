@@ -16,8 +16,8 @@ function createGalacticReach(options = {}) {
   }
   const clearTimeout = headless ? () => {} : globalThis.clearTimeout.bind(globalThis);
 
-  const SAVE_FORMAT_VERSION = 32;
-  const RULES_REVISION = 37;
+  const SAVE_FORMAT_VERSION = 33;
+  const RULES_REVISION = 38;
   const SAVE_KEY = `galactic-reach-save-v${SAVE_FORMAT_VERSION}`;
   const TURN_HISTORY_KEY = `galactic-reach-turn-history-v${SAVE_FORMAT_VERSION}`;
   const HISTORY_KEY = `galactic-reach-history-v${SAVE_FORMAT_VERSION}`;
@@ -54,7 +54,7 @@ function createGalacticReach(options = {}) {
   const HOME_CLUSTER_OWNERS = HOME_STARTS.map(({ cluster, owner }) => [cluster, owner]);
   const RELIC_SECTORS = [[4,2],[5,5],[6,1],[7,4],[8,6],[9,3],[10,2],[11,5]];
   const SHIP_STATS = {
-    settler: { name: 'Settler', move: 1, power: 1, hull: 2, defendingHull: 4, cost: { matter: 1, energy: 1 } },
+    settler: { name: 'Settler', move: 1, power: 1, hull: 2, defendingHull: 4, cost: { matter: 1, energy: 1, biomass: 1 } },
     explorer: { name: 'Explorer', move: 3, power: 1, hull: 1, civilian: true, cost: { energy: 1, data: 2 } },
     fleet: { name: 'Fleet', move: 2, power: 3, hull: 7, cost: { matter: 2, energy: 1, biomass: 1 } },
   };
@@ -64,10 +64,12 @@ function createGalacticReach(options = {}) {
   };
   const BASIC_TACTIC_HAND = { concentratedFire: 2, defensiveScreen: 2 };
   const STRUCTURES = {
-    harvester: { name: 'Harvester', code: 'H', cost: { matter: 1, energy: 1, biomass: 1 } },
+    harvester: { name: 'Harvester', code: 'H', cost: { matter: 1, energy: 1, data: 1 } },
     starbase: { name: 'Shipyard', code: 'S', cost: { matter: 2, energy: 1, biomass: 1, data: 1 } },
   };
   const STORAGE_UPGRADE = { capacity: 4 };
+  // 32.37: a Harvester hex produces 2 of its resource (31.36 and earlier: 1).
+  const HARVESTER_YIELD = 2;
   const RELIC_STORAGE_POINTS = 4;
   const EXCAVATION_COST = { matter: 1, energy: 1, data: 2 };
   const LEGEND_TOOLTIPS = {
@@ -75,7 +77,7 @@ function createGalacticReach(options = {}) {
     explorer: 'Explorer: 1 attack, 1 hull. Before the first volley, pay 1 Energy per Explorer to escape to one legal adjacent hex. Reveals terrain by entering it; use Probe to locate relics. Base movement 3; Move II adds 1. Commission at a Shipyard to receive Probe in discard; a successful Probe becomes Excavate. Play it at a relic, pay 1 Matter, 1 Energy, and 2 Data, and choose a relic card. Consume one Explorer and trash Excavate.',
     fleet: 'Reveals terrain by entering it; use Probe to locate relics. Base movement 2 (3 with Move II), with 3 attack and 7 hull. You may have up to 10 Fleets on the map.',
     colony: 'Claims a seven-hex world. Colonies must occupy the world’s center hex.',
-    harvester: 'Produces 1 local resource per round. Buildings have no upgrades.',
+    harvester: 'Produces 2 of its hex’s resource per round. Buildings have no upgrades.',
     starbase: 'Commissions ships and defends its hex with 3 attack and 3 hull. Cannot be upgraded.',
   };
   const BOARD_ICONS = {
@@ -109,48 +111,48 @@ function createGalacticReach(options = {}) {
   // colonyCost/keepSettler/colonyPrestige: Colonize; effect: one-step special order;
   // buyEffect: Buy-turn card; gainPrestige: permanent Prestige when you buy it.
   const ADVANCED_CARDS = {
-    ionThrusters: { code: 'N01', name: 'Ion Thrusters', kind: 'Movement', accent: 'var(--energy)', cost: { energy: 5, data: 1 }, resource: { energy: 2 }, order: 'move', tag: 'ionThrusters', range: 2, text: 'Move one group with +2 range.' },
-    slipstreamCharts: { code: 'N02', name: 'Slipstream Charts', kind: 'Movement', accent: 'var(--data)', cost: { data: 5, energy: 1 }, resource: { data: 2 }, order: 'move', tag: 'slipstreamCharts', range: 3, pathfinder: true, text: 'Move one group with +3 range. It cannot enter hostile hexes.' },
-    strikeVector: { code: 'N03', name: 'Strike Vector', kind: 'Movement', accent: 'var(--red)', cost: { energy: 6, matter: 2 }, resource: { energy: 2, matter: 1 }, order: 'move', tag: 'strikeVector', range: 1, assault: 2, text: 'Move one group with +1 range. If it attacks, add 2 hits to the first volley.' },
-    foldSpaceGate: { code: 'N04', name: 'Fold-Space Gate', kind: 'Movement', accent: 'var(--energy)', cost: { energy: 10, data: 4 }, resource: { energy: 3, data: 1 }, order: 'move', tag: 'foldSpaceGate', range: 5, text: 'Move one group with +5 range.' },
-    prefabYards: { code: 'N05', name: 'Prefab Yards', kind: 'Industry', accent: 'var(--matter)', cost: { matter: 5, energy: 1 }, resource: { matter: 3 }, order: 'construct', tag: 'prefabYards', buildDiscount: 'each', text: 'Build or commission once, paying 1 less of each resource in its cost.' },
-    orbitalFoundry: { code: 'N06', name: 'Orbital Foundry', kind: 'Industry', accent: 'var(--matter)', cost: { matter: 7, energy: 2, data: 1 }, resource: { matter: 3, energy: 1 }, order: 'construct', tag: 'orbitalFoundry', buildDiscount: 'each', buildGain: { matter: 2 }, text: 'Build or commission once, paying 1 less of each resource. Then gain 2 Matter.' },
-    worldEngine: { code: 'N07', name: 'World Engine', kind: 'Industry', accent: 'var(--matter)', cost: { matter: 10, energy: 3, biomass: 3 }, resource: { matter: 4, biomass: 1 }, order: 'construct', tag: 'worldEngine', buildDiscount: 'free', text: 'Build or commission once at no resource cost.' },
-    seedArk: { code: 'N08', name: 'Seed Ark', kind: 'Expansion', accent: 'var(--biomass)', cost: { biomass: 5, matter: 1 }, resource: { biomass: 3 }, order: 'colonize', tag: 'seedArk', colonyCost: 1, text: 'Colonize with a Settler for 1 Biomass. The Settler is consumed; Seed Ark stays in your deck.' },
-    colonyPods: { code: 'N09', name: 'Colony Pods', kind: 'Expansion', accent: 'var(--biomass)', cost: { biomass: 7, energy: 2 }, resource: { biomass: 3 }, order: 'colonize', tag: 'colonyPods', colonyCost: 1, keepSettler: true, text: 'Colonize for 1 Biomass without consuming the Settler.' },
-    genesisCharter: { code: 'N10', name: 'Genesis Charter', kind: 'Expansion', accent: 'var(--biomass)', cost: { biomass: 11, matter: 4, data: 2 }, resource: { biomass: 4 }, order: 'colonize', tag: 'genesisCharter', colonyCost: 0, keepSettler: true, colonyPrestige: 2, text: 'Colonize for 0 Biomass without consuming the Settler, and gain 2 permanent Prestige.' },
-    miningCharter: { code: 'N11', name: 'Mining Charter', kind: 'Economy', accent: 'var(--matter)', cost: { matter: 5, data: 1 }, resource: { matter: 2 }, order: 'special', tag: 'miningCharter', effect: { gain: { matter: 3, energy: 1 } }, text: 'Gain 3 Matter and 1 Energy.' },
-    bioReactor: { code: 'N12', name: 'Bio-Reactor', kind: 'Economy', accent: 'var(--biomass)', cost: { biomass: 5, energy: 2 }, resource: { biomass: 2 }, order: 'special', tag: 'bioReactor', effect: { gain: { biomass: 2, energy: 2 } }, text: 'Gain 2 Biomass and 2 Energy.' },
-    dataHaven: { code: 'N13', name: 'Data Haven', kind: 'Economy', accent: 'var(--data)', cost: { data: 6, energy: 1 }, resource: { data: 2 }, order: 'special', tag: 'dataHaven', effect: { gain: { data: 3 }, draw: 1 }, text: 'Gain 3 Data, then draw one card.' },
-    harvestCycle: { code: 'N14', name: 'Harvest Cycle', kind: 'Economy', accent: 'var(--biomass)', cost: { biomass: 6, matter: 3 }, resource: { biomass: 2, matter: 1 }, order: 'special', tag: 'harvestCycle', effect: { produce: true }, text: 'Collect your normal round production again: your owned planet hexes and your combat fleets on planets.' },
-    quartermaster: { code: 'N15', name: 'Quartermaster', kind: 'Economy', accent: 'var(--gold)', cost: { energy: 5, matter: 2, biomass: 1 }, resource: { matter: 1, energy: 1, biomass: 1, data: 1 }, order: 'special', tag: 'quartermaster', effect: { gain: { matter: 1, energy: 1, biomass: 1, data: 1 }, draw: 1 }, text: 'Gain 1 of each resource, then draw one card.' },
-    strategyCore: { code: 'N16', name: 'Strategy Core', kind: 'Deckcraft', accent: 'var(--data)', cost: { data: 6, energy: 2 }, resource: { data: 2 }, order: 'special', tag: 'strategyCore', effect: { draw: 3 }, text: 'Draw three cards.' },
-    archivePurge: { code: 'N17', name: 'Archive Purge', kind: 'Deckcraft', accent: 'var(--data)', cost: { data: 5, biomass: 2 }, resource: { data: 1, biomass: 1 }, order: 'special', tag: 'archivePurge', effect: { trashStarters: 2, draw: 1 }, text: 'Permanently trash up to two level I starter cards from your discard pile, then draw one card.' },
-    commandNexus: { code: 'N18', name: 'Command Nexus', kind: 'Deckcraft', accent: 'var(--data)', cost: { data: 9, energy: 4 }, resource: { data: 3, energy: 1 }, order: 'special', tag: 'commandNexus', effect: { draw: 4 }, text: 'Draw four cards.' },
-    cargoExpansion: { code: 'N19', name: 'Cargo Expansion', kind: 'Capacity', accent: 'var(--gold)', cost: { matter: 6, data: 2 }, resource: { matter: 2 }, order: 'special', tag: 'cargoExpansion', effect: { limits: { matter: 1, energy: 1, biomass: 1, data: 1 } }, text: 'Permanently raise each of your four resource limits by 1. Reuse it each time you draw it.' },
-    hyperspaceVaults: { code: 'N20', name: 'Hyperspace Vaults', kind: 'Capacity', accent: 'var(--gold)', cost: { data: 9, matter: 4, energy: 2 }, resource: { data: 3 }, order: 'special', tag: 'hyperspaceVaults', effect: { limits: { matter: 2, energy: 2, biomass: 2, data: 2 }, draw: 1 }, text: 'Permanently raise each resource limit by 2, then draw one card.' },
-    procurementHub: { code: 'N21', name: 'Procurement Hub', kind: 'Buy', accent: 'var(--gold)', cost: { data: 6, biomass: 2 }, resource: { data: 2 }, buyEffect: 'extraBuy', text: 'Buy turn: you may buy one more card this Buy.' },
-    tradeSyndicate: { code: 'N22', name: 'Trade Syndicate', kind: 'Buy', accent: 'var(--gold)', cost: { energy: 5, data: 2 }, resource: { energy: 2 }, buyEffect: 'discountEach', text: 'Buy turn: your next purchase this Buy costs 1 less of each resource in its cost.' },
-    monumentOfAccord: { code: 'N23', name: 'Monument of Accord', kind: 'Wonder', accent: 'var(--gold)', cost: { matter: 8, biomass: 4, data: 3 }, resource: { matter: 2, biomass: 1 }, gainPrestige: 3, text: 'When you buy this, gain 3 permanent Prestige. In hand, convert it for resources.' },
-    senateSeat: { code: 'N24', name: 'Galactic Senate Seat', kind: 'Wonder', accent: 'var(--gold)', cost: { data: 9, energy: 5, biomass: 2 }, resource: { data: 2, energy: 1 }, gainPrestige: 4, text: 'When you buy this, gain 4 permanent Prestige. In hand, convert it for resources.' },
-    dysonLattice: { code: 'N25', name: 'Dyson Lattice', kind: 'Wonder', accent: 'var(--gold)', cost: { energy: 12, matter: 6, data: 4 }, resource: { energy: 3, matter: 2 }, gainPrestige: 6, text: 'When you buy this, gain 6 permanent Prestige. In hand, convert it for resources.' },
-    ascendancyCodex: { code: 'N26', name: 'Ascendancy Codex', kind: 'Prestige', accent: 'var(--gold)', cost: { data: 12, biomass: 6, energy: 3 }, resource: { data: 3 }, order: 'special', tag: 'ascendancyCodex', effect: { prestige: 2, draw: 1 }, text: 'Gain 2 permanent Prestige, then draw one card. Reuse it each time you draw it.' }
+    ionThrusters: { code: 'N01', name: 'Ion Thrusters', kind: 'Movement', accent: 'var(--energy)', cost: { energy: 5 }, resource: { energy: 2 }, order: 'move', tag: 'ionThrusters', range: 2, text: 'Move one group with +2 range.' },
+    slipstreamCharts: { code: 'N02', name: 'Slipstream Charts', kind: 'Movement', accent: 'var(--data)', cost: { data: 5 }, resource: { data: 2 }, order: 'move', tag: 'slipstreamCharts', range: 3, pathfinder: true, text: 'Move one group with +3 range. It cannot enter hostile hexes.' },
+    strikeVector: { code: 'N03', name: 'Strike Vector', kind: 'Movement', accent: 'var(--red)', cost: { matter: 1, energy: 5 }, resource: { energy: 2, matter: 1 }, order: 'move', tag: 'strikeVector', range: 1, assault: 2, text: 'Move one group with +1 range. If it attacks, add 2 hits to the first volley.' },
+    foldSpaceGate: { code: 'N04', name: 'Fold-Space Gate', kind: 'Movement', accent: 'var(--energy)', cost: { energy: 7, data: 2 }, resource: { energy: 3, data: 1 }, order: 'move', tag: 'foldSpaceGate', range: 5, text: 'Move one group with +5 range.' },
+    prefabYards: { code: 'N05', name: 'Prefab Yards', kind: 'Industry', accent: 'var(--matter)', cost: { matter: 5 }, resource: { matter: 3 }, order: 'construct', tag: 'prefabYards', buildDiscount: 'each', text: 'Build or commission once, paying 1 less of each resource in its cost.' },
+    orbitalFoundry: { code: 'N06', name: 'Orbital Foundry', kind: 'Industry', accent: 'var(--matter)', cost: { matter: 5, energy: 1, data: 1 }, resource: { matter: 3, energy: 1 }, order: 'construct', tag: 'orbitalFoundry', buildDiscount: 'each', buildGain: { matter: 2 }, text: 'Build or commission once, paying 1 less of each resource. Then gain 2 Matter.' },
+    worldEngine: { code: 'N07', name: 'World Engine', kind: 'Industry', accent: 'var(--matter)', cost: { matter: 7, energy: 2, biomass: 2 }, resource: { matter: 4, biomass: 1 }, order: 'construct', tag: 'worldEngine', buildDiscount: 'free', text: 'Build or commission once at no resource cost.' },
+    seedArk: { code: 'N08', name: 'Seed Ark', kind: 'Expansion', accent: 'var(--biomass)', cost: { biomass: 5 }, resource: { biomass: 3 }, order: 'colonize', tag: 'seedArk', colonyCost: 1, text: 'Colonize with a Settler for 1 Biomass. The Settler is consumed; Seed Ark stays in your deck.' },
+    colonyPods: { code: 'N09', name: 'Colony Pods', kind: 'Expansion', accent: 'var(--biomass)', cost: { energy: 1, biomass: 5 }, resource: { biomass: 3 }, order: 'colonize', tag: 'colonyPods', colonyCost: 1, keepSettler: true, text: 'Colonize for 1 Biomass without consuming the Settler.' },
+    genesisCharter: { code: 'N10', name: 'Genesis Charter', kind: 'Expansion', accent: 'var(--biomass)', cost: { matter: 2, biomass: 8, data: 1 }, resource: { biomass: 4 }, order: 'colonize', tag: 'genesisCharter', colonyCost: 0, keepSettler: true, colonyPrestige: 2, text: 'Colonize for 0 Biomass without consuming the Settler, and gain 2 permanent Prestige.' },
+    miningCharter: { code: 'N11', name: 'Mining Charter', kind: 'Economy', accent: 'var(--matter)', cost: { matter: 5 }, resource: { matter: 2 }, order: 'special', tag: 'miningCharter', effect: { gain: { matter: 3, energy: 1 } }, text: 'Gain 3 Matter and 1 Energy.' },
+    bioReactor: { code: 'N12', name: 'Bio-Reactor', kind: 'Economy', accent: 'var(--biomass)', cost: { energy: 1, biomass: 5 }, resource: { biomass: 2 }, order: 'special', tag: 'bioReactor', effect: { gain: { biomass: 2, energy: 2 } }, text: 'Gain 2 Biomass and 2 Energy.' },
+    dataHaven: { code: 'N13', name: 'Data Haven', kind: 'Economy', accent: 'var(--data)', cost: { energy: 1, data: 5 }, resource: { data: 2 }, order: 'special', tag: 'dataHaven', effect: { gain: { data: 3 }, draw: 1 }, text: 'Gain 3 Data, then draw one card.' },
+    harvestCycle: { code: 'N14', name: 'Harvest Cycle', kind: 'Economy', accent: 'var(--biomass)', cost: { matter: 2, biomass: 5 }, resource: { biomass: 2, matter: 1 }, order: 'special', tag: 'harvestCycle', effect: { produce: true }, text: 'Collect your normal round production again: your owned planet hexes and your combat fleets on planets.' },
+    quartermaster: { code: 'N15', name: 'Quartermaster', kind: 'Economy', accent: 'var(--gold)', cost: { matter: 1, energy: 5, biomass: 1 }, resource: { matter: 1, energy: 1, biomass: 1, data: 1 }, order: 'special', tag: 'quartermaster', effect: { gain: { matter: 1, energy: 1, biomass: 1, data: 1 }, draw: 1 }, text: 'Gain 1 of each resource, then draw one card.' },
+    strategyCore: { code: 'N16', name: 'Strategy Core', kind: 'Deckcraft', accent: 'var(--data)', cost: { energy: 1, data: 5 }, resource: { data: 2 }, order: 'special', tag: 'strategyCore', effect: { draw: 3 }, text: 'Draw three cards.' },
+    archivePurge: { code: 'N17', name: 'Archive Purge', kind: 'Deckcraft', accent: 'var(--data)', cost: { biomass: 1, data: 5 }, resource: { data: 1, biomass: 1 }, order: 'special', tag: 'archivePurge', effect: { trashStarters: 2, draw: 1 }, text: 'Permanently trash up to two level I starter cards from your discard pile, then draw one card.' },
+    commandNexus: { code: 'N18', name: 'Command Nexus', kind: 'Deckcraft', accent: 'var(--data)', cost: { energy: 2, data: 6 }, resource: { data: 3, energy: 1 }, order: 'special', tag: 'commandNexus', effect: { draw: 4 }, text: 'Draw four cards.' },
+    cargoExpansion: { code: 'N19', name: 'Cargo Expansion', kind: 'Capacity', accent: 'var(--gold)', cost: { matter: 5, data: 1 }, resource: { matter: 2 }, order: 'special', tag: 'cargoExpansion', effect: { limits: { matter: 1, energy: 1, biomass: 1, data: 1 } }, text: 'Permanently raise each of your four resource limits by 1. Reuse it each time you draw it.' },
+    hyperspaceVaults: { code: 'N20', name: 'Hyperspace Vaults', kind: 'Capacity', accent: 'var(--gold)', cost: { matter: 2, energy: 1, data: 6 }, resource: { data: 3 }, order: 'special', tag: 'hyperspaceVaults', effect: { limits: { matter: 2, energy: 2, biomass: 2, data: 2 }, draw: 1 }, text: 'Permanently raise each resource limit by 2, then draw one card.' },
+    procurementHub: { code: 'N21', name: 'Procurement Hub', kind: 'Buy', accent: 'var(--gold)', cost: { biomass: 1, data: 5 }, resource: { data: 2 }, buyEffect: 'extraBuy', text: 'Buy turn: you may buy one more card this Buy.' },
+    tradeSyndicate: { code: 'N22', name: 'Trade Syndicate', kind: 'Buy', accent: 'var(--gold)', cost: { energy: 5, data: 1 }, resource: { energy: 2 }, buyEffect: 'discountEach', text: 'Buy turn: your next purchase this Buy costs 1 less of each resource in its cost.' },
+    monumentOfAccord: { code: 'N23', name: 'Monument of Accord', kind: 'Wonder', accent: 'var(--gold)', cost: { matter: 6, biomass: 2, data: 2 }, resource: { matter: 2, biomass: 1 }, gainPrestige: 3, text: 'When you buy this, gain 3 permanent Prestige. In hand, convert it for resources.' },
+    senateSeat: { code: 'N24', name: 'Galactic Senate Seat', kind: 'Wonder', accent: 'var(--gold)', cost: { energy: 3, biomass: 1, data: 6 }, resource: { data: 2, energy: 1 }, gainPrestige: 4, text: 'When you buy this, gain 4 permanent Prestige. In hand, convert it for resources.' },
+    dysonLattice: { code: 'N25', name: 'Dyson Lattice', kind: 'Wonder', accent: 'var(--gold)', cost: { matter: 4, energy: 8, data: 2 }, resource: { energy: 3, matter: 2 }, gainPrestige: 6, text: 'When you buy this, gain 6 permanent Prestige. In hand, convert it for resources.' },
+    ascendancyCodex: { code: 'N26', name: 'Ascendancy Codex', kind: 'Prestige', accent: 'var(--gold)', cost: { energy: 2, biomass: 4, data: 8 }, resource: { data: 3 }, order: 'special', tag: 'ascendancyCodex', effect: { prestige: 2, draw: 1 }, text: 'Gain 2 permanent Prestige, then draw one card. Reuse it each time you draw it.' }
   };
 
   // Military-deck market cards (codes M01-M10). Buying one adds it to your military deck,
   // never your normal deck. Each battle your tactic hand is the four basic tactics plus
   // every military card you own; each card is usable once per battle.
   const MARKET_MILITARY = {
-    railBattery: { code: 'M01', name: 'Rail Battery', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 5, energy: 1 }, attack: 2, shield: 0, text: '+2 hits this volley.' },
-    deflectorGrid: { code: 'M02', name: 'Deflector Grid', kind: 'Military', military: true, accent: 'var(--red)', cost: { energy: 5, matter: 1 }, attack: 0, shield: 3, text: 'Prevent 3 hits this volley.' },
-    flakScreen: { code: 'M03', name: 'Flak Screen', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 6, biomass: 2 }, attack: 1, shield: 2, text: '+1 hit and prevent 2 hits this volley.' },
-    boardingMarines: { code: 'M04', name: 'Boarding Marines', kind: 'Military', military: true, accent: 'var(--red)', cost: { biomass: 6, matter: 2 }, attack: 1, shield: 0, loot: { matter: 2, data: 1 }, text: '+1 hit this volley. After the battle, gain 2 Matter and 1 Data.' },
-    torpedoSpread: { code: 'M05', name: 'Torpedo Spread', kind: 'Military', military: true, accent: 'var(--red)', cost: { energy: 7, data: 2 }, attack: 3, shield: 0, text: '+3 hits this volley.' },
-    hardlightBulwark: { code: 'M06', name: 'Hardlight Bulwark', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 7, energy: 2 }, attack: 0, shield: 5, text: 'Prevent 5 hits this volley.' },
-    phaseLance: { code: 'M07', name: 'Phase Lance', kind: 'Military', military: true, accent: 'var(--red)', cost: { energy: 8, data: 3 }, attack: 2, shield: 0, pierce: true, text: '+2 hits this volley. The opponent’s shields prevent none of your hits.' },
-    novaBarrage: { code: 'M08', name: 'Nova Barrage', kind: 'Military', military: true, accent: 'var(--red)', cost: { energy: 10, matter: 5 }, attack: 5, shield: 0, text: '+5 hits this volley.' },
-    aegisLattice: { code: 'M09', name: 'Aegis Lattice', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 10, energy: 4 }, attack: 0, shield: 8, text: 'Prevent 8 hits this volley.' },
-    victoryDoctrine: { code: 'M10', name: 'Victory Doctrine', kind: 'Military', military: true, accent: 'var(--red)', cost: { data: 9, energy: 4, matter: 2 }, attack: 2, shield: 0, victoryPrestige: 2, text: '+2 hits this volley. If your side wins a decisive combat victory, gain 2 more permanent Prestige.' }
+    railBattery: { code: 'M01', name: 'Rail Battery', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 5 }, attack: 2, shield: 0, text: '+2 hits this volley.' },
+    deflectorGrid: { code: 'M02', name: 'Deflector Grid', kind: 'Military', military: true, accent: 'var(--red)', cost: { energy: 5 }, attack: 0, shield: 3, text: 'Prevent 3 hits this volley.' },
+    flakScreen: { code: 'M03', name: 'Flak Screen', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 5, biomass: 1 }, attack: 1, shield: 2, text: '+1 hit and prevent 2 hits this volley.' },
+    boardingMarines: { code: 'M04', name: 'Boarding Marines', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 1, biomass: 5 }, attack: 1, shield: 0, loot: { matter: 2, data: 1 }, text: '+1 hit this volley. After the battle, gain 2 Matter and 1 Data.' },
+    torpedoSpread: { code: 'M05', name: 'Torpedo Spread', kind: 'Military', military: true, accent: 'var(--red)', cost: { energy: 5, data: 1 }, attack: 3, shield: 0, text: '+3 hits this volley.' },
+    hardlightBulwark: { code: 'M06', name: 'Hardlight Bulwark', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 5, energy: 1 }, attack: 0, shield: 5, text: 'Prevent 5 hits this volley.' },
+    phaseLance: { code: 'M07', name: 'Phase Lance', kind: 'Military', military: true, accent: 'var(--red)', cost: { energy: 6, data: 2 }, attack: 2, shield: 0, pierce: true, text: '+2 hits this volley. The opponent’s shields prevent none of your hits.' },
+    novaBarrage: { code: 'M08', name: 'Nova Barrage', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 3, energy: 7 }, attack: 5, shield: 0, text: '+5 hits this volley.' },
+    aegisLattice: { code: 'M09', name: 'Aegis Lattice', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 7, energy: 2 }, attack: 0, shield: 8, text: 'Prevent 8 hits this volley.' },
+    victoryDoctrine: { code: 'M10', name: 'Victory Doctrine', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 1, energy: 2, data: 6 }, attack: 2, shield: 0, victoryPrestige: 2, text: '+2 hits this volley. If your side wins a decisive combat victory, gain 2 more permanent Prestige.' }
   };
   const MARKET_CARDS = { ...ADVANCED_CARDS, ...MARKET_MILITARY };
   const MILITARY_CARDS = { ...BASIC_TACTICS, ...MARKET_MILITARY };
@@ -489,7 +491,7 @@ function createGalacticReach(options = {}) {
     for (let i = 0; i < 3; i += 1) deck.push(makeCard('move',true), makeCard('construct',true));
     return {
       id: index, name: options.names?.[index] || PLAYER_NAMES[index], color: PLAYER_COLORS[index], strategy: PLAYER_STRATEGIES[index],
-      resources: { matter: 0, energy: 0, biomass: 2, data: 0 }, deck: shuffled(deck,`deck:${index}`), discard: [], hand: [], inPlay: [],
+      resources: { matter: 0, energy: 0, biomass: 1, data: 1 }, deck: shuffled(deck,`deck:${index}`), discard: [], hand: [], inPlay: [],
       resourceLimits: { matter:4, energy:4, biomass:4, data:4 }, storageUpgrades: 0, storagePurchases: 0, initialShipyardCoord: null, cardsPurchased: 0, relicsExcavated: 0, combatVictories: 0, passed: false, tradeUsed: false, bought: 0, buyLimit: 1,
       buyDiscountEach: 0, buyStartDiscardIds: [], buyStartInPlayIds: [], combatBonus: 0, military: [], cardPrestige: 0,
       tradesWith: [0,0,0,0], ...(options.controllers ? {controller: options.controllers[index]} : {})
@@ -775,8 +777,9 @@ function createGalacticReach(options = {}) {
       .map(([playerId]) => Number(playerId));
   }
 
+  // Rules #resources: an owned planet hex produces 1; in 32.37 a Harvester hex produces 2.
   function ownerProductionAmount(planet) {
-    return planet.type==='moon' ? 0 : 1;
+    return planet.type==='moon' ? 0 : planet.upgrade==='harvester' ? HARVESTER_YIELD : 1;
   }
 
   function fleetGroup(fleet, group = 'all') {
@@ -786,7 +789,7 @@ function createGalacticReach(options = {}) {
     return clone(fleet);
   }
 
-  // Rules #movement (32.37): a Move order moves any chosen units of one faction on one hex.
+  // Rules #movement (33.38): a Move order moves any chosen units of one faction on one hex.
   // `units` counts each type; without it, `moveGroup` names the whole group (all combat
   // ships, or the Explorer team). Combat ships and Explorers never move in the same order.
   function moveSelection(fleet, options = {}) {
@@ -1774,11 +1777,16 @@ function createGalacticReach(options = {}) {
   function setMoveUnits(type, amount) {
     const fleet=getFleet(state.moveSource,ME), current=state.actionOptions.units;
     if (!fleet || !current || !SHIP_STATS[type]) return false;
+    const active=document.activeElement;
+    const focusSelector=active?.dataset?.moveUnit===type ? `[data-move-unit="${type}"]` : active?.dataset?.moveCount===type ? `[data-move-count="${type}"]` : null;
+    const restoreFocus=()=>{if(focusSelector)document.querySelector(focusSelector)?.focus();};
     const next={...current,[type]:Math.max(0,Math.min(fleet[type]||0,amount))};
     if (type==='explorer' && next.explorer) { next.settler=0; next.fleet=0; }
     if (type!=='explorer' && next[type]) next.explorer=0;
-    if (!fleetCount(next)) { toast('Keep at least one unit ticked, or cancel the order.'); render(); return false; }
-    return prepareHumanMove(state.moveSource,next);
+    if (!fleetCount(next)) { toast('Keep at least one unit ticked, or cancel the order.'); render(); restoreFocus(); return false; }
+    const prepared=prepareHumanMove(state.moveSource,next);
+    restoreFocus();
+    return prepared;
   }
 
   // Sector Scan checklist: one row per unit type at the chosen source. The box ticks the
@@ -2374,7 +2382,7 @@ function createGalacticReach(options = {}) {
   function aiStorageProtection(playerId) {
     if (!controlledPlanets(playerId).some(([,p])=>p.upgrade==='starbase')) return {matter:2,energy:1,biomass:1,data:1};
     const settlers=countPlacedShips(playerId,'settler'),explorers=countPlacedShips(playerId,'explorer');
-    if (!settlers&&!explorers) return {matter:1,energy:1}; // The next scoring unit.
+    if (!settlers&&!explorers) return {matter:1,energy:1,biomass:1}; // The next scoring unit: a Settler costs 1 Matter, 1 Energy, 1 Biomass (32.37, #41).
     return {matter:explorers?1:0,energy:explorers?1:0,biomass:settlers?2:0,data:explorers?2:0};
   }
 
@@ -2714,7 +2722,7 @@ function createGalacticReach(options = {}) {
     };
     for (const [source,g] of groups) {
       const f=g[playerId],ships=fleetGroup(f,'ships'),explorers=fleetGroup(f,'explorer');
-      // 32.37 #movement: Fleets may leave their Settlers behind, but only Settlers that are
+      // 33.38 #movement: Fleets may leave their Settlers behind, but only Settlers that are
       // safe on their own; with no Settler here the hunters are simply all the Fleets.
       const settlersSafe=f.settler && f.fleet && aiThreat(playerId,{settler:f.settler,explorer:0,fleet:0},source,source)<=.3;
       const hunters=f.fleet && (!f.settler || settlersSafe) ? {settler:0,explorer:0,fleet:f.fleet} : null;
@@ -3185,6 +3193,7 @@ function createGalacticReach(options = {}) {
     if (existing) existing.remove();
     const node = document.createElement('div');
     node.className = 'toast';
+    node.setAttribute('role','status');
     if (cost) node.innerHTML = `<span>${message}</span>${resourceDots(cost)}${suffix ? `<span>${suffix}</span>` : ''}`;
     else node.textContent = message;
     document.body.appendChild(node);
@@ -4117,7 +4126,7 @@ function createGalacticReach(options = {}) {
       const legal = mine(id) && checkExcavate(id,coord,cardId,relicId,true);
       return dryRun || !legal ? legal : send({type:'excavate',card:cardId,coord,relic:relicId});
     };
-    // 32.37 #movement: the chosen units travel with the command (rules #shared-tables).
+    // 33.38 #movement: the chosen units travel with the command (rules #shared-tables).
     performMoveOrder = (id, source, destination, card, opts = {}) => {
       const units = mine(id) && !!card && moveSelection(getFleet(source,ME),opts);
       return !!units && send({type:'move',card:card.id,source,destination,moveGroup:units.explorer?'explorer':'ships',units});
@@ -4192,12 +4201,10 @@ function createGalacticReach(options = {}) {
     }
   }
 
-  if (headless) {
-    state = newState();
-    fillMarket();
-    beginRound();
-    return createGalacticAdapter({
-      get state() { return state; }, get turnSerial() { return turnSerial; },
+  // The rule primitives the headless adapter (adapter.js) works through.
+  function headlessPort() {
+    return {
+      get state() { return state; }, get turnSerial() { return turnSerial; }, get cardSerial() { return cardSerial; },
       clone, deckContents, ALL_CARDS, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
       canAfford, cardResources, resourceGainTotal, remainingResourceCapacity, addResources,
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
@@ -4210,8 +4217,28 @@ function createGalacticReach(options = {}) {
       performConstructOrder, canSecondConstruct, finishConstruct, movementRange, constructionCost, constructAt, applyColonizeOrder, canColonyBuild, finishColonyBuild,
       canIncreaseStorage, increaseStorage, canManageResources, discardResources, canBankTrade, bankTrade,
       canOfferTrade, offerTrade, tradeResponseAllowed, tradeBlockReason, respondTrade, cancelTrade,
-      purchaseCost, buildDiscountOptions, avoidsHostile, applyBuildBonus, victoryTarget, tacticHand, MARKET_CARDS
-    });
+      purchaseCost, buildDiscountOptions, avoidsHostile, applyBuildBonus, victoryTarget, tacticHand, MARKET_CARDS, HARVESTER_YIELD
+    };
+  }
+
+  // A shared table resumes from its stored snapshot, as a solo save loads: any
+  // save-compatible build of these rules can continue it (docs/shared-tables.md).
+  if (headless && options.resume) {
+    const saved = options.resume;
+    if (saved.state?.version !== SAVE_FORMAT_VERSION || saved.state?.rulesRevision !== RULES_REVISION)
+      throw new Error('This snapshot belongs to other rules.');
+    state = clone(saved.state);
+    cardSerial = saved.cardSerial;
+    turnSerial = saved.turnSerial;
+    const port = headlessPort();
+    return createGalacticAdapter(port);
+  }
+
+  if (headless) {
+    state = newState();
+    fillMarket();
+    beginRound();
+    return createGalacticAdapter(headlessPort());
   }
 
   if (replayMode) {

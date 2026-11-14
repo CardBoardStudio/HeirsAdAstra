@@ -3931,12 +3931,10 @@ function createGalacticReach(options = {}) {
     }
   }
 
-  if (headless) {
-    state = newState();
-    fillMarket();
-    beginRound();
-    return createGalacticAdapter({
-      get state() { return state; }, get turnSerial() { return turnSerial; },
+  // The rule primitives the headless adapter (adapter.js) works through.
+  function headlessPort() {
+    return {
+      get state() { return state; }, get turnSerial() { return turnSerial; }, get cardSerial() { return cardSerial; },
       clone, deckContents, ALL_CARDS, BASIC_CARDS, BASIC_MARKET, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
       canAfford, cardResources, resourceGainTotal, remainingResourceCapacity, addResources,
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
@@ -3949,7 +3947,28 @@ function createGalacticReach(options = {}) {
       performConstructOrder, canSecondConstruct, finishConstruct, movementRange, constructionCost, constructAt, applyColonizeOrder, canColonyBuild, finishColonyBuild,
       canIncreaseStorage, increaseStorage, canManageResources, discardResources, canBankTrade, bankTrade,
       canOfferTrade, offerTrade, tradeResponseAllowed, tradeBlockReason, respondTrade, cancelTrade
-    });
+    };
+  }
+
+  // Shared-table plumbing added to this archive so tables dealt on 30.35 keep
+  // playing after later cutovers (docs/shared-tables.md); the rules are unchanged.
+  // A shared table resumes from its stored snapshot, as a solo save loads.
+  if (headless && options.resume) {
+    const saved = options.resume;
+    if (saved.state?.version !== SAVE_FORMAT_VERSION || saved.state?.rulesRevision !== RULES_REVISION)
+      throw new Error('This snapshot belongs to other rules.');
+    state = clone(saved.state);
+    cardSerial = saved.cardSerial;
+    turnSerial = saved.turnSerial;
+    const port = headlessPort();
+    return createGalacticAdapter(port);
+  }
+
+  if (headless) {
+    state = newState();
+    fillMarket();
+    beginRound();
+    return createGalacticAdapter(headlessPort());
   }
 
   if (replayMode) {

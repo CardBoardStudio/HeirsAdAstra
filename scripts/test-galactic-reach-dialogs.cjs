@@ -241,6 +241,9 @@ function test(name, body) { tests.push({ name, body }); }
 // Plays the fresh game's first round: the human leads Operations and Buy in round 1.
 function playFirstRound() {
   const storage = createStorage();
+  // 32.37 opens with 1 Matter, 1 Biomass, 1 Data (issue #41), so a fresh hand has no Buy
+  // choice and Buy would finish itself; 2 Biomass keeps a starter upgrade on offer.
+  const opening = boot(storage).saved();opening.players[0].resources.biomass = 2;writeSave(storage, opening);
   const game = boot(storage);
   let state = game.saved();
   assert.equal(state.round, 1);
@@ -516,10 +519,11 @@ test('Production readout includes Harvesters and per-group collection and reacts
  const explorerData=coords('data').find(k=>k!==data);state.fleets[explorerData]={0:{explorer:1}};
  state.players[0].resources={matter:10,energy:0,biomass:0,data:0};
  writeSave(storage,state);const game=boot(storage);
- assert.deepEqual(productionNumbers(game),{matter:2,energy:2,biomass:1,data:1});
+ // 32.37: the Harvester hex yields 2 Matter; the other owned Matter hex yields 1.
+ assert.deepEqual(productionNumbers(game),{matter:3,energy:2,biomass:1,data:1});
  assert.deepEqual(game.saved().players[0].resources,state.players[0].resources,'Forecast never collects resources or caps the gross gain');
  const updated=game.saved();updated.planets[occupiedMatter].occupiedBy=null;delete updated.fleets[occupiedMatter];updated.planets[energy].owner=null;updated.fleets[biomass][0]={explorer:1};writeSave(storage,updated);
- assert.deepEqual(productionNumbers(boot(storage)),{matter:2,energy:1,biomass:0,data:1});
+ assert.deepEqual(productionNumbers(boot(storage)),{matter:3,energy:1,biomass:0,data:1});
 });
 
 test('Probe resolves from empty space without selecting or reaching a world',()=>{
