@@ -419,6 +419,11 @@ fn bot_safe_fight(view: &Value, seat: usize, moving: &Value, target: &str) -> bo
     }
     attack * 3.0 - 4.0 >= enemy_hull && hull > enemy_attack * 3.0 + 2.0
 }
+fn bot_in_play(me: &Value, card: &Value) -> bool {
+    me["inPlay"]
+        .as_array()
+        .is_some_and(|cards| cards.iter().any(|c| &c["id"] == card))
+}
 fn bot_limit(view: &Value, seat: usize, resource: &str) -> f64 {
     view["players"][seat]["resourceLimits"][resource]
         .as_f64()
@@ -934,6 +939,9 @@ impl BuiltinAgent {
             }
 
             "buy_effect" => 100.0,
+            // Policy 24 keeps its 28.33 choices: it ignores the in-play Buy
+            // upgrades and trashes added by the 28.33 #buy amendment.
+            "upgrade" | "decommission" if bot_in_play(me, &action["card"]) => -1000.0,
             "upgrade" => {
                 let cost = bot_cost(view, seat);
                 let r = action["resource"].as_str().unwrap();

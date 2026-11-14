@@ -85,3 +85,5 @@ The25.30 Storage Planning experiment preserves24.29 nearest-Probe and human rule
 The26.31 Single-use Orders experiment permanently trashes a successfully used Probe. Conversion still discards it, and failed or canceled attempts keep it. Save26/rules31/native22 preserve full25.30 and native21; policy weights remain unchanged. The25.30 balance study predates this change. See [single-use Probe](single-use-orders.md).
 
 The 27.32 Cards in Play experiment holds used orders, conversions, Buy effects and reactions in a public saved inPlay zone until shared round cleanup. Explicit discards/returns, gained-card discard and single-use trash effects remain exceptions. Save 27/rules 32/native 23 preserve full 26.31 and policy 22. See [card timing and validation](in-play.md).
+
+The 28.33 in-play Buy amendment (draft PR #42) lets a starter in play upgrade, and a card in play when Buy began be trashed, during your Buy turn. It amends 28.33 in place until the 29.34 cutover required before merge. See [in-play Buy](in-play-buy.md).

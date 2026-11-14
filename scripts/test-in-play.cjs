@@ -41,10 +41,23 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
  const g=game(),{p,s}=g;p.hand=[card('move','converted'),card('procurementNetwork','buy-card'),card('construct','unplayed')];
  action(g,'resource','converted');action(g,'pass');action(g,'buy_effect','buy-card');
  assert.equal(p.inPlay.length,2);assert.equal(p.discard.length,0);
- assert(!g.adapter().legalActions(0).some(a=>['upgrade','decommission'].includes(a.type)&&a.card==='converted'));
+ // 28.33 amendment (#buy): a card in play when Buy began may be trashed; one put in play during this Buy may not.
+ assert(g.adapter().legalActions(0).some(a=>a.type==='decommission'&&a.card==='converted'),'A card converted before passing can be trashed during Buy');
+ assert(!g.adapter().legalActions(0).some(a=>a.type==='decommission'&&a.card==='buy-card'),'A Buy effect used this Buy turn cannot be trashed');
+ assert(!g.adapter().legalActions(0).some(a=>a.type==='upgrade'&&a.card==='converted'),'Only original starters upgrade');
  p.relicsExcavated=10;action(g,'finish_buy');assert.equal(p.inPlay.length,2,'Finishing your Buy does not clean up your cards');assert.equal(p.hand.length,1);
  for(let seat=1;seat<4;seat++){let a=g.adapter();a.applyAction(seat,a.legalActions(seat).find(x=>x.type==='pass'));a=g.adapter();a.applyAction(seat,a.legalActions(seat).find(x=>x.type==='finish_buy'));}
  assert.equal(s.winner,0);assert.equal(p.hand.length,0);assert.equal(p.inPlay.length,0);assert.deepEqual(Array.from(p.discard,c=>c.id).sort(),['buy-card','converted','unplayed']);
+}
+{
+ // 28.33 amendment (#buy): upgrade and trash original starters that are in play.
+ const g=game(),{p,s}=g;p.hand=[{key:'move',id:'used-move',starter:true},{key:'construct',id:'used-construct',starter:true}];
+ action(g,'resource','used-move');action(g,'resource','used-construct');action(g,'pass');assert.equal(s.phase,'buy');
+ assert.deepEqual(Array.from(p.inPlay,c=>c.id),['used-move','used-construct']);
+ action(g,'upgrade','used-move',a=>a.resource==='energy');assert.equal(p.inPlay.find(c=>c.id==='used-move').upgraded,true,'The starter upgrades where it is, in play');
+ const before=p.resources.matter;action(g,'decommission','used-construct',a=>a.resource==='matter');
+ assert(!all(p).some(c=>c.id==='used-construct'),'Trashing removes the in-play card permanently');assert.equal(p.resources.matter,before-3);
+ assert(p.inPlay.some(c=>c.id==='used-move'));
 }
 {
  const g=game(),{p,s,e}=g;p.hand=[];s.activePlayer=1;const bot=s.players[1];Object.assign(bot,{hand:[card('move','bot-convert')],deck:[],discard:[],inPlay:[]});e.runAiOperation();assert(bot.inPlay.some(c=>c.id==='bot-convert'),'Browser rivals also retain conversions in play');
