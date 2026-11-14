@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const root=path.join(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8'),plain=x=>JSON.parse(JSON.stringify(x));
 function fixture({attacker=0,a={fleet:1},d={settler:1},tag=null,prefix='prototypes/galactic-reach/'}={}){
  const c=vm.createContext({});let e,extra,seed=1729;
- const source=read(prefix+'app.js').replace('    return createGalacticAdapter({','    options.testCapture({finishCombat,finishRound});\n    return createGalacticAdapter({');
+ const source=read(prefix+'app.js').replace(/    return createGalacticAdapter\((\{|headlessPort\(\)\);)/,call=>'    options.testCapture({finishCombat,finishRound});\n'+call);
  vm.runInContext(read(prefix+'adapter.js')+read('crates/galactic-reach/rules/replay-view.js')+source,c);
  const factory=c.createGalacticAdapter;c.createGalacticAdapter=p=>{e=p;return factory(p);};
  c.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32),testCapture:p=>extra=p});

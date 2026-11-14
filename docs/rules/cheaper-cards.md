@@ -54,7 +54,7 @@
 
 **Rivals.** Browser rivals value cards from the card definitions, so they read the new prices directly. Their reserve for the next scoring unit now includes the Settler's Biomass. The native server rivals (policy 26, used at shared tables and in the arena) read prices from the observation (`marketCosts`) and Harvester output from `harvesterYield`. Without those fields (31.36 archives) they fall back to the 31.36 card table and 1 per Harvester, so archived games play exactly as before. The policy version is unchanged.
 
-**Shared tables keep their rules.** `galactic_reach::SHARED_RULES` lists the current rules and the archived 31.36 engine. `GalacticReach::shared` boots the table's own rules, so a 31.36 shared table keeps playing after this cutover. (PR #47 is separately pinning shared tables to their revision; the two changes overlap here.)
+**Shared tables keep their rules.** This uses #47's revision pinning: `galactic_reach::SHARED_RULES` is now `[32.37, 31.36, 30.35]`. The 31.36 archive was taken from `main` after #47, so it carries the snapshot and resume hooks. 30.35, 31.36 and 32.37 shared tables all keep loading; `archived_31_36_shared_tables_keep_playing_after_the_cutover` and #47's snapshot round-trip test cover it.
 
 **Versioning.** `playtest-breaking`: card costs, production, unit and structure costs, and setup change.
 

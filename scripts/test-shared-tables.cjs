@@ -110,4 +110,23 @@ state.pendingCombat = null;
   assert(plain(fresh.adapter.undoMark()).turn > before.turn, 'passing starts the Buy turn');
 }
 
-console.log('Shared table authority, fold, private views and undo marks passed.');
+// Snapshots (docs/shared-tables.md): a game resumed from snapshotState() plays
+// on exactly like the original, card ids and turn counter included.
+{
+  const auth = recorder(21), original = engine(auth.shuffle), pick = seeded(3);
+  const step = g => { const seat = g.adapter.activeSeat(); const legal = g.adapter.legalActions(seat); const a = plain(legal.find(x => x.type === 'resource') || legal[Math.floor(pick() * legal.length)]); return [seat, a]; };
+  for (let i = 0; i < 150 && original.adapter.activeSeat() !== null; i++) { const [seat, a] = step(original); original.adapter.applyAction(seat, a); }
+  const snapshot = plain(original.adapter.snapshotState()), used = auth.log.length;
+  const context = vm.createContext({}); vm.runInContext(source, context);
+  let next = used; const resumed = context.createGalacticReach({headless: true, resume: snapshot, names: ['Ada', 'Bo', 'Violet', 'Helios'], controllers: ['human', 'human', 'ai', 'ai'],
+    shuffle: (n, purpose) => { const e = auth.log[next++]; assert.deepEqual([e.n, e.purpose], [n, purpose]); return e.order; }, random: () => { throw new Error('no randomness'); }});
+  for (let i = 0; i < 150 && original.adapter.activeSeat() !== null; i++) {
+    const [seat, a] = step(original);
+    original.adapter.applyAction(seat, a); resumed.applyAction(seat, a);
+  }
+  for (const seat of [0, 1]) assert.deepEqual(plain(resumed.privateState(seat)), plain(original.adapter.privateState(seat)), 'a resumed game matches the original');
+  assert.equal(plain(resumed.undoMark()).turn, plain(original.adapter.undoMark()).turn);
+  assert.throws(() => context.createGalacticReach({headless: true, resume: {...snapshot, state: {...snapshot.state, version: 1}}}), /other rules/);
+}
+
+console.log('Shared table authority, fold, private views, undo marks and snapshots passed.');
