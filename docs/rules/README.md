@@ -1,6 +1,6 @@
 # Galactic Reach rules maintenance
 
-The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 28.33 / Resource Capacities playtest**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
+The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 29.34 / In-play Buy playtest**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
 
 ## Read, change, verify
 
@@ -86,4 +86,4 @@ The26.31 Single-use Orders experiment permanently trashes a successfully used Pr
 
 The 27.32 Cards in Play experiment holds used orders, conversions, Buy effects and reactions in a public saved inPlay zone until shared round cleanup. Explicit discards/returns, gained-card discard and single-use trash effects remain exceptions. Save 27/rules 32/native 23 preserve full 26.31 and policy 22. See [card timing and validation](in-play.md).
 
-The 28.33 in-play Buy amendment (draft PR #42) lets a starter in play upgrade, and a card in play when Buy began be trashed, during your Buy turn. It amends 28.33 in place until the 29.34 cutover required before merge. See [in-play Buy](in-play-buy.md).
+The 29.34 In-play Buy playtest lets a starter in play upgrade, and a card in play when Buy began be trashed, during your Buy turn. Save29/rules34 archive the exact 28.33 browser, manual and engine (`crates/galactic-reach/rules/v28-*`, hashes in `scripts/in-play-buy-archive-hashes.json`); native policy 24 is unchanged and ignores the new in-play options. See [in-play Buy](in-play-buy.md).
