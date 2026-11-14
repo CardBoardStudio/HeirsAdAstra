@@ -1,8 +1,9 @@
+// Frozen 28.33 allocation/forced-discard contract. Current automatic caps and allocations have dedicated coverage.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8'),plain=x=>JSON.parse(JSON.stringify(x));
 const types=['matter','energy','biomass','data'],zero=()=>Object.fromEntries(types.map(r=>[r,0]));
 function game(old=false) {
- const prefix=old?'crates/galactic-reach/rules/v27-':'prototypes/galactic-reach/';let e,seed=1729,calls=0;
+ const prefix=old?'crates/galactic-reach/rules/v27-':'crates/galactic-reach/rules/v28-';let e,seed=1729,calls=0;
  const context=vm.createContext({});let source=read(prefix+'app.js').replace('      clone, deckContents,','      produceAll, ownerProductionAmount, aiIncome, aiFundingPlan, aiUseResources, aiManageStorage, aiStorageAllocation, clone, deckContents,');
  if(old)source=source.replace('aiStorageAllocation, ','');
  vm.runInContext(read(prefix+'adapter.js')+source,context);const factory=context.createGalacticAdapter;context.createGalacticAdapter=port=>{e=port;return factory(port);};

@@ -1,0 +1,125 @@
+{
+  "rulesVersion": "galactic-reach/29.34",
+  "tool": "axe-core 4.14.0",
+  "scope": "Desktop only; WCAG A/AA tags and best practices",
+  "sourceHashes": {
+    "app.js": "8a6f8624990f2de199699f7a5a27b35410a1122645efd967a9689ce1b7d20aab",
+    "index.html": "af18200b25065ea480cd77f11a620f2dd811b797734a5c4d622d0309195aa670",
+    "styles.css": "deb368f95e345fe3e28136ea70012b0ce279a5f724d0c9e44249871fd912160f",
+    "rulebook.html": "e2123e65230de43b4548eb708967e322a75d095630562638e6abf59b42398b79",
+    "rulebook.css": "66776225d3838d9ca61feab5402a6af433798f0cee9f4e8a603dbaaa1c8e0b91",
+    "playtest-notes.js": "c2c4d6867ca1f005795a654486f687bd086938917215362f25b4c172fce1a740",
+    "playtest-notes.css": "3d8484181349c1720319d84189340fa6732ce9b7d7dee355019fc8ab0a5cef0d"
+  },
+  "cases": [
+    {
+      "case": "second-hand-sector-popover-1440",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "axeViolations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    },
+    {
+      "case": "mixed-hand-page-1280",
+      "viewport": {
+        "width": 1280,
+        "height": 1000
+      },
+      "axeViolations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    },
+    {
+      "case": "cradle-hand-storage-allocation-dialog-1440",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "axeViolations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    },
+    {
+      "case": "fresh-rulebook-page-1024",
+      "viewport": {
+        "width": 1024,
+        "height": 1000
+      },
+      "axeViolations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    },
+    {
+      "case": "buy-market-page-1920",
+      "viewport": {
+        "width": 1920,
+        "height": 1080
+      },
+      "axeViolations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    },
+    {
+      "case": "second-hand-page-1024",
+      "viewport": {
+        "width": 1024,
+        "height": 1000
+      },
+      "axeViolations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    },
+    {
+      "case": "storage-hand-storage-allocation-dialog-1440",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "axeViolations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    },
+    {
+      "case": "second-empty-hand-sector-popover-1440",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "axeViolations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    },
+    {
+      "case": "overflow-hand-page-1440",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "axeViolations": 0,
+      "textContrastFailures": 0,
+      "mapContrastFailures": 0,
+      "rawReviewItems": 1
+    }
+  ],
+  "manualChecks": [
+    "Second-build commissions and Finish after one complete through real UI.",
+    "Saved optional continuation can open the sector inspector and use Hand controls.",
+    "Capacity inputs default to 1 each and confirm is enabled; edited 0/1/1/2 allocation commits correctly.",
+    "Automatic excess collection displays capped totals, logs resource-specific losses and opens no dialog.",
+    "Stacked markers for 8 Settlers, 5 Explorers and 10 Fleets keep count badges within the hex polygon.",
+    "1024, 1280, 1440 and 1920 CSS-pixel desktop coverage; no page overflow in the stack check.",
+    "Scrollable comms feed has a keyboard focus target and visible outline."
+  ],
+  "limits": "Automated scans and keyboard/visual checks for these states; no spoken screen-reader or mobile testing. Raw gradient indeterminates retained and reviewed with conservative contrast bounds."
+}
