@@ -109,7 +109,7 @@ pub async fn begin(
     .map_err(internal)?;
     Ok((
         [(header::SET_COOKIE, state_cookie(&app, &nonce, 300))],
-        Redirect::to(&url("https://nido.fyi/connect/", &app, &[])),
+        Redirect::to(&url("https://test.nido.fyi/connect/", &app, &[])),
     )
         .into_response())
 }
@@ -159,7 +159,7 @@ async fn complete(
             return Err(bad("Login changed or expired. Please start again."));
         }
         return Ok(Redirect::to(&url(
-            &format!("https://{}.nido.fyi/sign/", account.to_lowercase()),
+            &format!("https://{}.test.nido.fyi/sign/", account.to_lowercase()),
             &app,
             &[("kind", "message"), ("message", &message)],
         ))
@@ -339,7 +339,7 @@ fn verify(account: &str, message: &str, encoded: &str, keys: &[String]) -> Resul
     let auth = hex::decode(envelope.authenticator_data).map_err(|_| fail())?;
     let client = hex::decode(envelope.client_data).map_err(|_| fail())?;
     let data: ClientData = serde_json::from_slice(&client).map_err(|_| fail())?;
-    let rp = format!("{}.nido.fyi", account.to_lowercase());
+    let rp = format!("{}.test.nido.fyi", account.to_lowercase());
     if data.r#type != "webauthn.get"
         || data.origin != format!("https://{rp}")
         || data.cross_origin
@@ -397,17 +397,17 @@ mod tests {
     }
     #[test]
     fn verifies_trusted_nido_message() {
-        let (e, k) = assertion("nonce", "https://ctest.nido.fyi", 5);
+        let (e, k) = assertion("nonce", "https://ctest.test.nido.fyi", 5);
         assert!(verify("CTEST", "nonce", &e, &[k]).is_ok());
     }
     #[test]
     fn rejects_self_asserted_key() {
-        let (e, _) = assertion("nonce", "https://ctest.nido.fyi", 5);
+        let (e, _) = assertion("nonce", "https://ctest.test.nido.fyi", 5);
         assert!(verify("CTEST", "nonce", &e, &[]).is_err());
     }
     #[test]
     fn rejects_wrong_challenge_and_account() {
-        let (e, k) = assertion("nonce", "https://ctest.nido.fyi", 5);
+        let (e, k) = assertion("nonce", "https://ctest.test.nido.fyi", 5);
         assert!(verify("CTEST", "other", &e, std::slice::from_ref(&k)).is_err());
         assert!(verify("COTHER", "nonce", &e, &[k]).is_err());
     }
@@ -415,8 +415,8 @@ mod tests {
     fn requires_user_verification_and_exact_origin() {
         for (origin, flags) in [
             ("https://evil.example", 5),
-            ("https://ctest.nido.fyi", 1),
-            ("https://ctest.nido.fyi", 0x15),
+            ("https://ctest.test.nido.fyi", 1),
+            ("https://ctest.test.nido.fyi", 0x15),
         ] {
             let (e, k) = assertion("nonce", origin, flags);
             assert!(verify("CTEST", "nonce", &e, &[k]).is_err());
@@ -478,7 +478,7 @@ mod flow_tests {
         assert!(message.contains(crate::nido_chain::NETWORK));
         let (proof, _) = super::tests::assertion(
             &message,
-            &format!("https://{}.nido.fyi", account().to_lowercase()),
+            &format!("https://{}.test.nido.fyi", account().to_lowercase()),
             5,
         );
         Return {
