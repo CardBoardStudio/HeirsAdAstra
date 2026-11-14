@@ -1,22 +1,48 @@
-// "Testnet seat" tab for the 27.32 tabletop: sit with a Nido grant, get a
-// privately dealt hand whose fairness the table contract checks on chain.
-// Players see plain words and a seal; proofs and transactions stay underneath.
+// "Testnet seat" tab for the 27.32 tabletop: sit with a real Nido testnet
+// account (test.nido.fyi), approve this table once, then get a privately
+// dealt hand whose fairness the table contract checks on chain.
+//
+// Flow: Sit with Nido → Nido's account picker (no passkey) → Nido's grant page
+// (the one passkey approval) → back here. The grant installs one rule on the
+// account: this table contract's sit/draw/play/cleanup, for 24 hours, signed
+// by a key this browser holds (non-extractable WebCrypto, kept in IndexedDB),
+// so later moves need no prompt. Fees come from a Friendbot testnet key.
 import { Keypair, xdr, nativeToScVal, Address } from '@stellar/stellar-sdk';
 import * as gr from '../lib/grzk.mjs';
 import * as rpcx from '../lib/rpc.mjs';
 import * as nido from '../lib/nido.mjs';
 
-const GAME = 'CAZT4RJOJCN4DTJY3JBH7PLVRXIRKKO6HAFOTWLSKHCL4YNLKV46P6ML';
+export const GAME = 'CAZT4RJOJCN4DTJY3JBH7PLVRXIRKKO6HAFOTWLSKHCL4YNLKV46P6ML';
+const ASSETS = new URL('./', import.meta.url);
+const SEAT = 0;
 const NAMES = { move: 'Move', 'move+': 'Move II', 'move*': 'Move', construct: 'Construct', 'construct+': 'Construct II', 'construct*': 'Construct', firstDawnEchoes: 'Echoes of the First Dawn' };
 const ACCENT = { move: 'var(--energy)', construct: 'var(--matter)' };
 const name = (code) => { const k = gr.CARD_TYPES[code]; return NAMES[k] ?? k.replace(/([A-Z])/g, ' $1').replace(/^./, (c) => c.toUpperCase()); };
 const accent = (code) => ACCENT[gr.CARD_TYPES[code].replace(/[+*]$/, '')] ?? 'var(--data)';
-const tx = (hash, text) => `<a href="https://stellar.expert/explorer/testnet/tx/${hash}" target="_blank" rel="noopener">${text}</a>`;
+const expert = (kind, id, text) => `<a href="https://stellar.expert/explorer/testnet/${kind}/${id}" target="_blank" rel="noopener">${text}</a>`;
+const short = (a) => `${a.slice(0, 4)}…${a.slice(-4)}`;
 const u32 = (x) => nativeToScVal(x, { type: 'u32' });
 const b32 = (x) => xdr.ScVal.scvBytes(Buffer.from(gr.hex32(x).slice(2), 'hex'));
 const big = (b) => BigInt('0x' + [...b].map((x) => x.toString(16).padStart(2, '0')).join(''));
+const hexOf = (b) => [...b].map((x) => x.toString(16).padStart(2, '0')).join('');
 const metrics = (globalThis.grZkMetrics = []);
 
+// ---- persistence: one record per browser profile ----------------------------
+const db = new Promise((resolve, reject) => {
+  const req = indexedDB.open('galactic-reach-testnet-seat', 1);
+  req.onupgradeneeded = () => req.result.createObjectStore('kv');
+  req.onsuccess = () => resolve(req.result);
+  req.onerror = () => reject(req.error);
+});
+async function idb(mode, fn) {
+  const store = (await db).transaction('kv', mode).objectStore('kv');
+  return new Promise((resolve, reject) => { const r = fn(store); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
+}
+const load = () => idb('readonly', (s) => s.get('seat'));
+const save = () => idb('readwrite', (s) => s.put(me, 'seat'));
+const forget = () => idb('readwrite', (s) => s.delete('seat'));
+
+// ---- UI ---------------------------------------------------------------------
 const panel = document.getElementById('chain-panel');
 const ui = {
   status: panel.querySelector('#chain-status'),
@@ -24,86 +50,242 @@ const ui = {
   hand: panel.querySelector('#chain-hand'),
   approval: panel.querySelector('#chain-approval'),
   log: panel.querySelector('#chain-log'),
+  tools: panel.querySelector('.hand-tools'),
 };
+ui.tools.insertAdjacentHTML('beforeend', '<button class="button button-ghost" id="chain-round" type="button" hidden>End round</button><button class="button button-ghost" id="chain-leave" type="button" hidden>Leave table</button>');
+ui.round = panel.querySelector('#chain-round');
+ui.leave = panel.querySelector('#chain-leave');
 const say = (html) => { ui.status.innerHTML = html; };
-const trace = (html) => { ui.log.insertAdjacentHTML('afterbegin', `<li>${html}</li>`); };
-let circuit, me;
+let me = null; // persisted seat record
+let busy = false;
+function trace(html) {
+  me.log ??= [];
+  me.log.unshift(html);
+  renderLog();
+}
+const renderLog = () => { ui.log.innerHTML = (me?.log ?? []).map((h) => `<li>${h}</li>`).join(''); };
+function showTab() { document.getElementById('chain-tab')?.click(); }
 
-async function sit() {
-  ui.sit.disabled = true;
-  try {
-    say('Opening your seat…');
-    circuit ??= await (await fetch('/zk/circuits/gr_draw/target/gr_draw.json')).json();
-    await gr.init();
-    // Testnet stand-ins: a Friendbot sponsor pays fees (Nido's relayer or the
-    // studio would), and a local admin key plays the user's Nido passkey.
-    const sponsor = Keypair.random();
-    await rpcx.friendbot(sponsor.publicKey());
-    const admin = await nido.newP256(), session = await nido.newP256();
-    const { account, create } = await nido.createAccount(sponsor, admin, rpcx.invoke);
-    const url = nido.grantUrl({ account, sessionPubHex: session.pubHex, game: GAME, origin: location.origin, returnUrl: location.href });
-    ui.approval.innerHTML = `<p><strong>One approval with Nido.</strong> For 24 hours this game may make moves at its own table, and may stake at most 5 XLM a day, paid only to the table. Nothing else.</p>
-      <details><summary>What you approve</summary><ol><li><code>galactic-reach</code>: sit, draw, play, cleanup on <code>${GAME.slice(0, 6)}…</code>, no cap (these calls move no money)</li><li><code>galactic-stakes</code>: XLM transfer to the table only, up to 5 XLM per day</li></ol>
-      <p class="muted">Real request: <a href="${url}" target="_blank" rel="noopener">Nido grant page</a>. This testnet demo approves with a stand-in key because no passkey is present.</p></details>`;
-    say('Waiting for your Nido approval…');
-    const latest = (await rpcx.server.getLatestLedger()).sequence;
-    const doc = nido.grantDoc({ admin, session, game: GAME, notAfter: latest + 17280, stakeCap: 5 * 10_000_000 });
-    const approve = await nido.sendAs(sponsor, rpcx.call(account, 'apply_doc', xdr.ScVal.scvBytes(Buffer.from(doc)), u32(0), nativeToScVal(0n, { type: 'u64' })), { account, signer: admin, ruleFor: () => 0 });
-    trace(`Nido approval ${tx(approve.hash, 'on chain')}`);
-    const rule = (await nido.installedRules(account)).find((r) => r.name === 'galactic-reach').id;
-    const as = { account, signer: session, ruleFor: () => rule };
-    const host = Keypair.random(); await rpcx.friendbot(host.publicKey());
-    const table = (await rpcx.invoke(host, rpcx.call(GAME, 'new_table', new Address(host.publicKey()).toScVal(), u32(2)))).value;
-    const seed = gr.randomField(), tableSeat = BigInt(table) * 16n;
-    const sat = await nido.sendAs(sponsor, rpcx.call(GAME, 'sit', u32(table), u32(0), new Address(account).toScVal(), b32(gr.seedCommit(tableSeat, seed))), as);
-    trace(`Seated at table ${table} ${tx(sat.hash, 'on chain')}`);
-    me = { sponsor, account, as, table, tableSeat, seed, deck: [...gr.STARTER_DECK], deckSalt: 0n, hand: [] };
-    ui.sit.hidden = true;
-    await deal();
-  } catch (e) {
-    say(`Couldn’t open the seat: ${e.message.split('\n')[0]}`); ui.sit.disabled = false; console.error(e);
-  }
+function explainApproval() {
+  ui.approval.innerHTML = `<p><strong>One approval with Nido.</strong> Nido will show one rule: for 24 hours this game may <em>sit, draw, play and end rounds</em> at its table contract, and nothing else. It cannot move your XLM. You confirm it once with your passkey; after that your moves need no prompts.</p>
+    <details><summary>What you approve</summary><ul><li>Rule <code>galactic-reach</code>: functions <code>sit, draw, play, cleanup</code> on table contract ${expert('contract', GAME, short(GAME))}, no spending cap (these calls move no money), expires in 24 h.</li><li>Signer: a key this browser keeps for this table. Nido labels it “a passkey the app holds”; it signs without a device prompt.</li></ul></details>`;
 }
 
+function describe(e) {
+  const m = String(e?.message ?? e);
+  if (/#300[2-9]|#301[0-9]/.test(m)) return 'Your Nido approval for this table doesn’t cover this move or has expired. Use “Leave table”, then Sit with Nido again to renew.';
+  if (/Contract, #6\)/.test(m)) return 'The table could not verify that deal, so nothing changed.';
+  if (/Contract, #8\)/.test(m)) return 'The table says that card is not in your hand.';
+  if (/Contract, #4\)/.test(m)) return 'There is no draw waiting at the table.';
+  if (/Contract, #5\)/.test(m)) return 'Finish the waiting draw first.';
+  if (/friendbot/i.test(m)) return 'Stellar’s testnet faucet is busy. Try again in a minute.';
+  return m.split('\n')[0];
+}
+
+// ---- Nido round trips (full-page redirects; the tabletop saves locally) ------
+const here = () => { const u = new URL(location.href); for (const k of ['nido_address', 'nido_connect', 'delegation', 'code']) u.searchParams.delete(k); u.hash = ''; return u.toString(); };
+
+function connect() {
+  const u = new URL('https://test.nido.fyi/connect/');
+  u.searchParams.set('dapp', location.origin);
+  u.searchParams.set('return', here());
+  if (me?.account) u.searchParams.set('previous', me.account);
+  location.assign(u.toString());
+}
+
+function grantUrl() {
+  const u = new URL(`https://${me.account.toLowerCase()}.test.nido.fyi/security/delegate-doc/`);
+  const p = u.searchParams;
+  p.set('origin', location.origin); p.set('return', here()); p.set('pubkey', me.session.pubHex); p.set('duration', '24h');
+  p.set('label', 'galactic-reach'); p.set('target', GAME); p.set('functions', 'sit,draw,play,cleanup'); p.set('limit', 'none');
+  return u.toString();
+}
+
+async function sitClicked() {
+  if (busy) return;
+  busy = true; ui.sit.disabled = true;
+  try {
+    me = { phase: 'connecting', log: me?.log ?? [], account: me?.account };
+    await save();
+    say('Opening Nido so you can choose your testnet account…');
+    connect();
+  } catch (e) { busy = false; ui.sit.disabled = false; say(describe(e)); console.error(e); }
+}
+
+async function afterConnect(address) {
+  me.account = address;
+  me.session = await nido.newP256();
+  me.phase = 'granting';
+  await save();
+  explainApproval();
+  say(`Account ${short(address)} chosen. Taking you to Nido to approve this table…`);
+  setTimeout(() => location.assign(grantUrl()), 900);
+}
+
+async function sessionRule() {
+  const rules = await nido.installedRules(me.account);
+  const mine = rules.filter((r) => r.contract === GAME && (r.signers ?? []).some((s) => Array.isArray(s) && s[2] && hexOf(s[2]).startsWith(me.session.pubHex)));
+  return mine.length ? mine[mine.length - 1].id : undefined;
+}
+
+async function afterGrant() {
+  say('Nido approved. Checking the rule on your account…');
+  let rule;
+  for (let i = 0; i < 6 && rule === undefined; i++) { rule = await sessionRule(); if (rule === undefined) await new Promise((r) => setTimeout(r, 2500)); }
+  if (rule === undefined) throw new Error('Nido finished, but the approval is not on your account yet. Wait a moment and press Sit with Nido again.');
+  me.rule = rule;
+  trace(`Nido approval installed on ${expert('contract', me.account, short(me.account))} (rule ${rule})`);
+  await openSeat();
+}
+
+// ---- the table --------------------------------------------------------------
+const as = () => ({ account: me.account, signer: me.session, ruleFor: () => me.rule });
+const sponsor = () => Keypair.fromSecret(me.sponsor);
+
+async function openSeat() {
+  me.phase = 'opening';
+  if (!me.sponsor) { const kp = Keypair.random(); me.sponsor = kp.secret(); }
+  await save();
+  say('Opening your seat at a new table…');
+  await rpcx.friendbot(sponsor().publicKey());
+  if (!me.table) {
+    const t = await rpcx.invoke(sponsor(), rpcx.call(GAME, 'new_table', new Address(sponsor().publicKey()).toScVal(), u32(2)));
+    me.table = t.value;
+    trace(`Table ${me.table} created ${expert('tx', t.hash, 'on chain')}`);
+    await save();
+  }
+  await gr.init();
+  me.seed = gr.randomField();
+  me.tableSeat = BigInt(me.table) * 16n + BigInt(SEAT);
+  me.deck = [...gr.STARTER_DECK]; me.deckSalt = 0n; me.hand = [];
+  await save();
+  const sat = await nido.sendAs(sponsor(), rpcx.call(GAME, 'sit', u32(me.table), u32(SEAT), new Address(me.account).toScVal(), b32(gr.seedCommit(me.tableSeat, me.seed))), as());
+  me.phase = 'seated';
+  ui.approval.innerHTML = '';
+  trace(`Seated at table ${me.table} as ${short(me.account)}, no prompt ${expert('tx', sat.hash, 'on chain')}`);
+  await save();
+  await deal();
+}
+
+let circuit;
 async function deal() {
-  const s = await nido.view(GAME, 'seat', u32(me.table), u32(0));
+  const s = await nido.view(GAME, 'seat', u32(me.table), u32(SEAT));
   const p = s.pending; if (!p) return render();
-  ui.hand.innerHTML = Array.from({ length: p.n }, () => '<article class="game-card chain-card dealing"><span class="card-type">DEALING</span><strong>…</strong></article>').join('');
+  render();
+  ui.hand.insertAdjacentHTML('beforeend', Array.from({ length: p.n }, () => '<article class="game-card chain-card dealing"><span class="card-type">DEALING</span><strong>…</strong></article>').join(''));
   say('Dealing your hand…');
+  circuit ??= await (await fetch(new URL('gr_draw.json', ASSETS))).json();
+  await gr.init();
   const base = { seed: me.seed, deck: me.deck, deckSalt: me.deckSalt, tableSeat: me.tableSeat, beacon: big(p.beacon), nonce: BigInt(p.nonce), n: p.n, discard: s.discard.map(Number) };
   const plan = gr.planDraw({ ...base, discard: [...base.discard] });
-  const pr = await gr.prove(circuit, gr.circuitInputs(base, plan), { threads: globalThis.crossOriginIsolated ? Math.min(8, navigator.hardwareConcurrency || 4) : 1 });
+  const threads = globalThis.crossOriginIsolated ? Math.min(8, navigator.hardwareConcurrency || 4) : 1;
+  const pr = await gr.prove(circuit, gr.circuitInputs(base, plan), { threads });
+  // You already know your cards; show them while the table checks the deal.
+  const fresh = plan.cards.map((card, j) => ({ card, salt: plan.salts[j], pending: true }));
+  render(fresh);
   say('Checking the deal with the table…');
-  const r = await nido.sendAs(me.sponsor, rpcx.call(GAME, 'draw', u32(me.table), u32(0), xdr.ScVal.scvBytes(Buffer.from(pr.proof)), b32(plan.deckCommitNew), xdr.ScVal.scvVec(plan.slots.map(b32))), me.as);
-  metrics.push({ step: 'draw', proveMs: Math.round(pr.proveMs), witnessMs: Math.round(pr.witnessMs), threads: globalThis.crossOriginIsolated ? Math.min(8, navigator.hardwareConcurrency || 4) : 1, cpu: r.cpu, fee: r.feeCharged, hash: r.hash });
+  const r = await nido.sendAs(sponsor(), rpcx.call(GAME, 'draw', u32(me.table), u32(SEAT), xdr.ScVal.scvBytes(Buffer.from(pr.proof)), b32(plan.deckCommitNew), xdr.ScVal.scvVec(plan.slots.map(b32))), as());
+  metrics.push({ step: 'draw', proveMs: Math.round(pr.proveMs), witnessMs: Math.round(pr.witnessMs), threads, cpu: r.cpu, fee: r.feeCharged, hash: r.hash });
   me.deck = plan.newDeck; me.deckSalt = plan.newSalt;
-  me.hand.push(...plan.cards.map((card, j) => ({ card, salt: plan.salts[j], hash: r.hash })));
-  trace(`Hand dealt and verified ${tx(r.hash, 'on chain')} · proof made in ${(pr.proveMs / 1000).toFixed(1)} s`);
+  me.hand.push(...fresh.map((c) => ({ card: c.card, salt: c.salt, hash: r.hash })));
+  trace(`Dealt ${plan.cards.length} cards; the table verified the deal without seeing them ${expert('tx', r.hash, 'on chain')} · sealed in ${(pr.proveMs / 1000).toFixed(1)} s`);
+  await save();
   say('Your hand was dealt fairly. Only you can see it.');
   render();
 }
 
-function render() {
-  ui.hand.innerHTML = me.hand.map((c, i) => `<article class="game-card chain-card" style="--card-accent:${accent(c.card)}">
+function render(extra = []) {
+  const seated = me?.phase === 'seated';
+  ui.sit.hidden = seated;
+  ui.round.hidden = !seated || !me.hand?.length;
+  ui.leave.hidden = !me?.account;
+  const cards = [...(me?.hand ?? []), ...extra];
+  ui.hand.innerHTML = cards.map((c, i) => `<article class="game-card chain-card" style="--card-accent:${accent(c.card)}">
     <span class="card-type">PRIVATE</span><strong>${name(c.card)}</strong>
-    <span class="chain-seal" title="Drawn fairly from your shuffled deck. The table checked it on Stellar testnet without seeing your cards.">✓ fair draw</span>
-    <button class="button chain-play" data-i="${i}" type="button">Play</button></article>`).join('');
+    <span class="chain-seal${c.pending ? ' pending' : ''}" title="Drawn fairly from your shuffled deck. The table checked it on Stellar testnet without seeing your cards.">${c.pending ? 'table confirming…' : '✓ fair draw'}</span>
+    ${c.pending ? '' : `<button class="button chain-play" data-i="${i}" type="button">Play</button>`}</article>`).join('');
   ui.hand.querySelectorAll('.chain-play').forEach((b) => b.addEventListener('click', () => play(Number(b.dataset.i))));
+  renderLog();
 }
 
 async function play(i) {
+  if (busy) return; busy = true;
   const c = me.hand[i];
-  ui.hand.querySelectorAll('button').forEach((b) => (b.disabled = true));
+  panel.querySelectorAll('button').forEach((b) => (b.disabled = true));
   say(`Playing ${name(c.card)}…`);
   try {
-    const r = await nido.sendAs(me.sponsor, rpcx.call(GAME, 'play', u32(me.table), u32(0), u32(i), u32(c.card), b32(c.salt)), me.as);
+    const r = await nido.sendAs(sponsor(), rpcx.call(GAME, 'play', u32(me.table), u32(SEAT), u32(i), u32(c.card), b32(c.salt)), as());
     metrics.push({ step: 'play', cpu: r.cpu, fee: r.feeCharged, hash: r.hash });
     me.hand.splice(i, 1);
-    trace(`Played ${name(c.card)}: the table saw it came from your hand ${tx(r.hash, 'on chain')}`);
+    trace(`Played ${name(c.card)}: the table confirmed it came from your hand ${expert('tx', r.hash, 'on chain')}`);
+    await save();
     say(`${name(c.card)} played. The table confirmed it was in your hand.`);
-  } catch (e) { say(`The table refused that play: ${e.message.split('\n')[0]}`); }
+    await deal(); // a draw card (Echoes, Foresight, Brokerage) opens a new draw
+  } catch (e) { say(`The table refused that play: ${describe(e)}`); console.error(e); }
+  busy = false;
+  panel.querySelectorAll('button').forEach((b) => (b.disabled = false));
   render();
 }
 
-ui.sit.addEventListener('click', sit);
-globalThis.grZkSit = sit;
+async function endRound() {
+  if (busy) return; busy = true;
+  panel.querySelectorAll('button').forEach((b) => (b.disabled = true));
+  say('Ending the round: your remaining cards go face up to your discard…');
+  try {
+    const r = await nido.sendAs(sponsor(), rpcx.call(GAME, 'cleanup', u32(me.table), u32(SEAT), xdr.ScVal.scvVec(me.hand.map((c) => u32(c.card))), xdr.ScVal.scvVec(me.hand.map((c) => b32(c.salt)))), as());
+    trace(`Round ended; ${me.hand.length} cards revealed to the discard ${expert('tx', r.hash, 'on chain')}`);
+    me.hand = [];
+    await save();
+    await deal();
+  } catch (e) { say(describe(e)); console.error(e); }
+  busy = false;
+  panel.querySelectorAll('button').forEach((b) => (b.disabled = false));
+  render();
+}
+
+async function leave() {
+  if (!confirm('Leave this testnet table? Your private hand here is forgotten; the Nido approval simply expires.')) return;
+  await forget(); me = null; ui.hand.innerHTML = ''; ui.log.innerHTML = ''; ui.approval.innerHTML = '';
+  say('One approval seats you for 24 hours. After that, moves need no prompts.');
+  render();
+}
+
+// ---- start ------------------------------------------------------------------
+async function resume() {
+  me = (await load()) ?? null;
+  const q = new URLSearchParams(location.search);
+  const back = ['nido_address', 'nido_connect', 'delegation'].some((k) => q.has(k));
+  if (back) { history.replaceState(null, '', here()); showTab(); }
+  if (me?.phase !== 'seated') explainApproval();
+  render();
+  if (!me) return;
+  try {
+    if (me.phase === 'connecting') {
+      const address = q.get('nido_address');
+      if (address && /^C[A-Z2-7]{55}$/.test(address)) { busy = true; return await afterConnect(address); }
+      me.phase = undefined; await save();
+      return say(q.get('nido_connect') === 'cancelled' ? 'You closed Nido without choosing an account. Nothing changed.' : 'One approval seats you for 24 hours. After that, moves need no prompts.');
+    }
+    if (me.phase === 'granting') {
+      explainApproval();
+      if (q.get('delegation') === 'ok') { busy = true; showTab(); return await afterGrant(); }
+      if (q.get('delegation') === 'cancelled') { me.phase = undefined; await save(); return say('You cancelled in Nido. Nothing changed.'); }
+      return say(`Waiting for your Nido approval. <a href="${grantUrl()}">Open Nido again</a>`);
+    }
+    if (me.phase === 'opening') { busy = true; return await openSeat(); }
+    if (me.phase === 'seated') {
+      say(`Seated at table ${me.table} as ${short(me.account)}. Only you can see your hand.`);
+      busy = true; await deal();
+    }
+  } catch (e) {
+    say(`Couldn’t finish: ${describe(e)}`); console.error(e);
+  } finally {
+    busy = false; ui.sit.disabled = false; render();
+  }
+}
+
+ui.sit.addEventListener('click', sitClicked);
+ui.round.addEventListener('click', endRound);
+ui.leave.addEventListener('click', leave);
+globalThis.grZkSeat = { get state() { return me; }, metrics, GAME };
+resume().catch((e) => { say(describe(e)); console.error(e); });
