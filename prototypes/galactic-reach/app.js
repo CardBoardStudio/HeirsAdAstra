@@ -3551,7 +3551,7 @@ function createGalacticReach(options = {}) {
     const canOrder=location==='hand'&&isHumanOps&&['prep','action'].includes(state.turnStage)&&definition.order&&!definition.reaction&&!definition.buyEffect;
     const isSelectedOrder=canOrder&&state.actionCardId===card.id&&Boolean(state.actionMode);
     const canBuyEffect=location==='hand'&&!replayMode&&state.phase==='buy'&&state.activePlayer===ME&&definition.buyEffect;
-    return `<article class="game-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''}" style="--card-accent:${definition.accent}"><span class="card-type">${definition.code?definition.code+' · ':''}${definition.kind}${definition.affinity?' · '+definition.affinity:''}${card.starter?' · STARTER':''}</span><span class="card-name">${definition.name}${card.upgraded?' II':''}</span>${cardIllustration(definition)}${definition.lore?`<span class="card-lore">${esc(definition.lore)}</span>`:''}<span class="card-effect">${resourceText(definition.text)}${card.upgraded?` II: ${upgradedOrderText(card)} Conversion gains one extra resource.`:''}</span><div class="card-footer"><span>${definition.resource?`<small>Gain</small>${resourceDots(conversionGain(card))}`:''}</span><span>${definition.cost?`<small>Buy</small>${resourceDots(definition.cost)}`:''}</span></div>${location==='hand'?`<div class="card-buttons">${canResource?`<button class="button" data-resource-card="${card.id}" ${canStoreCard?'':`disabled title="Choose excess resources first"`}>${canStoreCard?'Convert to resources':`Choose discards first`}</button>`:''}${canOrder?`<button class="button ${isSelectedOrder?'button-danger':'button-primary'}" data-order-card="${card.id}" aria-pressed="${isSelectedOrder}">${isSelectedOrder?'Cancel order':'Use order'}</button>`:''}${canBuyEffect?`<button class="button button-primary" data-buy-effect="${card.id}">Use in Buy</button>`:''}${definition.reaction&&isHumanOps?'<span class="muted">Automatic reaction</span>':''}</div>`:''}</article>`;
+    return `<article class="game-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''}" style="--card-accent:${definition.accent}"><span class="card-type">${definition.code?definition.code+' · ':''}${definition.kind}${definition.affinity?' · '+definition.affinity:''}${card.starter?' · STARTER':''}</span><span class="card-name">${definition.name}${card.upgraded?' II':''}</span>${cardIllustration(definition)}${definition.lore?`<span class="card-lore">${esc(definition.lore)}</span>`:''}<span class="card-effect">${resourceText(definition.text)}${card.upgraded?` II: ${upgradedOrderText(card)} Conversion gains one extra resource.`:''}</span><div class="card-footer"><span>${definition.resource?`<small>Gain</small>${resourceDots(conversionGain(card))}`:''}</span><span>${definition.cost?`<small>Buy</small>${resourceDots(definition.cost)}`:''}</span></div>${location==='hand'?`<div class="card-buttons">${canResource?`<button class="button" data-resource-card="${card.id}" ${canStoreCard?'aria-label="Convert to resources"':`disabled title="Choose excess resources first"`}>${canStoreCard?'Convert<span class="label-detail"> to resources</span>':`Choose discards first`}</button>`:''}${canOrder?`<button class="button ${isSelectedOrder?'button-danger':'button-primary'}" data-order-card="${card.id}" aria-pressed="${isSelectedOrder}">${isSelectedOrder?'Cancel order':'Use order'}</button>`:''}${canBuyEffect?`<button class="button button-primary" data-buy-effect="${card.id}">Use in Buy</button>`:''}${definition.reaction&&isHumanOps?'<span class="muted">Automatic reaction</span>':''}</div>`:''}</article>`;
   }
 
   function deckContents(player) {
@@ -3615,21 +3615,21 @@ function createGalacticReach(options = {}) {
   function renderMarket() {
     const humanBuy=!replayMode&&state.phase==='buy'&&state.activePlayer===ME;
     const me0=state.players[ME];
-    $('#market-help').textContent=replayMode?`${state.players[viewSeat].name} purchased ${state.players[viewSeat].cardsPurchased||0} cards.`:`Buy ${me0.buyLimit>1?`up to ${me0.buyLimit} cards`:'one card'} during your Buy turn${me0.buyDiscountEach?' (Trade Syndicate: 1 less of each resource on your next purchase)':''}. Normal cards enter discard; military cards join your military deck. Every card needs more than a starting limit of ${STARTING_LIMIT}: raise your limits first.`;
+    $('#market-help').textContent=replayMode?`${state.players[viewSeat].name} purchased ${state.players[viewSeat].cardsPurchased||0} cards.`:`Buy ${me0.buyLimit>1?`up to ${me0.buyLimit} cards`:'one card'} in your Buy turn${me0.buyDiscountEach?' (Trade Syndicate: 1 less of each resource on your next purchase)':''}; military cards join your military deck. Starter upgrades don’t use your purchase.`;
     $('#basic-market').innerHTML='';
     $('#market-row').innerHTML=replayMode?'<p class="muted">Replays record purchases in the game log, not the market row.</p>':state.market.map((card,index)=>{
       const def=ALL_CARDS[card.key],cost=purchaseCost(me0,card.key);
-      const tooSmall=RESOURCES.filter(r=>(cost[r]||0)>resourceLimits(ME)[r]);
       const disabled=!humanBuy||me0.bought>=me0.buyLimit||!canAfford(me0,cost);
-      const note=tooSmall.length?`<span class="card-limit-note">Raise your ${tooSmall.map(r=>RESOURCE_NAMES[r]).join(' and ')} limit${tooSmall.length>1?'s':''}</span>`:'';
-      return `<button class="game-card ${def.military?'military-market-card':''}" style="--card-accent:${def.accent}" data-buy-market="${index}" ${disabled?'disabled':''} aria-label="${esc(def.code)} ${esc(def.name)}${def.military?', military deck':''}"><span class="card-type">${def.code} · ${def.military?'Military deck':def.kind}</span><span class="card-name">${def.name}</span>${cardIllustration(def)}<span class="card-effect">${resourceText(def.text)}</span><span class="card-footer"><small>Buy</small>${resourceDots(cost)}</span>${note}</button>`;
+      const reason=marketBlockReason(me0,cost,humanBuy);
+      const note=reason.note?`<span class="card-limit-note">${reason.note}</span>`:'';
+      const why=disabled?[reason.turn,reason.card].filter(Boolean).join(' ')||'You cannot buy this card now.':'';
+      return `<button class="game-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}" style="--card-accent:${def.accent}" data-buy-market="${index}" ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${esc(def.code)} ${esc(def.name)}${def.military?', military deck':''}${disabled?`. Unavailable: ${esc(why)}`:''}"><span class="card-type">${def.code} · ${def.military?'Military deck':def.kind}</span><span class="card-name">${def.name}</span>${cardIllustration(def)}<span class="card-effect">${resourceText(def.text)}</span><span class="card-footer"><small>Buy</small>${resourceDots(cost)}</span>${note}</button>`;
     }).join('');
     $$('[data-buy-market]').forEach(button=>button.addEventListener('click',()=>{if(buyCard(ME,'market',Number(button.dataset.buyMarket))){render();saveGame();}}));
     $('#finish-buy-button').hidden=!humanBuy;
     $('#hand-finish-buy-button').hidden=!humanBuy;
     for (const id of ['turn-notice','market-notice']) { const notice=$(`#${id}`); notice.hidden=replayMode||!autoNotice; notice.textContent=replayMode?'':autoNotice; }
-    if (replayMode) { $('#decommission-area').innerHTML=''; return; }
-    const previousUpgradeResource = $('#upgrade-resource')?.value;
+    if (replayMode) { $('#decommission-area').innerHTML=''; renderUpgradeOffers(false); return; }
     const eligible=[...state.players[ME].discard.filter(card=>trashEligible(state.players[ME],card,'discard')),...state.players[ME].inPlay.filter(card=>trashEligible(state.players[ME],card,'inPlay'))];
     const selectedResource = $('#trash-resource')?.value;
     const trashResource = RESOURCES.includes(selectedResource) ? selectedResource : RESOURCES.find(resource=>state.players[ME].resources[resource]>=3) || 'matter';
@@ -3640,6 +3640,9 @@ function createGalacticReach(options = {}) {
       <button class="button" data-trash="${card.id}" ${state.players[ME].resources[trashResource]<3?'disabled':''}>
         ${ALL_CARDS[card.key].name}${card.upgraded?' II':''}${card.starter?' · starter':''} <small>${state.players[ME].inPlay.includes(card)?'in play':'in discard'}</small>
       </button>`).join('');
+    $('#open-trash').hidden=!humanBuy;
+    $('#open-trash').textContent=`Trash a card${eligible.length?` (${eligible.length} eligible)`:''}`;
+    if (!humanBuy && $('#trash-dialog').open) $('#trash-dialog').close();
     $('#decommission-area').innerHTML = humanBuy ? `
       <div class="decommission-list">
         <strong>Trash a card</strong>
@@ -3648,23 +3651,67 @@ function createGalacticReach(options = {}) {
       </div>` : '';
     $('#trash-resource')?.addEventListener('change',renderMarket);
     $$('[data-trash]').forEach(button=>button.addEventListener('click',()=>{if(decommission(ME,button.dataset.trash,$('#trash-resource').value)){render();saveGame();}}));
-    // Rules #buy: original starters upgrade from hand, discard or in play during your Buy turn.
-    const me=state.players[ME];
-    const pileOf=card=>me.hand.includes(card)?'in hand':me.inPlay.includes(card)?'in play':'in discard';
-    const upgradeable=[...me.hand,...me.discard,...me.inPlay].filter(card=>card.starter&&!card.upgraded);
-    const inDeck=me.deck.filter(card=>card.starter&&!card.upgraded).length;
-    const selectedUpgradeResource = previousUpgradeResource;
-    const upgradeResource = RESOURCES.includes(selectedUpgradeResource) ? selectedUpgradeResource : RESOURCES.find(resource=>me.resources[resource]>=2) || 'matter';
-    const upgradeReason=!humanBuy?'Upgrade during your Buy turn.':me.resources[upgradeResource]<2?`Needs 2 ${RESOURCE_NAMES[upgradeResource]}.`:'';
-    const upgradeButtons=upgradeable.map(card=>`<button class="button" data-upgrade-card="${card.id}" ${upgradeReason?'disabled':''} ${upgradeReason?`title="${upgradeReason}"`:''}>${ALL_CARDS[card.key].name} → II · ${upgradedOrderText(card)} <small>${pileOf(card)}</small></button>`).join('');
-    const allDone=![...me.hand,...me.discard,...me.inPlay,...me.deck].some(card=>card.starter&&!card.upgraded);
-    const upgradeNotes=[upgradeReason&&upgradeable.length?upgradeReason:'',inDeck?`${inDeck} in your deck.`:''].filter(Boolean).join(' ');
-    $('#decommission-area').insertAdjacentHTML('beforeend',`<div class="decommission-list upgrade-list"><strong>Upgrade starter</strong><label>Pay 2 <select id="upgrade-resource">${RESOURCES.map(resource=>`<option value="${resource}" ${resource===upgradeResource?'selected':''}>${RESOURCE_NAMES[resource]}</option>`).join('')}</select></label>${allDone?'<span class="muted">All starter cards upgraded</span>':upgradeButtons}${!allDone&&upgradeNotes?`<span class="muted upgrade-note">${upgradeNotes}</span>`:''}</div>`);
-    $('#upgrade-resource')?.addEventListener('change',renderMarket);
-    $$('[data-upgrade-card]').forEach(button=>button.addEventListener('click',()=>{if(upgradeStarter(ME,button.dataset.upgradeCard,$('#upgrade-resource').value)){render();saveGame();}}));
-
+    renderUpgradeOffers(humanBuy);
   }
 
+
+  // Why a market card cannot be bought now, read from the same cost, limit and purchase
+  // state the engine's buyCard checks: turn is the shared reason, card is this card's own.
+  function marketBlockReason(player,cost,humanBuy) {
+    const limits=resourceLimits(ME);
+    const turn=!humanBuy?'Buy during your Buy turn.':player.bought>=player.buyLimit?'Your purchase is used this turn.':'';
+    const tooSmall=RESOURCES.filter(r=>(cost[r]||0)>limits[r]);
+    const short=RESOURCES.filter(r=>(cost[r]||0)>player.resources[r]);
+    const card=tooSmall.length?`Raise ${tooSmall.map(r=>`${RESOURCE_NAMES[r]} capacity to ${cost[r]}`).join(' and ')}.`
+      :!canAfford(player,cost)&&short.length?`Needs ${short.map(r=>`${cost[r]-player.resources[r]} more ${RESOURCE_NAMES[r]}`).join(' and ')}.`:'';
+    const brief=tooSmall.length?`Limit: ${tooSmall.map(r=>`${RESOURCE_NAMES[r]} ${cost[r]}`).join(', ')}`:card;
+    return {turn,card,note:brief.replace(/\.$/,'')};
+  }
+  // Rules #buy: original starters upgrade from hand, discard or in play during your Buy turn.
+  // Each starter's level II is offered beside the market like a card; choosing it asks
+  // which copy to upgrade and which resource pays. Upgrading never uses a purchase.
+  let upgradeChoiceKey = null;
+  const UPGRADE_STARTERS = ['move','construct'];
+  const upgradePile = (player,card) => player.hand.includes(card)?'in hand':player.inPlay.includes(card)?'in play':'in discard';
+  function upgradeableStarters(player,key) {
+    return [...player.hand,...player.discard,...player.inPlay].filter(card=>card.key===key&&card.starter&&!card.upgraded);
+  }
+  function renderUpgradeOffers(humanBuy) {
+    const me=state.players[ME], area=$('#upgrade-market');
+    area.hidden=replayMode;
+    if (replayMode) { area.innerHTML=''; return; }
+    const canPay=RESOURCES.some(resource=>me.resources[resource]>=2);
+    area.innerHTML=UPGRADE_STARTERS.map(key=>{
+      const def=ALL_CARDS[key], ready=upgradeableStarters(me,key).length;
+      const inDeck=me.deck.filter(card=>card.key===key&&card.starter&&!card.upgraded).length;
+      const note=!ready&&!inDeck?'All upgraded':[ready?`${ready} ready`:'',inDeck?`${inDeck} in deck`:''].filter(Boolean).join(' · ');
+      const reason=!humanBuy?'Upgrade during your Buy turn.':!ready?'No original starter in hand, discard or in play.':!canPay?'Needs 2 of one resource.':'';
+      return `<button class="game-card upgrade-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-upgrade-offer="${key}" ${reason?`disabled title="${reason}"`:''} aria-label="Upgrade ${esc(def.name)} to level II for 2 of one resource; does not use your purchase${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Starter upgrade</span><span class="card-name">${def.name} II</span>${cardIllustration(def)}<span class="card-effect">${upgradedOrderText({key})} Converts for +1 resource.</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price"><strong>2</strong> of one resource</span></span><span class="card-limit-note">${note}</span></button>`;
+    }).join('');
+    $$('[data-upgrade-offer]').forEach(button=>button.addEventListener('click',()=>openUpgradeChoice(button.dataset.upgradeOffer)));
+    if ($('#upgrade-dialog').open) renderUpgradeChoice();
+  }
+  function openUpgradeChoice(key) {
+    upgradeChoiceKey=key;
+    const me=state.players[ME], select=$('#upgrade-resource');
+    if (!RESOURCES.includes(select.value) || me.resources[select.value]<2) select.value=RESOURCES.find(resource=>me.resources[resource]>=2) || 'matter';
+    renderUpgradeChoice();
+    if (!$('#upgrade-dialog').open) $('#upgrade-dialog').showModal();
+  }
+  function renderUpgradeChoice() {
+    const key=upgradeChoiceKey, me=state.players[ME];
+    if (!key) return;
+    const humanBuy=!replayMode&&state.phase==='buy'&&state.activePlayer===ME;
+    const resource=$('#upgrade-resource').value, name=ALL_CARDS[key].name;
+    const reason=!humanBuy?'Upgrade during your Buy turn.':me.resources[resource]<2?`Needs 2 ${RESOURCE_NAMES[resource]}.`:'';
+    const cards=upgradeableStarters(me,key);
+    $('#upgrade-dialog-title').textContent=`Upgrade ${name} to ${name} II`;
+    $('#upgrade-dialog-status').textContent=reason || `Pay 2 ${RESOURCE_NAMES[resource]}. Your card purchase is not used.`;
+    $('#upgrade-options').innerHTML=cards.length?cards.map(card=>`<button class="button" type="button" data-upgrade-card="${card.id}" ${reason?'disabled':''}>${name} <small>${upgradePile(me,card)}</small></button>`).join(''):`<p class="muted">No original ${name} is in your hand, discard or in play.</p>`;
+    $$('[data-upgrade-card]').forEach(button=>button.addEventListener('click',()=>{
+      if (upgradeStarter(ME,button.dataset.upgradeCard,$('#upgrade-resource').value)) { $('#upgrade-dialog').close(); render(); saveGame(); }
+    }));
+  }
   function renderFleetSummary() {
     $('#fleet-summary').innerHTML=state.players.map((player,id)=>{
       const totals={settler:0,explorer:0,fleet:0};
@@ -3923,6 +3970,7 @@ function createGalacticReach(options = {}) {
     if (headless) return;
     const targetText=$('#victory-target-text');
     if (targetText) targetText.textContent=`${victoryTarget()} Prestige`;
+    $('#round-goal').textContent=`${victoryTarget()} Prestige`;
     renderHeader(); renderScoreboard(); renderBoard(); renderResources(); renderInspector(); positionSectorScan(); renderLog(); renderHand(); renderMarket(); renderFleetSummary(); renderTrade(); renderRelicRow(); renderOverflow(); renderCombat(); renderCombatReport();
   }
 
@@ -4072,6 +4120,12 @@ function createGalacticReach(options = {}) {
       $(selector).value = initial;
       $(selector).addEventListener('change',renderConsortium);
     }
+    $('#upgrade-resource').innerHTML = RESOURCES.map(type=>`<option value="${type}">${RESOURCE_NAMES[type]}</option>`).join('');
+    $('#upgrade-resource').addEventListener('change',renderUpgradeChoice);
+    $('#upgrade-dialog').addEventListener('close',()=>{upgradeChoiceKey=null;});
+    $('#open-trash').addEventListener('click',()=>{renderMarket();if(!$('#trash-dialog').open)$('#trash-dialog').showModal();});
+    $('#close-trash').addEventListener('click',()=>$('#trash-dialog').close());
+    $('#close-upgrade').addEventListener('click',()=>$('#upgrade-dialog').close());
     $('#consortium-form').addEventListener('submit',event=>{event.preventDefault();consortiumExchange(ME,$('#consortium-give').value,$('#consortium-get').value);});
     $('#consortium-cancel').addEventListener('click',()=>finishConsortium(ME,true));
     $('#consortium-finish').addEventListener('click',()=>finishConsortium(ME));

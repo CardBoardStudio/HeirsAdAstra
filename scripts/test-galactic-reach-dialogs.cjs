@@ -660,8 +660,14 @@ test('starter upgrade UI pays two of the selected resource and preserves Buy', (
  state.phase='buy';state.activePlayer=0;state.turnStage='buy';
  state.players[0].hand=[{key:'move',id:'ui-upgrade',starter:true}];state.players[0].discard=[];
  state.players[0].resources={matter:3,energy:3,biomass:0,data:0};writeSave(storage,state);
- const game=boot(storage);game.dom.element('upgrade-resource').value='energy';fire(game.dom.element('upgrade-resource'),'change');
+ const game=boot(storage);
+ // The upgrade is offered beside the market like a card; choosing it opens the starter chooser.
+ const offer=game.dom.lastQuery('[data-upgrade-offer]').find(b=>b.dataset.upgradeOffer==='move');
+ assert(offer&&!offer.disabled,'Move II is offered in the market during Buy');
+ offer.click();assert(game.dialog('upgrade').open,'choosing the upgrade card asks which starter to upgrade');
+ game.dom.element('upgrade-resource').value='energy';fire(game.dom.element('upgrade-resource'),'change');
  game.dom.lastQuery('[data-upgrade-card]').find(b=>b.dataset.upgradeCard==='ui-upgrade').click();
+ assert(!game.dialog('upgrade').open,'the chooser closes after the upgrade');
  const after=game.saved();assert(after.players[0].hand[0].upgraded);assert.equal(after.players[0].resources.energy,1);
  assert.equal(after.players[0].resources.matter,3);assert.equal(after.phase,'buy');assert.equal(after.players[0].bought,0);
  assert(boot(storage).saved().players[0].hand[0].upgraded);
@@ -955,9 +961,14 @@ test('Buy upgrades and trashes starters in hand, discard and in play (28.33 #buy
   writeSave(storage,state);
   let game=boot(storage);
   const html=game.dom.element('decommission-area').innerHTML;
-  assert.deepEqual([...html.matchAll(/data-upgrade-card="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-hand','up-play']);
   assert.deepEqual([...html.matchAll(/data-trash="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-play']);
-  assert.doesNotMatch(html,/All starter cards upgraded|after cleanup/);
+  const choices=key=>{game.dom.lastQuery('[data-upgrade-offer]').find(b=>b.dataset.upgradeOffer===key).click();
+    const ids=[...game.dom.element('upgrade-options').innerHTML.matchAll(/data-upgrade-card="([^"]*)"/g)].map(m=>m[1]).sort();
+    game.dom.element('upgrade-dialog').close();game.settle();return ids;};
+  assert.deepEqual(choices('move'),['up-hand','up-play']);
+  assert.deepEqual(choices('construct'),['up-discard']);
+  assert.doesNotMatch(game.dom.element('upgrade-market').innerHTML,/All upgraded/);
+  game.dom.lastQuery('[data-upgrade-offer]').find(b=>b.dataset.upgradeOffer==='move').click();
   game.dom.element('upgrade-resource').value='energy';fire(game.dom.element('upgrade-resource'),'change');
   game.dom.lastQuery('[data-upgrade-card]').find(b=>b.dataset.upgradeCard==='up-play').click();game.settle();
   assert.equal(game.saved().players[0].inPlay.find(c=>c.id==='up-play').upgraded,true);

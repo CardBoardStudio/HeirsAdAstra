@@ -1078,3 +1078,15 @@ main:focus {
 .lobby-invite-row { display: flex; gap: 8px; }
 .lobby-invite-row input { flex: 1; min-width: 0; }
 .lobby-blocked { margin-top: 10px; }
+/* The waiting room is a play screen: it fits a 1280x720 window without scrolling (AGENTS.md). */
+@media (min-width: 1024px) and (min-height: 600px) {
+  .workspace:has(.lobby-seats) main { min-height: 0; padding-top: 22px; padding-bottom: 8px; }
+  .workspace:has(.lobby-seats) .page-head { margin-bottom: 14px; }
+  .workspace:has(.lobby-seats) .page-head h1 { margin: 0 0 6px; font-size: 40px; }
+  .workspace:has(.lobby-seats) .eyebrow { margin-bottom: 6px; }
+  .workspace:has(.lobby-seats) .split .panel { padding: 18px 22px; }
+  .workspace:has(.lobby-seats) .split .panel h2 { margin-bottom: 10px; }
+  .workspace:has(.lobby-seats) .form-note { margin: 6px 0 10px; }
+  .workspace:has(.lobby-seats) main > p:last-child { margin: 10px 0 0; }
+  .workspace:has(.lobby-seats) footer { padding-top: 8px; padding-bottom: 10px; }
+}
