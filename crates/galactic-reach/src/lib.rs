@@ -6,6 +6,8 @@ use rand::{Rng, SeedableRng, rngs::StdRng};
 use rquickjs::{Context, Runtime};
 use serde::Deserialize;
 use serde_json::{Value, json};
+use std::cell::{Cell, RefCell};
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 pub const RULES: &str = "galactic-reach/31.36";
@@ -41,6 +43,8 @@ pub use replay::Trace;
 const ENGINE: &str = include_str!("../../../prototypes/galactic-reach/app.js");
 const ADAPTER: &str = include_str!("../../../prototypes/galactic-reach/adapter.js");
 const MATCH_TIMEOUT: Duration = Duration::from_secs(300);
+/// A shared table's per-request budget, renewed with `extend_deadline`.
+pub const SHARED_STEP: Duration = Duration::from_secs(20);
 pub const SIMULATION_TIMEOUT: &str = "Galactic Reach simulation exceeded its time limit.";
 fn execution_error(deadline: Instant, error: impl ToString) -> String {
     if Instant::now() >= deadline {
@@ -58,7 +62,7 @@ struct Snapshot {
 }
 pub struct GalacticReach {
     context: Context,
-    deadline: Instant,
+    deadline: Rc<Cell<Instant>>,
     snapshot: Snapshot,
     rules: &'static str,
     trace: Option<Trace>,
@@ -105,20 +109,104 @@ impl GalacticReach {
         Self::initialize(seed, MATCH_TIMEOUT, rules)
     }
     fn initialize(seed: [u8; 32], timeout: Duration, rules: &'static str) -> Result<Self, String> {
-        let runtime = Runtime::new().map_err(|e| e.to_string())?;
-        runtime.set_memory_limit(64 * 1024 * 1024);
-        runtime.set_max_stack_size(1024 * 1024);
-        let deadline = Instant::now() + timeout;
-        runtime.set_interrupt_handler(Some(Box::new(move || Instant::now() >= deadline)));
-        let context = Context::full(&runtime).map_err(|e| e.to_string())?;
-        context
-            .with(|ctx| {
-                // Seeded RNG is owned by the game, never by a policy observation.
-                let rng = std::cell::RefCell::new(StdRng::from_seed(seed));
+        // Seeded RNG is owned by the game, never by a policy observation.
+        let rng = RefCell::new(StdRng::from_seed(seed));
+        Self::boot(
+            timeout,
+            rules,
+            move |ctx| {
                 ctx.globals().set(
                     "gameRandom",
                     rquickjs::Function::new(ctx.clone(), move || rng.borrow_mut().r#gen::<f64>())?,
-                )?;
+                )
+            },
+            "globalThis.game = createGalacticReach({headless: true, random: gameRandom});",
+        )
+    }
+    /// A shared multi-human table on the current rules. The engine draws no
+    /// randomness of its own: every shuffle is a permutation of `0..n` returned by
+    /// `shuffle(n, purpose)`, which the table's hidden-information authority
+    /// supplies (or replays from the table log). `seats` names each faction and
+    /// says whether a person plays it. Call [`Self::extend_deadline`] before each
+    /// batch of work: a shared table lives far longer than one match budget.
+    pub fn shared(
+        seats: &[(String, bool); 4],
+        victory_target: u32,
+        shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
+    ) -> Result<Self, String> {
+        let shuffle = RefCell::new(shuffle);
+        let names: Vec<&str> = seats.iter().map(|s| s.0.as_str()).collect();
+        let controllers: Vec<&str> = seats
+            .iter()
+            .map(|s| if s.1 { "human" } else { "ai" })
+            .collect();
+        Self::boot(
+            SHARED_STEP,
+            RULES,
+            move |ctx| {
+                ctx.globals().set(
+                    "authorityShuffle",
+                    rquickjs::Function::new(ctx.clone(), move |n: u32, purpose: String| {
+                        (shuffle.borrow_mut())(n as usize, &purpose)
+                            .into_iter()
+                            .map(|i| i as u32)
+                            .collect::<Vec<u32>>()
+                    })?,
+                )
+            },
+            &format!(
+                "globalThis.game = createGalacticReach({{headless: true, shuffle: authorityShuffle, names: {}, controllers: {}, victoryTarget: {}}});",
+                json!(names),
+                json!(controllers),
+                victory_target
+            ),
+        )
+    }
+    /// Gives the engine `budget` of wall-clock time from now.
+    pub fn extend_deadline(&self, budget: Duration) {
+        self.deadline.set(Instant::now() + budget);
+    }
+    /// The live state shape one seat's browser renders, with every other seat's
+    /// hidden information removed (see `privateState` in adapter.js).
+    pub fn private_state(&self, seat: usize) -> Result<Value, String> {
+        self.eval_json(&format!("JSON.stringify(game.privateState({seat}))"))
+    }
+    /// The current turn and a summary of everything an action could reveal; a
+    /// shared table compares it before and after each action to place Undo checkpoints.
+    pub fn undo_mark(&self) -> Result<Value, String> {
+        self.eval_json("JSON.stringify(game.undoMark())")
+    }
+    /// Legal choices a seat cannot check from its private state alone.
+    pub fn hints(&self, seat: usize) -> Result<Value, String> {
+        self.eval_json(&format!("JSON.stringify(game.hints({seat}))"))
+    }
+    fn eval_json(&self, script: &str) -> Result<Value, String> {
+        let deadline = self.deadline.get();
+        if Instant::now() >= deadline {
+            return Err(SIMULATION_TIMEOUT.into());
+        }
+        let json = self
+            .context
+            .with(|ctx| ctx.eval::<String, _>(script))
+            .map_err(|e| execution_error(deadline, e))?;
+        serde_json::from_str(&json).map_err(|e| e.to_string())
+    }
+    fn boot(
+        timeout: Duration,
+        rules: &'static str,
+        globals: impl FnOnce(&rquickjs::Ctx) -> rquickjs::Result<()>,
+        start: &str,
+    ) -> Result<Self, String> {
+        let runtime = Runtime::new().map_err(|e| e.to_string())?;
+        runtime.set_memory_limit(64 * 1024 * 1024);
+        runtime.set_max_stack_size(1024 * 1024);
+        let deadline = Rc::new(Cell::new(Instant::now() + timeout));
+        let limit = deadline.clone();
+        runtime.set_interrupt_handler(Some(Box::new(move || Instant::now() >= limit.get())));
+        let context = Context::full(&runtime).map_err(|e| e.to_string())?;
+        context
+            .with(|ctx| {
+                globals(&ctx)?;
                 ctx.eval::<(), _>(match rules {
                     RULES => ADAPTER,
                     "galactic-reach/17.22" => include_str!("../rules/v17-adapter.js"),
@@ -180,17 +268,15 @@ impl GalacticReach {
                     "galactic-reach/5.10" => include_str!("../rules/v5-app.js"),
                     _ => include_str!("../rules/v4-app.js"),
                 })?;
-                ctx.eval::<(), _>(
-                    "globalThis.game = createGalacticReach({headless: true, random: gameRandom});",
-                )
+                ctx.eval::<(), _>(start)
             })
             .map_err(|e| {
                 execution_error(
-                    deadline,
+                    deadline.get(),
                     format!("Galactic Reach initialization failed: {e}"),
                 )
             })?;
-        let snapshot = Self::read_snapshot(&context, deadline)?;
+        let snapshot = Self::read_snapshot(&context, deadline.get())?;
         Ok(Self {
             context,
             deadline,
@@ -207,14 +293,7 @@ impl GalacticReach {
         self.trace.take()
     }
     fn replay_view(&self) -> Result<Value, String> {
-        if Instant::now() >= self.deadline {
-            return Err(SIMULATION_TIMEOUT.into());
-        }
-        let json = self
-            .context
-            .with(|ctx| ctx.eval::<String, _>("JSON.stringify(game.replayView())"))
-            .map_err(|e| execution_error(self.deadline, e))?;
-        serde_json::from_str(&json).map_err(|e| e.to_string())
+        self.eval_json("JSON.stringify(game.replayView())")
     }
     fn read_snapshot(context: &Context, deadline: Instant) -> Result<Snapshot, String> {
         if Instant::now() >= deadline {
@@ -258,7 +337,8 @@ impl GameAdapter for GalacticReach {
         }
     }
     fn apply_action(&mut self, seat: usize, action: Value) -> Result<(), String> {
-        if Instant::now() >= self.deadline {
+        let deadline = self.deadline.get();
+        if Instant::now() >= deadline {
             return Err(SIMULATION_TIMEOUT.into());
         }
         if self.snapshot.active != Some(seat) || !self.snapshot.legal.contains(&action) {
@@ -266,10 +346,8 @@ impl GameAdapter for GalacticReach {
         }
         self.context
             .with(|ctx| ctx.eval::<(), _>(format!("game.applyAction({seat}, {});", action)))
-            .map_err(|e| {
-                execution_error(self.deadline, format!("Galactic Reach action failed: {e}"))
-            })?;
-        self.snapshot = Self::read_snapshot(&self.context, self.deadline)?;
+            .map_err(|e| execution_error(deadline, format!("Galactic Reach action failed: {e}")))?;
+        self.snapshot = Self::read_snapshot(&self.context, self.deadline.get())?;
         if self.trace.is_some() {
             let view = self.replay_view()?;
             if let Some(trace) = self.trace.as_mut() {
@@ -333,6 +411,120 @@ fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
         .map(|g| number(&g[seat.to_string()][kind]))
         .sum()
 }
+/// 31.36 Capacity Cards market (rules #cards): key, price in Matter, Energy, Biomass,
+/// Data, printed Prestige (reusable Prestige weighted x3) and whether it joins the
+/// military deck. Policy 26 meets these keys only in 31.36 games, so its play under
+/// earlier rules is unchanged.
+const CAPACITY_CARDS: [(&str, [f64; 4], f64, bool); 36] = [
+    ("ionThrusters", [0.0, 5.0, 0.0, 1.0], 0.0, false),
+    ("slipstreamCharts", [0.0, 1.0, 0.0, 5.0], 0.0, false),
+    ("strikeVector", [2.0, 6.0, 0.0, 0.0], 0.0, false),
+    ("foldSpaceGate", [0.0, 10.0, 0.0, 4.0], 0.0, false),
+    ("prefabYards", [5.0, 1.0, 0.0, 0.0], 0.0, false),
+    ("orbitalFoundry", [7.0, 2.0, 0.0, 1.0], 0.0, false),
+    ("worldEngine", [10.0, 3.0, 3.0, 0.0], 0.0, false),
+    ("seedArk", [1.0, 0.0, 5.0, 0.0], 0.0, false),
+    ("colonyPods", [0.0, 2.0, 7.0, 0.0], 0.0, false),
+    ("genesisCharter", [4.0, 0.0, 11.0, 2.0], 2.0, false),
+    ("miningCharter", [5.0, 0.0, 0.0, 1.0], 0.0, false),
+    ("bioReactor", [0.0, 2.0, 5.0, 0.0], 0.0, false),
+    ("dataHaven", [0.0, 1.0, 0.0, 6.0], 0.0, false),
+    ("harvestCycle", [3.0, 0.0, 6.0, 0.0], 0.0, false),
+    ("quartermaster", [2.0, 5.0, 1.0, 0.0], 0.0, false),
+    ("strategyCore", [0.0, 2.0, 0.0, 6.0], 0.0, false),
+    ("archivePurge", [0.0, 0.0, 2.0, 5.0], 0.0, false),
+    ("commandNexus", [0.0, 4.0, 0.0, 9.0], 0.0, false),
+    ("cargoExpansion", [6.0, 0.0, 0.0, 2.0], 0.0, false),
+    ("hyperspaceVaults", [4.0, 2.0, 0.0, 9.0], 0.0, false),
+    ("procurementHub", [0.0, 0.0, 2.0, 6.0], 0.0, false),
+    ("tradeSyndicate", [0.0, 5.0, 0.0, 2.0], 0.0, false),
+    ("monumentOfAccord", [8.0, 0.0, 4.0, 3.0], 3.0, false),
+    ("senateSeat", [0.0, 5.0, 2.0, 9.0], 4.0, false),
+    ("dysonLattice", [6.0, 12.0, 0.0, 4.0], 6.0, false),
+    ("ascendancyCodex", [0.0, 3.0, 6.0, 12.0], 6.0, false),
+    ("railBattery", [5.0, 1.0, 0.0, 0.0], 0.0, true),
+    ("deflectorGrid", [1.0, 5.0, 0.0, 0.0], 0.0, true),
+    ("flakScreen", [6.0, 0.0, 2.0, 0.0], 0.0, true),
+    ("boardingMarines", [2.0, 0.0, 6.0, 0.0], 0.0, true),
+    ("torpedoSpread", [0.0, 7.0, 0.0, 2.0], 0.0, true),
+    ("hardlightBulwark", [7.0, 2.0, 0.0, 0.0], 0.0, true),
+    ("phaseLance", [0.0, 8.0, 0.0, 3.0], 0.0, true),
+    ("novaBarrage", [5.0, 10.0, 0.0, 0.0], 0.0, true),
+    ("aegisLattice", [10.0, 4.0, 0.0, 0.0], 0.0, true),
+    ("victoryDoctrine", [2.0, 4.0, 0.0, 9.0], 2.0, true),
+];
+/// Printed attack, shield and pierce of the 31.36 military cards (rules #military-deck).
+const CAPACITY_TACTICS: [(&str, f64, f64, bool); 10] = [
+    ("railBattery", 2.0, 0.0, false),
+    ("deflectorGrid", 0.0, 3.0, false),
+    ("flakScreen", 1.0, 2.0, false),
+    ("boardingMarines", 1.0, 0.0, false),
+    ("torpedoSpread", 3.0, 0.0, false),
+    ("hardlightBulwark", 0.0, 5.0, false),
+    ("phaseLance", 2.0, 0.0, true),
+    ("novaBarrage", 5.0, 0.0, false),
+    ("aegisLattice", 0.0, 8.0, false),
+    ("victoryDoctrine", 2.0, 0.0, false),
+];
+const RESOURCE_KEYS: [&str; 4] = ["matter", "energy", "biomass", "data"];
+fn capacity_card(key: &str) -> Option<([f64; 4], f64, bool)> {
+    CAPACITY_CARDS
+        .iter()
+        .find(|c| c.0 == key)
+        .map(|c| (c.1, c.2, c.3))
+}
+/// Hits, shields and pierce of a combat tactic: the two basic tactics or a military card.
+fn tactic_stats(key: &str) -> (f64, f64, bool) {
+    match key {
+        "concentratedFire" => (1.0, 0.0, false),
+        "defensiveScreen" => (0.0, 2.0, false),
+        _ => CAPACITY_TACTICS
+            .iter()
+            .find(|t| t.0 == key)
+            .map_or((1.0, 0.0, false), |t| (t.1, t.2, t.3)),
+    }
+}
+/// The table's Prestige target (31.36 #victory-target); earlier rules race to 20.
+fn victory_target(view: &Value) -> f64 {
+    view["victoryTarget"].as_f64().unwrap_or(20.0)
+}
+/// How much a 31.36 rival values a market card: its price (the set is priced by
+/// power), its printed Prestige, minus copies it already owns.
+fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
+    let (cost, prestige, military) = capacity_card(key)?;
+    let me = &view["players"][seat];
+    if military && bot_units(view, seat, "fleet") == 0.0 {
+        return None;
+    }
+    let owned = ["hand", "discard", "inPlay", "military"]
+        .iter()
+        .flat_map(|pile| me[*pile].as_array().into_iter().flatten())
+        .filter(|c| c["key"] == key)
+        .count() as f64
+        + me["deckContents"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter(|g| g["key"] == key)
+            .map(|g| number(&g["count"]))
+            .sum::<f64>();
+    Some(10.0 + cost.iter().sum::<f64>() + prestige * 5.0 - owned * 8.0)
+}
+/// The resource limits a rival still needs for its best-valued market card.
+fn capacity_need(view: &Value, seat: usize) -> Option<[f64; 4]> {
+    let target = view["market"]
+        .as_array()?
+        .iter()
+        .filter_map(|c| {
+            let key = c["key"].as_str()?;
+            Some((capacity_value(view, seat, key)?, capacity_card(key)?.0))
+        })
+        .max_by(|a, b| a.0.total_cmp(&b.0))?
+        .1;
+    let need: [f64; 4] =
+        std::array::from_fn(|i| (target[i] - bot_limit(view, seat, RESOURCE_KEYS[i])).max(0.0));
+    need.iter().any(|n| *n > 0.0).then_some(need)
+}
 fn bot_order(key: &str) -> &str {
     match key {
         "move"
@@ -341,9 +533,19 @@ fn bot_order(key: &str) -> &str {
         | "fleetOverdrive"
         | "coordinatedAssault"
         | "phaseShearDrive"
-        | "obeliskOfAnnihilation" => "move",
-        "construct" | "modularConstruction" | "orbitalShipyards" => "construct",
-        "colonize" | "dropColonyModules" | "genesisSeedVault" => "colonize",
+        | "obeliskOfAnnihilation"
+        | "ionThrusters"
+        | "slipstreamCharts"
+        | "strikeVector"
+        | "foldSpaceGate" => "move",
+        "construct"
+        | "modularConstruction"
+        | "orbitalShipyards"
+        | "prefabYards"
+        | "orbitalFoundry"
+        | "worldEngine" => "construct",
+        "colonize" | "dropColonyModules" | "genesisSeedVault" | "seedArk" | "colonyPods"
+        | "genesisCharter" => "colonize",
         "excavate" => "excavate",
         "probe" => "probe",
         _ => "other",
@@ -486,7 +688,8 @@ fn bot_storage_budget(view: &Value, seat: usize) -> Option<(Value, Value)> {
         .iter()
         .map(|p| number(&p["prestige"]))
         .fold(0.0_f64, f64::max);
-    if leader >= 20.0 {
+    let target = victory_target(view);
+    if leader >= target {
         return None;
     }
     let cost = me["storageUpgradeCost"].as_object()?;
@@ -501,7 +704,7 @@ fn bot_storage_budget(view: &Value, seat: usize) -> Option<(Value, Value)> {
             (number(&me["resources"][*r]) + number(&income[*r]) - bot_limit(view, seat, r)).max(0.0)
         })
         .sum();
-    let horizon = ((20.0 - leader) / 4.0).ceil().clamp(1.0, 4.0);
+    let horizon = ((target - leader) / 4.0).ceil().clamp(1.0, 4.0);
     if pressure.min(4.0) * horizon <= cost.values().map(number).sum::<f64>() {
         return None;
     }
@@ -659,12 +862,17 @@ impl BuiltinAgent {
                         .filter(|key| **key == "concentratedFire")
                         .count() as f64;
                 let probability = fire / (4.0 - used.len() as f64);
-                let screen = action["tactic"] == "defensiveScreen";
-                let dealt = (own_attack + if screen { 0.0 } else { 1.0 }
-                    - (1.0 - probability) * 2.0)
-                    .max(0.0);
-                let received =
-                    (enemy_attack + probability - if screen { 2.0 } else { 0.0 }).max(0.0);
+                // Printed stats: basic tactics, or a 31.36 military card (Phase Lance pierces).
+                let (hits, shield, pierce) = tactic_stats(action["tactic"].as_str().unwrap_or(""));
+                let screen = shield > 0.0;
+                let dealt = (own_attack + hits
+                    - if pierce {
+                        0.0
+                    } else {
+                        (1.0 - probability) * 2.0
+                    })
+                .max(0.0);
+                let received = (enemy_attack + probability - shield).max(0.0);
                 50.0 + dealt - received * 0.75 + if dealt >= enemy_hull { 8.0 } else { 0.0 }
                     - if received >= own_hull { 10.0 } else { 0.0 }
                     + if screen && side == "defender" && combat["volley"] == 3 {
@@ -926,6 +1134,21 @@ impl BuiltinAgent {
             }
             "probe" => 150.0,
             "excavate" => 160.0,
+            // 31.36: permanent Prestige, capacity and big draws come first.
+            "special"
+                if matches!(
+                    action["key"].as_str(),
+                    Some(
+                        "ascendancyCodex"
+                            | "cargoExpansion"
+                            | "hyperspaceVaults"
+                            | "commandNexus"
+                            | "strategyCore"
+                    )
+                ) =>
+            {
+                95.0
+            }
             "special" => {
                 50.0 + if action["key"] == "cradleOfLostSuns" {
                     bot_allocation_value(view, seat, action, false) * 0.1
@@ -948,6 +1171,14 @@ impl BuiltinAgent {
                     }
                 } else {
                     -5.0
+                }
+            }
+            "buy" if capacity_card(action["key"].as_str().unwrap_or("")).is_some() => {
+                let key = action["key"].as_str().unwrap_or("");
+                if bot_yards(view, seat) == 0 {
+                    -10.0
+                } else {
+                    capacity_value(view, seat, key).map_or(-10.0, |v| 60.0 + v)
                 }
             }
             "buy" => {
@@ -975,6 +1206,16 @@ impl BuiltinAgent {
                 }
             }
             "finish_construct" => -20.0,
+            // 31.36: during Buy, raise the limits the best market card needs.
+            "increase_storage" if view["phase"] == "buy" && capacity_need(view, seat).is_some() => {
+                let need = capacity_need(view, seat).unwrap();
+                130.0
+                    + RESOURCE_KEYS
+                        .iter()
+                        .enumerate()
+                        .map(|(i, r)| number(&action["allocation"][*r]).min(need[i]) * 10.0)
+                        .sum::<f64>()
+            }
             "increase_storage" => {
                 let worthwhile =
                     bot_storage_budget(view, seat).is_some_and(|(cost, protection)| {
@@ -1480,6 +1721,51 @@ mod tests {
         assert_eq!(result.scores.iter().copied().fold(0.0, f64::max), 3.0);
         assert!(result.scores.iter().all(|s| (0.0..=3.0).contains(s)));
     }
+    // 31.36 (#rival-cards): the reference rivals that run shared tables buy the new
+    // cards, raise their limits toward them, play them and use military tactics.
+    #[test]
+    fn reference_policies_buy_and_play_capacity_cards() {
+        let mut game = GalacticReach::new([8; 32]).unwrap();
+        let mut agents: Vec<BuiltinAgent> = [
+            Strategy::Military,
+            Strategy::Economy,
+            Strategy::Expansion,
+            Strategy::Military,
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(i, s)| BuiltinAgent::new(s, [i as u8; 32]))
+        .collect();
+        let (mut bought, mut storage, mut played, mut tactics) = (0, 0, 0, 0);
+        for _ in 0..12000 {
+            let Some(seat) = game.active_seat() else {
+                break;
+            };
+            let view = game.observe(seat).unwrap();
+            let legal = game.legal_actions(seat);
+            let action = legal[agents[seat].select_action(&view, &legal)].clone();
+            let key = action["key"].as_str().unwrap_or("");
+            match action["type"].as_str().unwrap_or("") {
+                "buy" if capacity_card(key).is_some() => bought += 1,
+                "increase_storage" => storage += 1,
+                "special" | "move" | "build" | "colonize" if capacity_card(key).is_some() => {
+                    played += 1
+                }
+                "combat_tactic" if CAPACITY_TACTICS.iter().any(|t| action["tactic"] == t.0) => {
+                    tactics += 1
+                }
+                _ => {}
+            }
+            game.apply_action(seat, action).unwrap();
+        }
+        eprintln!(
+            "capacity cards: bought {bought}, capacity {storage}, played {played}, military tactics {tactics}"
+        );
+        assert!(game.scores().is_some(), "the 40-point match finishes");
+        assert!(bought >= 4, "rivals buy new market cards ({bought})");
+        assert!(storage >= 4, "rivals raise their limits ({storage})");
+        assert!(played >= 2, "rivals play new cards ({played})");
+    }
     #[test]
     fn execution_deadline_interrupts_javascript() {
         assert_eq!(
@@ -1491,7 +1777,7 @@ mod tests {
         let mut game = GalacticReach::new([17; 32]).unwrap();
         let before = game.observe(0).unwrap();
         let action = game.legal_actions(0)[0].clone();
-        game.deadline = Instant::now();
+        game.deadline.set(Instant::now());
         assert_eq!(
             game.apply_action(0, action).unwrap_err(),
             SIMULATION_TIMEOUT

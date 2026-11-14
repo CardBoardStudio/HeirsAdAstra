@@ -114,7 +114,9 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/31.36');
 // A full game of four browser rivals reaches the 40-point target with the new cards.
 {
   const c = vm.createContext({ console: { log() {}, warn() {}, error() {} } });
-  let src = app.replace("if (state.pendingCombat || state.phase !== 'operations' || state.activePlayer === 0 || state.winner !== null) return;", "if (state.pendingCombat || state.phase !== 'operations' || state.winner !== null) return;");
+  const guard = "if (state.pendingCombat || state.phase !== 'operations' || state.activePlayer === ME || state.winner !== null) return;";
+  assert(app.includes(guard), 'The rival guard this simulation lifts must still exist');
+  let src = app.replace(guard, "if (state.pendingCombat || state.phase !== 'operations' || state.winner !== null) return;");
   src = src.replace(/\n  if \(headless\) \{[\s\S]*$/, `\n  state=newState();state.players[0].strategy='economy';fillMarket();beginRound();
   return {state:()=>state,step(){ if(state.winner!==null)return; if(state.pendingCombat){const seat=combatActor();applyCombatAction(seat,chooseCombatAction(combatView(seat),combatActions(seat)));return;}
     if(state.phase==='operations')runAiOperation();else if(state.phase==='buy')runAiBuy(); }, prestige:id=>calculatePrestige(id)};
