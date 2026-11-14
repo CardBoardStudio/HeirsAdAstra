@@ -580,9 +580,11 @@ mod calibration_tests {
     }
     #[test]
     fn calibration_rejects_unknown_owners_and_invalid_rotations() {
+        let store = Arc::new(Store::open(":memory:").unwrap());
         let app = App {
             arena_seed: None,
-            store: Arc::new(Store::open(":memory:").unwrap()),
+            shared: crate::table_service(&store, std::time::Duration::ZERO),
+            store,
             dev_auth: false,
             preview_code_hash: None,
             registration_code_hash: None,

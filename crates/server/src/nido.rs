@@ -576,9 +576,11 @@ mod flow_tests {
         }
     }
     fn app(config: Config) -> App {
+        let store = Arc::new(Store::open(":memory:").unwrap());
         App {
             arena_seed: None,
-            store: Arc::new(Store::open(":memory:").unwrap()),
+            shared: crate::table_service(&store, std::time::Duration::ZERO),
+            store,
             dev_auth: false,
             preview_code_hash: None,
             registration_code_hash: None,
