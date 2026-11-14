@@ -2,6 +2,7 @@ mod accounts;
 mod arena;
 mod config;
 mod invites;
+mod lobby;
 mod nido;
 mod nido_chain;
 #[cfg(test)]
@@ -511,6 +512,11 @@ fn router(app: App) -> Router {
         .route("/api/invites/accept", post(invites::accept))
         .route("/api/tables", get(tables::list).post(tables::create))
         .route("/api/tables/{id}", get(tables::get))
+        .route("/api/tables/{id}/lobby", get(lobby::get))
+        .route("/api/tables/{id}/lobby/join", post(lobby::join))
+        .route("/api/tables/{id}/lobby/leave", post(lobby::leave))
+        .route("/api/tables/{id}/lobby/settings", post(lobby::settings))
+        .route("/api/tables/{id}/lobby/start", post(lobby::start))
         .route(
             "/api/tables/{id}/save",
             post(tables::save).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024 + 16384)),

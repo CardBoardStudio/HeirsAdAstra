@@ -95,7 +95,7 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
 }
 pub async fn catalog() -> Json<serde_json::Value> {
     Json(json!({"games":[
-        {"id":"galactic-reach","name":"Galactic Reach","href":"/galactic-reach/","rules_version":galactic_reach::RULES,"mode":"Browser playtest + AI arena","rated":true,"seats":4,"pool":GameKind::GalacticReach.pool(),"description":"Cards in Play: used cards wait for cleanup, and factions race to 20 Prestige. Start a new game."},
+        {"id":"galactic-reach","name":"Galactic Reach","href":"/galactic-reach/","rules_version":galactic_reach::RULES,"experiment":galactic_reach::EXPERIMENT,"mode":"Browser playtest + AI arena","rated":true,"seats":4,"pool":GameKind::GalacticReach.pool(),"description":"Resource Capacities: each resource has its own limit, and factions race to 20 Prestige. Start a new game."},
         {"id":"voidwright","name":"Voidwright","href":"/voidwright/","rules_version":RULES_VERSION,"mode":"Server tables + AI arena","rated":true,"seats":2,"pool":GameKind::Voidwright.pool(),"description":"Build a fleet of cards. Play with friends or compare AI players in the rated arena."}
     ],"policies":[
         {"game":"voidwright","id":"explorer","version":"explorer/1","name":"Explorer","description":"Experiments with random purchases and sometimes passes."},
