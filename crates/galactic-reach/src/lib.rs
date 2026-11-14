@@ -463,29 +463,62 @@ pub struct BuiltinAgent {
 fn number(v: &Value) -> f64 {
     v.as_f64().unwrap_or(0.0)
 }
-fn distance(a: &str, b: &str) -> f64 {
-    let coord = |s: &str| -> Vec<f64> { s.split(',').filter_map(|n| n.parse().ok()).collect() };
-    let a = coord(a);
-    let b = coord(b);
-    if a.len() != 2 || b.len() != 2 {
-        return 100.0;
-    }
-    ((a[0] - b[0]).abs() + (a[1] - b[1]).abs() + (a[0] + a[1] - b[0] - b[1]).abs()) / 2.0
+fn coord(s: &str) -> Option<(i32, i32)> {
+    let (q, r) = s.split_once(',')?;
+    Some((q.parse().ok()?, r.parse().ok()?))
 }
-// Portal information is public only in the new rules. Earlier policies retain their distance.
+fn point_distance((aq, ar): (i32, i32), (bq, br): (i32, i32)) -> f64 {
+    ((aq - bq).abs() + (ar - br).abs() + (aq + ar - bq - br).abs()) as f64 / 2.0
+}
+fn distance(a: &str, b: &str) -> f64 {
+    coord(a)
+        .zip(coord(b))
+        .map_or(100.0, |(a, b)| point_distance(a, b))
+}
+thread_local! {
+    static PORTAL_DISTANCES: RefCell<(Value,f64,Vec<f64>)> = const { RefCell::new((Value::Null,0.0,Vec::new())) };
+}
+// Cache only public geometry. Policies never recompute the same 18-edge metric
+// for every candidate Move in a full game; archived views use physical distance.
 fn travel_distance(view: &Value, a: &str, b: &str) -> f64 {
-    view["portalLinks"]
-        .as_object()
-        .into_iter()
-        .flatten()
-        .filter_map(|(entry, exit)| {
-            exit.as_str().map(|exit| {
-                distance(a, entry)
-                    + view["portalMovementCost"].as_f64().unwrap_or(2.0)
-                    + distance(exit, b)
-            })
-        })
-        .fold(distance(a, b), f64::min)
+    let Some(links) = view["portalLinks"].as_object() else {
+        return distance(a, b);
+    };
+    let cost = view["portalMovementCost"].as_f64().unwrap_or(2.0);
+    let index = |c: (i32, i32)| {
+        ((-10..=10).contains(&c.0) && (-10..=10).contains(&c.1))
+            .then_some(((c.0 + 10) * 21 + c.1 + 10) as usize)
+    };
+    let Some((a, b)) = coord(a).and_then(index).zip(coord(b).and_then(index)) else {
+        return distance(a, b);
+    };
+    PORTAL_DISTANCES.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if cache.0 != view["portalLinks"] || cache.1 != cost || cache.2.is_empty() {
+            let pairs: Vec<_> = links
+                .iter()
+                .filter_map(|(entry, exit)| coord(entry).zip(exit.as_str().and_then(coord)))
+                .collect();
+            let points: Vec<_> = (-10..=10)
+                .flat_map(|q| (-10..=10).map(move |r| (q, r)))
+                .collect();
+            let matrix = points
+                .iter()
+                .flat_map(|a| {
+                    points.iter().map(|b| {
+                        pairs
+                            .iter()
+                            .map(|(entry, exit)| {
+                                point_distance(*a, *entry) + cost + point_distance(*exit, *b)
+                            })
+                            .fold(point_distance(*a, *b), f64::min)
+                    })
+                })
+                .collect();
+            *cache = (view["portalLinks"].clone(), cost, matrix);
+        }
+        cache.2[a * 441 + b]
+    })
 }
 fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
     view["fleets"]
