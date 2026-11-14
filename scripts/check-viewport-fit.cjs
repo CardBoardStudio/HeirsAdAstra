@@ -233,7 +233,7 @@ const MEASURE = `(() => {
   natural.textContent = '.game-card > * { flex-grow: 0 !important; margin-bottom: 0 !important; }';
   document.head.append(natural);
   let slack = { px: 99, card: '' };
-  for (const card of [...scope.querySelectorAll('.game-card')].filter(shown)) {
+  for (const card of [...scope.querySelectorAll('.game-card')].filter(card => shown(card) && !folded(card))) {
     const last = [...card.children].filter(shown).at(-1);
     const pad = parseFloat(getComputedStyle(card).paddingBottom) + parseFloat(getComputedStyle(card).borderBottomWidth);
     const px = last ? Math.round(card.getBoundingClientRect().bottom - pad - last.getBoundingClientRect().bottom) : 99;
