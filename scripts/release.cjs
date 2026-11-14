@@ -154,7 +154,8 @@ ${marker}`);
   for (const rel of [...DECLARES, ...tests]) {
     replaceIn(rel, [[new RegExp(escape(from.rules), 'g'), to.rules],
       [new RegExp(`(\\.version,\\s*)${from.save}\\)`, 'g'), `$1${to.save})`],
-      [new RegExp(`(rulesRevision,\\s*)${from.rev}\\)`, 'g'), `$1${to.rev})`]]);
+      [new RegExp(`(rulesRevision,\\s*)${from.rev}\\)`, 'g'), `$1${to.rev})`],
+      [new RegExp(`(galactic-reach-[a-z-]+-v)${from.save}\\b`, 'g'), `$1${to.save}`]]);
   }
   replaceIn(`${GAME}/app.js`, [[`const SAVE_FORMAT_VERSION = ${from.save};`, `const SAVE_FORMAT_VERSION = ${to.save};`],
     [`const RULES_REVISION = ${from.rev};`, `const RULES_REVISION = ${to.rev};`]]);
