@@ -260,7 +260,7 @@ function check(opts) {
   const event = process.env.GITHUB_EVENT_PATH ? JSON.parse(fs.readFileSync(process.env.GITHUB_EVENT_PATH, 'utf8')) : {};
   const headRef = opts['head-ref'] ?? process.env.GITHUB_HEAD_REF ?? '';
   const baseRef = opts['base-ref'] ?? process.env.GITHUB_BASE_REF ?? 'main';
-  const base = opts.base || `origin/${baseRef}`;
+  const base = opts.base || event.pull_request?.base?.sha || `origin/${baseRef}`;
   const errors = [];
   for (const e of exists(CHANGES) ? entryNames(fs.readdirSync(file(CHANGES))) : []) {
     try { parseEntry(e, read(`${CHANGES}/${e}`)); } catch (err) { errors.push(err.message); }
