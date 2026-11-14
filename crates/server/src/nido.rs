@@ -17,11 +17,59 @@ pub fn load_config() -> Result<Config, Box<dyn std::error::Error>> {
         Ok("1") | Err(_) => true,
         _ => return Err("NIDO_AUTH must be 0 or 1".into()),
     };
-    Config::new(
+    let config = Config::new(
         enabled,
         std::env::var("NIDO_RPC_URL")
             .unwrap_or_else(|_| "https://soroban-testnet.stellar.org".into()),
-    )
+    )?;
+    match std::env::var("NIDO_WALLET_HOST") {
+        Ok(host) => config.with_wallet_host(&host),
+        Err(_) => Ok(config),
+    }
+}
+
+/// Nido's production testnet wallet.
+pub const DEFAULT_WALLET_HOST: &str = "test.nido.fyi";
+
+/// Every wallet URL is derived from one host. Account pages are
+/// `<account>.<host>`, except on a numbered PR preview (`362.test.nido.fyi`),
+/// where they are `<account>--362.test.nido.fyi`.
+impl Config {
+    pub fn with_wallet_host(mut self, host: &str) -> Result<Self, Box<dyn std::error::Error>> {
+        let parsed = url::Url::parse(&format!("https://{host}/"))
+            .map_err(|_| format!("NIDO_WALLET_HOST must be a host name, got {host:?}"))?;
+        if parsed.host_str() != Some(host) || parsed.port().is_some() || !host.contains('.') {
+            return Err(format!(
+                "NIDO_WALLET_HOST must be a lowercase host name such as test.nido.fyi, got {host:?}"
+            )
+            .into());
+        }
+        if host == "nido.fyi" {
+            return Err("NIDO_WALLET_HOST=nido.fyi is Nido mainnet; use test.nido.fyi".into());
+        }
+        self.wallet_host = host.into();
+        Ok(self)
+    }
+    pub fn connect_url(&self) -> String {
+        format!("https://{}/connect/", self.wallet_host)
+    }
+    /// WebAuthn RP ID (and origin host) of an account's wallet pages.
+    pub fn account_host(&self, account: &str) -> String {
+        let account = account.to_lowercase();
+        match self.wallet_host.split_once('.') {
+            Some((preview, rest)) if preview.bytes().all(|b| b.is_ascii_digit()) => {
+                format!("{account}--{preview}.{rest}")
+            }
+            _ => format!("{account}.{}", self.wallet_host),
+        }
+    }
+    pub fn wallet(&self) -> game::NidoWallet {
+        game::NidoWallet {
+            host: self.wallet_host.clone(),
+            connect_url: self.connect_url(),
+            account_url: format!("https://{}", self.account_host("{account}")),
+        }
+    }
 }
 
 pub fn migrate(db: &rusqlite::Connection) -> rusqlite::Result<()> {
@@ -109,7 +157,7 @@ pub async fn begin(
     .map_err(internal)?;
     Ok((
         [(header::SET_COOKIE, state_cookie(&app, &nonce, 300))],
-        Redirect::to(&url("https://test.nido.fyi/connect/", &app, &[])),
+        Redirect::to(&url(&app.nido.connect_url(), &app, &[])),
     )
         .into_response())
 }
@@ -159,7 +207,7 @@ async fn complete(
             return Err(bad("Login changed or expired. Please start again."));
         }
         return Ok(Redirect::to(&url(
-            &format!("https://{}.test.nido.fyi/sign/", account.to_lowercase()),
+            &format!("https://{}/sign/", app.nido.account_host(&account)),
             &app,
             &[("kind", "message"), ("message", &message)],
         ))
@@ -182,7 +230,7 @@ async fn complete(
     // Do not trust a key supplied by the wallet; re-read current authority after approval.
     let keys = app.nido.keys(&account).await?;
     let public_key = verify(
-        &account,
+        &app.nido.account_host(&account),
         &message,
         input.nido_signed.as_deref().unwrap_or(""),
         &keys,
@@ -320,7 +368,8 @@ struct ClientData {
     #[serde(default)]
     cross_origin: bool,
 }
-fn verify(account: &str, message: &str, encoded: &str, keys: &[String]) -> Result<String, String> {
+/// `rp` is the account's wallet host, which is both the WebAuthn RP ID and the origin host.
+fn verify(rp: &str, message: &str, encoded: &str, keys: &[String]) -> Result<String, String> {
     let fail = || "Nido signature verification failed.".to_string();
     if encoded.len() > 16000 {
         return Err(fail());
@@ -339,7 +388,6 @@ fn verify(account: &str, message: &str, encoded: &str, keys: &[String]) -> Resul
     let auth = hex::decode(envelope.authenticator_data).map_err(|_| fail())?;
     let client = hex::decode(envelope.client_data).map_err(|_| fail())?;
     let data: ClientData = serde_json::from_slice(&client).map_err(|_| fail())?;
-    let rp = format!("{}.test.nido.fyi", account.to_lowercase());
     if data.r#type != "webauthn.get"
         || data.origin != format!("https://{rp}")
         || data.cross_origin
@@ -398,18 +446,18 @@ mod tests {
     #[test]
     fn verifies_trusted_nido_message() {
         let (e, k) = assertion("nonce", "https://ctest.test.nido.fyi", 5);
-        assert!(verify("CTEST", "nonce", &e, &[k]).is_ok());
+        assert!(verify("ctest.test.nido.fyi", "nonce", &e, &[k]).is_ok());
     }
     #[test]
     fn rejects_self_asserted_key() {
         let (e, _) = assertion("nonce", "https://ctest.test.nido.fyi", 5);
-        assert!(verify("CTEST", "nonce", &e, &[]).is_err());
+        assert!(verify("ctest.test.nido.fyi", "nonce", &e, &[]).is_err());
     }
     #[test]
     fn rejects_wrong_challenge_and_account() {
         let (e, k) = assertion("nonce", "https://ctest.test.nido.fyi", 5);
-        assert!(verify("CTEST", "other", &e, std::slice::from_ref(&k)).is_err());
-        assert!(verify("COTHER", "nonce", &e, &[k]).is_err());
+        assert!(verify("ctest.test.nido.fyi", "other", &e, std::slice::from_ref(&k)).is_err());
+        assert!(verify("cother.test.nido.fyi", "nonce", &e, &[k]).is_err());
     }
     #[test]
     fn requires_user_verification_and_exact_origin() {
@@ -419,8 +467,48 @@ mod tests {
             ("https://ctest.test.nido.fyi", 0x15),
         ] {
             let (e, k) = assertion("nonce", origin, flags);
-            assert!(verify("CTEST", "nonce", &e, &[k]).is_err());
+            assert!(verify("ctest.test.nido.fyi", "nonce", &e, &[k]).is_err());
         }
+    }
+    #[test]
+    fn wallet_urls_follow_one_host() {
+        let base = || Config::new(true, "https://soroban-testnet.stellar.org".into()).unwrap();
+        let prod = base();
+        assert_eq!(prod.connect_url(), "https://test.nido.fyi/connect/");
+        assert_eq!(prod.account_host("CABC"), "cabc.test.nido.fyi");
+        let preview = base().with_wallet_host("362.test.nido.fyi").unwrap();
+        assert_eq!(preview.connect_url(), "https://362.test.nido.fyi/connect/");
+        assert_eq!(preview.account_host("CABC"), "cabc--362.test.nido.fyi");
+        assert_eq!(
+            preview.wallet().account_url,
+            "https://{account}--362.test.nido.fyi"
+        );
+        for bad in [
+            "https://test.nido.fyi",
+            "test.nido.fyi/",
+            "Test.Nido.fyi",
+            "localhost",
+            "test.nido.fyi:443",
+            "nido.fyi",
+            "",
+        ] {
+            assert!(base().with_wallet_host(bad).is_err(), "{bad}");
+        }
+    }
+    #[test]
+    fn preview_rp_rejects_production_assertion() {
+        let (e, k) = assertion("nonce", "https://ctest.test.nido.fyi", 5);
+        assert!(
+            verify(
+                "ctest--362.test.nido.fyi",
+                "nonce",
+                &e,
+                std::slice::from_ref(&k)
+            )
+            .is_err()
+        );
+        let (e, k) = assertion("nonce", "https://ctest--362.test.nido.fyi", 5);
+        assert!(verify("ctest--362.test.nido.fyi", "nonce", &e, &[k]).is_ok());
     }
 }
 
@@ -469,6 +557,8 @@ mod flow_tests {
             .unwrap();
         let location =
             url::Url::parse(response.headers()[header::LOCATION].to_str().unwrap()).unwrap();
+        let rp = app.nido.account_host(&account());
+        assert_eq!(location.host_str(), Some(rp.as_str()));
         let message = location
             .query_pairs()
             .find(|(k, _)| k == "message")
@@ -476,11 +566,7 @@ mod flow_tests {
             .1
             .to_string();
         assert!(message.contains(crate::nido_chain::NETWORK));
-        let (proof, _) = super::tests::assertion(
-            &message,
-            &format!("https://{}.test.nido.fyi", account().to_lowercase()),
-            5,
-        );
+        let (proof, _) = super::tests::assertion(&message, &format!("https://{rp}"), 5);
         Return {
             nido_address: None,
             nido_signed: Some(proof),
@@ -608,6 +694,38 @@ mod flow_tests {
         state.lock().unwrap().configuration = json!({"latestLedger":100,"error":"revoked"});
         check_session(&app, &session_headers).await.ok().unwrap();
         assert!(user(&app, &session_headers).is_err());
+        task.abort();
+    }
+    #[tokio::test]
+    async fn preview_wallet_login_round_trip() {
+        let (config, _state, task) = mock().await;
+        let app = app(config.with_wallet_host("362.test.nido.fyi").unwrap());
+        let headers = start(&app).await;
+        let proof = signed(&app, &headers).await;
+        let response = complete(State(app.clone()), headers, Query(proof))
+            .await
+            .ok()
+            .unwrap();
+        assert_eq!(
+            response.headers()[header::LOCATION],
+            "/?game=galactic-reach#arena"
+        );
+        task.abort();
+    }
+    #[tokio::test]
+    async fn begin_redirects_to_configured_wallet() {
+        let (config, _state, task) = mock().await;
+        let app = app(config.with_wallet_host("362.test.nido.fyi").unwrap());
+        let response = begin(State(app), HeaderMap::new(), Query(Start::default()))
+            .await
+            .ok()
+            .unwrap();
+        assert!(
+            response.headers()[header::LOCATION]
+                .to_str()
+                .unwrap()
+                .starts_with("https://362.test.nido.fyi/connect/?dapp=")
+        );
         task.abort();
     }
     #[tokio::test]

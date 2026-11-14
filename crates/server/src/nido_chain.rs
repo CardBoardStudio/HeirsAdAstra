@@ -12,6 +12,8 @@ const MAX_RESPONSE: usize = 512 * 1024;
 
 pub struct Config {
     pub enabled: bool,
+    /// Nido wallet host (`NIDO_WALLET_HOST`); see `nido.rs` for the URLs derived from it.
+    pub(crate) wallet_host: String,
     rpc: String,
     client: reqwest::Client,
     slots: tokio::sync::Semaphore,
@@ -24,6 +26,7 @@ impl Config {
         }
         Ok(Self {
             enabled,
+            wallet_host: crate::nido::DEFAULT_WALLET_HOST.into(),
             rpc,
             client: reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(8))

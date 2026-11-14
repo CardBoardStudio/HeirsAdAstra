@@ -196,6 +196,7 @@ async fn session(State(app): State<App>, headers: HeaderMap) -> Json<SessionInfo
         registration_available: app.dev_auth
             || app.registration_code_hash.is_some()
             || app.preview_code_hash.is_some(),
+        nido_wallet: Some(app.nido.wallet()),
     })
 }
 #[derive(Deserialize)]
