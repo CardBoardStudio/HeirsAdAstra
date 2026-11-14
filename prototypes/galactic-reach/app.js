@@ -2143,7 +2143,7 @@ function createGalacticReach(options = {}) {
       if (!Object.keys(state.fleets[coord]).length) delete state.fleets[coord];
     }
     const planet = state.planets[coord];
-    if (planet && planet.owner === playerId && planet.upgrade === 'starbase' && !pieces.some(p => p.type === 'starbase' && p.damage < p.hull)) planet.upgrade = null;
+    if (planet && planet.owner === playerId && planet.upgrade === 'starbase' && pieces.some(p=>p.type==='starbase') && !pieces.some(p => p.type === 'starbase' && p.damage < p.hull)) planet.upgrade = null;
   }
 
   function findRetreat(coord, playerId, preferred = null) {
@@ -2778,8 +2778,7 @@ function createGalacticReach(options = {}) {
       if (def.reaction || def.buyEffect) continue;
       if (!RESOURCES.some(r=>(gain[r]||0)>0&&p.resources[r]<reserve[r])) continue;
       aiManageStorage(playerId,gain);reserve=aiReserves(playerId);
-      addResources(p,gain,reserve);removeHandCard(p,card.id);
-      logEvent(`${p.name} converted ${def.name} into resources.`);
+      convertCard(playerId,card.id);
       if (overflowPlayer()===playerId) discardOverflow(playerId,aiOverflowAmounts(p.resources,resourceLimits(playerId),reserve));
     }
   }
@@ -3731,7 +3730,7 @@ function createGalacticReach(options = {}) {
       if (state.actionMode==='move' && state.moveSource===key) {
         const picker=moveUnitPicker(key);
         if (picker) actions.appendChild(picker);
-        actions.appendChild(actionButton(hostileAt(key,ME)?'Fight again here · use Move':'Stay here · use Move',()=>humanSelectHex(key)));
+        actions.appendChild(actionButton(hostileAt(key,ME)?'Fight again here · use Move':'Stay here · use Move',()=>humanSelectHex(key),state.reachable.includes(key)));
       }
       if (state.actionMode==='construct' && planet) {
         if (canBuildStructureAt(ME,key)) Object.keys(STRUCTURES).forEach(kind=>actions.appendChild(buildButton(`Build ${STRUCTURES[kind].name}`,kind)));

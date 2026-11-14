@@ -230,7 +230,7 @@ for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css 
   cp "crates/galactic-reach/rules/v31-$asset" "dist/galactic-reach/rules/31.36/$asset"
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/31.36/table.js
-cp prototypes/galactic-reach/cards.html dist/galactic-reach/rules/31.36/cards.html
+cp crates/galactic-reach/rules/v33-cards.html dist/galactic-reach/rules/31.36/cards.html
 # Preserve the exact 32.37 Cheaper Cards browser and shared-table engine.
 mkdir -p dist/galactic-reach/rules/32.37
 for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css shared.js cards.html; do
