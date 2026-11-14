@@ -14,7 +14,7 @@ function engine() {
   return {port,adapter};
 }
 const {port,adapter}=engine();
-assert.equal(adapter.rulesVersion,'galactic-reach/33.38');
+assert.equal(adapter.rulesVersion,'galactic-reach/35.40');
 const before=JSON.stringify(port.state);
 adapter.legalActions(0);adapter.observe(0);
 assert.equal(JSON.stringify(port.state),before,'Observation and legality must not mutate state');
@@ -88,3 +88,6 @@ assert.equal(JSON.stringify(ranked.adapter.scores()),JSON.stringify([3,2,2,0]),'
 console.log('Upgraded orders: unit minimums, +1 range, full-cost construction, optional paid colony building, and tied placements passed.');
 // 33.38 Split Moves (#movement) runs here too, so CI covers it without a workflow edit.
 require('./test-split-moves.cjs');
+
+// Corner portal mechanics run in the required core CI suite.
+require('./test-corner-portals.cjs');
