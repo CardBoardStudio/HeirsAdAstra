@@ -2,7 +2,7 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),crypto=require('node:crypto');
 const root=path.join(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8'),plain=x=>JSON.parse(JSON.stringify(x));
 const source=read('prototypes/galactic-reach/app.js'),boot=source.indexOf('\n  if (headless) {\n    state = newState();');
-function game(){let seed=1729,calls=0;const c=vm.createContext({console});vm.runInContext(source.slice(0,boot)+`\nrender=()=>{};saveGame=()=>{};captureHumanTurn=()=>{};completeHumanTurn=()=>{};scheduleAiTurn=()=>{};showMessage=()=>{};toast=()=>{};return{get state(){return state},set state(s){state=s},newState,chooseAiBuild,chooseAiMove,aiHomeCluster,aiInitialShipyard,aiMovementNeighbors,nearestGoal,pathToCoord,constructAt,constructionCost,runAiOperation,reachableFrom,movementRange,fleetGroup,finishRound,calculatePrestige,SHIP_STATS,STRUCTURES,EXCAVATION_COST,ALL_CARDS,VICTORY_TARGET,SAVE_KEY,TURN_HISTORY_KEY};}\n`,c);const e=c.createGalacticReach({headless:true,random:()=>{calls++;return(seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32;}});e.state=e.newState();e.state.phase='operations';e.state.turnStage='ai';e.state.players.forEach(p=>{p.hand=[];p.resources={matter:0,energy:0,biomass:0,data:0};});return{e,s:e.state,calls:()=>calls};}
+function game(){let seed=1729,calls=0;const c=vm.createContext({console});vm.runInContext(source.slice(0,boot)+`\nrender=()=>{};saveGame=()=>{};captureHumanTurn=()=>{};completeHumanTurn=()=>{};scheduleAiTurn=()=>{};showMessage=()=>{};toast=()=>{};return{get state(){return state},set state(s){state=s},newState,chooseAiBuild,chooseAiMove,aiHomeCluster,aiInitialShipyard,aiMovementNeighbors,nearestGoal,pathToCoord,constructAt,constructionCost,runAiOperation,reachableFrom,movementRange,fleetGroup,finishRound,calculatePrestige,SHIP_STATS,STRUCTURES,EXCAVATION_COST,ALL_CARDS,DEFAULT_VICTORY_TARGET,victoryTarget,SAVE_KEY,TURN_HISTORY_KEY};}\n`,c);const e=c.createGalacticReach({headless:true,random:()=>{calls++;return(seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32;}});e.state=e.newState();e.state.phase='operations';e.state.turnStage='ai';e.state.players.forEach(p=>{p.hand=[];p.resources={matter:0,energy:0,biomass:0,data:0};});return{e,s:e.state,calls:()=>calls};}
 const resource={matter:2,energy:1,biomass:1,data:1},yardFor=['-8,0','0,-8','8,0','0,8'];
 for(let id=0;id<4;id++){
  const{e,s,calls}=game(),p=s.players[id];s.round=3;p.strategy='expansion';p.resources={...resource};p.hand=[{key:'construct',id:'build'}];
@@ -51,13 +51,14 @@ function target(s,coord){const i=s.clusters.length,[q,r]=coord.split(',').map(Nu
  const before=JSON.stringify(s);for(let n=0;n<3&&s.phase==='operations'&&s.activePlayer===1;n++)e.runAiOperation();assert.notEqual(JSON.stringify(s),before,'Capacity blocker cannot stall operations');
 }
 {
- const{e,s}=game(),p=s.players[1];p.strategy='military';p.hand=[{id:'pathfinder',key:'pathfinderNetwork'}];s.activePlayer=1;
+ const{e,s}=game(),p=s.players[1];p.strategy='military';p.hand=[{id:'pathfinder',key:'slipstreamCharts'}];s.activePlayer=1;
  s.planets['1,0']={q:1,r:0,cluster:0,type:'matter',owner:0,occupiedBy:null,hasColony:true,upgrade:null};s.fleets={'0,0':{1:{settler:0,explorer:0,fleet:1}}};
- assert.equal(e.chooseAiMove(1,p.hand[0]),null,'Pathfinder cannot choose its forbidden attack');const before=JSON.stringify(s);e.runAiOperation();assert.notEqual(JSON.stringify(s),before);assert(p.inPlay.some(c=>c.id==='pathfinder'));assert.equal(p.resources.energy,1);assert.equal(p.resources.biomass,1,'An unavailable order may be converted normally instead; no illegal Move was spent');
+ assert.equal(e.chooseAiMove(1,p.hand[0]),null,'Pathfinder cannot choose its forbidden attack');const before=JSON.stringify(s);e.runAiOperation();assert.notEqual(JSON.stringify(s),before);assert(p.inPlay.some(c=>c.id==='pathfinder'));assert.equal(p.resources.data,2,'An unavailable order may be converted normally instead; no illegal Move was spent');
 }
-for(const points of [19,20,21]){const{e,s}=game();s.players[0].combatVictories=points-3;assert.equal(e.calculatePrestige(0),points);e.finishRound();assert.equal(s.winner,points>=20?0:null);}
+// 31.36 #victory: the target is a table setting, 40 by default; a table may choose 20.
+for(const [target,points] of [[undefined,39],[undefined,40],[undefined,41],[20,19],[20,20],[20,21]]){const{e,s}=game();if(target)s.victoryTarget=target;s.players[0].combatVictories=points-3;assert.equal(e.calculatePrestige(0),points);e.finishRound();assert.equal(s.winner,points>=(target||40)?0:null);}
 {
- const{e,s}=game();assert.equal(e.VICTORY_TARGET,20);assert.equal(s.version,30);assert.equal(s.rulesRevision,35);assert.equal(e.SAVE_KEY,'galactic-reach-save-v30');assert.equal(e.TURN_HISTORY_KEY,'galactic-reach-turn-history-v30');
+ const{e,s}=game();assert.equal(e.DEFAULT_VICTORY_TARGET,40);assert.equal(s.victoryTarget,40);assert.equal(e.victoryTarget(),40);assert.equal(s.version,31);assert.equal(s.rulesRevision,36);assert.equal(e.SAVE_KEY,'galactic-reach-save-v31');assert.equal(e.TURN_HISTORY_KEY,'galactic-reach-turn-history-v31');
  assert.deepEqual(plain(e.STRUCTURES.starbase.cost),{matter:2,energy:1,biomass:1,data:1});assert.deepEqual(plain(e.EXCAVATION_COST),{matter:1,energy:1,data:2});
  assert.deepEqual(plain(e.SHIP_STATS.explorer.cost),{energy:1,data:2});assert.deepEqual(plain(e.SHIP_STATS.settler.cost),{matter:1,energy:1});assert.deepEqual(plain(e.SHIP_STATS.fleet.cost),{matter:2,energy:1,biomass:1});
 }

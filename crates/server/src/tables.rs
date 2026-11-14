@@ -181,6 +181,7 @@ pub async fn get(
     let db = app.store.0.lock().map_err(internal)?;
     let (name, state, revision, rules) = load(&db, &id, &u.id)?;
     let lobby = crate::lobby::status(&db, &id)?;
+    let settings = crate::lobby::table_settings(&db, &id)?;
     drop(db);
     let save: serde_json::Value = state
         .as_deref()
@@ -189,7 +190,7 @@ pub async fn get(
         .map_err(internal)?
         .unwrap_or_default();
     Ok(Json(
-        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"save":save,"lobby":lobby,"lobby_url":crate::lobby::url(&id)}),
+        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"save":save,"lobby":lobby,"lobby_url":crate::lobby::url(&id),"settings":settings}),
     ))
 }
 #[derive(Deserialize)]
@@ -225,7 +226,8 @@ fn validate(save: &serde_json::Value) -> ApiResult<()> {
         || (s["version"] == 27 && s["rulesRevision"] == 32)
         || (s["version"] == 28 && s["rulesRevision"] == 33)
         || (s["version"] == 29 && s["rulesRevision"] == 34)
-        || (s["version"] == 30 && s["rulesRevision"] == 35))
+        || (s["version"] == 30 && s["rulesRevision"] == 35)
+        || (s["version"] == 31 && s["rulesRevision"] == 36))
         || (s["version"].as_u64().unwrap_or(0) >= 12 && s["phase"] == "directive")
         || (s["version"].as_u64().is_some_and(|v| v >= 9) && s["phase"] == "policy")
         || s["players"].as_array().is_none_or(|p| p.len() != 4)
@@ -493,6 +495,32 @@ mod tests {
                 "fewer or Easy rivals are not offered"
             );
         }
+        // 31.36 #victory: the host picks the Prestige target; 40 by default.
+        assert_eq!(
+            call(&a, "GET", &lobby, &host, json!({})).await.2["victory_target"],
+            40
+        );
+        assert_eq!(
+            call(
+                &a,
+                "POST",
+                &format!("{lobby}/settings"),
+                &host,
+                json!({"ai_rivals":3,"difficulty":"standard","victory_target":35})
+            )
+            .await
+            .0,
+            StatusCode::BAD_REQUEST,
+            "only listed targets"
+        );
+        call(
+            &a,
+            "POST",
+            &format!("{lobby}/settings"),
+            &host,
+            json!({"ai_rivals":3,"difficulty":"standard","victory_target":30}),
+        )
+        .await;
         assert_eq!(
             call(&a, "GET", "/api/tables", &host, json!({})).await.2[0]["status"],
             "waiting"
@@ -501,6 +529,14 @@ mod tests {
             .await
             .2;
         assert_eq!(started["table_url"], format!("/galactic-reach/?table={id}"));
+        assert_eq!(started["victory_target"], 30);
+        assert_eq!(
+            call(&a, "GET", &format!("/api/tables/{id}"), &host, json!({}))
+                .await
+                .2["settings"]["victory_target"],
+            30,
+            "the browser engine receives the chosen target"
+        );
         assert_eq!(
             call(&a, "GET", &format!("/api/tables/{id}"), &host, json!({}))
                 .await
@@ -548,7 +584,7 @@ mod tests {
             galactic_reach::RULES
         );
         // A realistic size above the normal 16 KiB request limit is accepted here only.
-        let save = json!({"state":{"version":30,"rulesRevision":35,"players":[{},{},{},{}],"planets":{},"fleets":{},"clusters":[],"round":3,"activePlayer":0,"phase":"operations","winner":null,"log":"x".repeat(40000)},"turnHistory":{"pending":null,"undo":null},"gameHistory":{"format":1,"complete":true,"events":[{"text":"x".repeat(1100000)}]}});
+        let save = json!({"state":{"version":31,"rulesRevision":36,"players":[{},{},{},{}],"planets":{},"fleets":{},"clusters":[],"round":3,"activePlayer":0,"phase":"operations","winner":null,"log":"x".repeat(40000)},"turnHistory":{"pending":null,"undo":null},"gameHistory":{"format":1,"complete":true,"events":[{"text":"x".repeat(1100000)}]}});
         let body = json!({"revision":0,"save":save});
         let mut wrong = body.clone();
         wrong["save"]["state"]["version"] = json!(5);

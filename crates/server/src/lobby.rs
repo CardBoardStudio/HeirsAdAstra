@@ -10,6 +10,9 @@ use axum::extract::Query;
 use rusqlite::{Connection, OptionalExtension, params};
 
 const SEATS: u32 = 4;
+/// Prestige targets a host may choose for a new table (rules #victory). 31.36 defaults to 40.
+pub const VICTORY_TARGETS: [u32; 5] = [20, 30, 40, 50, 60];
+pub const DEFAULT_VICTORY_TARGET: u32 = 40;
 /// Difficulty choices, named after the existing Galactic Reach AI policies.
 pub const DIFFICULTIES: [(&str, &str, &str); 2] = [
     (
@@ -35,7 +38,29 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
         table_id TEXT NOT NULL REFERENCES gr_lobbies(table_id) ON DELETE CASCADE,
         user_id TEXT NOT NULL REFERENCES accounts(id), joined INTEGER NOT NULL,
         PRIMARY KEY(table_id,user_id));",
+    )?;
+    // Additive: rooms created before the Prestige-target setting keep the 31.36 default.
+    let has_target = db
+        .prepare("PRAGMA table_info(gr_lobbies)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .any(|c| c.as_deref() == Ok("victory_target"));
+    if !has_target {
+        db.execute_batch(
+            "ALTER TABLE gr_lobbies ADD COLUMN victory_target INTEGER NOT NULL DEFAULT 40;",
+        )?;
+    }
+    Ok(())
+}
+
+/// Settings a started table hands to the browser engine for its new game.
+pub fn table_settings(db: &Connection, table_id: &str) -> ApiResult<Option<serde_json::Value>> {
+    db.query_row(
+        "SELECT victory_target FROM gr_lobbies WHERE table_id=?",
+        [table_id],
+        |r| Ok(json!({"victory_target":r.get::<_, u32>(0)?})),
     )
+    .optional()
+    .map_err(internal)
 }
 
 /// Opens a waiting room for a freshly created table and returns its invite token.
@@ -90,6 +115,7 @@ struct Lobby {
     invite: String,
     ai_rivals: u32,
     difficulty: String,
+    victory_target: u32,
     status: String,
     guests: Vec<(String, String)>,
 }
@@ -121,7 +147,7 @@ impl Lobby {
 fn load(db: &Connection, id: &str) -> ApiResult<Lobby> {
     let found = db
         .query_row(
-            "SELECT t.name,t.owner_id,a.name,l.invite,l.ai_rivals,l.difficulty,l.status
+            "SELECT t.name,t.owner_id,a.name,l.invite,l.ai_rivals,l.difficulty,l.status,l.victory_target
              FROM gr_lobbies l JOIN solo_tables t ON t.id=l.table_id JOIN accounts a ON a.id=t.owner_id
              WHERE l.table_id=?",
             [id],
@@ -133,6 +159,7 @@ fn load(db: &Connection, id: &str) -> ApiResult<Lobby> {
                     ai_rivals: r.get(4)?,
                     difficulty: r.get(5)?,
                     status: r.get(6)?,
+                    victory_target: r.get(7)?,
                     guests: vec![],
                 })
             },
@@ -173,6 +200,7 @@ fn view(app: &App, id: &str, lobby: &Lobby, me: &str) -> serde_json::Value {
     json!({
         "id":id,"name":lobby.name,"status":lobby.status,"host":host,"member":lobby.member(me),
         "rules_version":galactic_reach::RULES,"ai_rivals":lobby.ai_rivals,"difficulty":lobby.difficulty,
+        "victory_target":lobby.victory_target,"victory_targets":VICTORY_TARGETS,
         "max_ai_rivals":SEATS-lobby.humans(),"min_ai_rivals":u32::from(lobby.humans()==1),
         "difficulties":DIFFICULTIES.iter().map(|(id,name,about)|json!({"id":id,"name":name,"description":about})).collect::<Vec<_>>(),
         "seats":seats,"blocked":lobby.blocked(),
@@ -275,6 +303,11 @@ pub async fn leave(
 pub struct Settings {
     ai_rivals: u32,
     difficulty: String,
+    #[serde(default = "default_victory_target")]
+    victory_target: u32,
+}
+fn default_victory_target() -> u32 {
+    DEFAULT_VICTORY_TARGET
 }
 fn host_lobby(db: &Connection, id: &str, me: &str) -> ApiResult<Lobby> {
     valid_id(id)?;
@@ -305,7 +338,16 @@ pub async fn settings(
             "Rivals are fixed for now: Standard AI rivals fill every seat not taken by a player.",
         ));
     }
-    Ok(Json(view(&app, &id, &lobby, &u.id)))
+    // The Prestige target is the host's one table choice (rules #victory-target).
+    if !VICTORY_TARGETS.contains(&input.victory_target) {
+        return Err(bad("Choose a listed Prestige target."));
+    }
+    db.execute(
+        "UPDATE gr_lobbies SET victory_target=? WHERE table_id=?",
+        params![input.victory_target, id],
+    )
+    .map_err(internal)?;
+    Ok(Json(view(&app, &id, &load(&db, &id)?, &u.id)))
 }
 
 pub async fn start(

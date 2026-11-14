@@ -16,6 +16,7 @@ cp prototypes/galactic-reach/rulebook.html prototypes/galactic-reach/rulebook.cs
 cp prototypes/galactic-reach/app.js dist/galactic-reach/app.js
 cp prototypes/galactic-reach/playtest-notes.js prototypes/galactic-reach/playtest-notes.css dist/galactic-reach/
 cp prototypes/galactic-reach/table.js dist/galactic-reach/table.js
+cp prototypes/galactic-reach/cards.html dist/galactic-reach/cards.html
 cp prototypes/galactic-reach/replay.js dist/galactic-reach/replay.js
 cp prototypes/lab/index.html dist/index.html
 cp prototypes/lab/index.html dist/lab/index.html
@@ -214,6 +215,13 @@ for asset in app.js adapter.js index.html styles.css replay.js rulebook.html rul
   cp "crates/galactic-reach/rules/v29-$asset" "dist/galactic-reach/rules/29.34/$asset"
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/29.34/table.js
+
+# Preserve the exact 30.35 In-play Buy browser (old market, fixed 20-point target).
+mkdir -p dist/galactic-reach/rules/30.35
+for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css; do
+  cp "crates/galactic-reach/rules/v30-$asset" "dist/galactic-reach/rules/30.35/$asset"
+done
+cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/30.35/table.js
 # Testnet seat (Nido + zero-knowledge private draws) for the current tabletop.
 # The Docker image builds it in its own Node stage and sets SKIP_ZK_SEAT=1 here.
 if [ -z "${SKIP_ZK_SEAT:-}" ]; then

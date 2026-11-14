@@ -11,9 +11,9 @@ function game(){
  const {e,s}=game(),p=s.players[0];assert.equal(e.calculatePrestige(0),3);
  for(const c of s.clusters.slice(4,9))Object.assign(s.planets[c.center],{owner:0,hasColony:true});
  assert.equal(e.calculatePrestige(0),18);p.relicsExcavated=1;assert.equal(e.calculatePrestige(0),20);
- assert.deepEqual(plain(e.prestigeBreakdown(0)),{colonies:18,expansionBonus:0,relics:2,combat:0,total:20});
+ assert.deepEqual(plain(e.prestigeBreakdown(0)),{colonies:18,expansionBonus:0,relics:2,combat:0,cards:0,total:20});
  Object.assign(s.planets[s.clusters[4].center],{owner:1});assert.equal(e.calculatePrestige(0),17);
- p.combatVictories=3;assert.equal(e.calculatePrestige(0),20);p.cardsPurchased=100;assert.equal(e.calculatePrestige(0),20);
+ p.combatVictories=3;assert.equal(e.calculatePrestige(0),20);p.cardsPurchased=100;assert.equal(e.calculatePrestige(0),20);p.cardPrestige=6;assert.equal(e.calculatePrestige(0),26,'31.36 card Prestige counts; purchases alone still score nothing');p.cardPrestige=0;
 }
 {
  const {e,s,a}=game(),p=s.players[0];p.storageUpgrades=3;
