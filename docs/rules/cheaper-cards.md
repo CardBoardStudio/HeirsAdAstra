@@ -9,6 +9,10 @@
 - **Issue #41 (decided costs reading).** A Settler costs 1 Matter, 1 Energy and **1 Biomass** (was 1 Matter, 1 Energy). A Harvester costs 1 Matter, 1 Energy and **1 Data** (was 1 Matter, 1 Energy, 1 Biomass). Every faction starts with **1 Biomass and 1 Data** (was 2 Biomass), so it opens with 1 Matter, 1 Biomass and 1 Data after round-1 Colony production. #41's "production is unchanged" is superseded by the Harvester change above.
 - **Brighter map (interface only).** Terrain hexes use the legend swatches' full colours (`--matter`, `--energy`, `--biomass`, `--data`) instead of muted mixes. Building icons switch to dark ink on them, and fleet icons keep their dark outline. This is also applied to the archived 31.36 stylesheet (its hash is re-pinned), so 31.36 tables get the same map. Older archives keep their colours.
 
+  | Before (31.36 muted terrain) | After (legend colours, round 4 with units) |
+  | --- | --- |
+  | ![Muted terrain](cheaper-cards/hex-colours-before.png) | ![Legend-bright terrain](cheaper-cards/hex-colours-after.png) |
+
 | Id | Card | 31.36 cost | 32.37 cost | Total |
 | --- | --- | --- | --- | --- |
 | N01 | Ion Thrusters | 5E 1D | 5E | 6 → 5 (17% less) |
