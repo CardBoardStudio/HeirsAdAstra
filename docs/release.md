@@ -14,7 +14,7 @@ Change PRs merge into `main` and go live on dev. Several merges later, one relea
 1. Branch from `origin/main` and open the PR into `main`. Apply `playtest-safe` or `playtest-breaking` as before.
 2. Pair every logic change with its rulebook update in the same PR. In the rulebook prose, write "this playtest", not a version number. The cut updates version labels.
 3. If players would notice the change, add one entry in `changes/` ([format](../changes/README.md)). Use `compat: breaking` for `playtest-breaking` work.
-4. Do not touch `SAVE_FORMAT_VERSION`, `RULES_REVISION`, `RULES`, `EXPERIMENT`, the "New in this playtest" panel, `crates/galactic-reach/rules/`, `scripts/archive-hashes/`, or an existing `changes/` entry. The `Release policy` check (`node scripts/release.cjs check`) enforces this.
+4. Do not touch `SAVE_FORMAT_VERSION`, `RULES_REVISION`, `RULES`, `EXPERIMENT`, the "New in this playtest" panel, `crates/galactic-reach/rules/`, `scripts/archive-hashes/`, or an existing `changes/` entry. The `Rules contract` CI job enforces this with `node scripts/release.cjs check`.
 
 Two PRs never conflict over version numbers or release notes: each one adds its own entry file.
 
@@ -54,7 +54,7 @@ A batch with only `safe` entries makes no bump. It writes a save-compatible upda
 
 Then review what the script lists (rulebook prose, the catalog description), run the checks from [AGENTS.md](../AGENTS.md#verification) plus `node scripts/test-release.cjs`, and open `release/cut` as a PR into `main` labelled with the release's compatibility. Merge it. The Release PR now contains the bump. Verify the Release PR's preview, announce the reset if rules changed, and merge the Release PR with a **merge commit** (squash or rebase would detach `stable` from `main`). Render deploys `stable`. Verify the stable deployment's game and rulebook.
 
-The `Release policy` check fails a Release PR that still has pending entries: cut them first.
+The same check fails a Release PR that still has pending entries: cut them first.
 
 ## Worked example
 
