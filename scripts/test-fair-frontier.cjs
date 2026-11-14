@@ -21,9 +21,9 @@ function game(){
   {id:'secret-purchased',key:'move'}
  ];
  const before=JSON.stringify(g.s), calls=g.calls(), expected=[
-  {key:'construct',upgraded:false,starter:true,count:2},
-  {key:'move',upgraded:false,starter:false,count:1},
-  {key:'move',upgraded:true,starter:true,count:1}
+  {key:'construct',upgraded:false,level:1,starter:true,count:2},
+  {key:'move',upgraded:false,level:1,starter:false,count:1},
+  {key:'move',upgraded:true,level:2,starter:true,count:1}
  ];
  for(let n=0;n<20;n++)assert.deepEqual(plain(g.e.deckContents(g.p)),expected);
  const view=g.a.observe(0);assert.deepEqual(plain(view.players[0].deckContents),expected);

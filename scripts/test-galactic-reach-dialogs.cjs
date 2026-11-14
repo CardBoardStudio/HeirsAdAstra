@@ -141,6 +141,7 @@ function createDom(timers) {
       const button = new FakeElement('button');
       button.dataset[key] = match[1];
       const tag=parent.innerHTML.slice(parent.innerHTML.lastIndexOf('<',match.index),parent.innerHTML.indexOf('>',match.index)+1);
+      for(const [,name,value] of tag.matchAll(/data-([a-z-]+)="([^"]*)"/g))button.dataset[name.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=value;
       button.disabled=/\sdisabled(?:\s|>|=)/.test(tag);
       return button;
     }));
@@ -536,7 +537,7 @@ test('Probe resolves from empty space without selecting or reaching a world',()=
  assert.equal(after.fleets['2,2'][0].explorer,1);assert.deepEqual(after.players[0].resources,before.players[0].resources);assert.equal(game.randomCalls(),calls);
  assert.equal(after.clusters.filter(c=>c.scannedBy.includes(0)).length,before.clusters.filter(c=>c.scannedBy.includes(0)).length+1);
  assert.deepEqual(after.clusters.map(c=>c.revealedBy),before.clusters.map(c=>c.revealedBy));
- game.click('export-game-report');const report=game.downloads.at(-1);assert(report.save.gameHistory.events.some(e=>e.text.includes('Probe was replaced by an Excavate card')));const p=report.save.state.players[0];assert(![...p.hand,...p.deck,...p.discard].some(c=>c.id==='remote-probe'));assert(p.discard.some(c=>c.key==='excavate'),'the used Probe became an Excavate in discard');
+ game.click('export-game-report');const report=game.downloads.at(-1);assert(report.save.gameHistory.events.some(e=>e.text.includes('combined card stays in play')));const p=report.save.state.players[0];assert(![...p.hand,...p.deck,...p.discard].some(c=>c.id==='remote-probe'));assert(p.inPlay.some(c=>c.id==='remote-probe'),'Probe keeps the combined card in play');assert(!p.discard.some(c=>c.key==='excavate'));
 });
 test('Multiple Explorers let the player choose the Probe origin',()=>{
  const storage=createStorage(),state=boot(storage).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep',selected:null});
@@ -679,7 +680,7 @@ test('Buildings have no upgrade actions; Shipyard still offers commissions', () 
  yard.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='yard-order').click();
  assert.equal(yard.dom.contextButton('Upgrade Shipyard to II'),undefined);
  assert(yard.dom.contextButton('Commission Fleet'));
- assert(yard.dom.contextButton('Commission Explorer + Probe + Excavate'));
+ assert(yard.dom.contextButton('Commission Explorer + Probe / Excavate'));
  state.planets[coord].upgrade='harvester';writeSave(storage,state);
  const harvester=boot(storage);
  harvester.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='yard-order').click();
@@ -981,6 +982,21 @@ test('Buy upgrades and trashes starters in hand, discard and in play (28.33 #buy
   game=boot(storage);game.dom.element('trash-resource').value='matter';fire(game.dom.element('trash-resource'),'change');
   game.dom.lastQuery('[data-trash]').find(b=>b.dataset.trash==='up-play').click();game.settle();
   assert(!game.saved().players[0].inPlay.some(c=>c.id==='up-play'),'the in-play card was trashed');
+});
+test('the last conversion passes into Buy without waiting for a click',()=>{
+ const storage=createStorage(),state=boot(storage).saved();
+ state.players[0].hand=[{id:'last',key:'construct'}];state.players[0].resources={matter:3,energy:3,biomass:3,data:3};
+ writeSave(storage,state);const game=boot(storage);game.click('convert-all-button');
+ const after=game.saved();assert.equal(after.phase,'buy');assert.equal(after.activePlayer,0);assert.equal(after.players[0].hand.length,0);assert(after.players[0].inPlay.some(c=>c.id==='last'));
+});
+test('the combined card selects Excavate and keeps the choice through reload',()=>{
+ const storage=createStorage(),state=boot(storage).saved();state.players[0].hand=[{id:'combined',key:'probe'}];writeSave(storage,state);
+ let game=boot(storage);const buttons=game.dom.lastQuery('[data-order-card]');
+ assert.equal(buttons.filter(b=>b.dataset.orderCard==='combined').length,2);
+ buttons.find(b=>b.dataset.orderMode==='excavate').click();assert.equal(game.saved().actionMode,'excavate');
+ game=boot(storage);assert.equal(game.saved().actionMode,'excavate');
+ game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderMode==='probe').click();
+ assert.equal(game.saved().actionMode,'probe');
 });
 for (const { name, body } of tests) {
   try {

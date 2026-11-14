@@ -26,11 +26,11 @@ function fixture() {
 }
 {
   const {e,a,s}=game();
-  assert.equal(a.rulesVersion,'galactic-reach/34.39');
+  assert.equal(a.rulesVersion,'galactic-reach/36.41');
   assert.equal(s.clusters.filter(c=>c.kind==='world').length,13);
   assert.equal(s.clusters.filter(c=>c.kind==='moon').length,4);
-  assert.equal(Object.values(s.planets).filter(p=>p.special==='relic').length,12);
-  assert.equal(s.relicRow.length,3); assert.equal(s.relicDeck.length,9);
+  assert.equal(Object.values(s.planets).filter(p=>p.special==='relic').length,13);
+  assert.equal(s.relicRow.length,3); assert.equal(s.relicDeck.length,20);
   assert(!e.STRUCTURES.research && e.BASIC_CARDS.probe.order==='probe');
   assert(s.players.every(p=>p.relicsExcavated===0));
   for (const seat of [0,1,2,3]) {
@@ -56,7 +56,7 @@ for (const index of [0,1,2]) {
   assert(!g.s.planets[g.coord].upgrade && !g.s.planets[g.coord].hasColony,'No station or ownership created');
   assert.equal(g.p.relicsExcavated,1);assert.equal(g.e.calculatePrestige(0),5);
   assert.equal(g.s.activePlayer,1,'Excavation uses exactly one action');
-  assert.equal(g.s.relicRow[index].id,top.id);assert.equal(g.s.relicDeck.length,8);
+  assert.equal(g.s.relicRow[index].id,top.id);assert.equal(g.s.relicDeck.length,19);
   row.forEach((card,i)=>{if(i!==index)assert.equal(g.s.relicRow[i].id,card.id);});
   assert.throws(()=>g.a.applyAction(0,action),/Illegal action/,'Cannot repeat a consumed card');
 }
@@ -73,7 +73,7 @@ for (const bad of ['missingExplorer','missingCost','wrongSeat','buy','alreadyCla
   assert(!g.e.excavate(0,g.coord,'dig',g.s.relicRow[0]?.id),bad);
   assert.equal(JSON.stringify(g.s),before,`${bad} is atomic`);
 }
-// Recover every physical site, on worlds and moons, until the finite reward row empties.
+// Recover all thirteen physical sites; the expanded reward deck still has ten cards left.
 {
   const g=game(), sites=Object.keys(g.s.planets).filter(k=>g.s.planets[k].special==='relic'), rewards=new Set();
   for(let n=0;n<sites.length;n++) {
@@ -83,12 +83,12 @@ for (const bad of ['missingExplorer','missingCost','wrongSeat','buy','alreadyCla
     const choice=g.s.relicRow[Math.min(n%3,g.s.relicRow.length-1)];rewards.add(choice.key);
     const a=g.freshAdapter(), action=a.legalActions(0).find(a=>a.type==='excavate'&&a.coord===coord&&a.relic===choice.id);
     assert(action);a.applyAction(0,action);
-    assert.equal(g.s.relicRow.length,Math.min(3,11-n));
+    assert.equal(g.s.relicRow.length,Math.min(3,22-n));
     assert.equal(g.p.relicsExcavated,n+1);
   }
-  assert.equal(rewards.size,12);assert.equal(g.s.relicRow.length,0);assert.equal(g.s.relicDeck.length,0);
+  assert.equal(rewards.size,13);assert.equal(g.s.relicRow.length,3);assert.equal(g.s.relicDeck.length,7);
   assert.equal(Object.values(g.s.planets).filter(p=>p.special==='relic').length,0);
-  assert.equal(g.e.calculatePrestige(0),27,'Relic Prestige persists after its reward leaves the hand');
+  assert.equal(g.e.calculatePrestige(0),29,'Relic Prestige persists after its reward leaves the hand');
 }
 // Moons are movement/combat locations, but never construction, colonies, or production.
 {
@@ -107,4 +107,4 @@ for (const bad of ['missingExplorer','missingCost','wrongSeat','buy','alreadyCla
   for(let n=0;n<8;n++){const a=g.freshAdapter(),seat=a.activeSeat();a.applyAction(seat,a.legalActions(seat).find(x=>x.type===(g.s.phase==='buy'?'finish_buy':'pass')));}
   for(const p of g.s.players){assert.equal(p.resources.matter,before[p.id].matter+1);assert(!('moon' in p.resources));}
 }
-console.log('Excavation: public three-card choices, exact costs, atomic invalid choices, immediate refill, finite exhaustion, permanent trash/Prestige, consumed Explorers, and non-producing moons passed.');
+console.log('Excavation: public three-card choices, exact costs, atomic invalid choices, immediate refill, all thirteen sites, permanent trash/Prestige, consumed Explorers, and non-producing moons passed.');

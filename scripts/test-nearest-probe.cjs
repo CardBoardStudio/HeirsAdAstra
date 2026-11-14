@@ -1,8 +1,9 @@
+// Preserve immutable 33.38 Probe behavior; combined current semantics are in test-playtest-feedback.cjs.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),crypto=require('node:crypto');
 const root=path.resolve(__dirname,'..'),read=n=>fs.readFileSync(path.join(root,n),'utf8'),plain=x=>JSON.parse(JSON.stringify(x));
 function game(){
  const c=vm.createContext({});let e,seed=1729,calls=0;
- const src=read('prototypes/galactic-reach/app.js').replace('      clone, deckContents,','      runAiOperation, chooseAiMove, clone, deckContents,');vm.runInContext(read('prototypes/galactic-reach/adapter.js')+src,c);
+ const src=read('crates/galactic-reach/rules/v33-app.js').replace('      clone, deckContents,','      runAiOperation, chooseAiMove, clone, deckContents,');vm.runInContext(read('crates/galactic-reach/rules/v33-adapter.js')+src,c);
  const f=c.createGalacticAdapter;c.createGalacticAdapter=x=>{e=x;return f(x);};const a=c.createGalacticReach({headless:true,random:()=>{calls++;return ((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}});
  return {e,a,s:e.state,calls:()=>calls,fresh:()=>f(e)};
 }
