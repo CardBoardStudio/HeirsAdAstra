@@ -11,6 +11,12 @@ Two to four people play one Galactic Reach game in separate browsers; AI rivals 
 
 A table is an append-only log, and the live position is `fold(log)`.
 
+## Snapshots
+
+Replaying a log needs the exact engine that wrote it. A save-compatible edit to the current rules (for example 30.35's change to Probe, with no new version) can change how older events replay, while a solo save simply loads its stored state. Shared tables work the same way: after every change the service stores a snapshot after that event (`TableLog::save_snapshot`, the newest 64 kept). A snapshot holds the full state, secrets included, plus the engine's card and turn counters, and it never leaves the server. To rebuild a table, the service resumes from the newest snapshot that no later `undo` reaches behind, then replays only the events after it; without a usable snapshot it replays the whole log. If neither works, players see "This shared table was dealt with an earlier build of these rules…" instead of a server error. A snapshot is a server convenience, not part of the ZK seam: the log still defines the game, and in a ZK table each seat would keep its own private state.
+
+Before moving unfinished tables to a newer, save-compatible build, run `server snapshot-shared` with the build they were dealt on. It snapshots every unfinished table at its head and reports any it cannot load.
+
 ## Undo
 
 The seat to move may undo its own actions from the current turn (`POST /api/shared/<id>/undo {seq}`). Each action event records the turn it was taken in (the engine's runtime turn counter) and whether it revealed hidden information. The server compares `undoMark()` before and after the action: deck sizes, the market and relic piles, surveys, located relics and combat, plus any fresh shuffle. A revealing action is a checkpoint, and Undo stops just after the latest one. Undo appends an `undo` event `{to}`, and the fold skips that seat's later actions. Rows are never deleted, so the hash chain stays valid. No undone action ever caused a shuffle, so every logged permutation is replayed in order and the authority never deals again. After an undo the service folds the table again, and every connected seat receives the rolled-back view. If the server restarts, or an apply fails, the service forgets its in-memory engine and folds the log again. Once the game ends, the authority appends a `reveal` event and every seat may download the full record.
