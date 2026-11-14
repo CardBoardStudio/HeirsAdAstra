@@ -68,6 +68,13 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
 const replayRoutes=vm.runInNewContext('('+read('prototypes/lab/replay.js').match(/const REPLAY_PATHS=(.*);/)[1]+')');
 assert.equal(replayRoutes['galactic-reach/26.31'],'/galactic-reach/rules/26.31/','Pinned replay opens its archived browser');
 assert.equal(replayRoutes['galactic-reach/27.32'],'/galactic-reach/rules/27.32/','27.32 replay opens its archived In play browser');
+{
+ // 30.35 #computer-rivals: browser rivals also upgrade a starter that is in play during Buy.
+ const g=game(),{s,e}=g;const bot=s.players[1];s.phase='buy';s.activePlayer=1;
+ Object.assign(bot,{hand:[],deck:[],discard:[],inPlay:[{key:'construct',id:'bot-used',starter:true}],resources:{matter:4,energy:4,biomass:4,data:4},buyStartDiscardIds:[],buyStartInPlayIds:['bot-used'],passed:true});
+ const yard=Object.keys(s.planets)[0];Object.assign(s.planets[yard],{owner:1,upgrade:'starbase',occupiedBy:null});
+ e.runAiBuy();assert.equal(bot.inPlay.find(c=>c.id==='bot-used')?.upgraded,true,'A rival upgraded its in-play starter');
+}
 // 30.35 archives the exact published 29.34 engine; there, cards in play still cannot upgrade or be trashed.
 for(const [file,hash] of Object.entries(JSON.parse(read('scripts/in-play-buy-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,`${file} must stay the published 29.34 asset`);
 {
