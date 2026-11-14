@@ -1,4 +1,4 @@
-# In-play Buy upgrades and trash (28.33 amendment)
+# In-play Buy upgrades and trash (30.35)
 
 **Decision.** The captain decided on 2026-11-14, after a Nido playtest, that cards in play may be upgraded and trashed during your Buy turn. Under 28.33 as published, only hand and discard qualified.
 
@@ -15,12 +15,9 @@
 - The Market's upgrade and trash lists, and the automatic-Buy choice check (`humanBuyHasChoice`).
 - Browser rivals (`runAiBuy`) keep their 28.33 choices: they upgrade from hand or discard and trash from discard. The native arena policies choose among the adapter's legal actions, which now include in-play cards.
 
-**Versioning.** This changes legal Buy decisions, so it is `playtest-breaking`. To keep the change focused while a multiplayer branch stacks on it, it amends 28.33 in place on draft PR #42 and does **not** yet bump the version. **Before merge**, it needs the usual cutover:
-
-- bump to save format 29 / rules 34;
-- archive the exact 28.33 engine and assets (`crates/galactic-reach/rules/v28-*`, the native-policy module, archive hashes, `table.js` and replay paths);
-- keep 28.33 tables and guest saves on their archived engine.
-
-Until then, an older 28.33 table opened on this branch also gets the amended Buy.
+**Versioning.** This changes legal Buy decisions, so it is `playtest-breaking`. While this PR was open, `main` adopted 29.34 Streamlined Operations (#43), so this ruleset is **30.35** and builds on 29.34:
+- New games use **save format 30, rules 35** (`galactic-reach/30.35`, "In-play Buy playtest") and `-v30` browser keys.
+- The exact published 29.34 browser, manual and engine (from `main` `6222c8a`) are archived as `crates/galactic-reach/rules/v29-*` and served at `/galactic-reach/rules/29.34/`. Their hashes are pinned in `scripts/in-play-buy-archive-hashes.json`.
+- 29.34 tables, replays and `with_rules` use that archive. 28.33 keeps the archive #43 created. Old guest saves keep their own keys, and there is no migration.
 
 **Checks.** `scripts/test-in-play.cjs` covers upgrading and trashing an in-play card through the adapter. It also checks that a Buy effect used in the same turn cannot be trashed. `scripts/test-galactic-reach-dialogs.cjs` checks that the Market lists in-play starters and cards as upgradeable and trashable.

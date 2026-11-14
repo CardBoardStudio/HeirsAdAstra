@@ -208,5 +208,11 @@ for asset in app.js adapter.js index.html styles.css replay.js rulebook.html rul
   cp "crates/galactic-reach/rules/v28-$asset" "dist/galactic-reach/rules/28.33/$asset"
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/28.33/table.js
+# Preserve the exact 29.34 Streamlined Operations browser (Buy upgrades/trash from hand or discard only).
+mkdir -p dist/galactic-reach/rules/29.34
+for asset in app.js adapter.js index.html styles.css replay.js rulebook.html rulebook.css playtest-notes.js playtest-notes.css; do
+  cp "crates/galactic-reach/rules/v29-$asset" "dist/galactic-reach/rules/29.34/$asset"
+done
+cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/29.34/table.js
 # Testnet seat (Nido + zero-knowledge private draws) for the current tabletop.
 ./zk/build-web.sh "$PWD/dist/galactic-reach/zk"
