@@ -168,6 +168,11 @@ impl GalacticReach {
     pub fn private_state(&self, seat: usize) -> Result<Value, String> {
         self.eval_json(&format!("JSON.stringify(game.privateState({seat}))"))
     }
+    /// The current turn and a summary of everything an action could reveal; a
+    /// shared table compares it before and after each action to place Undo checkpoints.
+    pub fn undo_mark(&self) -> Result<Value, String> {
+        self.eval_json("JSON.stringify(game.undoMark())")
+    }
     /// Legal choices a seat cannot check from its private state alone.
     pub fn hints(&self, seat: usize) -> Result<Value, String> {
         self.eval_json(&format!("JSON.stringify(game.hints({seat}))"))

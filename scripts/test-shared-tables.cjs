@@ -96,4 +96,18 @@ assert.equal(game.adapter.privateState(1).pendingCombat.commitments.attacker, 'h
 assert.equal(game.adapter.privateState(0).pendingCombat.commitments.attacker, 'concentratedFire');
 state.pendingCombat = null;
 
-console.log('Shared table authority, fold and private views passed.');
+// Undo marks (rulebook #shared-tables): a conversion stays inside the turn and
+// reveals nothing; passing starts a new turn.
+{
+  const fresh = engine(recorder(9).shuffle), seat = fresh.adapter.activeSeat();
+  const before = plain(fresh.adapter.undoMark());
+  const convert = plain(fresh.adapter.legalActions(seat)).find(a => a.type === 'resource');
+  fresh.adapter.applyAction(seat, convert);
+  const after = plain(fresh.adapter.undoMark());
+  assert.equal(after.turn, before.turn, 'a conversion keeps the turn');
+  assert.deepEqual(after.reveal, before.reveal, 'and reveals nothing');
+  fresh.adapter.applyAction(seat, {type: 'pass'});
+  assert(plain(fresh.adapter.undoMark()).turn > before.turn, 'passing starts the Buy turn');
+}
+
+console.log('Shared table authority, fold, private views and undo marks passed.');

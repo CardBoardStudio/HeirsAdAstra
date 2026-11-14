@@ -510,6 +510,7 @@ button.choice-card, label.choice-card { position: relative; display: flex; min-h
 .shared-seats li small { color:#9fb6cc; font-size:11px; }
 .shared-seats li.acting { border-color:var(--player); box-shadow:0 0 0 1px var(--player); }
 .shared-seats li.you { font-weight:700; }
+.shared-undo-note { flex-basis:100%; font-size:13px; color:#f2cf66; }
 .app-shell[inert] { opacity:.45; }
 
 @media (max-width: 760px) {
