@@ -614,9 +614,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         config.dev_auth,
         config.preview_code_hash.is_some()
     );
+    let shared = app.shared.clone();
     axum::serve(listener, router(app))
-        .with_graceful_shutdown(async {
+        .with_graceful_shutdown(async move {
             shutdown_signal().await;
+            // End live table streams so browsers reconnect to the next server, and
+            // never linger serving stale tables if a connection still hangs on.
+            shared.close();
+            tokio::spawn(async {
+                tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                std::process::exit(0);
+            });
         })
         .await?;
     Ok(())

@@ -550,6 +550,17 @@ async fn a_live_view_streams_the_current_seat_view_first() {
             .unwrap()
             > seq
     );
+    // At shutdown every stream ends, so browsers reconnect to the next server
+    // rather than hearing a frozen copy of the table from the old process.
+    a.shared.close();
+    let ended = loop {
+        match tokio::time::timeout(Duration::from_secs(5), body.frame()).await {
+            Ok(None) => break true,
+            Ok(Some(_)) => continue,
+            Err(_) => break false,
+        }
+    };
+    assert!(ended, "the stream ends at shutdown");
     let stranger = account(&a, "Cy").await;
     assert_eq!(
         crate::router(a.clone())
