@@ -108,11 +108,7 @@ impl Lobby {
     /// Why Start cannot open this configuration yet, if it cannot.
     fn blocked(&self) -> Option<&'static str> {
         if self.humans() + self.ai_rivals != SEATS {
-            Some(if self.guests.is_empty() {
-                "The current rules always seat three rivals. Fewer rivals needs a rules change, which is not made yet."
-            } else {
-                "The current rules always seat four factions. Fill every empty seat with an AI rival."
-            })
+            Some("The current rules always seat four factions.")
         } else if self.difficulty != "standard" {
             Some("Easy rivals (Wanderer) play in the AI arena but not yet in the browser game.")
         } else {
@@ -156,6 +152,10 @@ fn load(db: &Connection, id: &str) -> ApiResult<Lobby> {
         .collect::<Result<_, _>>()
         .map_err(internal)?;
     lobby.shared = crate::shared::status(db, id)?.is_some();
+    // Rivals are not a host choice (captain, 2026-11-14): Standard AI rivals fill
+    // every seat a person has not taken. Fewer or Easy rivals return once built.
+    lobby.ai_rivals = SEATS - lobby.humans();
+    lobby.difficulty = "standard".into();
     Ok(lobby)
 }
 
@@ -302,22 +302,12 @@ pub async fn settings(
     let u = user(&app, &headers)?;
     let db = app.store.0.lock().map_err(internal)?;
     let lobby = host_lobby(&db, &id, &u.id)?;
-    let max = SEATS - lobby.humans();
-    let min = u32::from(lobby.humans() == 1);
-    if input.ai_rivals < min || input.ai_rivals > max {
-        return Err(bad(format!(
-            "Choose between {min} and {max} AI rivals for this table."
-        )));
+    if input.ai_rivals != lobby.ai_rivals || input.difficulty != lobby.difficulty {
+        return Err(bad(
+            "Rivals are fixed for now: Standard AI rivals fill every seat not taken by a player.",
+        ));
     }
-    if !DIFFICULTIES.iter().any(|d| d.0 == input.difficulty) {
-        return Err(bad("Choose a listed difficulty."));
-    }
-    db.execute(
-        "UPDATE gr_lobbies SET ai_rivals=?,difficulty=? WHERE table_id=?",
-        params![input.ai_rivals, input.difficulty, id],
-    )
-    .map_err(internal)?;
-    Ok(Json(view(&app, &id, &load(&db, &id)?, &u.id)))
+    Ok(Json(view(&app, &id, &lobby, &u.id)))
 }
 
 pub async fn start(
