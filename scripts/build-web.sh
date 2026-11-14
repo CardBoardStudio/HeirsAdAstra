@@ -238,6 +238,13 @@ for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css 
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/32.37/table.js
 
+# Preserve the exact 33.38 Split Moves browser and shared-table engine.
+mkdir -p dist/galactic-reach/rules/33.38
+for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css shared.js cards.html; do
+  cp "crates/galactic-reach/rules/v33-$asset" "dist/galactic-reach/rules/33.38/$asset"
+done
+cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/33.38/table.js
+
 # Testnet seat (Nido + zero-knowledge private draws) for the current tabletop.
 # The Docker image builds it in its own Node stage and sets SKIP_ZK_SEAT=1 here.
 if [ -z "${SKIP_ZK_SEAT:-}" ]; then

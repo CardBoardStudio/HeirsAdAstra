@@ -16,8 +16,9 @@ use std::time::{Duration, Instant};
 /// cutover never strands a running shared game. At a cutover, archive the
 /// outgoing engine (rules/vNN-*, with `include_str!` arms in `boot`) and add its
 /// revision here.
-pub const SHARED_RULES: [&str; 4] = [
+pub const SHARED_RULES: [&str; 5] = [
     RULES,
+    "galactic-reach/33.38",
     "galactic-reach/32.37",
     "galactic-reach/31.36",
     "galactic-reach/30.35",
@@ -26,9 +27,9 @@ pub const SHARED_RULES: [&str; 4] = [
 pub fn shared_rules(rules: &str) -> Option<&'static str> {
     SHARED_RULES.iter().find(|r| **r == rules).copied()
 }
-pub const RULES: &str = "galactic-reach/33.38";
+pub const RULES: &str = "galactic-reach/34.39";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "Split Moves playtest";
+pub const EXPERIMENT: &str = "Balance Package playtest";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -122,6 +123,7 @@ impl GalacticReach {
             "galactic-reach/30.35" => "galactic-reach/30.35",
             "galactic-reach/31.36" => "galactic-reach/31.36",
             "galactic-reach/32.37" => "galactic-reach/32.37",
+            "galactic-reach/33.38" => "galactic-reach/33.38",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -286,6 +288,7 @@ impl GalacticReach {
                     "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
                     "galactic-reach/32.37" => include_str!("../rules/v32-adapter.js"),
+                    "galactic-reach/33.38" => include_str!("../rules/v33-adapter.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -319,6 +322,7 @@ impl GalacticReach {
                     "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
                     "galactic-reach/32.37" => include_str!("../rules/v32-app.js"),
+                    "galactic-reach/33.38" => include_str!("../rules/v33-app.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -1855,6 +1859,7 @@ mod tests {
             "galactic-reach/30.35",
             "galactic-reach/31.36",
             "galactic-reach/32.37",
+            "galactic-reach/33.38",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1891,6 +1896,7 @@ mod tests {
                             | "galactic-reach/30.35"
                             | "galactic-reach/31.36"
                             | "galactic-reach/32.37"
+                            | "galactic-reach/33.38"
                     ) {
                         0
                     } else {
