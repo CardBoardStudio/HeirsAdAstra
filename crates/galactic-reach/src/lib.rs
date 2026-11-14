@@ -1773,7 +1773,10 @@ mod tests {
         let away = |fleet: u32| json!({"type":"move","source":"4,0","destination":"5,0","moveGroup":"ships","units":{"settler":0,"explorer":0,"fleet":fleet}});
         assert_eq!(agent.score(&on_center, &away(1)), -10.0);
         on_center["fleets"]["4,0"]["0"]["fleet"] = json!(2);
-        assert!(agent.score(&on_center, &away(1)) > -10.0, "a second Fleet may go");
+        assert!(
+            agent.score(&on_center, &away(1)) > -10.0,
+            "a second Fleet may go"
+        );
 
         // Wonders: the observation's printed Prestige replaces the 31.36 table.
         view["market"] = json!([{"key":"dysonLattice"}]);
