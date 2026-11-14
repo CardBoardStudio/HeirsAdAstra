@@ -72,7 +72,7 @@ function createGalacticReach(options = {}) {
   const EXCAVATION_COST = { matter: 1, energy: 1, data: 2 };
   const LEGEND_TOOLTIPS = {
     settler: 'Colony ship. Base movement 1; Move II adds 1. It has 1 attack and 2 hull (4 while defending), reveals worlds by entering them, and is required to colonize. Commission at a Shipyard to receive a Colonize card.',
-    explorer: 'Explorer: 1 attack, 1 hull. Before the first volley, pay 1 Energy per Explorer to escape to one legal adjacent hex. Reveals terrain by entering it; use Probe to locate relics. Base movement 3; Move II adds 1. Commission at a Shipyard to receive Probe and Excavate in discard. Play it at a relic, pay 1 Matter, 1 Energy, and 2 Data, and choose a relic card. Consume one Explorer and trash Excavate.',
+    explorer: 'Explorer: 1 attack, 1 hull. Before the first volley, pay 1 Energy per Explorer to escape to one legal adjacent hex. Reveals terrain by entering it; use Probe to locate relics. Base movement 3; Move II adds 1. Commission at a Shipyard to receive Probe in discard; a successful Probe becomes Excavate. Play it at a relic, pay 1 Matter, 1 Energy, and 2 Data, and choose a relic card. Consume one Explorer and trash Excavate.',
     fleet: 'Reveals terrain by entering it; use Probe to locate relics. Base movement 2 (3 with Move II), with 3 attack and 7 hull. You may have up to 10 Fleets on the map.',
     colony: 'Claims a seven-hex world. Colonies must occupy the world’s center hex.',
     harvester: 'Produces 1 local resource per round. Buildings have no upgrades.',
@@ -82,7 +82,7 @@ function createGalacticReach(options = {}) {
     colonize: 'Use a Settler on the center hex of an eligible world to found or capture its Colony, then permanently trash Colonize.',
     construct: 'Build one structure on any empty planet hex adjacent to your Colony, or commission one ship at a Shipyard.',
     move: 'Move ships or Explorers up to the selected group’s speed.',
-    probe: 'Use an Operations action from your Explorer anywhere on the map to privately locate the nearest unlocated remaining relic. Keep the Explorer and permanently trash Probe.',
+    probe: 'Use an Operations action from your Explorer anywhere on the map to privately locate the nearest unlocated remaining relic. Keep the Explorer; Probe is replaced by an Excavate card in your discard.',
     excavate: 'With an Explorer at a located relic, pay 1 Matter, 1 Energy, and 2 Data. Choose a relic card into discard, gain 2 Prestige, remove the relic, and trash Excavate. Consume one Explorer.'
   };
   const BOARD_ICONS = {
@@ -99,7 +99,7 @@ function createGalacticReach(options = {}) {
     colonize: { name: 'Colonize', kind: 'Basic', accent: 'var(--biomass)', resource: { biomass: 1 }, order: 'colonize', text: 'Establish a Colony with a Settler on a world’s center hex, then permanently trash Colonize.' },
     construct: { name: 'Construct', kind: 'Basic', accent: 'var(--matter)', resource: { matter: 1 }, order: 'construct', text: 'Build on any empty planet hex adjacent to your Colony, or commission one ship.', cost: { matter: 1, data: 1 } },
     move: { name: 'Move', kind: 'Basic', accent: 'var(--energy)', resource: { energy: 1 }, order: 'move', text: 'Move one ship group or Explorer team at its own speed.', cost: { energy: 1, data: 1 } },
-    probe: { name: 'Probe', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'probe', text: 'From your Explorer anywhere on the map, privately locate its nearest unlocated remaining relic. Keep the Explorer and permanently trash Probe.' },
+    probe: { name: 'Probe', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'probe', text: 'From your Explorer anywhere on the map, privately locate its nearest unlocated remaining relic. Keep the Explorer; this Probe is replaced by an Excavate card in your discard.' },
     excavate: { name: 'Excavate', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'excavate', text: 'At your Explorer’s located relic, pay 1 Matter, 1 Energy, and 2 Data. Choose a relic card into discard and gain 2 Prestige. Remove the relic and trash this card; consume one Explorer.' }
   };
 
@@ -2069,8 +2069,10 @@ function createGalacticReach(options = {}) {
     if (!site) return false;
     if (dryRun) return true;
     site.cluster.scannedBy.push(playerId);
+    // 30.35 #orders: a successful Probe leaves the deck and an Excavate card enters discard (#gaining-cards).
     removeHandCard(player,cardId,'trash');
-    completeAction(playerId,`${player.name} used Probe from an Explorer to privately locate the nearest unlocated relic. Probe was permanently trashed.`);
+    gainCard(player,makeCard('excavate'));
+    completeAction(playerId,`${player.name} used Probe from an Explorer to privately locate the nearest unlocated relic. Probe was replaced by an Excavate card in discard.`);
     if (!headless&&playerId===ME) toast(`Relic signal located at ${site.coord}.`);
     return true;
   }
@@ -2117,7 +2119,8 @@ function createGalacticReach(options = {}) {
     if (dryRun) return true;
     payCost(player,discountedCost(SHIP_STATS[type].cost,discountResource),0,0,discountEnergy);
     ensureFleet(coord,playerId)[type] += 1;
-    const bundled=type==='settler'?['colonize']:type==='explorer'?['probe','excavate']:[];
+    // 30.35: an Explorer brings only Probe; Excavate comes from a successful Probe.
+    const bundled=type==='settler'?['colonize']:type==='explorer'?['probe']:[];
     for (const key of bundled) gainCard(player,makeCard(key));
     if (bundled.length) logEvent(`${player.name} commissioned ${SHIP_STATS[type].name} and gained ${bundled.map(key=>BASIC_CARDS[key].name).join(' and ')} in discard.`);
     return true;
