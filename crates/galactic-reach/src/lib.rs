@@ -16,8 +16,9 @@ use std::time::{Duration, Instant};
 /// cutover never strands a running shared game. At a cutover, archive the
 /// outgoing engine (rules/vNN-*, with `include_str!` arms in `boot`) and add its
 /// revision here.
-pub const SHARED_RULES: [&str; 4] = [
+pub const SHARED_RULES: [&str; 5] = [
     RULES,
+    "galactic-reach/33.38",
     "galactic-reach/32.37",
     "galactic-reach/31.36",
     "galactic-reach/30.35",
@@ -26,9 +27,9 @@ pub const SHARED_RULES: [&str; 4] = [
 pub fn shared_rules(rules: &str) -> Option<&'static str> {
     SHARED_RULES.iter().find(|r| **r == rules).copied()
 }
-pub const RULES: &str = "galactic-reach/33.38";
+pub const RULES: &str = "galactic-reach/34.39";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "Split Moves playtest";
+pub const EXPERIMENT: &str = "Balance Package playtest";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -122,6 +123,7 @@ impl GalacticReach {
             "galactic-reach/30.35" => "galactic-reach/30.35",
             "galactic-reach/31.36" => "galactic-reach/31.36",
             "galactic-reach/32.37" => "galactic-reach/32.37",
+            "galactic-reach/33.38" => "galactic-reach/33.38",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -286,6 +288,7 @@ impl GalacticReach {
                     "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
                     "galactic-reach/32.37" => include_str!("../rules/v32-adapter.js"),
+                    "galactic-reach/33.38" => include_str!("../rules/v33-adapter.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -319,6 +322,7 @@ impl GalacticReach {
                     "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
                     "galactic-reach/32.37" => include_str!("../rules/v32-app.js"),
+                    "galactic-reach/33.38" => include_str!("../rules/v33-app.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -538,8 +542,17 @@ fn capacity_card(key: &str) -> Option<([f64; 4], f64, bool)> {
         .find(|c| c.0 == key)
         .map(|c| (c.1, c.2, c.3))
 }
-/// Hits, shields and pierce of a combat tactic: the two basic tactics or a military card.
-fn tactic_stats(key: &str) -> (f64, f64, bool) {
+/// Hits, shields and pierce of a combat tactic: the observation's printed stats when the
+/// rules publish them (34.39 `tacticStats`), otherwise the basic tactics or the 31.36 table.
+fn tactic_stats(view: &Value, key: &str) -> (f64, f64, bool) {
+    let printed = &view["tacticStats"][key];
+    if printed.is_object() {
+        return (
+            number(&printed["attack"]),
+            number(&printed["shield"]),
+            printed["pierce"] == true,
+        );
+    }
     match key {
         "concentratedFire" => (1.0, 0.0, false),
         "defensiveScreen" => (0.0, 2.0, false),
@@ -565,9 +578,18 @@ fn observed_cost(view: &Value, key: &str) -> Option<[f64; 4]> {
         number(&costs[index][RESOURCE_KEYS[i]])
     }))
 }
+/// Prestige a market card gives when bought, as printed in the observation (34.39
+/// `marketPrestige`, e.g. Dyson Lattice 5); `None` for earlier rules or other cards.
+fn observed_buy_prestige(view: &Value, key: &str) -> Option<f64> {
+    let market = view["market"].as_array()?;
+    let index = market.iter().position(|c| c["key"] == key)?;
+    let prestige = number(&view["marketPrestige"].as_array()?[index]);
+    (prestige > 0.0).then_some(prestige)
+}
 fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
-    let (table_cost, prestige, military) = capacity_card(key)?;
+    let (table_cost, table_prestige, military) = capacity_card(key)?;
     let cost = observed_cost(view, key).unwrap_or(table_cost);
+    let prestige = observed_buy_prestige(view, key).unwrap_or(table_prestige);
     let me = &view["players"][seat];
     if military && bot_units(view, seat, "fleet") == 0.0 {
         return None;
@@ -637,6 +659,31 @@ fn bot_cards(me: &Value, order: &str) -> f64 {
         .filter(|c| bot_order(c["key"].as_str().unwrap_or("")) == order)
         .map(|c| c["count"].as_f64().unwrap_or(1.0))
         .sum()
+}
+/// Archive Purge (34.39 #cards, #rival-cards): the level I starters in discard a rival
+/// trashes, in discard order. It keeps at least 3 Move-order and 2 Construct-order
+/// cards, because Move and Construct are not sold; the browser rivals choose the same.
+fn bot_purge_choice(me: &Value, max: usize) -> Vec<Value> {
+    let mut owned = [bot_cards(me, "move"), bot_cards(me, "construct")];
+    let mut trash = vec![];
+    for card in me["discard"].as_array().into_iter().flatten() {
+        if trash.len() >= max {
+            break;
+        }
+        if card["starter"] != true || card["upgraded"] == true {
+            continue;
+        }
+        let (slot, keep) = match card["key"].as_str() {
+            Some("move") => (0, 3.0),
+            Some("construct") => (1, 2.0),
+            _ => continue,
+        };
+        if owned[slot] > keep {
+            owned[slot] -= 1.0;
+            trash.push(card["id"].clone());
+        }
+    }
+    trash
 }
 fn bot_yards(view: &Value, seat: usize) -> usize {
     view["planets"]
@@ -947,7 +994,8 @@ impl BuiltinAgent {
                         .count() as f64;
                 let probability = fire / (4.0 - used.len() as f64);
                 // Printed stats: basic tactics, or a 31.36 military card (Phase Lance pierces).
-                let (hits, shield, pierce) = tactic_stats(action["tactic"].as_str().unwrap_or(""));
+                let (hits, shield, pierce) =
+                    tactic_stats(view, action["tactic"].as_str().unwrap_or(""));
                 let screen = shield > 0.0;
                 let dealt = (own_attack + hits
                     - if pierce {
@@ -1136,7 +1184,22 @@ impl BuiltinAgent {
                 let here_center = here["cluster"]
                     .as_u64()
                     .is_some_and(|id| view["clusters"][id as usize]["center"] == from);
-                if !explorer && settlers > 0.0 && here_center && (here["owner"] != json!(seat)) {
+                // 34.39 #combat: a capture needs a Fleet too, so only Settlers that can
+                // found or capture here wait for Colonize.
+                let fleet_rule = view["captureNeedsFleet"] == true;
+                let can_settle_at = |p: &Value, coord: &str, escorted: bool| {
+                    p["owner"].is_null()
+                        || !fleet_rule
+                        || escorted
+                        || number(&view["fleets"][coord][seat.to_string()]["fleet"]) > 0.0
+                };
+                let escorted = number(&fleet["fleet"]) > 0.0;
+                if !explorer
+                    && settlers > 0.0
+                    && here_center
+                    && (here["owner"] != json!(seat))
+                    && can_settle_at(here, from, escorted)
+                {
                     return -10.0;
                 }
                 let mut best = -10.0_f64;
@@ -1152,6 +1215,7 @@ impl BuiltinAgent {
                             && center
                             && p["type"] != "moon"
                             && p["owner"] != json!(seat)
+                            && can_settle_at(p, coord, escorted)
                             && bot_safe_fight(view, seat, fleet, coord)
                     };
                     if goal && distance(from, coord) > distance(to, coord) {
@@ -1222,6 +1286,16 @@ impl BuiltinAgent {
                     if split && left > 0.0 {
                         let stay = json!({"settler": left});
                         best -= bot_threat(view, seat, &stay, from, from) * 130.0;
+                        // 34.39 #combat: the last Fleet stays on an enemy center its Settler can capture.
+                        let fleets_left = number(&here_fleet["fleet"]) - number(&fleet["fleet"]);
+                        if fleet_rule
+                            && here_center
+                            && !here["owner"].is_null()
+                            && here["owner"] != json!(seat)
+                            && fleets_left <= 0.0
+                        {
+                            return -10.0;
+                        }
                     }
                 }
                 best
@@ -1246,6 +1320,13 @@ impl BuiltinAgent {
             "special" => {
                 50.0 + if action["key"] == "cradleOfLostSuns" {
                     bot_allocation_value(view, seat, action, false) * 0.1
+                } else if let Some(trash) = action["trash"].as_array() {
+                    // 34.39 Archive Purge: prefer the rival's own surplus-starter choice.
+                    if *trash == bot_purge_choice(me, 2) {
+                        2.0
+                    } else {
+                        -10.0
+                    }
                 } else {
                     0.0
                 }
@@ -1660,6 +1741,81 @@ mod tests {
         );
     }
 
+    /// 34.39 balance package: native rivals follow the observation's capture rule, printed
+    /// Wonder Prestige and military stats, and choose an Archive Purge like browser rivals.
+    #[test]
+    fn balance_package_rivals_read_the_published_rules() {
+        let agent = BuiltinAgent::new(Strategy::Expansion, [5; 32]);
+        let mut view = json!({"seat":0,"phase":"operations","relicRow":[],
+            "players":[{"resources":{"matter":5,"energy":5,"biomass":5,"data":5},"hand":[{"id":"m","key":"move"}],"discard":[],"deckContents":[],"handCount":1,"deckCount":0,"capacity":30},{"resources":{}},{"resources":{}},{"resources":{}}],
+            "planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase","cluster":0},"4,0":{"owner":1,"type":"energy","upgrade":null,"hasColony":true,"cluster":1}},
+            "clusters":[{"center":"0,0","surveyed":true},{"center":"4,0","surveyed":true}],
+            "fleets":{"0,0":{"0":{"settler":1,"fleet":0,"explorer":0}}}});
+        let toward = json!({"type":"move","source":"0,0","destination":"1,0","moveGroup":"ships"});
+        let before_rule = agent.score(&view, &toward);
+        assert!(
+            before_rule > 80.0,
+            "Earlier rules: a lone Settler heads for the enemy center"
+        );
+        view["captureNeedsFleet"] = json!(true);
+        assert!(
+            agent.score(&view, &toward) < before_rule,
+            "A lone Settler cannot capture, so the enemy center is no goal"
+        );
+        view["fleets"]["0,0"]["0"]["fleet"] = json!(1);
+        assert!(
+            agent.score(&view, &toward) > 80.0,
+            "A Settler with a Fleet goes for the capture"
+        );
+        // Split moves (33.38): the last Fleet does not leave a Settler that can capture here.
+        let mut on_center = view.clone();
+        on_center["fleets"] = json!({"4,0":{"0":{"settler":1,"fleet":1,"explorer":0}},"7,0":{"2":{"settler":1,"fleet":0,"explorer":0}}});
+        let away = |fleet: u32| json!({"type":"move","source":"4,0","destination":"5,0","moveGroup":"ships","units":{"settler":0,"explorer":0,"fleet":fleet}});
+        assert_eq!(agent.score(&on_center, &away(1)), -10.0);
+        on_center["fleets"]["4,0"]["0"]["fleet"] = json!(2);
+        assert!(
+            agent.score(&on_center, &away(1)) > -10.0,
+            "a second Fleet may go"
+        );
+
+        // Wonders: the observation's printed Prestige replaces the 31.36 table.
+        view["market"] = json!([{"key":"dysonLattice"}]);
+        let table = capacity_value(&view, 0, "dysonLattice").unwrap();
+        view["marketPrestige"] = json!([5]);
+        assert_eq!(
+            capacity_value(&view, 0, "dysonLattice").unwrap(),
+            table - 5.0
+        );
+        // Military cards: printed stats from the observation (Boarding Marines +2).
+        assert_eq!(tactic_stats(&view, "boardingMarines"), (1.0, 0.0, false));
+        view["tacticStats"] = json!({"boardingMarines":{"attack":2,"shield":0,"pierce":false}});
+        assert_eq!(tactic_stats(&view, "boardingMarines"), (2.0, 0.0, false));
+
+        // Archive Purge keeps 3 Move-order and 2 Construct-order cards.
+        let starter = |id: &str, key: &str| json!({"id":id,"key":key,"starter":true});
+        view["players"][0]["hand"] = json!([{"id":"purge","key":"archivePurge"}]);
+        view["players"][0]["discard"] = json!([
+            starter("m1", "move"),
+            starter("c1", "construct"),
+            starter("m2", "move"),
+            starter("c2", "construct")
+        ]);
+        view["players"][0]["deckContents"] =
+            json!([{"key":"move","count":2},{"key":"construct","count":1}]);
+        let me = &view["players"][0];
+        assert_eq!(bot_purge_choice(me, 2), vec![json!("m1"), json!("c1")]);
+        let purge = |trash: Value| json!({"type":"special","card":"purge","key":"archivePurge","trash":trash});
+        assert!(
+            agent.score(&view, &purge(json!(["m1", "c1"])))
+                > agent.score(&view, &purge(json!(["m1", "m2"])))
+        );
+        view["players"][0]["deckContents"] = json!([]);
+        assert!(
+            agent.score(&view, &purge(json!([]))) > agent.score(&view, &purge(json!(["m1"]))),
+            "With no surplus a rival trashes nothing"
+        );
+    }
+
     #[test]
     fn current_agents_bootstrap_data_before_explorers() {
         let agent = BuiltinAgent::new(Strategy::Military, [7; 32]);
@@ -1706,6 +1862,7 @@ mod tests {
             "galactic-reach/30.35",
             "galactic-reach/31.36",
             "galactic-reach/32.37",
+            "galactic-reach/33.38",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1742,6 +1899,7 @@ mod tests {
                             | "galactic-reach/30.35"
                             | "galactic-reach/31.36"
                             | "galactic-reach/32.37"
+                            | "galactic-reach/33.38"
                     ) {
                         0
                     } else {

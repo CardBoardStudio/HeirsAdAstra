@@ -919,8 +919,24 @@ pub fn status(db: &Connection, id: &str) -> ApiResult<Option<String>> {
     .map_err(internal)
 }
 
-/// Seats a waiting room's people in join order, then the host's AI rivals.
+/// Seats people in join order, then AI rivals (test fixtures; Start uses [`random_seats`]).
+#[cfg(test)]
 pub fn seats(humans: &[(String, String)]) -> Vec<Seat> {
+    seats_at(humans, &[0, 1, 2, 3])
+}
+
+/// Seats a waiting room's people at random when the host starts (rulebook
+/// #shared-tables), so two people are not always neighbors on one half of the map;
+/// AI rivals take the remaining seats.
+pub fn random_seats(humans: &[(String, String)], rng: &mut impl rand::Rng) -> Vec<Seat> {
+    use rand::seq::SliceRandom;
+    let mut order = [0, 1, 2, 3];
+    order.shuffle(rng);
+    seats_at(humans, &order)
+}
+
+/// `order[i]` is the seat of the `i`-th person who joined.
+fn seats_at(humans: &[(String, String)], order: &[usize; 4]) -> Vec<Seat> {
     const RIVALS: [(&str, Strategy); 4] = [
         ("Cyan Concord", Strategy::Military),
         ("Ember Directorate", Strategy::Military),
@@ -928,7 +944,14 @@ pub fn seats(humans: &[(String, String)]) -> Vec<Seat> {
         ("Helios Compact", Strategy::Expansion),
     ];
     (0..4)
-        .map(|seat| match humans.get(seat) {
+        .map(|seat| {
+            let person = order[..humans.len().min(4)]
+                .iter()
+                .position(|s| *s == seat)
+                .map(|i| &humans[i]);
+            (seat, person)
+        })
+        .map(|(seat, person)| match person {
             Some((account, name)) => Seat {
                 seat,
                 account: Some(account.clone()),

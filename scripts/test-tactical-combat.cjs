@@ -140,7 +140,7 @@ for(const tag of [null,'overdrive']){
  g.s.players[0].military=[{key:'boardingMarines',id:'marines'},{key:'victoryDoctrine',id:'doctrine'}];g.start();stays(g);
  volley(g,'victoryDoctrine','defensiveScreen');if(g.s.pendingCombat)volley(g,'boardingMarines','defensiveScreen');finish(g);
  assert.equal(g.s.lastCombat.prestigeWinner,0);assert.equal(g.s.players[0].combatVictories,1);assert.equal(g.s.players[0].cardPrestige,2);
- assert.equal(g.e.calculatePrestige(0),3,'Combat 1 + Victory Doctrine 2 (the fixture has no Colony)');
+ assert.equal(g.e.calculatePrestige(0),4,'Combat 2 (34.39) + Victory Doctrine 2 (the fixture has no Colony)');
 }
 {
  const g=fixture({d:{fleet:2}});g.s.players[0].military=[{key:'victoryDoctrine',id:'doctrine'}];g.s.players[0].resourceLimits={matter:10,energy:10,biomass:10,data:10};
