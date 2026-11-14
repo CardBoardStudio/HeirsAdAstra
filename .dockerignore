@@ -16,3 +16,10 @@
 !prototypes/lab/**
 
 !prototypes/galactic-reach/adapter.js
+
+# Testnet seat sources only (never zk/.keys, node_modules, target or out).
+!zk/package.json
+!zk/package-lock.json
+!zk/build-web.sh
+!zk/web/
+!zk/lib/
