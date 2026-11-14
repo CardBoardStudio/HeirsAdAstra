@@ -662,3 +662,58 @@ fn reveal_checkpoints_name_what_changed() {
         Some("a new market card was turned up")
     );
 }
+
+/// Server rivals move on the current rules, including at a table dealt with an
+/// older version of their policies (a stuck table must resume after a redeploy).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn server_rivals_move_on_the_current_rules_even_with_older_policy_versions() {
+    assert!(rival("gr-economy/25").is_some() && rival("gr-military/1").is_some());
+    assert!(rival("someone-else/26").is_none());
+    let store = store_with(&["a"]);
+    let log = Arc::new(SqliteTableLog(store));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    for (id, old) in [("current", false), ("older", true)] {
+        let mut t = table(id, &[("a", "Ada")]);
+        if old {
+            for seat in t.seats.iter_mut().filter(|s| s.policy.is_some()) {
+                let profile = seat
+                    .policy
+                    .as_ref()
+                    .unwrap()
+                    .split('/')
+                    .next()
+                    .unwrap()
+                    .to_string();
+                seat.policy = Some(format!("{profile}/25"));
+            }
+        }
+        service.open(t).await.unwrap();
+        let seq = service.view(id, "a").await.unwrap()["seq"]
+            .as_u64()
+            .unwrap();
+        service
+            .act(
+                id,
+                "a",
+                seq,
+                vec![json!({"type":"pass"}), json!({"type":"finish_buy"})],
+            )
+            .await
+            .unwrap();
+        let mut moved = false;
+        for _ in 0..400 {
+            let events = log.read(id).unwrap();
+            if [1, 2, 3].iter().all(|s| {
+                events
+                    .iter()
+                    .any(|e| e.kind == "action" && e.seat == Some(*s))
+            }) {
+                moved = true;
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(25)).await;
+        }
+        assert!(moved, "every rival at the {id} table moved");
+        assert!(service.view(id, "a").await.unwrap()["ai_error"].is_null());
+    }
+}
