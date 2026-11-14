@@ -475,10 +475,10 @@ function assertTab(game,name){
   for(const panel of game.dom.panels)assert.equal(panel.hidden,panel.dataset.panel!==name);
 }
 test('Relics tab browses read-only and participates in keyboard tab navigation',()=>{
-  const {storage}=excavationStorage(),game=boot(storage);assert.deepEqual(game.dom.tabs.map(t=>t.dataset.tab),['hand','market','trade','fleet','relics']);
+  const {storage}=excavationStorage(),game=boot(storage);assert.deepEqual(game.dom.tabs.map(t=>t.dataset.tab),['hand','market','trade','fleet','relics','chain']);
   const before=JSON.stringify(game.saved());game.click('relics-tab');assertTab(game,'relics');assert.equal(JSON.stringify(game.saved()),before);
   const relics=game.dom.element('relics-tab');assert.equal(relics.getAttribute('role'),'tab');assert.equal(relics.getAttribute('aria-controls'),'relics-panel');assert.equal(game.dom.element('relics-panel').getAttribute('aria-labelledby'),'relics-tab');
-  fire(relics,'keydown',{key:'ArrowRight',cancelable:true});assertTab(game,'hand');fire(game.dom.element('hand-tab'),'keydown',{key:'End',cancelable:true});assertTab(game,'relics');fire(relics,'keydown',{key:'Home',cancelable:true});assertTab(game,'hand');
+  fire(relics,'keydown',{key:'ArrowRight',cancelable:true});assertTab(game,'chain');fire(game.dom.element('chain-tab'),'keydown',{key:'ArrowRight',cancelable:true});assertTab(game,'hand');fire(game.dom.element('hand-tab'),'keydown',{key:'End',cancelable:true});assertTab(game,'chain');fire(relics,'keydown',{key:'Home',cancelable:true});assertTab(game,'hand');
   game.dom.hex(game.saved().clusters[0].center).click();assertTab(game,'hand');assert.equal(game.saved().actionMode,null,'Ordinary map inspection does not start excavation');
 });
 function productionNumbers(game) {
@@ -522,7 +522,7 @@ test('Probe resolves from empty space without selecting or reaching a world',()=
  assert.equal(after.fleets['2,2'][0].explorer,1);assert.deepEqual(after.players[0].resources,before.players[0].resources);assert.equal(game.randomCalls(),calls);
  assert.equal(after.clusters.filter(c=>c.scannedBy.includes(0)).length,before.clusters.filter(c=>c.scannedBy.includes(0)).length+1);
  assert.deepEqual(after.clusters.map(c=>c.revealedBy),before.clusters.map(c=>c.revealedBy));
- game.click('export-game-report');const report=game.downloads.at(-1);assert(report.save.gameHistory.events.some(e=>e.text.includes('Probe was permanently trashed')));const p=report.save.state.players[0];assert(![...p.hand,...p.deck,...p.discard].some(c=>c.id==='remote-probe'));
+ game.click('export-game-report');const report=game.downloads.at(-1);assert(report.save.gameHistory.events.some(e=>e.text.includes('Probe was replaced by an Excavate card')));const p=report.save.state.players[0];assert(![...p.hand,...p.deck,...p.discard].some(c=>c.id==='remote-probe'));assert(p.discard.some(c=>c.key==='excavate'),'the used Probe became an Excavate in discard');
 });
 test('Multiple Explorers let the player choose the Probe origin',()=>{
  const storage=createStorage(),state=boot(storage).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep',selected:null});
@@ -880,6 +880,63 @@ test('capacity allocation defaults to one each and is immediately confirmable',(
 });
 
 let failed = 0;
+// Interface automation for forced turns (feedback 2026-11-14). Rules are unchanged:
+// the engine still requires an explicit pass and finish_buy from headless seats.
+function forcedTurnStorage({resources={matter:0,energy:0,biomass:0,data:0},discard=[]}={}) {
+  const storage=createStorage(),state=boot(storage).saved();
+  Object.assign(state,{phase:'operations',activePlayer:3,turnStage:'ai',tradeOffers:[]});
+  state.players.forEach((p,id)=>{p.passed=id===1||id===2;});
+  Object.assign(state.players[3],{hand:[],resources:{matter:0,energy:0,biomass:0,data:0}});
+  Object.assign(state.players[0],{hand:[],discard,resources,passed:false});
+  writeSave(storage,state);return storage;
+}
+test('an empty hand passes to Buy, and a Buy with no possible choice finishes, with a notice and Undo',()=>{
+  const game=boot(forcedTurnStorage());game.settle();
+  const saved=game.saved(),log=saved.log.join('\n');
+  assert.match(log,/no cards left, so the table passed you to Buy/);
+  assert.match(log,/nothing to buy, upgrade, trash or exchange, so Buy finished automatically/);
+  assert(saved.round>=2,'the round finished and play continued');
+  const notice=game.dom.element('turn-notice');
+  assert.equal(notice.hidden,false);
+  assert.equal(notice.textContent,'No cards left: moved to Buy. Nothing affordable: Buy finished automatically.');
+  assert.equal(game.dom.element('undo-turn-button').disabled,false,'Undo can restore the Operations turn to post a trade instead');
+});
+test('an empty hand with something affordable stops at Buy, beside the hand',()=>{
+  const game=boot(forcedTurnStorage({resources:{matter:1,energy:0,biomass:0,data:1}}));game.settle();
+  const saved=game.saved();
+  assert.equal(saved.phase,'buy');assert.equal(saved.activePlayer,0);assert(saved.players[0].passed);
+  assert.equal(game.dom.element('market-notice').textContent,'No cards left: moved to Buy.');
+  assert.equal(game.dom.element('hand-finish-buy-button').hidden,false);
+  game.click('hand-finish-buy-button');game.settle();
+  assert.notEqual(game.saved().phase==='buy'&&game.saved().activePlayer===0,true,'Finish Buy beside the hand ends the Buy turn');
+});
+test('a hand with cards is never passed automatically',()=>{
+  const storage=forcedTurnStorage(),state=JSON.parse(storage.getItem(SAVE_KEY));
+  state.players[0].hand=[{id:'keep-me',key:'move',starter:true}];writeSave(storage,state);
+  const game=boot(storage);game.settle();
+  const saved=game.saved();
+  assert.equal(saved.phase,'operations');assert.equal(saved.activePlayer,0);assert(!saved.players[0].passed);
+  assert.equal(game.dom.element('pass-button').hidden,false,'Pass & buy is offered beside the hand');
+});
+test('Buy upgrades and trashes starters in hand, discard and in play (28.33 #buy amendment)',()=>{
+  const storage=createStorage(),state=boot(storage).saved();
+  Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});
+  Object.assign(state.players[0],{passed:true,resources:{matter:3,energy:2,biomass:0,data:0},
+    hand:[{id:'up-hand',key:'move',starter:true}],discard:[{id:'up-discard',key:'construct',starter:true}],
+    inPlay:[{id:'up-play',key:'move',starter:true}],buyStartDiscardIds:['up-discard'],buyStartInPlayIds:['up-play']});
+  writeSave(storage,state);
+  let game=boot(storage);
+  const html=game.dom.element('decommission-area').innerHTML;
+  assert.deepEqual([...html.matchAll(/data-upgrade-card="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-hand','up-play']);
+  assert.deepEqual([...html.matchAll(/data-trash="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-play']);
+  assert.doesNotMatch(html,/All starter cards upgraded|after cleanup/);
+  game.dom.element('upgrade-resource').value='energy';fire(game.dom.element('upgrade-resource'),'change');
+  game.dom.lastQuery('[data-upgrade-card]').find(b=>b.dataset.upgradeCard==='up-play').click();game.settle();
+  assert.equal(game.saved().players[0].inPlay.find(c=>c.id==='up-play').upgraded,true);
+  game=boot(storage);game.dom.element('trash-resource').value='matter';fire(game.dom.element('trash-resource'),'change');
+  game.dom.lastQuery('[data-trash]').find(b=>b.dataset.trash==='up-play').click();game.settle();
+  assert(!game.saved().players[0].inPlay.some(c=>c.id==='up-play'),'the in-play card was trashed');
+});
 for (const { name, body } of tests) {
   try {
     body();

@@ -2,6 +2,7 @@ mod accounts;
 mod arena;
 mod config;
 mod invites;
+mod lobby;
 mod nido;
 mod nido_chain;
 #[cfg(test)]
@@ -141,6 +142,9 @@ async fn protect(State(app): State<App>, request: axum::extract::Request, next: 
             return ApiError(StatusCode::FORBIDDEN, "Origin not allowed.".into()).into_response();
         }
     }
+    // The 27.32 tabletop proves its Testnet seat draws in the browser; bb.js
+    // needs cross-origin isolation (SharedArrayBuffer) to use threads.
+    let isolate = request.uri().path().starts_with("/galactic-reach/");
     let check = if request.uri().path().starts_with("/api/")
         && !request.uri().path().starts_with("/api/auth/")
     {
@@ -164,6 +168,15 @@ async fn protect(State(app): State<App>, request: axum::extract::Request, next: 
     response
         .headers_mut()
         .insert("x-frame-options", "DENY".parse().unwrap());
+    if isolate {
+        response
+            .headers_mut()
+            .insert("cross-origin-opener-policy", "same-origin".parse().unwrap());
+        response.headers_mut().insert(
+            "cross-origin-embedder-policy",
+            "credentialless".parse().unwrap(),
+        );
+    }
     response.headers_mut().insert(
         "content-security-policy",
         "frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
@@ -184,6 +197,7 @@ async fn session(State(app): State<App>, headers: HeaderMap) -> Json<SessionInfo
         registration_available: app.dev_auth
             || app.registration_code_hash.is_some()
             || app.preview_code_hash.is_some(),
+        nido_wallet: Some(app.nido.wallet()),
     })
 }
 #[derive(Deserialize)]
@@ -498,6 +512,11 @@ fn router(app: App) -> Router {
         .route("/api/invites/accept", post(invites::accept))
         .route("/api/tables", get(tables::list).post(tables::create))
         .route("/api/tables/{id}", get(tables::get))
+        .route("/api/tables/{id}/lobby", get(lobby::get))
+        .route("/api/tables/{id}/lobby/join", post(lobby::join))
+        .route("/api/tables/{id}/lobby/leave", post(lobby::leave))
+        .route("/api/tables/{id}/lobby/settings", post(lobby::settings))
+        .route("/api/tables/{id}/lobby/start", post(lobby::start))
         .route(
             "/api/tables/{id}/save",
             post(tables::save).layer(axum::extract::DefaultBodyLimit::max(8 * 1024 * 1024 + 16384)),

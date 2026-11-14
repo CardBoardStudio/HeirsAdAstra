@@ -1,4 +1,4 @@
-//! Read-only Stellar RPC authentication. Pins match Nido's 2026-10-09 Perch
+//! Read-only Stellar RPC authentication. Pins match Nido's current (2026-11-13) testnet Perch
 //! deployment; an unknown account implementation fails closed. No transaction
 //! is signed or submitted. Only a policy-free, single-passkey self-admin rule
 //! can authenticate with Nido's single-assertion message protocol.
@@ -6,12 +6,14 @@ use crate::*;
 use stellar_xdr::*;
 
 pub const NETWORK: &str = "Test SDF Network ; September 2015";
-const ACCOUNT_WASM: &str = "bbb30174bbd85a2956a2f6146a156769621254011a6bdcac707cf787ce7bcd52";
-const VERIFIER: &str = "CBCCINHRMS3COAV5RHTCUASZLOEC52FCOBR3HMU4FKWJTAHWZTVFTHHY";
+const ACCOUNT_WASM: &str = "2c976bfd98678f3b6fcf5514420a81ef5e5b9fc1c5b6c60ec6f2dd64448479d5";
+const VERIFIER: &str = "CDEV5YPS5IITPLQPYTKJGWBNZ2YZ7FQZIJNSHUMJRBE4QWYK2IVK4EJT";
 const MAX_RESPONSE: usize = 512 * 1024;
 
 pub struct Config {
     pub enabled: bool,
+    /// Nido wallet host (`NIDO_WALLET_HOST`); see `nido.rs` for the URLs derived from it.
+    pub(crate) wallet_host: String,
     rpc: String,
     client: reqwest::Client,
     slots: tokio::sync::Semaphore,
@@ -24,6 +26,7 @@ impl Config {
         }
         Ok(Self {
             enabled,
+            wallet_host: crate::nido::DEFAULT_WALLET_HOST.into(),
             rpc,
             client: reqwest::Client::builder()
                 .timeout(std::time::Duration::from_secs(8))

@@ -374,6 +374,18 @@ pub struct SessionInfo {
     pub nido_available: bool,
     #[serde(default)]
     pub registration_available: bool,
+    /// The Nido wallet this host signs in with (`NIDO_WALLET_HOST`), so pages
+    /// link to the same wallet the server verifies against.
+    #[serde(default)]
+    pub nido_wallet: Option<NidoWallet>,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NidoWallet {
+    pub host: String,
+    pub connect_url: String,
+    /// Wallet origin for one account, with `{account}` standing for the
+    /// lowercase contract address, e.g. `https://{account}.test.nido.fyi`.
+    pub account_url: String,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct CreateGame {

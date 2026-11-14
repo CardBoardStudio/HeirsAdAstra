@@ -15,8 +15,8 @@ function createGalacticReach(options = {}) {
   }
   const clearTimeout = headless ? () => {} : globalThis.clearTimeout.bind(globalThis);
 
-  const SAVE_FORMAT_VERSION = 29;
-  const RULES_REVISION = 34;
+  const SAVE_FORMAT_VERSION = 30;
+  const RULES_REVISION = 35;
   const SAVE_KEY = `galactic-reach-save-v${SAVE_FORMAT_VERSION}`;
   const TURN_HISTORY_KEY = `galactic-reach-turn-history-v${SAVE_FORMAT_VERSION}`;
   const HISTORY_KEY = `galactic-reach-history-v${SAVE_FORMAT_VERSION}`;
@@ -72,7 +72,7 @@ function createGalacticReach(options = {}) {
   const EXCAVATION_COST = { matter: 1, energy: 1, data: 2 };
   const LEGEND_TOOLTIPS = {
     settler: 'Colony ship. Base movement 1; Move II adds 1. It has 1 attack and 2 hull (4 while defending), reveals worlds by entering them, and is required to colonize. Commission at a Shipyard to receive a Colonize card.',
-    explorer: 'Explorer: 1 attack, 1 hull. Before the first volley, pay 1 Energy per Explorer to escape to one legal adjacent hex. Reveals terrain by entering it; use Probe to locate relics. Base movement 3; Move II adds 1. Commission at a Shipyard to receive Probe and Excavate in discard. Play it at a relic, pay 1 Matter, 1 Energy, and 2 Data, and choose a relic card. Consume one Explorer and trash Excavate.',
+    explorer: 'Explorer: 1 attack, 1 hull. Before the first volley, pay 1 Energy per Explorer to escape to one legal adjacent hex. Reveals terrain by entering it; use Probe to locate relics. Base movement 3; Move II adds 1. Commission at a Shipyard to receive Probe in discard; a successful Probe becomes Excavate. Play it at a relic, pay 1 Matter, 1 Energy, and 2 Data, and choose a relic card. Consume one Explorer and trash Excavate.',
     fleet: 'Reveals terrain by entering it; use Probe to locate relics. Base movement 2 (3 with Move II), with 3 attack and 7 hull. You may have up to 10 Fleets on the map.',
     colony: 'Claims a seven-hex world. Colonies must occupy the world’s center hex.',
     harvester: 'Produces 1 local resource per round. Buildings have no upgrades.',
@@ -82,7 +82,7 @@ function createGalacticReach(options = {}) {
     colonize: 'Use a Settler on the center hex of an eligible world to found or capture its Colony, then permanently trash Colonize.',
     construct: 'Build one structure on any empty planet hex adjacent to your Colony, or commission one ship at a Shipyard.',
     move: 'Move ships or Explorers up to the selected group’s speed.',
-    probe: 'Use an Operations action from your Explorer anywhere on the map to privately locate the nearest unlocated remaining relic. Keep the Explorer and permanently trash Probe.',
+    probe: 'Use an Operations action from your Explorer anywhere on the map to privately locate the nearest unlocated remaining relic. Keep the Explorer; Probe is replaced by an Excavate card in your discard.',
     excavate: 'With an Explorer at a located relic, pay 1 Matter, 1 Energy, and 2 Data. Choose a relic card into discard, gain 2 Prestige, remove the relic, and trash Excavate. Consume one Explorer.'
   };
   const BOARD_ICONS = {
@@ -99,7 +99,7 @@ function createGalacticReach(options = {}) {
     colonize: { name: 'Colonize', kind: 'Basic', accent: 'var(--biomass)', resource: { biomass: 1 }, order: 'colonize', text: 'Establish a Colony with a Settler on a world’s center hex, then permanently trash Colonize.' },
     construct: { name: 'Construct', kind: 'Basic', accent: 'var(--matter)', resource: { matter: 1 }, order: 'construct', text: 'Build on any empty planet hex adjacent to your Colony, or commission one ship.', cost: { matter: 1, data: 1 } },
     move: { name: 'Move', kind: 'Basic', accent: 'var(--energy)', resource: { energy: 1 }, order: 'move', text: 'Move one ship group or Explorer team at its own speed.', cost: { energy: 1, data: 1 } },
-    probe: { name: 'Probe', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'probe', text: 'From your Explorer anywhere on the map, privately locate its nearest unlocated remaining relic. Keep the Explorer and permanently trash Probe.' },
+    probe: { name: 'Probe', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'probe', text: 'From your Explorer anywhere on the map, privately locate its nearest unlocated remaining relic. Keep the Explorer; this Probe is replaced by an Excavate card in your discard.' },
     excavate: { name: 'Excavate', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'excavate', text: 'At your Explorer’s located relic, pay 1 Matter, 1 Energy, and 2 Data. Choose a relic card into discard and gain 2 Prestige. Remove the relic and trash this card; consume one Explorer.' }
   };
 
@@ -307,6 +307,10 @@ function createGalacticReach(options = {}) {
   let aiTimer = null;
   let displayingCombatReport = false;
   let turnHistory = { pending: null, undo: null };
+  // Browser-only notice for turns the interface finished on the player's behalf
+  // (empty hand, or a Buy turn with no possible choice). It stays visible until the
+  // player completes their next turn. Rules and legal actions are unchanged.
+  let autoNotice = '', autoTurn = false;
   let gameHistory = null;
   let historyPosition = null;
   let historySaveFailed = false;
@@ -431,7 +435,7 @@ function createGalacticReach(options = {}) {
       id: index, name: PLAYER_NAMES[index], color: PLAYER_COLORS[index], strategy: PLAYER_STRATEGIES[index],
       resources: { matter: 0, energy: 0, biomass: 2, data: 0 }, deck: shuffled(deck), discard: [], hand: [], inPlay: [],
       resourceLimits: { matter:4, energy:4, biomass:4, data:4 }, storageUpgrades: 0, storagePurchases: 0, initialShipyardCoord: null, cardsPurchased: 0, relicsExcavated: 0, combatVictories: 0, passed: false, tradeUsed: false, bought: 0, buyLimit: 1,
-      buyDiscountData: 0, marketManipulated: false, buyStartDiscardIds: [], combatBonus: 0,
+      buyDiscountData: 0, marketManipulated: false, buyStartDiscardIds: [], buyStartInPlayIds: [], combatBonus: 0,
       tradesWith: [0,0,0,0]
     };
   }
@@ -617,6 +621,7 @@ function createGalacticReach(options = {}) {
   }
 
   function completeHumanTurn() {
+    if (!autoTurn) autoNotice = '';
     if (!turnHistory.pending) return;
     turnHistory.undo = turnHistory.pending;
     turnHistory.pending = null;
@@ -1172,6 +1177,7 @@ function createGalacticReach(options = {}) {
       player.buyDiscountData = 0;
       player.marketManipulated = false;
       player.buyStartDiscardIds = [];
+      player.buyStartInPlayIds = [];
       player.combatBonus = 0;
     });
   }
@@ -1211,7 +1217,53 @@ function createGalacticReach(options = {}) {
     }
     render();
     saveGame();
+    if (state.activePlayer === 0 && autoPassIfHandEmpty()) return;
     if (state.activePlayer !== 0) scheduleAiTurn('operations', runAiOperation, 650);
+  }
+
+  // Interface automation only: with no cards in hand and no trade offer awaiting an
+  // answer, Pass is the only way forward except posting a trade, so the browser passes
+  // for the player. Undo restores the Operations turn, so no legal choice is lost.
+  function autoPassIfHandEmpty() {
+    if (headless || replayMode || options.paused?.() || state.phase !== 'operations' || state.activePlayer !== 0 || state.turnStage !== 'prep') return false;
+    const player = state.players[0];
+    if (player.passed || player.hand.length || state.pendingCombat || state.pendingCombatReport || state.pendingColonyBuild || state.pendingConsortium || overflowPlayer() >= 0 || state.winner !== null) return false;
+    if (state.tradeOffers.some(offer => tradeResponseAllowed(0, offer))) return false;
+    autoTurn = true;
+    try {
+      autoNotice = 'No cards left: moved to Buy.';
+      logEvent('You had no cards left, so the table passed you to Buy.');
+      return passOperations(0);
+    } finally { autoTurn = false; }
+  }
+
+  // True when the player's Buy turn offers any choice besides finishing: a card to buy,
+  // a starter to upgrade, a Buy effect, a card to trash, capacity, or a bank exchange.
+  // Mirrors the Buy section of the adapter's legal actions.
+  function humanBuyHasChoice() {
+    const player = state.players[0], discount = player.buyDiscountData > 0 ? 1 : 0;
+    const costs = [...state.market.map(card => ALL_CARDS[card.key].cost), ...BASIC_MARKET.map(key => BASIC_CARDS[key].cost)];
+    if (player.bought < player.buyLimit && costs.some(cost => canAfford(player, cost, discount))) return true;
+    if (RESOURCES.some(resource => player.resources[resource] >= 2) && [...player.hand, ...player.discard, ...player.inPlay].some(card => card.starter && !card.upgraded)) return true;
+    if (player.hand.some(card => { const effect = ALL_CARDS[card.key].buyEffect; return effect && (effect !== 'manipulation' || !player.marketManipulated); })) return true;
+    if (RESOURCES.some(resource => player.resources[resource] >= 3) && (player.discard.some(card => trashEligible(player, card, 'discard')) || player.inPlay.some(card => trashEligible(player, card, 'inPlay')))) return true;
+    if (canIncreaseStorage(0)) return true;
+    return RESOURCES.some(give => RESOURCES.some(get => canBankTrade(0, give, get)));
+  }
+
+  function autoSkipBuy() {
+    if (headless || replayMode || options.paused?.() || state.phase !== 'buy' || state.activePlayer !== 0 || overflowPlayer() >= 0 || state.pendingCombat || state.winner !== null || humanBuyHasChoice()) return false;
+    const wasAuto = autoTurn;
+    autoTurn = true;
+    try {
+      autoNotice = `${autoNotice ? autoNotice + ' ' : ''}Nothing affordable: Buy finished automatically.`;
+      // Keep Undo pointed at the Operations turn that led here.
+      turnHistory.pending = null; saveTurnHistory();
+      logEvent('You had nothing to buy, upgrade, trash or exchange, so Buy finished automatically.');
+      toast(autoNotice);
+      nextBuyPlayer();
+      return true;
+    } finally { autoTurn = wasAuto; }
   }
 
   function scheduleAiTurn(phase, action, delay) {
@@ -1249,7 +1301,7 @@ function createGalacticReach(options = {}) {
     if (playerId === 0) completeHumanTurn();
     player.passed = true;
     logEvent(`${player.name} passed for the rest of Operations.`);
-    if (playerId === 0) toast('You passed. Take your Buy turn now.');
+    if (playerId === 0) toast(autoTurn ? autoNotice : 'You passed. Take your Buy turn now.');
     if (state.players.every(p => p.passed)) expireTrades();
     startBuyPhase();
     return true;
@@ -1998,8 +2050,10 @@ function createGalacticReach(options = {}) {
     if (!site) return false;
     if (dryRun) return true;
     site.cluster.scannedBy.push(playerId);
+    // 30.35 #orders: a successful Probe leaves the deck and an Excavate card enters discard (#gaining-cards).
     removeHandCard(player,cardId,'trash');
-    completeAction(playerId,`${player.name} used Probe from an Explorer to privately locate the nearest unlocated relic. Probe was permanently trashed.`);
+    gainCard(player,makeCard('excavate'));
+    completeAction(playerId,`${player.name} used Probe from an Explorer to privately locate the nearest unlocated relic. Probe was replaced by an Excavate card in discard.`);
     if (!headless&&playerId===0) toast(`Relic signal located at ${site.coord}.`);
     return true;
   }
@@ -2046,7 +2100,8 @@ function createGalacticReach(options = {}) {
     if (dryRun) return true;
     payCost(player,discountedCost(SHIP_STATS[type].cost,discountResource),0,0,discountEnergy);
     ensureFleet(coord,playerId)[type] += 1;
-    const bundled=type==='settler'?['colonize']:type==='explorer'?['probe','excavate']:[];
+    // 30.35: an Explorer brings only Probe; Excavate comes from a successful Probe.
+    const bundled=type==='settler'?['colonize']:type==='explorer'?['probe']:[];
     for (const key of bundled) gainCard(player,makeCard(key));
     if (bundled.length) logEvent(`${player.name} commissioned ${SHIP_STATS[type].name} and gained ${bundled.map(key=>BASIC_CARDS[key].name).join(' and ')} in discard.`);
     return true;
@@ -2516,6 +2571,7 @@ function createGalacticReach(options = {}) {
     state.phase = 'buy';
     const player = state.players[state.activePlayer];
     player.buyStartDiscardIds = player.discard.map(card => card.id);
+    player.buyStartInPlayIds = player.inPlay.map(card => card.id);
     clearAction();
     startBuyTurn();
   }
@@ -2530,6 +2586,7 @@ function createGalacticReach(options = {}) {
     }
     render();
     saveGame();
+    if (state.activePlayer === 0 && autoSkipBuy()) return;
     if (state.activePlayer !== 0) scheduleAiTurn('buy', runAiBuy, 550);
   }
 
@@ -2576,12 +2633,18 @@ function createGalacticReach(options = {}) {
     render(); saveGame();
   }
 
+  // Rules #buy: trash a card that was in your discard or in play when your Buy turn
+  // began. Cards gained, discarded or put in play during this Buy are ineligible.
+  function trashEligible(player, card, pile) {
+    return pile === 'discard' ? player.buyStartDiscardIds.includes(card.id) : (player.buyStartInPlayIds || []).includes(card.id);
+  }
   function decommission(playerId, cardId, resource) {
     const player = state.players[playerId];
-    if (!player || overflowPlayer() >= 0 || !RESOURCES.includes(resource) || state.phase !== 'buy' || state.activePlayer !== playerId || player.resources[resource] < 3 || !player.buyStartDiscardIds.includes(cardId)) return false;
-    const index = player.discard.findIndex(card => card.id === cardId);
-    if (index < 0) return false;
-    const [card] = player.discard.splice(index, 1);
+    if (!player || overflowPlayer() >= 0 || !RESOURCES.includes(resource) || state.phase !== 'buy' || state.activePlayer !== playerId || player.resources[resource] < 3) return false;
+    const pile = ['discard','inPlay'].find(name => player[name].some(card => card.id === cardId && trashEligible(player, card, name)));
+    if (!pile) return false;
+    const index = player[pile].findIndex(card => card.id === cardId);
+    const [card] = player[pile].splice(index, 1);
     player.resources[resource] -= 3;
     logEvent(`${player.name} trashed ${ALL_CARDS[card.key].name} for 3 ${RESOURCE_NAMES[resource]}.`);
     return true;
@@ -2590,7 +2653,8 @@ function createGalacticReach(options = {}) {
   function upgradeStarter(playerId, cardId, resource) {
     const player = state.players[playerId];
     if (!canManageResources(playerId) || state.phase !== 'buy' || !RESOURCES.includes(resource) || player.resources[resource] < 2) return false;
-    const card = [...player.hand,...player.discard].find(item=>item.id===cardId);
+    // Rules #buy: an original starter in your hand, discard or in play can upgrade.
+    const card = [...player.hand,...player.discard,...player.inPlay].find(item=>item.id===cardId);
     if (!card?.starter || card.upgraded) return false;
     player.resources[resource] -= 2;
     card.upgraded = true;
@@ -2610,7 +2674,8 @@ function createGalacticReach(options = {}) {
     }
     const surplus=()=>[...RESOURCES].sort((a,b)=>(p.resources[b]-reserve[b])-(p.resources[a]-reserve[a]));
     const yard=controlledPlanets(id).some(([,p])=>p.upgrade==='starbase');
-    const upgrade=[...p.hand,...p.discard].filter(c=>c.starter&&!c.upgraded).sort((a,b)=>Number(b.key==='construct')-Number(a.key==='construct'))[0];
+    // 30.35 #buy: rivals also upgrade starters that are in play.
+    const upgrade=[...p.hand,...p.discard,...p.inPlay].filter(c=>c.starter&&!c.upgraded).sort((a,b)=>Number(b.key==='construct')-Number(a.key==='construct'))[0];
     const immediate=findColonizeTarget(id)?{biomass:2}:Object.entries(state.fleets).some(([coord,g])=>g[id]?.explorer&&state.planets[coord]?.special==='relic'&&relicKnown(state.clusters[state.planets[coord].cluster],id))?EXCAVATION_COST:{};
     const resource=surplus().find(r=>p.resources[r]>=Math.max(1,immediate[r]||0)+2);
     if (yard&&upgrade&&resource) upgradeStarter(id,upgrade.id,resource);
@@ -2625,7 +2690,8 @@ function createGalacticReach(options = {}) {
     }
     for (let n=0;n<2;n++) {
       const cards=aiCards(id),moves=aiOrderCount(id,'move'),constructs=aiOrderCount(id,'construct'),colonize=aiOrderCount(id,'colonize'),excavateCount=aiOrderCount(id,'excavate');
-      const removable=p.discard.find(c=>p.buyStartDiscardIds.includes(c.id)&&BASIC_CARDS[c.key]&&!c.upgraded&&(c.key==='construct'?constructs>2:c.key==='move'?moves>6:c.key==='colonize'?colonize>Math.max(2,countPlacedShips(id,'settler')+1):c.key==='excavate'?!aiRelicsRemain()||excavateCount>Math.max(1,countPlacedShips(id,'explorer')+1):c.key==='probe'?!aiRelicsRemain()||aiOrderCount(id,'probe')>Math.max(1,countPlacedShips(id,'explorer')+1):false));
+      // 30.35 #buy: trash candidates include cards that were in play when Buy began.
+      const removable=[...p.discard.filter(c=>trashEligible(p,c,'discard')),...p.inPlay.filter(c=>trashEligible(p,c,'inPlay'))].find(c=>BASIC_CARDS[c.key]&&!c.upgraded&&(c.key==='construct'?constructs>2:c.key==='move'?moves>6:c.key==='colonize'?colonize>Math.max(2,countPlacedShips(id,'settler')+1):c.key==='excavate'?!aiRelicsRemain()||excavateCount>Math.max(1,countPlacedShips(id,'explorer')+1):c.key==='probe'?!aiRelicsRemain()||aiOrderCount(id,'probe')>Math.max(1,countPlacedShips(id,'explorer')+1):false));
       const give=surplus().find(r=>p.resources[r]>=reserve[r]+3);
       if (!removable||!give||cards.length<=8) break;
       if (!decommission(id,removable.id,give)) break;
@@ -3291,9 +3357,11 @@ function createGalacticReach(options = {}) {
     $$('[data-buy-basic]').forEach(button=>button.addEventListener('click',()=>{if(buyCard(0,'basic',button.dataset.buyBasic)){render();saveGame();}}));
     $$('[data-buy-market]').forEach(button=>button.addEventListener('click',()=>{if(buyCard(0,'market',Number(button.dataset.buyMarket))){render();saveGame();}}));
     $('#finish-buy-button').hidden=!humanBuy;
+    $('#hand-finish-buy-button').hidden=!humanBuy;
+    for (const id of ['turn-notice','market-notice']) { const notice=$(`#${id}`); notice.hidden=replayMode||!autoNotice; notice.textContent=replayMode?'':autoNotice; }
     if (replayMode) { $('#decommission-area').innerHTML=''; return; }
     const previousUpgradeResource = $('#upgrade-resource')?.value;
-    const eligible=state.players[0].discard.filter(card=>state.players[0].buyStartDiscardIds.includes(card.id));
+    const eligible=[...state.players[0].discard.filter(card=>trashEligible(state.players[0],card,'discard')),...state.players[0].inPlay.filter(card=>trashEligible(state.players[0],card,'inPlay'))];
     const selectedResource = $('#trash-resource')?.value;
     const trashResource = RESOURCES.includes(selectedResource) ? selectedResource : RESOURCES.find(resource=>state.players[0].resources[resource]>=3) || 'matter';
     const trashOptions = RESOURCES.map(resource =>
@@ -3301,20 +3369,28 @@ function createGalacticReach(options = {}) {
     ).join('');
     const trashButtons = eligible.map(card => `
       <button class="button" data-trash="${card.id}" ${state.players[0].resources[trashResource]<3?'disabled':''}>
-        ${ALL_CARDS[card.key].name}${card.upgraded?' II':''}${card.starter?' · starter':''}
+        ${ALL_CARDS[card.key].name}${card.upgraded?' II':''}${card.starter?' · starter':''} <small>${state.players[0].inPlay.includes(card)?'in play':'in discard'}</small>
       </button>`).join('');
     $('#decommission-area').innerHTML = humanBuy ? `
       <div class="decommission-list">
         <strong>Trash a card</strong>
         <label>Pay 3 <select id="trash-resource">${trashOptions}</select></label>
-        ${trashButtons || '<span class="muted">No eligible discarded cards</span>'}
+        ${trashButtons || '<span class="muted">No eligible cards in discard or in play</span>'}
       </div>` : '';
     $('#trash-resource')?.addEventListener('change',renderMarket);
     $$('[data-trash]').forEach(button=>button.addEventListener('click',()=>{if(decommission(0,button.dataset.trash,$('#trash-resource').value)){render();saveGame();}}));
-    const upgradeable=[...state.players[0].hand,...state.players[0].discard].filter(card=>card.starter&&!card.upgraded);
+    // Rules #buy: original starters upgrade from hand, discard or in play during your Buy turn.
+    const me=state.players[0];
+    const pileOf=card=>me.hand.includes(card)?'in hand':me.inPlay.includes(card)?'in play':'in discard';
+    const upgradeable=[...me.hand,...me.discard,...me.inPlay].filter(card=>card.starter&&!card.upgraded);
+    const inDeck=me.deck.filter(card=>card.starter&&!card.upgraded).length;
     const selectedUpgradeResource = previousUpgradeResource;
-    const upgradeResource = RESOURCES.includes(selectedUpgradeResource) ? selectedUpgradeResource : RESOURCES.find(resource=>state.players[0].resources[resource]>=2) || 'matter';
-    if(humanBuy) $('#decommission-area').insertAdjacentHTML('beforeend',`<div class="decommission-list upgrade-list"><strong>Upgrade starter</strong><label>Pay 2 <select id="upgrade-resource">${RESOURCES.map(resource=>`<option value="${resource}" ${resource===upgradeResource?'selected':''}>${RESOURCE_NAMES[resource]}</option>`).join('')}</select></label>${upgradeable.length?upgradeable.map(card=>`<button class="button" data-upgrade-card="${card.id}" ${state.players[0].resources[upgradeResource]<2?'disabled':''}>${ALL_CARDS[card.key].name} → II · ${upgradedOrderText(card)}</button>`).join(''):'<span class="muted">All starter cards upgraded</span>'}</div>`);
+    const upgradeResource = RESOURCES.includes(selectedUpgradeResource) ? selectedUpgradeResource : RESOURCES.find(resource=>me.resources[resource]>=2) || 'matter';
+    const upgradeReason=!humanBuy?'Upgrade during your Buy turn.':me.resources[upgradeResource]<2?`Needs 2 ${RESOURCE_NAMES[upgradeResource]}.`:'';
+    const upgradeButtons=upgradeable.map(card=>`<button class="button" data-upgrade-card="${card.id}" ${upgradeReason?'disabled':''} ${upgradeReason?`title="${upgradeReason}"`:''}>${ALL_CARDS[card.key].name} → II · ${upgradedOrderText(card)} <small>${pileOf(card)}</small></button>`).join('');
+    const allDone=![...me.hand,...me.discard,...me.inPlay,...me.deck].some(card=>card.starter&&!card.upgraded);
+    const upgradeNotes=[upgradeReason&&upgradeable.length?upgradeReason:'',inDeck?`${inDeck} in your deck.`:''].filter(Boolean).join(' ');
+    $('#decommission-area').insertAdjacentHTML('beforeend',`<div class="decommission-list upgrade-list"><strong>Upgrade starter</strong><label>Pay 2 <select id="upgrade-resource">${RESOURCES.map(resource=>`<option value="${resource}" ${resource===upgradeResource?'selected':''}>${RESOURCE_NAMES[resource]}</option>`).join('')}</select></label>${allDone?'<span class="muted">All starter cards upgraded</span>':upgradeButtons}${!allDone&&upgradeNotes?`<span class="muted upgrade-note">${upgradeNotes}</span>`:''}</div>`);
     $('#upgrade-resource')?.addEventListener('change',renderMarket);
     $$('[data-upgrade-card]').forEach(button=>button.addEventListener('click',()=>{if(upgradeStarter(0,button.dataset.upgradeCard,$('#upgrade-resource').value)){render();saveGame();}}));
 
@@ -3664,6 +3740,7 @@ function createGalacticReach(options = {}) {
     $('#finish-construct').addEventListener('click',()=>finishConstruct(0));
     $('#skip-colony-build').addEventListener('click',()=>finishColonyBuild(0));
     $('#finish-buy-button').addEventListener('click',finishHumanBuy);
+    $('#hand-finish-buy-button').addEventListener('click',finishHumanBuy);
     $('#pass-button').addEventListener('click',()=>{
       passOperations(0);
       if (state.phase==='buy' && state.activePlayer===0) $('#console').scrollIntoView?.({block:'start'});
