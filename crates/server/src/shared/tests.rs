@@ -1105,69 +1105,98 @@ async fn undo_is_refused_when_no_rebuildable_position_exists() {
         .unwrap();
 }
 
-/// 33.38 #movement: a seat's browser sends the chosen `units` with its Move (the
-/// shape `performMoveOrder` sends from app.js); the table accepts it, and the units
-/// left behind stay on their hex. A reference policy plays the human seat until a
-/// split is on offer.
-#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+/// 33.38 #split-moves: exercise the browser command against the real shared-table
+/// server from a prepared snapshot. Every seat is human so neither bot timing nor
+/// a bot's random path to a mixed stack can decide whether the test reaches its assertion.
+#[tokio::test]
 async fn a_shared_move_can_leave_units_behind() {
-    let store = store_with(&["a"]);
+    let store = store_with(&["a", "b", "c", "d"]);
     let log = Arc::new(SqliteTableLog(store));
-    let service = Service::start(log, Arc::new(TrustedAuthority), Duration::ZERO);
-    service.open(table("split", &[("a", "Ada")])).await.unwrap();
-    let mut agent = BuiltinAgent::new(Strategy::Military, [5; 32]);
-    let n = |v: &Value| v.as_f64().unwrap_or(0.0);
-    let ships = |v: &Value| n(&v["settler"]) + n(&v["fleet"]);
-    for _ in 0..4000 {
-        let (seat, observation, legal) = service.turn("split").await.expect("game still running");
-        if seat != 0 {
-            tokio::time::sleep(Duration::from_millis(2)).await;
-            continue;
-        }
-        let seq = service.view("split", "a").await.unwrap()["seq"]
-            .as_u64()
-            .unwrap();
-        let here = |a: &Value| observation["fleets"][a["source"].as_str().unwrap()]["0"].clone();
-        let split = legal.iter().find(|a| {
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    service
+        .open(table(
+            "split",
+            &[("a", "Ada"), ("b", "Bo"), ("c", "Cy"), ("d", "Dee")],
+        ))
+        .await
+        .unwrap();
+    let (seq, mut snapshot) = log.snapshots("split").unwrap().into_iter().next().unwrap();
+    let mut engine: Value = serde_json::from_str(snapshot["engine"].as_str().unwrap()).unwrap();
+    let card = engine["state"]["players"][0]["hand"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["key"] == "move")
+        .unwrap()
+        .clone();
+    engine["state"]["fleets"] = json!({"0,0":{"0":{"settler":1,"explorer":1,"fleet":2}}});
+    engine["state"]["players"][0]["hand"] = json!([card]);
+    snapshot["engine"] = json!(engine.to_string());
+    log.save_snapshot("split", seq, &snapshot).unwrap();
+    service
+        .call(|t| {
+            t.live.remove("split");
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let (seat, _, legal) = service.turn("split").await.unwrap();
+    assert_eq!(seat, 0);
+    let split = legal
+        .iter()
+        .find(|a| {
             a["type"] == "move"
-                && n(&a["units"]["explorer"]) == 0.0
-                && ships(&a["units"]) < ships(&here(a))
-        });
-        let Some(split) = split else {
-            let i = agent.select_action(&observation, &legal);
-            service
-                .act("split", "a", seq, vec![legal[i].clone()])
-                .await
-                .unwrap();
-            continue;
-        };
-        let (source, before) = (split["source"].as_str().unwrap(), here(split));
-        let intent = json!({"type":"move","card":split["card"],"source":source,
-            "destination":split["destination"],"moveGroup":split["moveGroup"],"units":split["units"]});
-        service.act("split", "a", seq, vec![intent]).await.unwrap();
-        let left = &service.view("split", "a").await.unwrap()["state"]["fleets"][source]["0"];
-        for kind in ["settler", "fleet"] {
-            assert_eq!(
-                n(&left[kind]),
-                n(&before[kind]) - n(&split["units"][kind]),
-                "unchosen {kind}s stay at {source}"
-            );
-        }
+                && a["source"] == "0,0"
+                && a["destination"] == "2,0"
+                && a["units"] == json!({"settler":0,"explorer":0,"fleet":1})
+        })
+        .expect("one Fleet can move two hexes from the prepared stack");
+    let intent = json!({"type":"move","card":split["card"],"source":split["source"],
+        "destination":split["destination"],"moveGroup":split["moveGroup"],"units":split["units"]});
+    for invalid_units in [
+        json!({"settler":0,"explorer":0,"fleet":0.5}),
+        json!({"settler":0,"explorer":1,"fleet":1}),
+    ] {
+        let mut invalid = intent.clone();
+        invalid["units"] = invalid_units;
         assert!(
-            matches!(
-                service
-                    .act(
-                        "split",
-                        "a",
-                        seq,
-                        vec![json!({"type":"move","source":source,"units":{"fleet":0.5}})]
-                    )
-                    .await,
-                Err(Refusal::Conflict(_) | Refusal::Bad(_))
-            ),
-            "a stale or malformed choice is refused"
+            service.act("split", "a", seq, vec![invalid]).await.is_err(),
+            "the server refuses fractional or mixed-team choices"
         );
-        return;
+        assert_eq!(
+            service.view("split", "a").await.unwrap()["seq"],
+            seq,
+            "refused choices do not change the table"
+        );
     }
-    panic!("the reference policy never had a split Move on offer");
+    service
+        .act("split", "a", seq, vec![intent.clone()])
+        .await
+        .unwrap();
+    let after = service.view("split", "a").await.unwrap();
+    assert_eq!(
+        after["state"]["fleets"]["0,0"]["0"],
+        json!({"settler":1,"explorer":1,"fleet":1}),
+        "the Settler, Explorer and unchosen Fleet stay behind"
+    );
+    assert_eq!(
+        after["state"]["fleets"]["2,0"]["0"],
+        json!({"settler":0,"explorer":0,"fleet":1}),
+        "only the selected Fleet arrives"
+    );
+    assert!(
+        after["state"]["players"][0]["inPlay"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|card| card["id"] == intent["card"]),
+        "the move uses its card"
+    );
+    assert!(
+        matches!(
+            service.act("split", "a", seq, vec![intent]).await,
+            Err(Refusal::Conflict(_))
+        ),
+        "a stale command cannot move another Fleet"
+    );
 }
