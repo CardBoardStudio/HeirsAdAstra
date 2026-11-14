@@ -307,6 +307,10 @@ function createGalacticReach(options = {}) {
   let aiTimer = null;
   let displayingCombatReport = false;
   let turnHistory = { pending: null, undo: null };
+  // Browser-only notice for turns the interface finished on the player's behalf
+  // (empty hand, or a Buy turn with no possible choice). It stays visible until the
+  // player completes their next turn. Rules and legal actions are unchanged.
+  let autoNotice = '', autoTurn = false;
   let gameHistory = null;
   let historyPosition = null;
   let historySaveFailed = false;
@@ -617,6 +621,7 @@ function createGalacticReach(options = {}) {
   }
 
   function completeHumanTurn() {
+    if (!autoTurn) autoNotice = '';
     if (!turnHistory.pending) return;
     turnHistory.undo = turnHistory.pending;
     turnHistory.pending = null;
@@ -1197,7 +1202,53 @@ function createGalacticReach(options = {}) {
     }
     render();
     saveGame();
+    if (state.activePlayer === 0 && autoPassIfHandEmpty()) return;
     if (state.activePlayer !== 0) scheduleAiTurn('operations', runAiOperation, 650);
+  }
+
+  // Interface automation only: with no cards in hand and no trade offer awaiting an
+  // answer, Pass is the only way forward except posting a trade, so the browser passes
+  // for the player. Undo restores the Operations turn, so no legal choice is lost.
+  function autoPassIfHandEmpty() {
+    if (headless || replayMode || options.paused?.() || state.phase !== 'operations' || state.activePlayer !== 0 || state.turnStage !== 'prep') return false;
+    const player = state.players[0];
+    if (player.passed || player.hand.length || state.pendingCombat || state.pendingCombatReport || state.pendingColonyBuild || state.pendingConsortium || overflowPlayer() >= 0 || state.winner !== null) return false;
+    if (state.tradeOffers.some(offer => tradeResponseAllowed(0, offer))) return false;
+    autoTurn = true;
+    try {
+      autoNotice = 'No cards left: moved to Buy.';
+      logEvent('You had no cards left, so the table passed you to Buy.');
+      return passOperations(0);
+    } finally { autoTurn = false; }
+  }
+
+  // True when the player's Buy turn offers any choice besides finishing: a card to buy,
+  // a starter to upgrade, a Buy effect, a card to trash, capacity, or a bank exchange.
+  // Mirrors the Buy section of the adapter's legal actions.
+  function humanBuyHasChoice() {
+    const player = state.players[0], discount = player.buyDiscountData > 0 ? 1 : 0;
+    const costs = [...state.market.map(card => ALL_CARDS[card.key].cost), ...BASIC_MARKET.map(key => BASIC_CARDS[key].cost)];
+    if (player.bought < player.buyLimit && costs.some(cost => canAfford(player, cost, discount))) return true;
+    if (RESOURCES.some(resource => player.resources[resource] >= 2) && [...player.hand, ...player.discard].some(card => card.starter && !card.upgraded)) return true;
+    if (player.hand.some(card => { const effect = ALL_CARDS[card.key].buyEffect; return effect && (effect !== 'manipulation' || !player.marketManipulated); })) return true;
+    if (RESOURCES.some(resource => player.resources[resource] >= 3) && player.discard.some(card => player.buyStartDiscardIds.includes(card.id))) return true;
+    if (canIncreaseStorage(0)) return true;
+    return RESOURCES.some(give => RESOURCES.some(get => canBankTrade(0, give, get)));
+  }
+
+  function autoSkipBuy() {
+    if (headless || replayMode || options.paused?.() || state.phase !== 'buy' || state.activePlayer !== 0 || overflowPlayer() >= 0 || state.pendingCombat || state.winner !== null || humanBuyHasChoice()) return false;
+    const wasAuto = autoTurn;
+    autoTurn = true;
+    try {
+      autoNotice = `${autoNotice ? autoNotice + ' ' : ''}Nothing affordable: Buy finished automatically.`;
+      // Keep Undo pointed at the Operations turn that led here.
+      turnHistory.pending = null; saveTurnHistory();
+      logEvent('You had nothing to buy, upgrade, trash or exchange, so Buy finished automatically.');
+      toast(autoNotice);
+      nextBuyPlayer();
+      return true;
+    } finally { autoTurn = wasAuto; }
   }
 
   function scheduleAiTurn(phase, action, delay) {
@@ -1235,7 +1286,7 @@ function createGalacticReach(options = {}) {
     if (playerId === 0) completeHumanTurn();
     player.passed = true;
     logEvent(`${player.name} passed for the rest of Operations.`);
-    if (playerId === 0) toast('You passed. Take your Buy turn now.');
+    if (playerId === 0) toast(autoTurn ? autoNotice : 'You passed. Take your Buy turn now.');
     if (state.players.every(p => p.passed)) expireTrades();
     startBuyPhase();
     return true;
@@ -2525,6 +2576,7 @@ function createGalacticReach(options = {}) {
     }
     render();
     saveGame();
+    if (state.activePlayer === 0 && autoSkipBuy()) return;
     if (state.activePlayer !== 0) scheduleAiTurn('buy', runAiBuy, 550);
   }
 
@@ -3286,6 +3338,8 @@ function createGalacticReach(options = {}) {
     $$('[data-buy-basic]').forEach(button=>button.addEventListener('click',()=>{if(buyCard(0,'basic',button.dataset.buyBasic)){render();saveGame();}}));
     $$('[data-buy-market]').forEach(button=>button.addEventListener('click',()=>{if(buyCard(0,'market',Number(button.dataset.buyMarket))){render();saveGame();}}));
     $('#finish-buy-button').hidden=!humanBuy;
+    $('#hand-finish-buy-button').hidden=!humanBuy;
+    for (const id of ['turn-notice','market-notice']) { const notice=$(`#${id}`); notice.hidden=replayMode||!autoNotice; notice.textContent=replayMode?'':autoNotice; }
     if (replayMode) { $('#decommission-area').innerHTML=''; return; }
     const previousUpgradeResource = $('#upgrade-resource')?.value;
     const eligible=state.players[0].discard.filter(card=>state.players[0].buyStartDiscardIds.includes(card.id));
@@ -3306,10 +3360,20 @@ function createGalacticReach(options = {}) {
       </div>` : '';
     $('#trash-resource')?.addEventListener('change',renderMarket);
     $$('[data-trash]').forEach(button=>button.addEventListener('click',()=>{if(decommission(0,button.dataset.trash,$('#trash-resource').value)){render();saveGame();}}));
-    const upgradeable=[...state.players[0].hand,...state.players[0].discard].filter(card=>card.starter&&!card.upgraded);
+    // Rules (Buy, "Upgrade starters"): original starters upgrade from hand or discard,
+    // during your Buy turn. Starters in play are shown with the reason they must wait.
+    const me=state.players[0];
+    const upgradeable=[...me.hand,...me.discard].filter(card=>card.starter&&!card.upgraded);
+    const waiting=me.inPlay.filter(card=>card.starter&&!card.upgraded);
+    const inDeck=me.deck.filter(card=>card.starter&&!card.upgraded).length;
     const selectedUpgradeResource = previousUpgradeResource;
-    const upgradeResource = RESOURCES.includes(selectedUpgradeResource) ? selectedUpgradeResource : RESOURCES.find(resource=>state.players[0].resources[resource]>=2) || 'matter';
-    if(humanBuy) $('#decommission-area').insertAdjacentHTML('beforeend',`<div class="decommission-list upgrade-list"><strong>Upgrade starter</strong><label>Pay 2 <select id="upgrade-resource">${RESOURCES.map(resource=>`<option value="${resource}" ${resource===upgradeResource?'selected':''}>${RESOURCE_NAMES[resource]}</option>`).join('')}</select></label>${upgradeable.length?upgradeable.map(card=>`<button class="button" data-upgrade-card="${card.id}" ${state.players[0].resources[upgradeResource]<2?'disabled':''}>${ALL_CARDS[card.key].name} → II · ${upgradedOrderText(card)}</button>`).join(''):'<span class="muted">All starter cards upgraded</span>'}</div>`);
+    const upgradeResource = RESOURCES.includes(selectedUpgradeResource) ? selectedUpgradeResource : RESOURCES.find(resource=>me.resources[resource]>=2) || 'matter';
+    const upgradeReason=!humanBuy?'Upgrade during your Buy turn.':me.resources[upgradeResource]<2?`Needs 2 ${RESOURCE_NAMES[upgradeResource]}.`:'';
+    const upgradeButtons=upgradeable.map(card=>`<button class="button" data-upgrade-card="${card.id}" ${upgradeReason?'disabled':''} ${upgradeReason?`title="${upgradeReason}"`:''}>${ALL_CARDS[card.key].name} → II · ${upgradedOrderText(card)} <small>${me.hand.includes(card)?'in hand':'in discard'}</small></button>`).join('');
+    const waitingButtons=waiting.map(card=>`<button class="button upgrade-waiting" type="button" disabled title="In play this round. Cards in play cannot upgrade; it returns to discard at round cleanup.">${ALL_CARDS[card.key].name} → II <small>in play · after cleanup</small></button>`).join('');
+    const allDone=![...me.hand,...me.discard,...me.inPlay,...me.deck].some(card=>card.starter&&!card.upgraded);
+    const upgradeNotes=[upgradeReason&&upgradeable.length?upgradeReason:'',waiting.length?`${waiting.length} in play: cards in play cannot upgrade until round cleanup returns them to discard.`:'',inDeck?`${inDeck} in your deck.`:''].filter(Boolean).join(' ');
+    $('#decommission-area').insertAdjacentHTML('beforeend',`<div class="decommission-list upgrade-list"><strong>Upgrade starter</strong><label>Pay 2 <select id="upgrade-resource">${RESOURCES.map(resource=>`<option value="${resource}" ${resource===upgradeResource?'selected':''}>${RESOURCE_NAMES[resource]}</option>`).join('')}</select></label>${allDone?'<span class="muted">All starter cards upgraded</span>':upgradeButtons+waitingButtons}${!allDone&&upgradeNotes?`<span class="muted upgrade-note">${upgradeNotes}</span>`:''}</div>`);
     $('#upgrade-resource')?.addEventListener('change',renderMarket);
     $$('[data-upgrade-card]').forEach(button=>button.addEventListener('click',()=>{if(upgradeStarter(0,button.dataset.upgradeCard,$('#upgrade-resource').value)){render();saveGame();}}));
 
@@ -3678,6 +3742,7 @@ function createGalacticReach(options = {}) {
     $('#skip-colony-build').addEventListener('click',()=>finishColonyBuild(0));
     $('#construction-discount').addEventListener('change',event=>{state.actionOptions.discountResource=event.target.value;render();saveGame();});
     $('#finish-buy-button').addEventListener('click',finishHumanBuy);
+    $('#hand-finish-buy-button').addEventListener('click',finishHumanBuy);
     $('#pass-button').addEventListener('click',()=>{
       passOperations(0);
       if (state.phase==='buy' && state.activePlayer===0) $('#console').scrollIntoView?.({block:'start'});
