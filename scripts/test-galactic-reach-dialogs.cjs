@@ -940,19 +940,24 @@ test('a hand with cards is never passed automatically',()=>{
   assert.equal(saved.phase,'operations');assert.equal(saved.activePlayer,0);assert(!saved.players[0].passed);
   assert.equal(game.dom.element('pass-button').hidden,false,'Pass & buy is offered beside the hand');
 });
-test('starter upgrades list hand and discard, and show in-play starters as unavailable with the reason',()=>{
+test('Buy upgrades and trashes starters in hand, discard and in play (28.33 #buy amendment)',()=>{
   const storage=createStorage(),state=boot(storage).saved();
   Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});
-  Object.assign(state.players[0],{passed:true,resources:{matter:2,energy:0,biomass:0,data:0},
+  Object.assign(state.players[0],{passed:true,resources:{matter:3,energy:2,biomass:0,data:0},
     hand:[{id:'up-hand',key:'move',starter:true}],discard:[{id:'up-discard',key:'construct',starter:true}],
-    inPlay:[{id:'up-play',key:'move',starter:true}],buyStartDiscardIds:['up-discard']});
+    inPlay:[{id:'up-play',key:'move',starter:true}],buyStartDiscardIds:['up-discard'],buyStartInPlayIds:['up-play']});
   writeSave(storage,state);
-  const game=boot(storage);
+  let game=boot(storage);
   const html=game.dom.element('decommission-area').innerHTML;
-  assert.deepEqual([...html.matchAll(/data-upgrade-card="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-hand']);
-  assert.match(html,/in play · after cleanup/);
-  assert.match(html,/Cards in play cannot upgrade|cards in play cannot upgrade/);
-  assert.doesNotMatch(html,/All starter cards upgraded/);
+  assert.deepEqual([...html.matchAll(/data-upgrade-card="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-hand','up-play']);
+  assert.deepEqual([...html.matchAll(/data-trash="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-play']);
+  assert.doesNotMatch(html,/All starter cards upgraded|after cleanup/);
+  game.dom.element('upgrade-resource').value='energy';fire(game.dom.element('upgrade-resource'),'change');
+  game.dom.lastQuery('[data-upgrade-card]').find(b=>b.dataset.upgradeCard==='up-play').click();game.settle();
+  assert.equal(game.saved().players[0].inPlay.find(c=>c.id==='up-play').upgraded,true);
+  game=boot(storage);game.dom.element('trash-resource').value='matter';fire(game.dom.element('trash-resource'),'change');
+  game.dom.lastQuery('[data-trash]').find(b=>b.dataset.trash==='up-play').click();game.settle();
+  assert(!game.saved().players[0].inPlay.some(c=>c.id==='up-play'),'the in-play card was trashed');
 });
 for (const { name, body } of tests) {
   try {

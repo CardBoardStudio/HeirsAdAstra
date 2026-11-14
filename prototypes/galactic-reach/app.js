@@ -435,7 +435,7 @@ function createGalacticReach(options = {}) {
       id: index, name: PLAYER_NAMES[index], color: PLAYER_COLORS[index], strategy: PLAYER_STRATEGIES[index],
       resources: { matter: 0, energy: 0, biomass: 2, data: 0 }, deck: shuffled(deck), discard: [], hand: [], inPlay: [],
       resourceLimits: { matter:4, energy:4, biomass:4, data:4 }, storageUpgrades: 0, storagePurchases: 0, initialShipyardCoord: null, cardsPurchased: 0, relicsExcavated: 0, combatVictories: 0, passed: false, tradeUsed: false, bought: 0, buyLimit: 1,
-      buyDiscountData: 0, marketManipulated: false, buyStartDiscardIds: [], combatBonus: 0,
+      buyDiscountData: 0, marketManipulated: false, buyStartDiscardIds: [], buyStartInPlayIds: [], combatBonus: 0,
       tradesWith: [0,0,0,0]
     };
   }
@@ -1163,6 +1163,7 @@ function createGalacticReach(options = {}) {
       player.buyDiscountData = 0;
       player.marketManipulated = false;
       player.buyStartDiscardIds = [];
+      player.buyStartInPlayIds = [];
       player.combatBonus = 0;
     });
   }
@@ -1229,9 +1230,9 @@ function createGalacticReach(options = {}) {
     const player = state.players[0], discount = player.buyDiscountData > 0 ? 1 : 0;
     const costs = [...state.market.map(card => ALL_CARDS[card.key].cost), ...BASIC_MARKET.map(key => BASIC_CARDS[key].cost)];
     if (player.bought < player.buyLimit && costs.some(cost => canAfford(player, cost, discount))) return true;
-    if (RESOURCES.some(resource => player.resources[resource] >= 2) && [...player.hand, ...player.discard].some(card => card.starter && !card.upgraded)) return true;
+    if (RESOURCES.some(resource => player.resources[resource] >= 2) && [...player.hand, ...player.discard, ...player.inPlay].some(card => card.starter && !card.upgraded)) return true;
     if (player.hand.some(card => { const effect = ALL_CARDS[card.key].buyEffect; return effect && (effect !== 'manipulation' || !player.marketManipulated); })) return true;
-    if (RESOURCES.some(resource => player.resources[resource] >= 3) && player.discard.some(card => player.buyStartDiscardIds.includes(card.id))) return true;
+    if (RESOURCES.some(resource => player.resources[resource] >= 3) && (player.discard.some(card => trashEligible(player, card, 'discard')) || player.inPlay.some(card => trashEligible(player, card, 'inPlay')))) return true;
     if (canIncreaseStorage(0)) return true;
     return RESOURCES.some(give => RESOURCES.some(get => canBankTrade(0, give, get)));
   }
@@ -2562,6 +2563,7 @@ function createGalacticReach(options = {}) {
     state.phase = 'buy';
     const player = state.players[state.activePlayer];
     player.buyStartDiscardIds = player.discard.map(card => card.id);
+    player.buyStartInPlayIds = player.inPlay.map(card => card.id);
     clearAction();
     startBuyTurn();
   }
@@ -2623,12 +2625,18 @@ function createGalacticReach(options = {}) {
     render(); saveGame();
   }
 
+  // Rules #buy: trash a card that was in your discard or in play when your Buy turn
+  // began. Cards gained, discarded or put in play during this Buy are ineligible.
+  function trashEligible(player, card, pile) {
+    return pile === 'discard' ? player.buyStartDiscardIds.includes(card.id) : (player.buyStartInPlayIds || []).includes(card.id);
+  }
   function decommission(playerId, cardId, resource) {
     const player = state.players[playerId];
-    if (!player || overflowPlayer() >= 0 || !RESOURCES.includes(resource) || state.phase !== 'buy' || state.activePlayer !== playerId || player.resources[resource] < 3 || !player.buyStartDiscardIds.includes(cardId)) return false;
-    const index = player.discard.findIndex(card => card.id === cardId);
-    if (index < 0) return false;
-    const [card] = player.discard.splice(index, 1);
+    if (!player || overflowPlayer() >= 0 || !RESOURCES.includes(resource) || state.phase !== 'buy' || state.activePlayer !== playerId || player.resources[resource] < 3) return false;
+    const pile = ['discard','inPlay'].find(name => player[name].some(card => card.id === cardId && trashEligible(player, card, name)));
+    if (!pile) return false;
+    const index = player[pile].findIndex(card => card.id === cardId);
+    const [card] = player[pile].splice(index, 1);
     player.resources[resource] -= 3;
     logEvent(`${player.name} trashed ${ALL_CARDS[card.key].name} for 3 ${RESOURCE_NAMES[resource]}.`);
     return true;
@@ -2637,7 +2645,8 @@ function createGalacticReach(options = {}) {
   function upgradeStarter(playerId, cardId, resource) {
     const player = state.players[playerId];
     if (!canManageResources(playerId) || state.phase !== 'buy' || !RESOURCES.includes(resource) || player.resources[resource] < 2) return false;
-    const card = [...player.hand,...player.discard].find(item=>item.id===cardId);
+    // Rules #buy: an original starter in your hand, discard or in play can upgrade.
+    const card = [...player.hand,...player.discard,...player.inPlay].find(item=>item.id===cardId);
     if (!card?.starter || card.upgraded) return false;
     player.resources[resource] -= 2;
     card.upgraded = true;
@@ -3342,7 +3351,7 @@ function createGalacticReach(options = {}) {
     for (const id of ['turn-notice','market-notice']) { const notice=$(`#${id}`); notice.hidden=replayMode||!autoNotice; notice.textContent=replayMode?'':autoNotice; }
     if (replayMode) { $('#decommission-area').innerHTML=''; return; }
     const previousUpgradeResource = $('#upgrade-resource')?.value;
-    const eligible=state.players[0].discard.filter(card=>state.players[0].buyStartDiscardIds.includes(card.id));
+    const eligible=[...state.players[0].discard.filter(card=>trashEligible(state.players[0],card,'discard')),...state.players[0].inPlay.filter(card=>trashEligible(state.players[0],card,'inPlay'))];
     const selectedResource = $('#trash-resource')?.value;
     const trashResource = RESOURCES.includes(selectedResource) ? selectedResource : RESOURCES.find(resource=>state.players[0].resources[resource]>=3) || 'matter';
     const trashOptions = RESOURCES.map(resource =>
@@ -3350,30 +3359,28 @@ function createGalacticReach(options = {}) {
     ).join('');
     const trashButtons = eligible.map(card => `
       <button class="button" data-trash="${card.id}" ${state.players[0].resources[trashResource]<3?'disabled':''}>
-        ${ALL_CARDS[card.key].name}${card.upgraded?' II':''}${card.starter?' · starter':''}
+        ${ALL_CARDS[card.key].name}${card.upgraded?' II':''}${card.starter?' · starter':''} <small>${state.players[0].inPlay.includes(card)?'in play':'in discard'}</small>
       </button>`).join('');
     $('#decommission-area').innerHTML = humanBuy ? `
       <div class="decommission-list">
         <strong>Trash a card</strong>
         <label>Pay 3 <select id="trash-resource">${trashOptions}</select></label>
-        ${trashButtons || '<span class="muted">No eligible discarded cards</span>'}
+        ${trashButtons || '<span class="muted">No eligible cards in discard or in play</span>'}
       </div>` : '';
     $('#trash-resource')?.addEventListener('change',renderMarket);
     $$('[data-trash]').forEach(button=>button.addEventListener('click',()=>{if(decommission(0,button.dataset.trash,$('#trash-resource').value)){render();saveGame();}}));
-    // Rules (Buy, "Upgrade starters"): original starters upgrade from hand or discard,
-    // during your Buy turn. Starters in play are shown with the reason they must wait.
+    // Rules #buy: original starters upgrade from hand, discard or in play during your Buy turn.
     const me=state.players[0];
-    const upgradeable=[...me.hand,...me.discard].filter(card=>card.starter&&!card.upgraded);
-    const waiting=me.inPlay.filter(card=>card.starter&&!card.upgraded);
+    const pileOf=card=>me.hand.includes(card)?'in hand':me.inPlay.includes(card)?'in play':'in discard';
+    const upgradeable=[...me.hand,...me.discard,...me.inPlay].filter(card=>card.starter&&!card.upgraded);
     const inDeck=me.deck.filter(card=>card.starter&&!card.upgraded).length;
     const selectedUpgradeResource = previousUpgradeResource;
     const upgradeResource = RESOURCES.includes(selectedUpgradeResource) ? selectedUpgradeResource : RESOURCES.find(resource=>me.resources[resource]>=2) || 'matter';
     const upgradeReason=!humanBuy?'Upgrade during your Buy turn.':me.resources[upgradeResource]<2?`Needs 2 ${RESOURCE_NAMES[upgradeResource]}.`:'';
-    const upgradeButtons=upgradeable.map(card=>`<button class="button" data-upgrade-card="${card.id}" ${upgradeReason?'disabled':''} ${upgradeReason?`title="${upgradeReason}"`:''}>${ALL_CARDS[card.key].name} → II · ${upgradedOrderText(card)} <small>${me.hand.includes(card)?'in hand':'in discard'}</small></button>`).join('');
-    const waitingButtons=waiting.map(card=>`<button class="button upgrade-waiting" type="button" disabled title="In play this round. Cards in play cannot upgrade; it returns to discard at round cleanup.">${ALL_CARDS[card.key].name} → II <small>in play · after cleanup</small></button>`).join('');
+    const upgradeButtons=upgradeable.map(card=>`<button class="button" data-upgrade-card="${card.id}" ${upgradeReason?'disabled':''} ${upgradeReason?`title="${upgradeReason}"`:''}>${ALL_CARDS[card.key].name} → II · ${upgradedOrderText(card)} <small>${pileOf(card)}</small></button>`).join('');
     const allDone=![...me.hand,...me.discard,...me.inPlay,...me.deck].some(card=>card.starter&&!card.upgraded);
-    const upgradeNotes=[upgradeReason&&upgradeable.length?upgradeReason:'',waiting.length?`${waiting.length} in play: cards in play cannot upgrade until round cleanup returns them to discard.`:'',inDeck?`${inDeck} in your deck.`:''].filter(Boolean).join(' ');
-    $('#decommission-area').insertAdjacentHTML('beforeend',`<div class="decommission-list upgrade-list"><strong>Upgrade starter</strong><label>Pay 2 <select id="upgrade-resource">${RESOURCES.map(resource=>`<option value="${resource}" ${resource===upgradeResource?'selected':''}>${RESOURCE_NAMES[resource]}</option>`).join('')}</select></label>${allDone?'<span class="muted">All starter cards upgraded</span>':upgradeButtons+waitingButtons}${!allDone&&upgradeNotes?`<span class="muted upgrade-note">${upgradeNotes}</span>`:''}</div>`);
+    const upgradeNotes=[upgradeReason&&upgradeable.length?upgradeReason:'',inDeck?`${inDeck} in your deck.`:''].filter(Boolean).join(' ');
+    $('#decommission-area').insertAdjacentHTML('beforeend',`<div class="decommission-list upgrade-list"><strong>Upgrade starter</strong><label>Pay 2 <select id="upgrade-resource">${RESOURCES.map(resource=>`<option value="${resource}" ${resource===upgradeResource?'selected':''}>${RESOURCE_NAMES[resource]}</option>`).join('')}</select></label>${allDone?'<span class="muted">All starter cards upgraded</span>':upgradeButtons}${!allDone&&upgradeNotes?`<span class="muted upgrade-note">${upgradeNotes}</span>`:''}</div>`);
     $('#upgrade-resource')?.addEventListener('change',renderMarket);
     $$('[data-upgrade-card]').forEach(button=>button.addEventListener('click',()=>{if(upgradeStarter(0,button.dataset.upgradeCard,$('#upgrade-resource').value)){render();saveGame();}}));
 
