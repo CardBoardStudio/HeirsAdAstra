@@ -102,7 +102,7 @@ for (const seat of [0,1]) {
  g.state.fleets['0,0'][seat].fleet--; // A destroyed unit frees its faction slot.
  assert(g.engine.buildShip(seat,yard,'fleet'));
  g.state.fleets['0,0'][seat].fleet--;before=JSON.stringify(g.state);
- assert(!g.engine.buildShip(seat,yard,'fleet'));assert.equal(JSON.stringify(g.state),before,'A full five-unit Shipyard still blocks commissions below the global cap');
+ assert(g.engine.buildShip(seat,yard,'fleet'),'A Shipyard can commission beyond five ships, within the faction-wide cap');
 }
 {
  const old=game('crates/galactic-reach/rules/v25-'),yard=old.state.clusters[0].coords[1];
