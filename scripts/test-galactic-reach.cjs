@@ -14,7 +14,7 @@ function engine() {
   return {port,adapter};
 }
 const {port,adapter}=engine();
-assert.equal(adapter.rulesVersion,'galactic-reach/32.37');
+assert.equal(adapter.rulesVersion,'galactic-reach/33.38');
 const before=JSON.stringify(port.state);
 adapter.legalActions(0);adapter.observe(0);
 assert.equal(JSON.stringify(port.state),before,'Observation and legality must not mutate state');
@@ -71,20 +71,20 @@ for(const upgraded of [false,true]){
 }
 for(const finish of ['build','skip']){
   const f=orderFixture('colonize'),s=f.port.state,p=s.players[0],world=s.clusters[4];
-  world.revealedBy=[0,1,2,3];s.fleets[world.center]={0:{settler:1}};p.resources={matter:1,energy:1,biomass:3,data:0};
+  world.revealedBy=[0,1,2,3];s.fleets[world.center]={0:{settler:1}};p.resources={matter:1,energy:1,biomass:2,data:1}; // 32.37: a Harvester costs Matter, Energy, Data.
   const order=f.adapter.legalActions(0).find(a=>a.type==='colonize'&&a.coord===world.center);assert(order);f.adapter.applyAction(0,order);
-  assert.equal(s.activePlayer,0);assert.equal(s.pendingColonyBuild.colony,world.center);assert.equal(p.hand.length,0);assert.equal(p.resources.biomass,1);
+  assert.equal(s.activePlayer,0);assert.equal(s.pendingColonyBuild.colony,world.center);assert.equal(p.hand.length,0);assert.equal(p.resources.biomass,0);
   const options=f.adapter.legalActions(0);assert(!options.some(a=>['pass','trade_offer','build'].includes(a.type)));
   const bonus=options.find(a=>a.type==='colony_build'&&a.kind==='harvester');assert(bonus);
   assert.throws(()=>f.adapter.applyAction(0,{...bonus,coord:s.clusters[0].coords[2]}),/Illegal action/);
   f.adapter.applyAction(0,finish==='build'?bonus:options.find(a=>a.type==='finish_colony_build'));
   assert.equal(s.pendingColonyBuild,null);assert.equal(s.activePlayer,1);
-  if(finish==='build'){assert.equal(p.resources.matter,0,'Bonus building pays full cost');assert.equal(p.resources.energy,0);assert.equal(p.resources.biomass,0);}
+  if(finish==='build'){assert.equal(p.resources.matter,0,'Bonus building pays full cost');assert.equal(p.resources.energy,0);assert.equal(p.resources.data,0);}
   else assert.equal(p.resources.matter,1);
 }
 const ranked=engine();ranked.port.state.winner=0;
 ranked.port.state.players.forEach((p,i)=>{p.relicsExcavated=i===0?20:10;p.resources={matter:i===3?0:1,energy:0,biomass:0,data:0};});
 assert.equal(JSON.stringify(ranked.adapter.scores()),JSON.stringify([3,2,2,0]),'Prestige ranks, resource tiebreaks, and exact ties are reflected in terminal scores');
 console.log('Upgraded orders: unit minimums, +1 range, full-cost construction, optional paid colony building, and tied placements passed.');
-// 32.37 Split Moves (#movement) runs here too, so CI covers it without a workflow edit.
+// 33.38 Split Moves (#movement) runs here too, so CI covers it without a workflow edit.
 require('./test-split-moves.cjs');

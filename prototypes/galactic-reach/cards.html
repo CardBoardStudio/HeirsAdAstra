@@ -4,9 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101d22">
-  <title>Card gallery · Galactic Reach 31.36</title>
-  <meta name="description" content="Every Galactic Reach 31.36 market card with its id, price, effect and a place to leave playtest feedback.">
-  <link rel="stylesheet" href="styles.css?v=capacity-cards-31-36">
+  <title>Card gallery · Galactic Reach 32.37</title>
+  <meta name="description" content="Every Galactic Reach 32.37 market card with its id, price, effect and a place to leave playtest feedback.">
+  <link rel="stylesheet" href="styles.css?v=cheaper-cards-32-37">
   <style>
     body { margin: 0; background: var(--bg); color: var(--text); }
     .gallery { max-width: 1240px; margin: 0 auto; padding: 24px 16px 64px; }
@@ -48,7 +48,7 @@
   <main class="gallery" id="gallery">
     <header>
       <div>
-        <div class="eyebrow">GALACTIC REACH · 31.36 CAPACITY CARDS EXPERIMENT</div>
+        <div class="eyebrow" id="gallery-version">GALACTIC REACH · 32.37 CHEAPER CARDS PLAYTEST</div>
         <h1>Card gallery</h1>
         <p class="lede">Every market card in this experiment. Each card has a stable id (N01–N26 for the normal deck, M01–M10 for the military deck), so feedback can name it exactly. Every card costs more of at least one resource than the starting limit of 4: raise your limits before you can buy it.</p>
       </div>
@@ -71,11 +71,15 @@
     </section>
   </main>
   <script>globalThis.drawingBoardTableBoot = true;</script>
-  <script src="app.js?v=capacity-cards-31-36"></script>
+  <script src="app.js?v=cheaper-cards-32-37"></script>
   <script>
   'use strict';
   (() => {
     const catalog = createGalacticReach({ catalog: true });
+    // The label follows the engine this page loaded, so an archived copy names its own rules.
+    const version = catalog.rulesVersion.split('/').pop();
+    document.querySelector('#gallery-version').textContent = `GALACTIC REACH · ${version} · CARD GALLERY`;
+    document.title = `Card gallery · Galactic Reach ${version}`;
     const $ = selector => document.querySelector(selector);
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const cards = [...Object.entries(catalog.ADVANCED_CARDS), ...Object.entries(catalog.MARKET_MILITARY)].map(([key, def]) => ({ key, ...def }));

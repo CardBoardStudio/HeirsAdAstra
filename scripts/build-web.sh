@@ -224,12 +224,21 @@ for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css 
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/30.35/table.js
 
-# Preserve the exact 31.36 Capacity Cards browser (whole-group moves only).
+# Preserve the exact 31.36 Capacity Cards browser (original card costs, Harvester 1).
 mkdir -p dist/galactic-reach/rules/31.36
-for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css shared.js cards.html; do
+for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css shared.js; do
   cp "crates/galactic-reach/rules/v31-$asset" "dist/galactic-reach/rules/31.36/$asset"
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/31.36/table.js
+cp prototypes/galactic-reach/cards.html dist/galactic-reach/rules/31.36/cards.html
+
+# Preserve the exact 32.37 Cheaper Cards browser (whole-group moves only).
+mkdir -p dist/galactic-reach/rules/32.37
+for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css shared.js; do
+  cp "crates/galactic-reach/rules/v32-$asset" "dist/galactic-reach/rules/32.37/$asset"
+done
+cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/32.37/table.js
+cp prototypes/galactic-reach/cards.html dist/galactic-reach/rules/32.37/cards.html
 # Testnet seat (Nido + zero-knowledge private draws) for the current tabletop.
 # The Docker image builds it in its own Node stage and sets SKIP_ZK_SEAT=1 here.
 if [ -z "${SKIP_ZK_SEAT:-}" ]; then
