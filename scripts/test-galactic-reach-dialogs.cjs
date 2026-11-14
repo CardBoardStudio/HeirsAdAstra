@@ -532,7 +532,7 @@ test('Probe resolves from empty space without selecting or reaching a world',()=
  assert.equal(after.fleets['2,2'][0].explorer,1);assert.deepEqual(after.players[0].resources,before.players[0].resources);assert.equal(game.randomCalls(),calls);
  assert.equal(after.clusters.filter(c=>c.scannedBy.includes(0)).length,before.clusters.filter(c=>c.scannedBy.includes(0)).length+1);
  assert.deepEqual(after.clusters.map(c=>c.revealedBy),before.clusters.map(c=>c.revealedBy));
- game.click('export-game-report');const report=game.downloads.at(-1);assert(report.save.gameHistory.events.some(e=>e.text.includes('Probe was permanently trashed')));const p=report.save.state.players[0];assert(![...p.hand,...p.deck,...p.discard].some(c=>c.id==='remote-probe'));
+ game.click('export-game-report');const report=game.downloads.at(-1);assert(report.save.gameHistory.events.some(e=>e.text.includes('Probe was replaced by an Excavate card')));const p=report.save.state.players[0];assert(![...p.hand,...p.deck,...p.discard].some(c=>c.id==='remote-probe'));assert(p.discard.some(c=>c.key==='excavate'),'the used Probe became an Excavate in discard');
 });
 test('Multiple Explorers let the player choose the Probe origin',()=>{
  const storage=createStorage(),state=boot(storage).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep',selected:null});

@@ -42,7 +42,7 @@ for(const kind of ['settler','explorer']){
  const beforeDeck=JSON.stringify(g.p.deck),calls=g.calls();
  const a=g.adapter(),action=a.legalActions(0).find(x=>x.type==='build'&&x.kind===kind&&x.coord===yard);
  assert(action);assert.equal(g.calls(),calls);a.applyAction(0,action);
- const bundled=kind==='explorer'?'excavate':'colonize';
+ const bundled=kind==='explorer'?'probe':'colonize';
  assert(g.p.discard.some(c=>c.key===bundled));assert(!g.p.hand.some(c=>c.key===bundled));
  assert.equal(JSON.stringify(g.p.deck),beforeDeck);assert.equal(g.calls(),calls);assert.equal(g.p.cardsPurchased,0);
 }
