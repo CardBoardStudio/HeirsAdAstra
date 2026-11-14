@@ -304,9 +304,20 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
         StatusCode::NOT_FOUND
     );
     let first = call(&a, "GET", &endpoint, &host, json!({})).await.2;
-    assert_eq!(first["seats"][0]["name"], "Ada");
-    assert_eq!(first["seats"][1]["name"], "Bo");
-    assert_eq!(first["seats"][2]["human"], false);
+    // Seats are dealt at random when the host starts (rulebook #shared-tables).
+    let seat_of = |name: &str| {
+        first["seats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|s| s["name"] == name && s["human"] == true)
+            .map(|s| s["seat"].as_u64().unwrap() as usize)
+            .unwrap()
+    };
+    let people = [seat_of("Ada"), seat_of("Bo")];
+    let rival = (0..4).find(|s| !people.contains(s)).unwrap();
+    assert_eq!(first["seats"][rival]["human"], false);
+    assert_eq!(first["seats"][people[0]]["you"], true);
     assert_eq!(
         call(&a, "GET", &format!("{endpoint}/report"), &host, json!({}))
             .await
@@ -327,20 +338,20 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
         let Some((seat, observation, legal)) = a.shared.turn(&id).await else {
             break;
         };
-        if seat > 1 {
+        let Some(person) = people.iter().position(|s| *s == seat) else {
             tokio::time::sleep(Duration::from_millis(2)).await;
             continue;
-        }
-        let me = &cookies[seat];
+        };
+        let me = &cookies[person];
         let view = call(&a, "GET", &endpoint, me, json!({})).await.2;
         assert_eq!(view["active"], seat);
-        let other = &view["state"]["players"][1 - seat];
+        let other = &view["state"]["players"][people[1 - person]];
         assert_eq!(
             other["hand"],
             json!([]),
             "a seat never sees the other's hand"
         );
-        let other_seat = call(&a, "GET", &endpoint, &cookies[1 - seat], json!({}))
+        let other_seat = call(&a, "GET", &endpoint, &cookies[1 - person], json!({}))
             .await
             .2;
         let seq = view["seq"].as_u64().unwrap();
@@ -349,12 +360,12 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
             &a,
             "POST",
             &format!("{endpoint}/act"),
-            &cookies[1 - seat],
+            &cookies[1 - person],
             json!({"seq":other_seat["seq"],"actions":[{"type":"pass"}]}),
         )
         .await;
         assert_eq!(wrong.0, StatusCode::CONFLICT);
-        let action = legal[agents[seat].select_action(&observation, &legal)].clone();
+        let action = legal[agents[person].select_action(&observation, &legal)].clone();
         if !checked_stale && seq > 0 {
             checked_stale = true;
             let stale = call(
@@ -444,7 +455,7 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
     assert!(
         events
             .iter()
-            .any(|e| e["seat"] == 2 && e["kind"] == "action")
+            .any(|e| e["seat"] == rival && e["kind"] == "action")
     );
     assert!(events.iter().any(|e| e["kind"] == "undo"));
     // Reveal detection on real play: conversions reveal nothing, market buys turn up a card.
@@ -1105,6 +1116,61 @@ async fn undo_is_refused_when_no_rebuildable_position_exists() {
         .act("t7", "a", seq, vec![json!({"type":"pass"})])
         .await
         .unwrap();
+}
+
+// Rulebook #shared-tables: people take random seats when the host starts, so the first
+// two are not always neighbors on one half of the map (homes pair seats 0-1 and 2-3).
+#[test]
+fn start_deals_people_to_random_seats_and_rivals_fill_the_rest() {
+    use rand::SeedableRng;
+    let people = [
+        ("a".to_string(), "Ada".to_string()),
+        ("b".to_string(), "Bo".to_string()),
+    ];
+    let rivals = [
+        "Cyan Concord",
+        "Ember Directorate",
+        "Violet Assembly",
+        "Helios Compact",
+    ];
+    let (mut split, mut host_seats) = (0, std::collections::BTreeSet::new());
+    for seed in 0..64 {
+        let dealt = random_seats(&people, &mut rand::rngs::StdRng::seed_from_u64(seed));
+        assert_eq!(
+            dealt.iter().map(|s| s.seat).collect::<Vec<_>>(),
+            [0, 1, 2, 3]
+        );
+        let at = |account: &str| {
+            dealt
+                .iter()
+                .find(|s| s.account.as_deref() == Some(account))
+                .unwrap()
+                .seat
+        };
+        let (ada, bo) = (at("a"), at("b"));
+        assert_ne!(ada, bo);
+        assert_eq!(dealt[ada].name, "Ada");
+        assert_eq!(dealt[bo].name, "Bo");
+        for seat in dealt.iter().filter(|s| s.account.is_none()) {
+            assert_eq!(
+                seat.name, rivals[seat.seat],
+                "rivals keep their seat's faction"
+            );
+            assert!(seat.policy.is_some());
+        }
+        host_seats.insert(ada);
+        split += usize::from(ada / 2 != bo / 2);
+    }
+    assert_eq!(host_seats.len(), 4, "the host can land in any seat");
+    assert!(
+        (24..=60).contains(&split),
+        "two people sit on opposite halves about two times in three ({split}/64)"
+    );
+    let ordered = seats(&people);
+    assert_eq!(
+        (ordered[0].name.as_str(), ordered[1].name.as_str()),
+        ("Ada", "Bo")
+    );
 }
 
 /// 33.38 #split-moves: exercise the browser command against the real shared-table

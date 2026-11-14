@@ -19,7 +19,7 @@ function effect(key) {
 }
 function special(g) {const action=g.a.legalActions(0).find(a=>a.type==='special');assert(action);g.a.applyAction(0,action);assert(g.p.inPlay.some(c=>c.id==='relic-order'));assert.equal(g.s.activePlayer,1);}
 {
-  const {e,a,s}=game();assert.equal(a.rulesVersion,'galactic-reach/33.38');assert.deepEqual(plain(s.fleets),{});
+  const {e,a,s}=game();assert.equal(a.rulesVersion,'galactic-reach/34.39');assert.deepEqual(plain(s.fleets),{});
   for(const p of s.players) {
     const cards=[...p.deck,...p.hand,...p.discard];assert.equal(cards.length,6);
     assert.equal(cards.filter(c=>c.key==='move').length,3);assert.equal(cards.filter(c=>c.key==='construct').length,3);
@@ -88,7 +88,8 @@ function special(g) {const action=g.a.legalActions(0).find(a=>a.type==='special'
 }
 for(const capture of [false,true]) {
   const g=effect('genesisSeedVault'),world=g.s.clusters[capture?1:4],coord=world.center;
-  g.s.fleets[coord]={0:{settler:1,explorer:0,fleet:0}};if(capture)g.s.planets[coord].occupiedBy=0;
+  // 34.39 #combat: a capture also needs a Fleet on the center, and the Fleet stays.
+  g.s.fleets[coord]={0:{settler:1,explorer:0,fleet:capture?1:0}};if(capture)g.s.planets[coord].occupiedBy=0;
   const action=g.a.legalActions(0).find(x=>x.type==='colonize'&&x.coord===coord);assert(action);g.a.applyAction(0,action);
   assert.equal(g.s.planets[coord].owner,0);assert.equal(g.s.fleets[coord][0].settler,1);assert.equal(g.p.resources.biomass,0);assert.equal(g.p.resources.matter,2);
 }

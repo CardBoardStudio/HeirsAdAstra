@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101d22">
-  <title>Galactic Reach · 33.38 · Split Moves playtest</title>
+  <title>Galactic Reach · 34.39 · Balance Package playtest</title>
   <meta name="description" content="Play Galactic Reach against three computer-controlled rival factions.">
   <script type="importmap">{"imports":{
     "@aztec/bb.js":"/galactic-reach/zk/vendor/bb.js/index.js",
@@ -26,7 +26,7 @@
         <div class="brand-seal" aria-hidden="true">✦</div>
         <div><div class="eyebrow">A GAME OF EXPLORATION &amp; EMPIRE</div>
         <h1>Galactic Reach</h1></div>
-        <small class="rules-badge">33.38 · playtest</small>
+        <small class="rules-badge">34.39 · playtest</small>
       </div>
       <div class="header-actions">
         <a class="button button-ghost" href="/" style="text-decoration:none">Game library</a>
@@ -37,9 +37,14 @@
       </div>
     </header>
     <details class="playtest-changes" id="playtest-changes">
-      <summary><span class="new-feature">New in this playtest</span> <!-- release:summary -->33.38 Split Moves: leave some units behind when you move<!-- /release:summary --> <span class="summary-hint">View changes</span></summary>
+      <summary><span class="new-feature">New in this playtest</span> <!-- release:summary -->34.39 Balance Package: captures need a Fleet, combat wins score 2, card fixes, dealt seats<!-- /release:summary --> <span class="summary-hint">View changes</span></summary>
       <ul><!-- release:items -->
-        <li><strong>Split a group when you move:</strong> select a hex with a Move order and every combat ship there is ticked. Untick Settlers or Fleets, or lower a count, to leave them behind. The chosen units move at their slowest unit’s speed, so a Fleet that leaves its Settler moves 2. Each Move still uses one Move card. Explorers can split from each other but never travel with combat ships. <a href="rulebook.html#movement">Movement</a>.</li>
+        <li><strong>Captures need a Fleet (new in 34.39):</strong> to capture an enemy Colony, bring a Settler <em>and</em> one of your Fleets to its center. Colonize consumes the Settler; the Fleet stays. A Settler alone can no longer take a Colony. <a href="rulebook.html#combat">Combat &amp; conquest</a>.</li>
+        <li><strong>Decisive wins score 2 (new in 34.39):</strong> winning a fight by destroying every opposing unit now gives 2 Prestige instead of 1. <a href="rulebook.html#victory">Victory</a>.</li>
+        <li><strong>Wonders trimmed (new in 34.39):</strong> Dyson Lattice gives 5 Prestige (was 6) and Galactic Senate Seat 3 (was 4). Prices are unchanged. <a href="rulebook.html#cards">Card reference</a>.</li>
+        <li><strong>Better cheap cards (new in 34.39):</strong> Prefab Yards and Orbital Foundry let you build once more at full price; Mining Charter and Bio-Reactor also draw a card; Procurement Hub’s extra purchase costs 1 less of each resource; Boarding Marines gives +2 hits. Archive Purge now lets you choose which level I starters to trash. <a href="rulebook.html#cards">Card reference</a>.</li>
+        <li><strong>Seats are dealt (new in 34.39):</strong> your solo neighbor (the rival sharing your half of the map) changes each game, and New game names it. At a shared table, people are seated at random when the host starts. <a href="rulebook.html#solo-seating">Your neighbor</a>, <a href="rulebook.html#shared-tables">Playing with friends</a>.</li>
+        <li><strong>Split a group when you move (33.38):</strong> select a hex with a Move order and every combat ship there is ticked. Untick Settlers or Fleets, or lower a count, to leave them behind. The chosen units move at their slowest unit’s speed, so a Fleet that leaves its Settler moves 2. Each Move still uses one Move card. Explorers can split from each other but never travel with combat ships. <a href="rulebook.html#movement">Movement</a>.</li>
         <li><strong>A brand-new market:</strong> every earlier advanced card is replaced by 36 new designs (26 normal, 10 military). Each costs more of at least one resource than your starting limit of 4, so raise your limits before buying. Move and Construct are no longer for sale. <a href="rulebook.html#cards">Card reference</a>.</li>
         <li><strong>Ten face-up cards, one mixed supply:</strong> normal and military cards share the market. A bought military card joins your military deck instead of your discard pile. <a href="rulebook.html#buy">Buy</a>.</li>
         <li><strong>Your military deck fights with you:</strong> every battle, your tactic hand is the two Fire and two Screen tactics plus each military card you own, once per battle. <a href="rulebook.html#combat">Combat</a>.</li>
@@ -50,7 +55,7 @@
         <!-- /release:items -->
       </ul>
       <button class="button button-ghost" id="open-relic-catalog" type="button">Preview all 12 alien relics</button>
-      <p>33.38 playtest, built on the 32.37 Cheaper Cards rules · Start a new game for these rules. Existing tables, including shared tables, keep their archived rules. <a href="rules/32.37/">Continue a 32.37 game</a> · <a href="rules/31.36/">Continue a 31.36 game</a> · <a href="rules/30.35/">Continue a 30.35 game</a>.</p>
+      <p>34.39 playtest, built on the 33.38 Split Moves and 32.37 Cheaper Cards rules · Start a new game for these rules. Existing tables, including shared tables, keep their archived rules. <a href="rules/33.38/">Continue a 33.38 game</a> · <a href="rules/32.37/">Continue a 32.37 game</a> · <a href="rules/31.36/">Continue a 31.36 game</a> · <a href="rules/30.35/">Continue a 30.35 game</a>.</p>
     </details>
 
     <section class="game-layout">
@@ -100,7 +105,7 @@
           <dl>
             <dt>Colonies</dt><dd>3 each. No pair bonus.</dd>
             <dt>Relics</dt><dd>2 per relic excavated.</dd>
-            <dt>Combat</dt><dd>1 per fight won with all enemy units destroyed. None if any escape or retreat.</dd>
+            <dt>Combat</dt><dd>2 per fight won with all enemy units destroyed. None if any escape or retreat.</dd>
             <dt>Cards</dt><dd>Permanent Prestige printed on Wonders, Ascendancy Codex, Genesis Charter and Victory Doctrine.</dd>
           </dl>
           <p>Reach <strong id="victory-target-text">40 Prestige</strong>, set when this game was created. Victory is checked at round end.</p>
@@ -239,6 +244,7 @@
       <label for="new-game-target">Prestige target</label>
       <select id="new-game-target"></select>
       <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 40.</p>
+      <p id="new-game-neighbor" class="new-game-neighbor"></p>
       <div class="dialog-actions"><button class="button button-ghost" value="cancel" type="submit">Cancel</button><button class="button button-primary" value="start" type="submit" id="new-game-start">Start new game</button></div>
     </form>
   </dialog>
@@ -252,7 +258,7 @@
 
   <dialog id="rules-dialog" aria-labelledby="rules-title">
     <div class="dialog-heading"><div><div class="eyebrow">QUICK REFERENCE</div><h2 id="rules-title">How to command your faction</h2></div><button class="button button-ghost dialog-close" id="close-rules" type="button" aria-label="Close rules">Close</button></div>
-    <p><a class="button button-primary" href="rulebook.html" target="_blank" rel="noopener">Read the canonical rulebook · 33.38 ↗</a></p>
+    <p><a class="button button-primary" href="rulebook.html" target="_blank" rel="noopener">Read the canonical rulebook · 34.39 ↗</a></p>
     <div class="rules-grid">
       <section><h3>Your turn</h3><p>Convert cards for resources, then use one order, offer a trade, or pass. Passing immediately starts your Buy turn. Finish Buy, then the remaining factions continue Operations.</p></section>
       <section><h3>Your round</h3><p>Produce → draw five → Operations (pass → your Buy turn) → everyone finishes → cleanup → victory check → next round.</p></section>
@@ -278,6 +284,16 @@
       <div id="storage-allocation-options" class="storage-allocation-grid"></div>
       <p id="storage-allocation-status" role="status" aria-live="polite"></p>
       <button type="submit" class="button button-primary" id="storage-allocation-confirm" disabled>Confirm allocation</button>
+    </form>
+  </dialog>
+
+  <dialog id="archive-purge-dialog" class="choice-dialog" aria-labelledby="archive-purge-title" aria-describedby="archive-purge-help">
+    <div class="dialog-heading"><div><div class="eyebrow">ARCHIVE PURGE</div><h2 id="archive-purge-title">Choose starters to trash</h2></div><button type="button" class="button button-ghost dialog-close" id="archive-purge-cancel">Cancel</button></div>
+    <p id="archive-purge-help">Choose up to two level I starter cards in your discard pile. They leave your deck for good. Then draw one card. Move and Construct are not sold in the market.</p>
+    <form id="archive-purge-form">
+      <fieldset class="archive-purge-options"><legend class="sr-only">Level I starters in your discard pile</legend><div id="archive-purge-options"></div></fieldset>
+      <p id="archive-purge-status" role="status" aria-live="polite"></p>
+      <button type="submit" class="button button-primary" id="archive-purge-confirm">Trash and draw</button>
     </form>
   </dialog>
 
@@ -361,6 +377,6 @@
   <script src="replay.js?v=split-moves-33-38"></script>
   <script src="app.js?v=split-moves-33-38"></script>
   <script type="module" src="/galactic-reach/zk/seat.js"></script>
-  <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="33.38"></script>
+  <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="34.39"></script>
 </body>
 </html>
