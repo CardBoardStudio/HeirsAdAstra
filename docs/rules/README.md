@@ -20,6 +20,7 @@ The rulebook is authoritative for intended play. The initial version documents e
 | `#building`, `#combat` | `constructAt`, `excavate`, `resolveCombat`, `colonizePlanet` | `test-galactic-reach.cjs` |
 | `#resources`, `#trade`, `#buy` | `offerTrade`, `respondTrade`, `buyCard`, `upgradeStarter`, `decommission`, `increaseStorage` | `test-galactic-reach.cjs`, `test-long-reach.cjs` |
 | `#politics`, `#victory` | `cleanupRound`, `calculatePrestige`, `finishRound` | `test-long-reach.cjs`, `test-pass-and-buy.cjs`, `test-resource-actions.cjs`, `test-galactic-reach-dialogs.cjs` |
+| `#shared-tables` | networked mode in `app.js` (`installNetworkClient`, `adoptServerView`), `privateState` in `adapter.js`, `crates/server/src/shared/`; see [shared tables](../shared-tables.md) | `cargo test -p server shared` |
 | `#cards`, `#clarifications` | card definitions, `resolveHumanSpecial`, `useBuyEffect`, `resolveCombat`; legal actions in `adapter.js` | relevant mechanic regression, added when resolving each discrepancy |
 
 Engine files are under `prototypes/galactic-reach/`; check scripts are under `scripts/`. The Rust adapter in `crates/galactic-reach/` embeds the same JavaScript. Historical engines remain under `crates/galactic-reach/rules/`. Do not revise an archived ruleset's meaning to match the current manual.

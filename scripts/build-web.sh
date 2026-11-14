@@ -16,6 +16,7 @@ cp prototypes/galactic-reach/rulebook.html prototypes/galactic-reach/rulebook.cs
 cp prototypes/galactic-reach/app.js dist/galactic-reach/app.js
 cp prototypes/galactic-reach/playtest-notes.js prototypes/galactic-reach/playtest-notes.css dist/galactic-reach/
 cp prototypes/galactic-reach/table.js dist/galactic-reach/table.js
+cp prototypes/galactic-reach/shared.js dist/galactic-reach/shared.js
 cp prototypes/galactic-reach/replay.js dist/galactic-reach/replay.js
 cp prototypes/lab/index.html dist/index.html
 cp prototypes/lab/index.html dist/lab/index.html

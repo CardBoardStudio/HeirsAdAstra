@@ -23,7 +23,7 @@ function makeGame(seed, seatStrategies, fleetProduction) {
   let source = original;
   source = replaceOrFail(
     source,
-    "if (state.pendingCombat || state.phase !== 'operations' || state.activePlayer === 0 || state.winner !== null) return;",
+    "if (state.pendingCombat || state.phase !== 'operations' || state.activePlayer === ME || state.winner !== null) return;",
     "if (state.pendingCombat || state.phase !== 'operations' || state.winner !== null) return;",
     'AI operation guard'
   );
