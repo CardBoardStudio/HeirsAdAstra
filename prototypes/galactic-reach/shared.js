@@ -86,14 +86,24 @@
     // server restarts, with no error, so the page watches for silence itself:
     // no message for 25 s, a ping showing a newer seq, a closed stream, the tab
     // becoming visible again, or the network returning all reconnect and resync.
-    let lastMessage = Date.now(), retry = 0, retryTimer = null;
-    function resync() { refresh().catch(() => { /* The next reconnect tries again. */ }); }
+    let lastMessage = Date.now(), retry = 0, retryTimer = null, halted = false;
+    // The server says this table cannot continue here (for example, it was dealt
+    // with an earlier build of the rules): show why and stop retrying.
+    function halt(message) {
+      halted = true; stream?.close(); stream = null; clearTimeout(retryTimer);
+      status.textContent = message; shell.inert = true;
+    }
+    function resync() {
+      refresh().catch(error => { if (error.status === 409 || error.status === 404) halt(error.message); });
+    }
     function reconnect(reason) {
+      if (halted) return;
       stream?.close(); stream = null; clearTimeout(retryTimer);
       if (reason) status.textContent = reason;
       retryTimer = setTimeout(listen, Math.min(10000, 1000 * 2 ** retry++));
     }
     function listen() {
+      if (halted) return;
       stream?.close();
       lastMessage = Date.now();
       stream = new EventSource(`/api/shared/${id}/stream`);
@@ -109,7 +119,7 @@
       stream.addEventListener('error', () => {
         // EventSource retries by itself unless the response was an error page (a
         // 502 while the server restarts), which closes it for good.
-        if (stream?.readyState === EventSource.CLOSED) reconnect('Connection lost. Reconnecting…');
+        if (stream?.readyState === EventSource.CLOSED) { reconnect('Connection lost. Reconnecting…'); resync(); }
         else status.textContent = 'Connection lost. Reconnecting…';
       });
     }

@@ -20,14 +20,26 @@ impl Service {
         .await
         .unwrap()
     }
-    /// The engine's own private view after forgetting it and folding the log again.
+    /// The engine's own private view after forgetting it and folding the log
+    /// again: once from the newest snapshot and once from the whole log.
     async fn refolded(self: &Arc<Self>, id: &str, seat: usize) -> Value {
         let id = id.to_string();
         self.call(move |t| {
             let before = t.live(&id)?.engine.private_state(seat).map_err(broken)?;
             t.live.remove(&id);
             let after = t.live(&id)?.engine.private_state(seat).map_err(broken)?;
-            assert_eq!(before, after, "fold(log) rebuilds the same position");
+            assert_eq!(
+                before, after,
+                "resuming from a snapshot rebuilds the same position"
+            );
+            let table = t.log.table(&id).map_err(broken)?.unwrap();
+            let events = t.log.read(&id).map_err(broken)?;
+            let full = build(table, events, vec![], t.authority.clone()).map_err(broken)?;
+            assert_eq!(
+                full.engine.private_state(seat).map_err(broken)?,
+                after,
+                "fold(log) from the start rebuilds the same position"
+            );
             Ok(after)
         })
         .await
@@ -778,4 +790,98 @@ async fn server_rivals_move_on_the_current_rules_even_with_older_policy_versions
         assert!(moved, "every rival at the {id} table moved");
         assert!(service.view(id, "a").await.unwrap()["ai_error"].is_null());
     }
+}
+
+/// A shared table resumes from its stored snapshot, like a solo save, so an
+/// engine edit that changes how older events replay does not strand it; with no
+/// usable snapshot, players get a clear message instead of a server error.
+#[tokio::test]
+async fn tables_resume_from_snapshots_and_explain_when_they_cannot() {
+    let store = store_with(&["a", "b"]);
+    let log = Arc::new(SqliteTableLog(store.clone()));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    service
+        .open(table("t4", &[("a", "Ada"), ("b", "Bo")]))
+        .await
+        .unwrap();
+    let ada = service.view("t4", "a").await.unwrap();
+    let mut seq = ada["seq"].as_u64().unwrap();
+    for card in ada["state"]["players"][0]["hand"].as_array().unwrap()[..2].iter() {
+        seq = service
+            .act(
+                "t4",
+                "a",
+                seq,
+                vec![json!({"type":"resource","card":card["id"]})],
+            )
+            .await
+            .unwrap()["seq"]
+            .as_u64()
+            .unwrap();
+    }
+    assert_eq!(
+        log.snapshots("t4").unwrap()[0].0,
+        seq,
+        "a snapshot follows every change"
+    );
+    // The snapshot resumes to exactly the position a full replay builds.
+    let resumed = service.refolded("t4", 0).await;
+    let first_action = log
+        .read("t4")
+        .unwrap()
+        .into_iter()
+        .find(|e| e.kind == "action")
+        .unwrap()
+        .seq;
+    // Simulate an engine edit: an early event no longer replays.
+    store
+        .0
+        .lock()
+        .unwrap()
+        .execute(
+            "UPDATE gr_shared_events SET public=json_set(public,'$.action.card','gone-1') WHERE table_id='t4' AND seq=?",
+            [first_action],
+        )
+        .unwrap();
+    service
+        .call(|t| {
+            t.live.remove("t4");
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let after = service.view("t4", "a").await.unwrap();
+    assert_eq!(
+        after["state"], resumed,
+        "the table continues from its snapshot"
+    );
+    // It keeps playing, and Undo still works on top of the snapshot.
+    seq = service
+        .act("t4", "a", seq, vec![json!({"type":"pass"})])
+        .await
+        .unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    assert!(seq > after["seq"].as_u64().unwrap());
+    // Without a usable snapshot the table cannot be rebuilt: say why, plainly.
+    store
+        .0
+        .lock()
+        .unwrap()
+        .execute("DELETE FROM gr_shared_snapshots WHERE table_id='t4'", [])
+        .unwrap();
+    service
+        .call(|t| {
+            t.live.remove("t4");
+            Ok(())
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        service.view("t4", "b").await,
+        Err(Refusal::Conflict(EARLIER_BUILD.into()))
+    );
+    // snapshot-shared reports the same table instead of crashing.
+    let all = service.snapshot_all().await;
+    assert!(all.iter().any(|(id, r)| id == "t4" && r.is_err()));
 }

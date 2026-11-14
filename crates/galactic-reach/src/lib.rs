@@ -134,6 +134,25 @@ impl GalacticReach {
         victory_target: u32,
         shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
     ) -> Result<Self, String> {
+        Self::shared_from(seats, victory_target, None, shuffle)
+    }
+    /// A shared table resumed from a [`Self::snapshot`] instead of dealt fresh,
+    /// the way a solo save loads: any save-compatible build of these rules can
+    /// continue it. Shuffles after the snapshot still come from `shuffle`.
+    pub fn shared_resume(
+        seats: &[(String, bool); 4],
+        victory_target: u32,
+        snapshot: &Value,
+        shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
+    ) -> Result<Self, String> {
+        Self::shared_from(seats, victory_target, Some(snapshot), shuffle)
+    }
+    fn shared_from(
+        seats: &[(String, bool); 4],
+        victory_target: u32,
+        resume: Option<&Value>,
+        shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
+    ) -> Result<Self, String> {
         let shuffle = RefCell::new(shuffle);
         let names: Vec<&str> = seats.iter().map(|s| s.0.as_str()).collect();
         let controllers: Vec<&str> = seats
@@ -155,10 +174,11 @@ impl GalacticReach {
                 )
             },
             &format!(
-                "globalThis.game = createGalacticReach({{headless: true, shuffle: authorityShuffle, names: {}, controllers: {}, victoryTarget: {}}});",
+                "globalThis.game = createGalacticReach({{headless: true, shuffle: authorityShuffle, names: {}, controllers: {}, victoryTarget: {}, resume: {}}});",
                 json!(names),
                 json!(controllers),
-                victory_target
+                victory_target,
+                resume.cloned().unwrap_or(Value::Null)
             ),
         )
     }
@@ -170,6 +190,10 @@ impl GalacticReach {
     /// hidden information removed (see `privateState` in adapter.js).
     pub fn private_state(&self, seat: usize) -> Result<Value, String> {
         self.eval_json(&format!("JSON.stringify(game.privateState({seat}))"))
+    }
+    /// The whole position, secrets included, for [`Self::shared_resume`].
+    pub fn snapshot(&self) -> Result<Value, String> {
+        self.eval_json("JSON.stringify(game.snapshotState())")
     }
     /// The current turn and a summary of everything an action could reveal; a
     /// shared table compares it before and after each action to place Undo checkpoints.
