@@ -48,7 +48,8 @@ for (const seat of [0,1]) for (const capture of [false,true]) {
   g.player.hand = [{id,key:'colonize'}];g.player.resources = {matter:0,energy:0,biomass:capture?1:2,data:0};
   const planet = g.state.planets[world.center];
   if (capture) Object.assign(planet,{owner:(seat+1)%4,hasColony:true,occupiedBy:seat});
-  g.state.fleets = {[world.center]:{[seat]:{settler:1}}};
+  // 34.39 #combat: a capture also needs one of your Fleets on the center.
+  g.state.fleets = {[world.center]:{[seat]:capture?{settler:1,fleet:1}:{settler:1}}};
   const order = g.adapter.legalActions(seat).find(a=>a.type==='colonize'&&a.card===id&&a.coord===world.center);
   assert(order);g.adapter.applyAction(seat,order);
   assert.equal(planet.owner,seat);assert.equal(g.player.resources.biomass,0);

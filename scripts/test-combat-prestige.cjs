@@ -23,8 +23,8 @@ for(const attacker of [0,1])for(const unit of ['settler','explorer','fleet']){
  const g=fixture({attacker,a:{fleet:2},d:{[unit]:1}});g.s.fleets['5,0']={[g.defender]:{fleet:1}};
  g.start();stays(g);finish(g);
  assert.equal(g.s.players[attacker].combatVictories,1);assert.equal(g.s.players[g.defender].combatVictories,0);
- assert.equal(g.e.calculatePrestige(attacker),1);assert.equal(g.s.lastCombat.prestigeWinner,attacker);
- assert.match(g.s.lastCombat.summary.at(-1),/gained 1 Prestige/);
+ assert.equal(g.e.calculatePrestige(attacker),2,'34.39 #victory: a decisive win scores 2');assert.equal(g.s.lastCombat.prestigeWinner,attacker);
+ assert.match(g.s.lastCombat.summary.at(-1),/gained 2 Prestige/);
  assert.equal(g.adapter().observe(attacker).players[attacker].combatVictories,1);
  assert.equal(g.adapter().replayView().players[attacker].combatVictories,1);
  const before=JSON.stringify(g.s);g.finishCombat();assert.equal(JSON.stringify(g.s),before,'Finished fight cannot award twice');
@@ -33,8 +33,8 @@ for(const attacker of [0,1])for(const unit of ['settler','explorer','fleet']){
 // A defender earns the point; subsequent losses do not erase it.
 {
  const g=fixture({a:{settler:1},d:{fleet:1}});g.start();stays(g);finish(g);awards(g,[0,1,0,0]);
- g.s.fleets={};assert.equal(g.e.calculatePrestige(1),1);
- const restored=fixture();Object.assign(restored.s,plain(g.s));assert.equal(restored.e.calculatePrestige(1),1);
+ g.s.fleets={};assert.equal(g.e.calculatePrestige(1),2);
+ const restored=fixture();Object.assign(restored.s,plain(g.s));assert.equal(restored.e.calculatePrestige(1),2);
 }
 // Partial and total paid escapes disqualify the opponent's award.
 for(const d of [{explorer:1},{explorer:1,settler:1}]){
@@ -88,6 +88,6 @@ for(const escaped of [false,true]){
 }
 // Reaching 10 through combat still waits for the round-end victory check.
 {
- const g=fixture();g.s.players[0].combatVictories=39;g.start();stays(g);finish(g);assert.equal(g.e.calculatePrestige(0),40);assert.equal(g.s.winner,null);g.finishRound();assert.equal(g.s.winner,0);
+ const g=fixture();g.s.players[0].combatVictories=19;g.start();stays(g);finish(g);assert.equal(g.e.calculatePrestige(0),40);assert.equal(g.s.winner,null);g.finishRound();assert.equal(g.s.winner,0);
 }
 console.log('Combat Prestige: attacker/defender and all ship types, one point per wipe, partial/full escapes, retreats/Jump, mutual loss, trapped destruction, no undefended-structure points, permanent totals, atomic continuation, reload/replay, and round-end victory passed.');
