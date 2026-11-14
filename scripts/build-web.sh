@@ -217,9 +217,9 @@ for asset in app.js adapter.js index.html styles.css replay.js rulebook.html rul
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/29.34/table.js
 
-# Preserve the exact 30.35 In-play Buy browser (old market, fixed 20-point target).
+# Preserve the exact 30.35 In-play Buy browser (old market, fixed 20-point target, shared tables).
 mkdir -p dist/galactic-reach/rules/30.35
-for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css; do
+for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css shared.js; do
   cp "crates/galactic-reach/rules/v30-$asset" "dist/galactic-reach/rules/30.35/$asset"
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/30.35/table.js
