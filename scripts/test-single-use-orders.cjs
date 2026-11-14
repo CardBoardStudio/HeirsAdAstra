@@ -33,10 +33,13 @@ for (const seat of [0, 1]) {
   assert(cards(g.player).some(c=>c.id==='spare-probe'),'Only the used copy is removed');
   assert.equal(g.state.fleets['2,2'][seat].explorer,1);
   assert.equal(g.state.activePlayer,(seat+1)%4);
-  assert(g.state.log.some(line=>line.includes('Probe was permanently trashed')));
+  assert(g.state.log.some(line=>line.includes('Probe was replaced by an Excavate card in discard')));
+  // 30.35: the used Probe becomes one new Excavate card in discard.
+  assert.equal(g.player.discard.filter(c=>c.key==='excavate').length,1,'A successful Probe adds one Excavate to discard');
   g.player.discard.push(...g.player.hand); g.player.hand = [];
   g.engine.drawCards(g.player,5);
-  assert.deepEqual(plain(g.player.hand.map(c=>c.id)),['spare-probe'],'Shuffle/draw cannot recover the used Probe');
+  assert.deepEqual(plain(g.player.hand.filter(c=>c.key==='probe').map(c=>c.id)),['spare-probe'],'Shuffle/draw cannot recover the used Probe');
+  assert(g.player.hand.some(c=>c.key==='excavate'),'The new Excavate circulates normally');
   g.state.activePlayer = seat;
   assert(!g.engine.probeRelic(seat,'2,2',id),'The same card cannot be replayed');
 }
