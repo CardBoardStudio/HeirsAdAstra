@@ -9,6 +9,8 @@ use serde_json::{Value, json};
 use std::time::{Duration, Instant};
 
 pub const RULES: &str = "galactic-reach/28.33";
+/// Player-facing name of the current rules, as printed on the rulebook masthead.
+pub const EXPERIMENT: &str = "Resource Capacities playtest";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;

@@ -17,6 +17,7 @@ impl Store {
         crate::nido::migrate(&db)?;
         crate::invites::migrate(&db)?;
         crate::tables::migrate(&db)?;
+        crate::lobby::migrate(&db)?;
         crate::arena::migrate(&db)?;
         db.busy_timeout(std::time::Duration::from_secs(5))?;
         Ok(Self(Mutex::new(db)))
