@@ -34,7 +34,7 @@ Card definitions live once, in `ADVANCED_CARDS` and `MARKET_MILITARY` in `protot
 - The rival then buys the best card it can pay for, using the bank if needed.
 - Prestige, capacity and draw-three orders are played first. Battle tactics are scored by printed hits, shields and pierce.
 
-Native arena policy 26 is unchanged and gives the new cards no special value. Arena games still complete under the same limits, at 40 points by default.
+Native policy 26, which plays shared-table rivals (#45) and arena seats, gains a static table of the 36 cards (`CAPACITY_CARDS`, generated from the catalog) and of military tactic stats (`CAPACITY_TACTICS`). It scores a buy at 70 + price + 5 × Prestige − 8 per owned copy (military only with a Fleet), buys capacity during Buy aimed at its best market card's over-limit resources, plays Prestige, capacity and draw orders first, scores tactics by printed hits/shields/pierce, and stops planning storage at the table's `victoryTarget` instead of a fixed 20. Those branches fire only on 31.36 card keys or a 31.36 observation, so the policy stays version 26 and earlier rules play identically. `reference_policies_buy_and_play_capacity_cards` checks a full native 31.36 match: 42 new cards bought, 21 capacity upgrades, 55 new-card plays and military tactics used. Shared tables store the waiting room's target (`gr_shared_tables.victory_target`, additive) and pass it to the engine.
 
 **Issue #41.** Its rebalancing targets (Settler Biomass, Harvester outputs, starting resources) are not addressed here. The new prices make early Data and Energy shortages matter less, because no card is buyable before a capacity upgrade anyway, but Settler and Harvester costs are untouched. #41 stays open.
 

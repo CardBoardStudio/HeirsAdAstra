@@ -65,7 +65,10 @@ pub async fn list(
         };
         let waiting =
             save.is_null() && crate::lobby::status(&db, &id)?.as_deref() == Some("waiting");
-        let (status, url) = if waiting {
+        let shared = crate::shared::status(&db, &id)?;
+        let (status, url) = if let Some(shared) = shared.as_deref() {
+            (shared, crate::shared::url(&id))
+        } else if waiting {
             ("waiting", crate::lobby::url(&id))
         } else {
             (status, table_url("galactic-reach", &id))
@@ -182,6 +185,7 @@ pub async fn get(
     let (name, state, revision, rules) = load(&db, &id, &u.id)?;
     let lobby = crate::lobby::status(&db, &id)?;
     let settings = crate::lobby::table_settings(&db, &id)?;
+    let shared = crate::shared::status(&db, &id)?.map(|_| crate::shared::url(&id));
     drop(db);
     let save: serde_json::Value = state
         .as_deref()
@@ -190,7 +194,7 @@ pub async fn get(
         .map_err(internal)?
         .unwrap_or_default();
     Ok(Json(
-        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"save":save,"lobby":lobby,"lobby_url":crate::lobby::url(&id),"settings":settings}),
+        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"save":save,"lobby":lobby,"lobby_url":crate::lobby::url(&id),"settings":settings,"shared_url":shared}),
     ))
 }
 #[derive(Deserialize)]
@@ -434,7 +438,10 @@ mod tests {
         .2;
         assert_eq!(joined["member"], true);
         assert_eq!(joined["ai_rivals"], 2, "a friend takes an AI seat");
-        assert!(joined["blocked"].as_str().unwrap().contains("one human"));
+        assert!(
+            joined["blocked"].is_null(),
+            "two people and two rivals fill the table"
+        );
         let shelf = call(&a, "GET", "/api/tables", &friend, json!({})).await.2;
         assert!(
             shelf
@@ -443,12 +450,7 @@ mod tests {
                 .iter()
                 .any(|t| t["id"] == id.as_str() && t["guest"] == true && t["status"] == "waiting")
         );
-        assert_eq!(
-            call(&a, "POST", &format!("{lobby}/start"), &host, json!({}))
-                .await
-                .0,
-            StatusCode::CONFLICT
-        );
+        // Starting with the friend seated opens a shared table (shared::tests covers it).
         assert_eq!(
             call(
                 &a,
