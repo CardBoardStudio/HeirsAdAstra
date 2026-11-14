@@ -10,9 +10,13 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-pub const RULES: &str = "galactic-reach/31.36";
+pub const RULES: &str = "galactic-reach/32.37";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "Capacity Cards experiment";
+pub const EXPERIMENT: &str = "Cheaper Cards playtest";
+/// Rules a shared table may play: the current rules and archived engines that
+/// support shared tables. A table keeps the rules it was dealt with, so a cutover
+/// never strands a running shared game (31.36 tables continue on its archive).
+pub const SHARED_RULES: [&str; 2] = [RULES, "galactic-reach/31.36"];
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -104,6 +108,7 @@ impl GalacticReach {
             "galactic-reach/28.33" => "galactic-reach/28.33",
             "galactic-reach/29.34" => "galactic-reach/29.34",
             "galactic-reach/30.35" => "galactic-reach/30.35",
+            "galactic-reach/31.36" => "galactic-reach/31.36",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -130,6 +135,7 @@ impl GalacticReach {
     /// says whether a person plays it. Call [`Self::extend_deadline`] before each
     /// batch of work: a shared table lives far longer than one match budget.
     pub fn shared(
+        rules: &str,
         seats: &[(String, bool); 4],
         victory_target: u32,
         shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
@@ -140,9 +146,13 @@ impl GalacticReach {
             .iter()
             .map(|s| if s.1 { "human" } else { "ai" })
             .collect();
+        let rules = *SHARED_RULES
+            .iter()
+            .find(|r| **r == rules)
+            .ok_or_else(|| format!("Shared tables do not support {rules}."))?;
         Self::boot(
             SHARED_STEP,
-            RULES,
+            rules,
             move |ctx| {
                 ctx.globals().set(
                     "authorityShuffle",
@@ -223,6 +233,7 @@ impl GalacticReach {
                     "galactic-reach/28.33" => include_str!("../rules/v28-adapter.js"),
                     "galactic-reach/29.34" => include_str!("../rules/v29-adapter.js"),
                     "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
+                    "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -254,6 +265,7 @@ impl GalacticReach {
                     "galactic-reach/28.33" => include_str!("../rules/v28-app.js"),
                     "galactic-reach/29.34" => include_str!("../rules/v29-app.js"),
                     "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
+                    "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -490,8 +502,19 @@ fn victory_target(view: &Value) -> f64 {
 }
 /// How much a 31.36 rival values a market card: its price (the set is priced by
 /// power), its printed Prestige, minus copies it already owns.
+/// A market card's price: the observation's printed costs when the rules publish them
+/// (32.37 `marketCosts`), otherwise the 31.36 table.
+fn observed_cost(view: &Value, key: &str) -> Option<[f64; 4]> {
+    let market = view["market"].as_array()?;
+    let costs = view["marketCosts"].as_array()?;
+    let index = market.iter().position(|c| c["key"] == key)?;
+    Some(std::array::from_fn(|i| {
+        number(&costs[index][RESOURCE_KEYS[i]])
+    }))
+}
 fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
-    let (cost, prestige, military) = capacity_card(key)?;
+    let (table_cost, prestige, military) = capacity_card(key)?;
+    let cost = observed_cost(view, key).unwrap_or(table_cost);
     let me = &view["players"][seat];
     if military && bot_units(view, seat, "fleet") == 0.0 {
         return None;
@@ -517,7 +540,10 @@ fn capacity_need(view: &Value, seat: usize) -> Option<[f64; 4]> {
         .iter()
         .filter_map(|c| {
             let key = c["key"].as_str()?;
-            Some((capacity_value(view, seat, key)?, capacity_card(key)?.0))
+            Some((
+                capacity_value(view, seat, key)?,
+                observed_cost(view, key).or_else(|| capacity_card(key).map(|c| c.0))?,
+            ))
         })
         .max_by(|a, b| a.0.total_cmp(&b.0))?
         .1;
@@ -643,7 +669,12 @@ fn bot_income(view: &Value, seat: usize) -> Value {
         }
         let mut amount = 0.0;
         if p["owner"] == json!(seat) {
-            amount += 1.0;
+            // 32.37 Harvesters yield `harvesterYield` (2); earlier rules yield 1.
+            amount += if p["upgrade"] == "harvester" {
+                view["harvesterYield"].as_f64().unwrap_or(1.0)
+            } else {
+                1.0
+            };
         }
         let fleet = &view["fleets"][coord][seat.to_string()];
         if number(&fleet["settler"]) + number(&fleet["fleet"]) > 0.0 {
@@ -1576,6 +1607,7 @@ mod tests {
             "galactic-reach/28.33",
             "galactic-reach/29.34",
             "galactic-reach/30.35",
+            "galactic-reach/31.36",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1610,6 +1642,7 @@ mod tests {
                             | "galactic-reach/28.33"
                             | "galactic-reach/29.34"
                             | "galactic-reach/30.35"
+                            | "galactic-reach/31.36"
                     ) {
                         0
                     } else {
