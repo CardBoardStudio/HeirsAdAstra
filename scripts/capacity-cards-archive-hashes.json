@@ -1,11 +1,12 @@
 {
-  "crates/galactic-reach/rules/v30-app.js": "aef62f06eb460128561d8431019bbea53c7041325fe8881ee057c07b17cdc6d5",
-  "crates/galactic-reach/rules/v30-adapter.js": "a67523423c1dd9cebac02ff586c22bac19ebdabc37aed6a7dd36165e2eb85ccc",
-  "crates/galactic-reach/rules/v30-index.html": "382c9ebc8a2998826624ea010f286eba3b3b727c3ceaabd42b24235860dc54ad",
-  "crates/galactic-reach/rules/v30-styles.css": "42496c85aa8130e35ac0751e7bd251662fd40195acf6911e31a389da504f9b49",
-  "crates/galactic-reach/rules/v30-rulebook.html": "f8198d1b76a1be2cc01f947d5be79a6a0a2838219a89691287dc972ccff912e1",
+  "crates/galactic-reach/rules/v30-app.js": "6ae8639111233cc3f0e76488ee5b9d6a77d7a7587af340a583fc733dda5b1c9d",
+  "crates/galactic-reach/rules/v30-adapter.js": "8d72dd2e31c0f5fba85fcb40bcf6228a42717dc6d79bee1b0e853488bbf16345",
+  "crates/galactic-reach/rules/v30-index.html": "dbd07508f7b3a7805fe14c7697352b6d5da4b446ebd16c35b56242954e8fb681",
+  "crates/galactic-reach/rules/v30-styles.css": "a2f43d66b51e1eb22091cb332b066fd02f1a91874f29c9a9bcdffbf6cc22c9a2",
+  "crates/galactic-reach/rules/v30-rulebook.html": "f0433117fdd9f16d15c338e9535523398f581b51ee260d58546af799caea1f23",
   "crates/galactic-reach/rules/v30-rulebook.css": "66776225d3838d9ca61feab5402a6af433798f0cee9f4e8a603dbaaa1c8e0b91",
   "crates/galactic-reach/rules/v30-replay.js": "d83e9cd89a579d5d3423c22c1fd59ae005f248c4eda042979829b9ff2ab97ef6",
   "crates/galactic-reach/rules/v30-playtest-notes.js": "c2c4d6867ca1f005795a654486f687bd086938917215362f25b4c172fce1a740",
-  "crates/galactic-reach/rules/v30-playtest-notes.css": "3d8484181349c1720319d84189340fa6732ce9b7d7dee355019fc8ab0a5cef0d"
+  "crates/galactic-reach/rules/v30-playtest-notes.css": "3d8484181349c1720319d84189340fa6732ce9b7d7dee355019fc8ab0a5cef0d",
+  "crates/galactic-reach/rules/v30-shared.js": "e8f3e7d687b3eb0ae19e6b49d689ec8d59ab01a6c0f6a4cb32e37401d546ea5e"
 }

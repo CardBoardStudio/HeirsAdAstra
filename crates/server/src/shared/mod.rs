@@ -587,6 +587,10 @@ pub struct Service {
     ai_pace: Duration,
     /// See [`PING_EVERY`], in milliseconds; tests shorten it.
     ping_ms: std::sync::atomic::AtomicU64,
+    /// Set at shutdown: every live stream ends so browsers reconnect to the next
+    /// server. (Graceful shutdown otherwise waits forever on open streams, and the
+    /// old process keeps serving a frozen copy of every table.)
+    closing: tokio::sync::watch::Sender<bool>,
     ai_running: Mutex<HashSet<String>>,
 }
 impl Service {
@@ -617,8 +621,13 @@ impl Service {
             changes: tokio::sync::broadcast::channel(256).0,
             ai_pace,
             ping_ms: (PING_EVERY.as_millis() as u64).into(),
+            closing: tokio::sync::watch::channel(false).0,
             ai_running: Mutex::new(HashSet::new()),
         })
+    }
+    /// Ends every live stream (server shutdown).
+    pub fn close(&self) {
+        self.closing.send_replace(true);
     }
     pub fn ping_every(&self) -> Duration {
         Duration::from_millis(self.ping_ms.load(std::sync::atomic::Ordering::Relaxed))
@@ -861,7 +870,8 @@ pub async fn report(
 pub const PING_EVERY: Duration = Duration::from_secs(10);
 
 /// Server-sent events: the seat's private view now, then after every change,
-/// with a `ping {seq}` whenever the stream is otherwise quiet.
+/// with a `ping {seq}` whenever the stream is otherwise quiet. Streams end when
+/// the server shuts down, so browsers reconnect to the next process.
 pub async fn stream(
     State(app): State<App>,
     headers: HeaderMap,
@@ -870,33 +880,40 @@ pub async fn stream(
     let u = user(&app, &headers)?;
     // Subscribe before reading the first view, so no change can fall in between.
     let changes = app.shared.changes.subscribe();
+    let closing = app.shared.closing.subscribe();
     let first = app.shared.view(&id, &u.id).await?;
     app.shared.kick(&id);
     let seq = first["seq"].as_u64().unwrap_or_default();
     let ping = app.shared.ping_every();
-    let state = (Some(first), changes, app, id, u.id, seq);
+    let state = (Some(first), changes, closing, app, id, u.id, seq);
     let events = futures_util::stream::unfold(
         state,
-        move |(first, mut changes, app, id, account, mut seq)| async move {
+        move |(first, mut changes, mut closing, app, id, account, mut seq)| async move {
             use tokio::sync::broadcast::error::RecvError;
             if let Some(view) = first {
                 let event = SseEvent::default().event("view").data(view.to_string());
                 return Some((
                     Ok::<_, std::convert::Infallible>(event),
-                    (None, changes, app, id, account, seq),
+                    (None, changes, closing, app, id, account, seq),
                 ));
             }
             let changed = loop {
-                match tokio::time::timeout(ping, changes.recv()).await {
-                    Ok(Ok((table, at))) if table == id => {
-                        seq = seq.max(at);
-                        break true;
-                    }
-                    Ok(Ok(_)) => continue,
-                    // Missed messages: refresh rather than risk a stale view.
-                    Ok(Err(RecvError::Lagged(_))) => break true,
-                    Ok(Err(RecvError::Closed)) => return None,
-                    Err(_) => break false,
+                if *closing.borrow() {
+                    return None;
+                }
+                tokio::select! {
+                    _ = closing.changed() => return None,
+                    _ = tokio::time::sleep(ping) => break false,
+                    message = changes.recv() => match message {
+                        Ok((table, at)) if table == id => {
+                            seq = seq.max(at);
+                            break true;
+                        }
+                        Ok(_) => continue,
+                        // Missed messages: refresh rather than risk a stale view.
+                        Err(RecvError::Lagged(_)) => break true,
+                        Err(RecvError::Closed) => return None,
+                    },
                 }
             };
             let event = if changed {
@@ -914,7 +931,7 @@ pub async fn stream(
                     .event("ping")
                     .data(json!({"seq": seq}).to_string())
             };
-            Some((Ok(event), (None, changes, app, id, account, seq)))
+            Some((Ok(event), (None, changes, closing, app, id, account, seq)))
         },
     );
     let mut response = Sse::new(events)
