@@ -31,7 +31,8 @@
       const active = view.active;
       seatList.innerHTML = view.seats.map(seat => `<li class="${seat.seat === active ? 'acting' : ''}${seat.you ? ' you' : ''}" style="--player:${['#55d9f4','#ff9f6e','#a58cff','#f2cf66'][seat.seat]}">${esc(seat.name)}<small>${seat.you ? 'you' : seat.human ? 'player' : 'AI rival'}${seat.seat === active ? ' · to move' : ''}</small></li>`).join('');
       const mine = active === view.seat;
-      if (view.status === 'finished') status.textContent = 'Game over. Export game report now includes every hidden card.';
+      if (view.ai_error) status.textContent = `${view.ai_error} Reload to retry; if it persists, tell the host.`;
+      else if (view.status === 'finished') status.textContent = 'Game over. Export game report now includes every hidden card.';
       else if (!busy) status.textContent = mine ? 'Your move.' : `Waiting for ${view.seats[active]?.name || 'the table'}…`;
       document.title = `${mine && view.status !== 'finished' ? '● Your move · ' : ''}${view.name} · Galactic Reach`;
       // Say why Undo stops short of the start of the turn: a reveal is final.

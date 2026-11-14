@@ -273,6 +273,22 @@ fn build(
     Ok(live)
 }
 
+/// The current rival for a seat's stored policy. A table keeps the policy it was
+/// dealt with, but its moves are in the log, so a newer version of the same
+/// profile (`gr-economy/25` to `/26`) takes over its future decisions.
+fn rival(policy: &str) -> Option<Strategy> {
+    Strategy::parse(policy).or_else(|| {
+        [
+            Strategy::Military,
+            Strategy::Economy,
+            Strategy::Expansion,
+            Strategy::Wanderer,
+        ]
+        .into_iter()
+        .find(|s| s.version().split('/').next() == policy.split('/').next())
+    })
+}
+
 /// Finds the one legal action a seat command names. A command lists some of the
 /// action's fields (for example `{type:'resource',card}` without the computed gain).
 fn resolve(legal: &[Value], intent: &Value) -> Result<Value, String> {
@@ -297,6 +313,8 @@ fn resolve(legal: &[Value], intent: &Value) -> Result<Value, String> {
 
 struct Tables {
     live: HashMap<String, Live>,
+    /// The last reason an AI rival could not move, per table, shown to every seat.
+    ai_errors: HashMap<String, String>,
     log: Arc<dyn TableLog>,
     authority: Arc<dyn HiddenInfoAuthority>,
 }
@@ -365,6 +383,7 @@ impl Tables {
     }
     fn view(&mut self, id: &str, account: &str) -> Result<Value, Refusal> {
         let authority = self.authority.clone();
+        let ai_error = self.ai_errors.get(id).cloned();
         let live = self.live(id)?;
         let seat = live.seat_of(account).ok_or(Refusal::NotFound)?;
         let active = live.engine.active_seat();
@@ -384,6 +403,7 @@ impl Tables {
             "seat": seat, "active": active,
             "seats": live.table.seats.iter().map(|s| json!({"seat":s.seat,"name":s.name,"human":s.human(),"you":s.seat==seat})).collect::<Vec<_>>(),
             "state": state, "hints": hints, "undo": undo,
+            "ai_error": ai_error,
         }))
     }
     fn act(
@@ -492,7 +512,8 @@ impl Tables {
         let Some(policy) = live.table.seats[seat].policy.clone() else {
             return Ok(false);
         };
-        let strategy = Strategy::parse(&policy).ok_or_else(|| broken("Unknown AI policy."))?;
+        let strategy =
+            rival(&policy).ok_or_else(|| broken(format!("Unknown AI policy {policy}.")))?;
         let agent = live.agents.entry(seat).or_insert_with(|| {
             let mut seed = [0u8; 32];
             rand::rngs::OsRng.fill_bytes(&mut seed);
@@ -579,6 +600,7 @@ impl Service {
             .spawn(move || {
                 let mut tables = Tables {
                     live: HashMap::new(),
+                    ai_errors: HashMap::new(),
                     log,
                     authority,
                 };
@@ -677,6 +699,8 @@ impl Service {
                 match service.call(move |t| t.step_ai(&key)).await {
                     Ok(next) => {
                         let key = id.clone();
+                        let _ = service.call(move |t| Ok(t.ai_errors.remove(&key))).await;
+                        let key = id.clone();
                         if let Ok(seq) = service.call(move |t| Ok(t.live(&key)?.head)).await {
                             service.announce(&id, seq);
                         }
@@ -684,6 +708,21 @@ impl Service {
                     }
                     Err(e) => {
                         tracing::error!(table=%id, error=?e, "AI rival could not move");
+                        let (key, reason) = (
+                            id.clone(),
+                            match e {
+                                Refusal::Internal(m) | Refusal::Conflict(m) | Refusal::Bad(m) => m,
+                                Refusal::NotFound => "The table is missing.".into(),
+                            },
+                        );
+                        let _ = service
+                            .call(move |t| {
+                                t.ai_errors
+                                    .insert(key, format!("An AI rival could not move: {reason}"));
+                                Ok(())
+                            })
+                            .await;
+                        service.announce(&id, 0);
                         more = false;
                     }
                 }
