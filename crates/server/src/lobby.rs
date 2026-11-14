@@ -151,6 +151,10 @@ fn load(db: &Connection, id: &str) -> ApiResult<Lobby> {
         .map_err(internal)?
         .collect::<Result<_, _>>()
         .map_err(internal)?;
+    // Rivals are not a host choice (captain, 2026-11-14): Standard AI rivals fill
+    // every seat a person has not taken. Fewer or Easy rivals return once built.
+    lobby.ai_rivals = SEATS - lobby.humans();
+    lobby.difficulty = "standard".into();
     Ok(lobby)
 }
 
@@ -296,22 +300,12 @@ pub async fn settings(
     let u = user(&app, &headers)?;
     let db = app.store.0.lock().map_err(internal)?;
     let lobby = host_lobby(&db, &id, &u.id)?;
-    let max = SEATS - lobby.humans();
-    let min = u32::from(lobby.humans() == 1);
-    if input.ai_rivals < min || input.ai_rivals > max {
-        return Err(bad(format!(
-            "Choose between {min} and {max} AI rivals for this table."
-        )));
+    if input.ai_rivals != lobby.ai_rivals || input.difficulty != lobby.difficulty {
+        return Err(bad(
+            "Rivals are fixed for now: Standard AI rivals fill every seat not taken by a player.",
+        ));
     }
-    if !DIFFICULTIES.iter().any(|d| d.0 == input.difficulty) {
-        return Err(bad("Choose a listed difficulty."));
-    }
-    db.execute(
-        "UPDATE gr_lobbies SET ai_rivals=?,difficulty=? WHERE table_id=?",
-        params![input.ai_rivals, input.difficulty, id],
-    )
-    .map_err(internal)?;
-    Ok(Json(view(&app, &id, &load(&db, &id)?, &u.id)))
+    Ok(Json(view(&app, &id, &lobby, &u.id)))
 }
 
 pub async fn start(
