@@ -5,16 +5,26 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 
-const sourcePath = path.resolve(__dirname, '../prototypes/galactic-reach/app.js');
-const adapterPath = path.resolve(__dirname, '../prototypes/galactic-reach/adapter.js');
-const adapterSource = fs.readFileSync(adapterPath, 'utf8');
-const source = fs.readFileSync(sourcePath, 'utf8');
-const indexHtml=fs.readFileSync(path.resolve(__dirname,'../prototypes/galactic-reach/index.html'),'utf8');
-const formatVersion = Number(source.match(/const SAVE_FORMAT_VERSION = (\d+);/)[1]);
-const SAVE_KEY = `galactic-reach-save-v${formatVersion}`;
-const TURN_HISTORY_KEY = `galactic-reach-turn-history-v${formatVersion}`;
-const HISTORY_KEY = `galactic-reach-history-v${formatVersion}`;
-const CURRENT_RULES_REVISION = Number(source.match(/const RULES_REVISION = (\d+);/)[1]);
+const CURRENT_ENGINE = '../prototypes/galactic-reach/';
+// Cards removed from the 31.36 market (Trade Consortium, Salvage Crews) keep their dialogs in
+// the exact 30.35 archive; archived(...) runs a test body against those archived assets.
+const ARCHIVED_30 = '../crates/galactic-reach/rules/v30-';
+let sourcePath, adapterSource, source, indexHtml, formatVersion, SAVE_KEY, TURN_HISTORY_KEY, HISTORY_KEY, CURRENT_RULES_REVISION;
+function useEngine(prefix) {
+  sourcePath = path.resolve(__dirname, `${prefix}app.js`);
+  adapterSource = fs.readFileSync(path.resolve(__dirname, `${prefix}adapter.js`), 'utf8');
+  source = fs.readFileSync(sourcePath, 'utf8');
+  indexHtml = fs.readFileSync(path.resolve(__dirname, `${prefix}index.html`), 'utf8');
+  formatVersion = Number(source.match(/const SAVE_FORMAT_VERSION = (\d+);/)[1]);
+  SAVE_KEY = `galactic-reach-save-v${formatVersion}`;
+  TURN_HISTORY_KEY = `galactic-reach-turn-history-v${formatVersion}`;
+  HISTORY_KEY = `galactic-reach-history-v${formatVersion}`;
+  CURRENT_RULES_REVISION = Number(source.match(/const RULES_REVISION = (\d+);/)[1]);
+}
+useEngine(CURRENT_ENGINE);
+function archived(body) {
+  return () => { useEngine(ARCHIVED_30); try { body(); } finally { useEngine(CURRENT_ENGINE); } };
+}
 
 function seededRandom(seed) {
   let value = seed >>> 0;
@@ -272,7 +282,7 @@ for(const attacker of [0,1]) for(const stage of ['escape','tactic','committed','
 
 test('salvage caps automatically before the saved final report',()=>{
  const storage=combatStorage(0,'tactic'),state=JSON.parse(storage.getItem(SAVE_KEY));
- for(const seat of [0,1]){state.players[seat].resources.matter=4;state.players[seat].hand.push({key:'salvageCrews',id:`salvage-${seat}`});}
+ for(const seat of [0,1]){state.players[seat].resources.matter=4;state.players[seat].hand.push({key:'naniteOssuary',id:`salvage-${seat}`});}
  writeSave(storage,state);const game=boot(storage);let choices=0;
  while(game.saved().pendingCombat){assert(choices++<8);game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();}
  assert(game.dialog('message').open);assert(!game.dialog('overflow').open);assert.equal(game.saved().players[0].resources.matter,4);assert(game.saved().log.some(l=>l.includes('automatically discarded')));
@@ -391,7 +401,7 @@ function consortiumSave() {
   state.players[0].resourceLimits.matter=6;state.players[0].resources={matter:6,energy:0,biomass:0,data:0};
   writeSave(storage,state);return storage;
 }
-test('Trade Consortium waits, preserves an exchange across reload, and finishes once',()=>{
+test('30.35 archive: Trade Consortium waits, preserves an exchange across reload, and finishes once',archived(()=>{
   const storage=consortiumSave(),game=boot(storage);
   assert(game.dialog('consortium').open);assert.equal(game.saved().players[0].resources.matter,6);
   game.pressEscape('consortium');assert(game.dialog('consortium').open);
@@ -404,14 +414,14 @@ test('Trade Consortium waits, preserves an exchange across reload, and finishes 
   assert(reloaded.dom.element('consortium-cancel').hidden);
   reloaded.click('consortium-finish');assert(!reloaded.dialog('consortium').open);
   assert.equal(reloaded.saved().players[0].inPlay.filter(c=>c.id==='choice-card').length,1);
-});
-test('Trade Consortium gain and cancellation buttons resolve explicitly',()=>{
+}));
+test('30.35 archive: Trade Consortium gain and cancellation buttons resolve explicitly',archived(()=>{
   const storage=consortiumSave(),game=boot(storage);game.click('consortium-cancel');
   assert(!game.saved().pendingConsortium);assert.equal(game.saved().players[0].hand.length,1);
   const gainGame=boot(consortiumSave());
   gainGame.dom.lastQuery('[data-consortium-gain]').find(b=>b.dataset.consortiumGain==='biomass').click();gainGame.settle();
   assert(!gainGame.saved().pendingConsortium);assert.equal(gainGame.saved().players[0].resources.biomass,1);
-});
+}));
 
 
 test('paid storage button preserves Buy and survives reload without a map building', () => {
@@ -466,7 +476,7 @@ test('trashing uses three of the selected resource type in the live Buy UI', () 
 function excavationStorage({selected=true,affordable=false}={}) {
   const storage=createStorage(),state=boot(storage).saved(),coord=Object.keys(state.planets).find(k=>state.planets[k].special==='relic');
   state.clusters[state.planets[coord].cluster].revealedBy=[0,1,2,3];state.clusters[state.planets[coord].cluster].scannedBy=[0];state.selected=selected?coord:null;
-  state.players[0].hand=[{key:'excavate',id:'tab-dig'},{key:'construct',id:'tab-matter'},{key:'move',id:'tab-energy'},{key:'targetingAlgorithms',id:'tab-data'}];
+  state.players[0].hand=[{key:'excavate',id:'tab-dig'},{key:'construct',id:'tab-matter'},{key:'move',id:'tab-energy'},{key:'dataHaven',id:'tab-data'}];
   state.players[0].resources=affordable?{matter:1,energy:1,biomass:0,data:2}:{matter:0,energy:0,biomass:0,data:0};state.fleets[coord]={0:{explorer:1,fleet:1}};
   writeSave(storage,state);return {storage,coord};
 }
@@ -741,8 +751,21 @@ test('history is uncapped, persists resource transactions, and marks unavailable
  assert.equal(transaction.actor,0);assert(transaction.changes.some(c=>c.path.join('.')==='players.0.resources.matter'&&c.after-c.before===-4));
  assert.match(report.logText,/earlier|unavailable/);assert.match(game.dom.element('history-status').textContent,/Partial/);
  const reload=boot(storage);reload.click('export-game-report');assert.deepEqual(reload.downloads[0].save.gameHistory,report.save.gameHistory);
- reload.click('new-game-button').click('export-game-report');const fresh=reload.downloads.at(-1);
+ reload.click('new-game-button');reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();
+ reload.click('export-game-report');const fresh=reload.downloads.at(-1);
  assert(fresh.coverage.complete);assert(fresh.coverage.events<20);assert(!fresh.logText.includes('exchanged 4 Matter'));
+});
+
+// 31.36 #victory: the Prestige target is chosen when a game is created; 40 by default.
+test('New game asks for the Prestige target; Cancel keeps the current game', () => {
+ const storage=createStorage(),game=boot(storage),before=game.saved();
+ assert.equal(before.victoryTarget,40);assert.equal(game.dom.element('victory-target-text').textContent,'40 Prestige');
+ game.click('new-game-button');assert(game.dialog('new-game').open);
+ assert.match(game.dom.element('new-game-target').innerHTML,/value="30"/);assert.match(game.dom.element('new-game-target').innerHTML,/40 Prestige \(default\)/);
+ game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();game.settle();assert.deepEqual(game.saved(),before,'Cancel changes nothing');
+ game.click('new-game-button');game.dom.element('new-game-target').value='30';game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
+ assert.equal(game.saved().victoryTarget,30);assert.equal(game.saved().round,1);assert.equal(game.dom.element('victory-target-text').textContent,'30 Prestige');
+ assert.equal(boot(storage).saved().victoryTarget,30,'The chosen target is saved with the game');
 });
 
 test('Undo retains the audit and records which events it reverses, including across reload', () => {
@@ -843,9 +866,9 @@ test('In play is inspectable, survives reload, and is included in game reports',
 test('Undo returns newly played cards to hand without leaving a second copy in play',()=>{
  const storage=createStorage(),game=boot(storage),initial=game.saved();game.click('convert-all-button');game.click('pass-button');assert.equal(game.saved().players[0].inPlay.length,5);game.click('undo-turn-button');assert.deepEqual(game.saved().players[0].hand,initial.players[0].hand);assert.equal(game.saved().players[0].inPlay.length,0);
 });
-test('Trade Consortium commits into play on its first exchange across reload',()=>{
+test('30.35 archive: Trade Consortium commits into play on its first exchange across reload',archived(()=>{
  const storage=consortiumSave(),game=boot(storage);game.dom.element('consortium-give').value='matter';game.dom.element('consortium-get').value='energy';fire(game.dom.element('consortium-form'),'submit');game.settle();assert.equal(game.saved().players[0].hand.length,0);assert.equal(game.saved().players[0].inPlay.filter(c=>c.id==='choice-card').length,1);const reload=boot(storage);assert(reload.dialog('consortium').open);reload.click('consortium-finish');assert.equal(reload.saved().players[0].inPlay.filter(c=>c.id==='choice-card').length,1);
-});
+}));
 
 
 test('storage allocations cancel atomically, survive commitment and undo with the turn',()=>{
@@ -902,7 +925,8 @@ test('an empty hand passes to Buy, and a Buy with no possible choice finishes, w
   assert.equal(game.dom.element('undo-turn-button').disabled,false,'Undo can restore the Operations turn to post a trade instead');
 });
 test('an empty hand with something affordable stops at Buy, beside the hand',()=>{
-  const game=boot(forcedTurnStorage({resources:{matter:1,energy:0,biomass:0,data:1}}));game.settle();
+  // 31.36 sells no basic cards; 1 of each resource still affords the first capacity upgrade.
+  const game=boot(forcedTurnStorage({resources:{matter:1,energy:1,biomass:1,data:1}}));game.settle();
   const saved=game.saved();
   assert.equal(saved.phase,'buy');assert.equal(saved.activePlayer,0);assert(saved.players[0].passed);
   assert.equal(game.dom.element('market-notice').textContent,'No cards left: moved to Buy.');

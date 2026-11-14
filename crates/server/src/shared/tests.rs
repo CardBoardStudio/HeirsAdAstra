@@ -47,6 +47,7 @@ fn table(id: &str, people: &[(&str, &str)]) -> Table {
         authority: String::new(),
         status: "active".into(),
         seats: seats(&people),
+        victory_target: 40,
     }
 }
 fn store_with(accounts: &[&str]) -> Arc<Store> {
@@ -483,6 +484,7 @@ async fn a_live_view_streams_the_current_seat_view_first() {
             authority: String::new(),
             status: "active".into(),
             seats: seats(&ids),
+            victory_target: 40,
         })
         .await
         .unwrap();

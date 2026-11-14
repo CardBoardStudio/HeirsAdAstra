@@ -1,10 +1,10 @@
 // Exercise the authoritative battle continuation, score, save, and replay paths.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const root=path.join(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8'),plain=x=>JSON.parse(JSON.stringify(x));
-function fixture({attacker=0,a={fleet:1},d={settler:1},tag=null}={}){
+function fixture({attacker=0,a={fleet:1},d={settler:1},tag=null,prefix='prototypes/galactic-reach/'}={}){
  const c=vm.createContext({});let e,extra,seed=1729;
- const source=read('prototypes/galactic-reach/app.js').replace('    return createGalacticAdapter({','    options.testCapture({finishCombat,finishRound});\n    return createGalacticAdapter({');
- vm.runInContext(read('prototypes/galactic-reach/adapter.js')+read('crates/galactic-reach/rules/replay-view.js')+source,c);
+ const source=read(prefix+'app.js').replace('    return createGalacticAdapter({','    options.testCapture({finishCombat,finishRound});\n    return createGalacticAdapter({');
+ vm.runInContext(read(prefix+'adapter.js')+read('crates/galactic-reach/rules/replay-view.js')+source,c);
  const factory=c.createGalacticAdapter;c.createGalacticAdapter=p=>{e=p;return factory(p);};
  c.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32),testCapture:p=>extra=p});
  const s=e.state,defender=attacker===0?1:0;
@@ -51,7 +51,8 @@ for(const d of [{explorer:1},{explorer:1,settler:1}]){
  assert.match(g.s.lastCombat.outcome,/retreated/);awards(g,[0,0,0,0]);
 }
 {
- const g=fixture({d:{fleet:2}});g.s.players[0].hand=[{key:'emergencyJump',id:'jump'}];g.start();stays(g);volley(g,'defensiveScreen','defensiveScreen');
+ // Emergency Jump left the market in 31.36; its no-award retreat stays in the 30.35 archive.
+ const g=fixture({d:{fleet:2},prefix:'crates/galactic-reach/rules/v30-'});g.s.players[0].hand=[{key:'emergencyJump',id:'jump'}];g.start();stays(g);volley(g,'defensiveScreen','defensiveScreen');
  assert.match(g.s.lastCombat.summary.join(' '),/Emergency Jump/);assert.match(g.s.lastCombat.outcome,/retreated/);awards(g,[0,0,0,0]);
 }
 {
@@ -87,6 +88,6 @@ for(const escaped of [false,true]){
 }
 // Reaching 10 through combat still waits for the round-end victory check.
 {
- const g=fixture();g.s.players[0].combatVictories=19;g.start();stays(g);finish(g);assert.equal(g.e.calculatePrestige(0),20);assert.equal(g.s.winner,null);g.finishRound();assert.equal(g.s.winner,0);
+ const g=fixture();g.s.players[0].combatVictories=39;g.start();stays(g);finish(g);assert.equal(g.e.calculatePrestige(0),40);assert.equal(g.s.winner,null);g.finishRound();assert.equal(g.s.winner,0);
 }
 console.log('Combat Prestige: attacker/defender and all ship types, one point per wipe, partial/full escapes, retreats/Jump, mutual loss, trapped destruction, no undefended-structure points, permanent totals, atomic continuation, reload/replay, and round-end victory passed.');

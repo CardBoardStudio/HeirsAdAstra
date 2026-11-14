@@ -66,7 +66,8 @@ for(const version of [6,7]) {
   assert(!g.adapter.legalActions(0).some(a=>a.type==='decommission'));assert.equal(s.phase,'buy');
 }
 function consortiumGame(resources={matter:4,energy:0,biomass:0,data:0}) {
-  const g=engine(),p=g.port.state.players[0];p.hand=[{id:'consortium',key:'tradeConsortium'}];p.resourceLimits={matter:12,energy:12,biomass:12,data:12};p.resources=resources;
+  // Trade Consortium left the market in 31.36; its rules stay pinned to the archived 30.35 engine.
+  const g=engine(30),p=g.port.state.players[0];p.hand=[{id:'consortium',key:'tradeConsortium'}];p.resourceLimits={matter:12,energy:12,biomass:12,data:12};p.resources=resources;
   act(g,'special');assert.equal(p.hand.length,1);assert.equal(g.adapter.activeSeat(),0);return g;
 }
 {
@@ -165,8 +166,11 @@ function card(key,upgraded=false){return {...r.makeCard(key,true),upgraded};}
   assert.equal(r.bankPlanForCost(p,{energy:2,data:1}),null,'Reserve resources needed for the purchase');
   Object.assign(s.planets[s.clusters[0].coords[1]],{owner:0,occupiedBy:null,upgrade:'starbase'});
   p.hand=[];p.deck=[];p.discard=[];
-  s.phase='buy';p.passed=true;s.market=[];s.advancedDeck=[];s.marketDiscard=[];r.runAiBuy();
+  // 31.36: basic cards are not sold; Ion Thrusters (5 Energy, 1 Data) needs a raised Energy limit.
+  p.resourceLimits={matter:4,energy:9,biomass:4,data:4};p.resources={matter:0,energy:9,biomass:0,data:0};
+  s.phase='buy';p.passed=true;s.market=[{key:'ionThrusters',id:'ion-1'}];s.advancedDeck=[];s.marketDiscard=[];r.runAiBuy();
   assert.equal(p.bought,1);assert.equal(p.resources.data,0);assert.equal(p.resources.energy,0,'AI paid the same 4:1 exchange and card price');
+  assert(p.discard.some(c=>c.id==='ion-1'),'A bought normal card enters discard');
 }
 {
   // Hold a card: an empty hand now passes to Buy automatically (rulebook #automatic-turns).

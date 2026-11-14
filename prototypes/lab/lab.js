@@ -165,6 +165,10 @@ function lobbyView() {
   const started = lobby.status !== "waiting";
   // Rivals are fixed for now (captain, 2026-11-14): Standard AI rivals fill every seat not taken by a player.
   const settings = `<p class="form-note">${lobby.ai_rivals} Standard AI rival${lobby.ai_rivals === 1 ? "" : "s"} (Vanguard, Architect, Pathfinder) fill the seat${lobby.ai_rivals === 1 ? "" : "s"} not taken by players. Friends who join take an AI seat.</p>`;
+  // 31.36 #victory-target: the host chooses the Prestige target before Start.
+  const target = lobby.victory_targets && lobby.host && !started
+    ? `<form id="lobby-settings" class="lobby-settings"><label for="lobby-target">Prestige target</label><select id="lobby-target" name="victory_target">${lobby.victory_targets.map(n => `<option value="${n}" ${n === lobby.victory_target ? "selected" : ""}>${n} Prestige${n === 40 ? " (default)" : ""}</option>`).join("")}</select><p class="form-note">The first faction at or above the target when a round ends wins.</p></form>`
+    : lobby.victory_target ? `<p class="form-note">Race to ${lobby.victory_target} Prestige.</p>` : "";
   const invite = lobby.host && !started ? `<div class="lobby-invite"><label for="lobby-invite-link">Invite link</label><div class="lobby-invite-row"><input id="lobby-invite-link" readonly value="${esc(lobby.invite_url)}"><button class="secondary" id="copy-lobby-invite" type="button">Copy link</button></div><p class="form-note">Anyone with this link can take a seat after signing in. Share it privately.</p></div>` : "";
   const start = started
     ? (lobby.table_url && (lobby.host || lobby.shared) ? `<a class="primary" href="${esc(lobby.table_url)}">Open the game →</a>` : `<p class="form-note">The host started this table solo before you joined.</p>`)
@@ -172,7 +176,7 @@ function lobbyView() {
     : lobby.member ? `<p class="form-note" role="status">You have a seat. Waiting for the host to start.${lobby.blocked ? ` ${esc(lobby.blocked)}` : ""}</p><button class="secondary" id="lobby-leave">Leave this table</button>`
     : `<button class="primary" id="lobby-join">Take a seat →</button>`;
   return head("GALACTIC REACH · WAITING ROOM", esc(lobby.name), started ? "This table has started." : "Seats fill as friends join. The host starts the game.", `Rules ${esc(lobby.rules_version.split("/").pop())}`) +
-    `<div class="split"><section class="panel"><h2>Seats</h2><ol class="lobby-seats">${lobby.seats.map(seat => `<li class="lobby-seat ${seat.kind}">${seatLabel(seat)}</li>`).join("")}</ol></section><section class="panel"><h2>${lobby.host ? "Host controls" : "Table"}</h2>${invite}${settings}${start}</section></div><p><a class="text-link" href="#tables">← Your tables</a></p>`;
+    `<div class="split"><section class="panel"><h2>Seats</h2><ol class="lobby-seats">${lobby.seats.map(seat => `<li class="lobby-seat ${seat.kind}">${seatLabel(seat)}</li>`).join("")}</ol></section><section class="panel"><h2>${lobby.host ? "Host controls" : "Table"}</h2>${invite}${settings}${target}${start}</section></div><p><a class="text-link" href="#tables">← Your tables</a></p>`;
 }
 function roster() {
   if (!arena.bots.length)
@@ -300,6 +304,13 @@ function bind() {
   const room = route => `/api/tables/${lobbyRoute()?.id}/lobby${route}`;
   onClick("#lobby-join", async () => { lobby = await api(room("/join"), {invite:lobbyRoute().invite}); location.hash = `#lobby/${lobbyRoute().id}`; });
   onClick("#lobby-leave", async () => { await api(room("/leave"), {}); location.hash = "#tables"; });
+  // The Prestige target saves on its own and redraws only the room (rules #victory-target).
+  $("#lobby-target")?.addEventListener("change", async () => {
+    const body = {ai_rivals:lobby.ai_rivals, difficulty:lobby.difficulty, victory_target:Number($("#lobby-target").value)};
+    try { lobby = await api(room("/settings"), body); notice(""); }
+    catch (e) { notice(e.message, true); await loadLobby(); }
+    finally { render(); }
+  });
   onClick("#lobby-start", async () => { lobby = await api(room("/start"), {}); if (lobby.table_url) location.assign(lobby.table_url); });
   $("#copy-lobby-invite")?.addEventListener("click", async () => {
     try { await navigator.clipboard.writeText($("#lobby-invite-link").value); $("#copy-lobby-invite").textContent = "Copied"; }
