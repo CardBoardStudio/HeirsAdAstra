@@ -1,13 +1,13 @@
 # Render PR previews
 
-`render.yaml` defines one Docker web service with automatic **service previews**. Each PR gets its own Rust API, Wasm frontend, session store, and SQLite database. Render rebuilds on new PR commits, adds a **View deployment** link on GitHub, and deletes the preview when the PR closes or merges. No deployment token is exposed to GitHub Actions.
+`render.yaml` defines two Docker web services, one per [release channel](release.md): `drawing-board` deploys the `stable` branch (the stable site) and `drawing-board-dev` deploys `main` (the dev site, with a persistent disk so dev tables survive merges). Both have automatic **service previews**. Render previews only PRs against a service's linked branch, so change PRs into `main` get dev previews and the Release PR into `stable` gets a stable preview. Each PR gets its own Rust API, Wasm frontend, session store, and SQLite database. Render rebuilds on new PR commits, adds a **View deployment** link on GitHub, and deletes the preview when the PR closes or merges. No deployment token is exposed to GitHub Actions.
 
 This uses single-service previews rather than a multi-service Preview Environment. The latter requires a Pro workspace; this app has no separate database service to clone. Preview compute is billed by Render while it exists. The Blueprint selects one 0.5 CPU / 512 MB instance; consult the workspace's current pricing before provisioning.
 
 ## One-time activation
 
 1. Connect Render's GitHub integration to the private `CardBoardStudio/drawing_board` repository.
-2. After this bootstrap PR is merged, create a **Blueprint** in Render from `main` using the root `render.yaml`. Confirm the compute plan in the provisioning screen. Do not set an explicit service branch in YAML: previews must build each PR's head.
+2. After this bootstrap PR is merged, create a **Blueprint** in Render from `main` using the root `render.yaml`. Confirm the compute plan in the provisioning screen. Each service names its deploy branch (`branch:`). Never set `branch` under `previews`, which would override the PR head.
 3. Confirm **Automatic** under the service's **Previews** settings. The Blueprint already requests it.
 4. Render generates `PREVIEW_ACCESS_CODE` on the base service. Retrieve it from that service's Environment page and share it privately with playtesters. Each new preview inherits the setting. Never put the code in a PR comment, commit, screenshot, or URL.
 5. Open a PR. Wait for its Render deployment, click **View deployment**, and enter a pilot name plus the preview code. Host a table and share its invitation with another signed-in tester, or practice against Kepler.
@@ -22,7 +22,7 @@ Preview login requires all of `RENDER=true`, `IS_PULL_REQUEST=true`, `PREVIEW_AU
 
 The base service has preview login disabled even though the preview configuration is inherited. For real accounts on the base service, use Nido passkey sign-in as described in [Nido authentication](nido-auth.md). `DEV_AUTH` is rejected on Render, including loopback binds. PRs select their own `RENDER_EXTERNAL_URL` instead of inheriting a production `APP_ORIGIN`, preserving origin checks and secure cookies.
 
-The image contains no local database, session file, signer file, `.env`, or Git metadata. SQLite lives at `/app/data/drawing-board.sqlite` within each container. **A redeploy, replacement, or preview closure discards all games and sessions.** The initial Blueprint is a disposable testing host, including its base service; it does not promise durable production storage. For a durable service, provision storage separately and test its preview behavior before enabling it. Never point previews at a production database or attach production credentials.
+The image contains no local database, session file, signer file, `.env`, or Git metadata. SQLite lives at `/app/data/drawing-board.sqlite` within each container. **On a service without a disk, a redeploy, replacement, or preview closure discards all games and sessions.** `drawing-board-dev` mounts a disk at `/app/data`, so its tables and kept dev engines survive each deploy. The initial Blueprint is a disposable testing host, including its base service; it does not promise durable production storage. For a durable service, provision storage separately and test its preview behavior before enabling it. Never point previews at a production database or attach production credentials.
 
 When changing the access code, update already-running previews too or recreate them: service previews copy settings at creation. Signing out and back in creates a fresh test identity, not a recovery of the old name.
 

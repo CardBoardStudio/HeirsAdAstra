@@ -1,9 +1,9 @@
 name: Rules contract
 on:
   push:
-    branches: [main]
+    branches: [main, stable]
   pull_request:
-    types: [opened, synchronize, reopened, edited, ready_for_review]
+    types: [opened, synchronize, reopened, edited, ready_for_review, labeled, unlabeled]
 permissions:
   contents: read
 concurrency:
@@ -25,3 +25,8 @@ jobs:
       - run: node scripts/check-rulebook.cjs
       - if: github.event_name == 'pull_request'
         run: node scripts/check-rules-contract.cjs
+      - name: Release policy
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags origin "$GITHUB_BASE_REF"
+          node scripts/release.cjs check

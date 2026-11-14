@@ -4,6 +4,8 @@
 !Dockerfile
 !crates/
 !crates/**
+!changes/
+!changes/**
 !scripts/
 !scripts/build-web.sh
 !prototypes/
