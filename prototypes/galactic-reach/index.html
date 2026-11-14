@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101d22">
-  <title>Galactic Reach · 32.37 · Split Moves experiment</title>
+  <title>Galactic Reach · 33.38 · Split Moves experiment</title>
   <meta name="description" content="Play Galactic Reach against three computer-controlled rival factions.">
   <script type="importmap">{"imports":{
     "@aztec/bb.js":"/galactic-reach/zk/vendor/bb.js/index.js",
@@ -14,7 +14,7 @@
     "pako":"/galactic-reach/zk/vendor/pako/pako.esm.mjs"
   }}</script>
   <link rel="stylesheet" href="/galactic-reach/zk/seat.css">
-  <link rel="stylesheet" href="styles.css?v=split-moves-32-37">
+  <link rel="stylesheet" href="styles.css?v=split-moves-33-38">
   <link rel="stylesheet" href="playtest-notes.css?v=1">
 </head>
 <body>
@@ -26,7 +26,7 @@
         <div class="brand-seal" aria-hidden="true">✦</div>
         <div><div class="eyebrow">A GAME OF EXPLORATION &amp; EMPIRE</div>
         <h1>Galactic Reach</h1></div>
-        <small class="rules-badge">32.37 · experiment</small>
+        <small class="rules-badge">33.38 · experiment</small>
       </div>
       <div class="header-actions">
         <a class="button button-ghost" href="/" style="text-decoration:none">Game library</a>
@@ -37,9 +37,13 @@
       </div>
     </header>
     <details class="playtest-changes" id="playtest-changes">
-      <summary><span class="new-feature">New in this playtest</span> 32.37 Split Moves: leave some units behind when you move <span class="summary-hint">View changes</span></summary>
+      <summary><span class="new-feature">New in this playtest</span> 33.38 Split Moves: leave some units behind when you move. Built on 32.37: Capacity Cards about 30% cheaper, Harvesters produce 2, rebalanced costs &amp; a brighter map <span class="summary-hint">View changes</span></summary>
       <ul>
-        <li><strong>Split a group when you move:</strong> select a hex with a Move order and every combat ship there is ticked. Untick Settlers or Fleets, or lower a count, to leave them behind. The chosen units move at their slowest unit’s speed, so a Fleet that leaves its Settler moves 2. Each Move still uses one Move card. Explorers can split from each other but never travel with combat ships. <a href="rulebook.html#movement">Movement</a>.</li>
+        <li><strong>Split a group when you move (new in 33.38):</strong> select a hex with a Move order and every combat ship there is ticked. Untick Settlers or Fleets, or lower a count, to leave them behind. The chosen units move at their slowest unit’s speed, so a Fleet that leaves its Settler moves 2. Each Move still uses one Move card. Explorers can split from each other but never travel with combat ships. <a href="rulebook.html#split-moves">Movement</a>.</li>
+        <li><strong>Cheaper Capacity Cards (new in 32.37):</strong> every market card costs about 30% less (376 → 266 resources across the set; the cheapest are now 5 of one resource, the top cards 14). Each still needs more than your starting limit of 4 in one resource, so raise a limit first. <a href="rulebook.html#cards">Card reference</a>.</li>
+        <li><strong>Harvesters produce 2 (new in 32.37):</strong> a Harvester hex now produces 2 of its resource each round instead of 1. <a href="rulebook.html#resources">Production</a>.</li>
+        <li><strong>Rebalanced costs and opening (new in 32.37, issue #41):</strong> a Settler costs 1 Matter, 1 Energy and 1 Biomass; a Harvester costs 1 Matter, 1 Energy and 1 Data; every faction starts with 1 Biomass and 1 Data. <a href="rulebook.html#setup">Setup</a>, <a href="rulebook.html#building">Costs</a>.</li>
+        <li><strong>A brighter map (new in 32.37):</strong> terrain hexes use the legend’s colours, so Matter, Energy, Biomass and Data are easy to tell apart. <a href="rulebook.html#movement">Reading the galaxy</a>.</li>
         <li><strong>A brand-new market:</strong> every earlier advanced card is replaced by 36 new designs (26 normal, 10 military). Each costs more of at least one resource than your starting limit of 4, so raise your limits before buying. Move and Construct are no longer for sale. <a href="rulebook.html#cards">Card reference</a>.</li>
         <li><strong>Ten face-up cards, one mixed supply:</strong> normal and military cards share the market. A bought military card joins your military deck instead of your discard pile. <a href="rulebook.html#buy">Buy</a>.</li>
         <li><strong>Your military deck fights with you:</strong> every battle, your tactic hand is the two Fire and two Screen tactics plus each military card you own, once per battle. <a href="rulebook.html#combat">Combat</a>.</li>
@@ -49,7 +53,7 @@
         <li><strong>Tell us what you liked:</strong> the <a href="cards.html" target="_blank" rel="noopener">card gallery</a> lists every card with its id (N01–N26, M01–M10) and lets you mark likes, dislikes and notes.</li>
       </ul>
       <button class="button button-ghost" id="open-relic-catalog" type="button">Preview all 12 alien relics</button>
-      <p>32.37 experiment, built on the 31.36 Capacity Cards rules · Start a new game for these rules. Existing tables keep their archived rules. <a href="rules/31.36/">Continue a 31.36 game</a> · <a href="rules/30.35/">Continue a 30.35 game</a>.</p>
+      <p>33.38 experiment, built on the 32.37 Cheaper Cards rules · Start a new game for these rules. Existing tables, including shared tables, keep their archived rules. <a href="rules/32.37/">Continue a 32.37 game</a> · <a href="rules/31.36/">Continue a 31.36 game</a>.</p>
     </details>
 
     <section class="game-layout">
@@ -251,7 +255,7 @@
 
   <dialog id="rules-dialog" aria-labelledby="rules-title">
     <div class="dialog-heading"><div><div class="eyebrow">QUICK REFERENCE</div><h2 id="rules-title">How to command your faction</h2></div><button class="button button-ghost dialog-close" id="close-rules" type="button" aria-label="Close rules">Close</button></div>
-    <p><a class="button button-primary" href="rulebook.html" target="_blank" rel="noopener">Read the canonical rulebook · 32.37 ↗</a></p>
+    <p><a class="button button-primary" href="rulebook.html" target="_blank" rel="noopener">Read the canonical rulebook · 33.38 ↗</a></p>
     <div class="rules-grid">
       <section><h3>Your turn</h3><p>Convert cards for resources, then use one order, offer a trade, or pass. Passing immediately starts your Buy turn. Finish Buy, then the remaining factions continue Operations.</p></section>
       <section><h3>Your round</h3><p>Produce → draw five → Operations (pass → your Buy turn) → everyone finishes → cleanup → victory check → next round.</p></section>
@@ -354,11 +358,11 @@
     <div class="relic-catalog-grid" id="relic-catalog-grid"></div>
   </dialog>
 
-  <script src="table.js?v=split-moves-32-37"></script>
-  <script src="shared.js?v=split-moves-32-37"></script>
-  <script src="replay.js?v=split-moves-32-37"></script>
-  <script src="app.js?v=split-moves-32-37"></script>
+  <script src="table.js?v=split-moves-33-38"></script>
+  <script src="shared.js?v=split-moves-33-38"></script>
+  <script src="replay.js?v=split-moves-33-38"></script>
+  <script src="app.js?v=split-moves-33-38"></script>
   <script type="module" src="/galactic-reach/zk/seat.js"></script>
-  <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="32.37"></script>
+  <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="33.38"></script>
 </body>
 </html>

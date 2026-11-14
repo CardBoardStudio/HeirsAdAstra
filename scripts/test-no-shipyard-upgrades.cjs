@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const root=path.join(__dirname,'..'),plain=x=>JSON.parse(JSON.stringify(x));
 function game(){
  const c=vm.createContext({});let e,extra,seed=1729;
- const source=fs.readFileSync(path.join(root,'prototypes/galactic-reach/app.js'),'utf8').replace('    return createGalacticAdapter({','    options.testCapture({chooseAiBuild,combatPieces,buildingLabel});\n    return createGalacticAdapter({');
+ const source=fs.readFileSync(path.join(root,'prototypes/galactic-reach/app.js'),'utf8').replace('    return createGalacticAdapter(headlessPort());','    options.testCapture({chooseAiBuild,combatPieces,buildingLabel});\n    return createGalacticAdapter(headlessPort());');
  vm.runInContext(fs.readFileSync(path.join(root,'prototypes/galactic-reach/adapter.js'),'utf8')+source,c);
  const real=c.createGalacticAdapter;c.createGalacticAdapter=p=>{e=p;return real(p);};
  c.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32),testCapture:p=>extra=p});

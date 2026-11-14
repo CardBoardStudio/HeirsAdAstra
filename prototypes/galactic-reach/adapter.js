@@ -14,7 +14,9 @@ function createGalacticAdapter(e) {
     if (!Number.isInteger(seat) || seat < 0 || seat >= 4) return null;
     const state = s();
     return e.clone({
-      combat: e.combatView(seat), seat, round: state.round, victoryTarget: e.victoryTarget(), phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
+      combat: e.combatView(seat), seat, round: state.round, victoryTarget: e.victoryTarget(),
+      // 32.37: public card prices and Harvester yield, so server rivals need no rules-specific tables.
+      harvesterYield: e.HARVESTER_YIELD, marketCosts: state.market.map(card => e.ALL_CARDS[card.key]?.cost || {}), phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
         id, resources: p.resources, relicsExcavated: e.excavatedRelicCount(id), combatVictories: p.combatVictories || 0, cardPrestige: p.cardPrestige || 0, military: p.military, storageUpgrades: p.storageUpgrades, storagePurchases: p.storagePurchases || 0, storageUpgradeCost: e.storageUpgradeCost(id),
         prestige: e.calculatePrestige(id), capacity: e.playerCapacity(id), resourceLimits: e.resourceLimits(id),
@@ -115,7 +117,7 @@ function createGalacticAdapter(e) {
           for (const kind of [...Object.keys(e.STRUCTURES),...Object.keys(e.SHIP_STATS)])
             if (e.constructAt(seat,coord,kind,discountResource,true)) actions.push({type:'build',...base,coord,kind,discountResource});
         });
-        // 32.37 #movement: any chosen units of the hex, combat ships or Explorers, at the
+        // 33.38 #movement: any chosen units of the hex, combat ships or Explorers, at the
         // slowest chosen unit's speed. The whole group is listed first for each source.
         if (def.order === 'move') Object.entries(state.fleets).forEach(([source, group]) => {
           if (!group[seat]) return;
@@ -160,7 +162,7 @@ function createGalacticAdapter(e) {
     for (let explorer = fleet.explorer || 0; explorer > 0; explorer--) subsets.push({ settler: 0, explorer, fleet: 0 });
     return subsets;
   }
-  // A Move command may name only `moveGroup` (the whole group, as before 32.37) or give
+  // A Move command may name only `moveGroup` (the whole group, as before 33.38) or give
   // `units`; both become the one canonical shape listed by legalActions.
   function canonicalMove(seat, action) {
     if (action?.type !== 'move') return action;
@@ -273,6 +275,11 @@ function createGalacticAdapter(e) {
       }
     };
   }
+  // Everything a shared table needs to resume this game later (the full state,
+  // secrets included, plus the counters kept outside it). Server-side only.
+  function snapshotState() {
+    return e.clone({ state: s(), turnSerial: e.turnSerial, cardSerial: e.cardSerial });
+  }
   // Legal choices a seat's browser cannot check from its private view alone.
   function hints(seat) {
     return { probe: legalActions(seat).filter(a => a.type === 'probe').map(a => ({card: a.card, coord: a.coord})) };
@@ -281,6 +288,6 @@ function createGalacticAdapter(e) {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/32.37', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark };
+  return { rulesVersion: 'galactic-reach/33.38', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;

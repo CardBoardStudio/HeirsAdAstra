@@ -19,11 +19,11 @@ function effect(key) {
 }
 function special(g) {const action=g.a.legalActions(0).find(a=>a.type==='special');assert(action);g.a.applyAction(0,action);assert(g.p.inPlay.some(c=>c.id==='relic-order'));assert.equal(g.s.activePlayer,1);}
 {
-  const {e,a,s}=game();assert.equal(a.rulesVersion,'galactic-reach/32.37');assert.deepEqual(plain(s.fleets),{});
+  const {e,a,s}=game();assert.equal(a.rulesVersion,'galactic-reach/33.38');assert.deepEqual(plain(s.fleets),{});
   for(const p of s.players) {
     const cards=[...p.deck,...p.hand,...p.discard];assert.equal(cards.length,6);
     assert.equal(cards.filter(c=>c.key==='move').length,3);assert.equal(cards.filter(c=>c.key==='construct').length,3);
-    assert(cards.every(c=>c.starter));assert.deepEqual(plain(p.resources),{matter:1,energy:0,biomass:2,data:0});
+    assert(cards.every(c=>c.starter));assert.deepEqual(plain(p.resources),{matter:1,energy:0,biomass:1,data:1},'32.37 #setup (issue #41): start with 1 Biomass and 1 Data');
     assert(!('relics' in p)&&!('relicRecoveries' in p));
   }
   assert.equal(s.relicDeck.length,9);assert.equal(new Set([...s.relicDeck,...s.relicRow].map(c=>c.key)).size,12);

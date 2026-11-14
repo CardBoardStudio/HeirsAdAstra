@@ -11,6 +11,14 @@ Two to four people play one Galactic Reach game in separate browsers; AI rivals 
 
 A table is an append-only log, and the live position is `fold(log)`.
 
+## Rules revisions and snapshots
+
+A shared table keeps the rules revision it was dealt with, as solo tables do. `galactic_reach::SHARED_RULES` lists the revisions shared play can run: the current rules and every archived engine (`crates/galactic-reach/rules/vNN-*`) that carries the shared-table hooks. A table on an archived revision folds on that archive, and its browser is the archived copy (`/galactic-reach/rules/<revision>/`; the view's `client_path` tells `shared.js` where to go). At a rules cutover, archive the outgoing engine as usual and add its revision to `SHARED_RULES`. Unfinished tables then keep playing.
+
+Replaying a log needs the exact engine that wrote it, so save-compatible edits *within* a revision (for example 30.35's in-place change to Probe) need more: like a solo save, the table service stores a snapshot after every change (`TableLog::save_snapshot`; the newest 64 are kept). A snapshot is the engine's own JSON text: the full state, secrets included, plus the card and turn counters kept outside it. It is kept as text because the rules iterate some objects in key order, and a parsed `serde_json::Value` would sort those keys. To rebuild a table, the service resumes from the newest snapshot that no later `undo` reaches behind, then replays only the events after it; without a usable snapshot it replays the whole log. If neither works, players see "This shared table was dealt with an earlier build of these rules…" instead of a server error. Undo builds its rolled-back position before recording anything and is refused plainly if it cannot. A snapshot is a server convenience, not part of the ZK seam: the log still defines the game, and in a ZK table each seat would keep its own private state.
+
+To move unfinished tables to a newer save-compatible build of their revision, run `server snapshot-shared` with the build they were dealt on. It snapshots every unfinished table at its head and reports any it cannot load. Then start the new build.
+
 ## Undo
 
 The seat to move may undo its own actions from the current turn (`POST /api/shared/<id>/undo {seq}`). Each action event records the turn it was taken in (the engine's runtime turn counter) and whether it revealed hidden information. The server compares `undoMark()` before and after the action: deck sizes, the market and relic piles, surveys, located relics and combat, plus any fresh shuffle. A revealing action is a checkpoint, and Undo stops just after the latest one. Undo appends an `undo` event `{to}`, and the fold skips that seat's later actions. Rows are never deleted, so the hash chain stays valid. No undone action ever caused a shuffle, so every logged permutation is replayed in order and the authority never deals again. After an undo the service folds the table again, and every connected seat receives the rolled-back view. If the server restarts, or an apply fails, the service forgets its in-memory engine and folds the log again. Once the game ends, the authority appends a `reveal` event and every seat may download the full record.
@@ -45,6 +53,5 @@ What still blocks that swap: the circuit covers draws from one seat's deck, whil
 - No seat timeouts: a table waits for an absent person.
 - The game report opens only after the game ends.
 - Seats are fixed at Start; nobody can join or leave a started table.
-- Shared play runs only the current rules. A rules cutover strands unfinished shared tables: the server reports their pinned version instead of folding them with a newer engine. Archived engines would need the shared-table constructor to resume them.
 - On shutdown the server ends every live stream and exits within 5 seconds. Graceful shutdown would otherwise wait forever on open streams, and the old process would keep serving a frozen copy of each table to its browsers.
 - One server process per database: the table service keeps live engines in memory and serializes each table's writes.

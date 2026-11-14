@@ -1,6 +1,6 @@
-// 32.37 Split Moves: a Move order moves any chosen units of one hex (rules #movement, #split-moves).
+// 33.38 Split Moves: a Move order moves any chosen units of one hex (rules #movement, #split-moves).
 // Checks the engine and adapter, the browser order flow, browser rivals, the shared-table
-// command shape, and that 31.36 stays pinned to its archive.
+// command shape, and that 32.37 stays pinned to its archive.
 const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
 const root = path.join(__dirname, '..'), read = f => fs.readFileSync(path.join(root, f), 'utf8');
 const plain = x => JSON.parse(JSON.stringify(x));
@@ -171,14 +171,14 @@ const record = [];
   record.push('human-flow');
 }
 
-// 31.36 stays the exact archive: whole-group moves only.
+// 32.37 stays the exact archive: whole-group moves only.
 {
-  const g = game('crates/galactic-reach/rules/v31-'); g.p.hand = [{ key: 'move', id: 'm' }];
+  const g = game('crates/galactic-reach/rules/v32-'); g.p.hand = [{ key: 'move', id: 'm' }];
   g.s.fleets = { '0,0': { 0: units(1, 0, 2) } };
-  assert.equal(g.a().rulesVersion, 'galactic-reach/31.36');
+  assert.equal(g.a().rulesVersion, 'galactic-reach/32.37');
   const legal = moves(g, '0,0');
-  assert(legal.every(x => !('units' in x)), '31.36 lists no unit choices');
-  assert.equal(farthest(legal), 1, '31.36 moves the whole group at Settler speed');
+  assert(legal.every(x => !('units' in x)), '32.37 lists no unit choices');
+  assert.equal(farthest(legal), 1, '32.37 moves the whole group at Settler speed');
   record.push('archive');
 }
 
