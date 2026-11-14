@@ -530,6 +530,7 @@ fn router(app: App) -> Router {
         .route("/api/shared", get(shared::list))
         .route("/api/shared/{id}", get(shared::view))
         .route("/api/shared/{id}/act", post(shared::act))
+        .route("/api/shared/{id}/undo", post(shared::undo))
         .route("/api/shared/{id}/stream", get(shared::stream))
         .route("/api/shared/{id}/report", get(shared::report))
         .route(

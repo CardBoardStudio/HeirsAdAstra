@@ -12,10 +12,11 @@
     const bar = document.createElement('section');
     bar.className = 'table-save-bar shared-table-bar';
     bar.setAttribute('aria-label', 'Shared table');
-    bar.innerHTML = '<a class="button button-ghost" href="/?game=galactic-reach#tables">← Your tables</a><strong id="saved-table-name">Opening shared table…</strong><span id="table-rules" class="rules-badge"></span><ol class="shared-seats" id="shared-seats" aria-label="Seats"></ol><span id="table-sync" role="status" aria-live="polite">Connecting…</span>';
+    bar.innerHTML = '<a class="button button-ghost" href="/?game=galactic-reach#tables">← Your tables</a><strong id="saved-table-name">Opening shared table…</strong><span id="table-rules" class="rules-badge"></span><ol class="shared-seats" id="shared-seats" aria-label="Seats"></ol><span id="table-sync" role="status" aria-live="polite">Connecting…</span><span id="shared-undo-note" class="shared-undo-note" hidden></span>';
     shell.before(bar);
     const status = bar.querySelector('#table-sync');
     const seatList = bar.querySelector('#shared-seats');
+    const undoNote = bar.querySelector('#shared-undo-note');
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
     let current = null, game = null, busy = false, stream = null;
     async function api(path, body) {
@@ -33,6 +34,10 @@
       if (view.status === 'finished') status.textContent = 'Game over. Export game report now includes every hidden card.';
       else if (!busy) status.textContent = mine ? 'Your move.' : `Waiting for ${view.seats[active]?.name || 'the table'}…`;
       document.title = `${mine && view.status !== 'finished' ? '● Your move · ' : ''}${view.name} · Galactic Reach`;
+      // Say why Undo stops short of the start of the turn: a reveal is final.
+      const undo = view.undo || {};
+      const note = !mine ? '' : undo.available && undo.stop ? `Undo goes back only to just after ${undo.stop}.` : !undo.available && /^Undo stops/.test(undo.reason || '') ? undo.reason : '';
+      undoNote.textContent = note; undoNote.hidden = !note;
     }
     function adopt(view) {
       if (current && view.seq < current.seq) return;
@@ -56,6 +61,15 @@
           status.textContent = error.message;
           try { await refresh(); status.textContent = error.message; } catch { /* The live stream resyncs on reconnect. */ }
         });
+      return true;
+    }
+    function undo() {
+      if (busy || !current) return false;
+      busy = true;
+      status.textContent = 'Undoing…';
+      api(`/api/shared/${id}/undo`, {seq: current.seq})
+        .then(result => { busy = false; adopt(result.view); status.textContent = `Took back ${result.undone} choice${result.undone === 1 ? '' : 's'}.`; })
+        .catch(async error => { busy = false; status.textContent = error.message; try { await refresh(); status.textContent = error.message; } catch { /* The live stream resyncs on reconnect. */ } });
       return true;
     }
     async function report() {
@@ -82,7 +96,7 @@
       bar.querySelector('#table-rules').textContent = `Rules ${view.rules_version.split('/')[1]} · shared`;
       describe(view);
       game = globalThis.createGalacticReach({
-        network: {seat: view.seat, rules: view.rules_version, initial: view, act, busy: () => busy, report},
+        network: {seat: view.seat, rules: view.rules_version, initial: view, act, undo, busy: () => busy, report},
         paused: () => busy, newTable: leave
       });
       const library = document.querySelector('.header-actions a');

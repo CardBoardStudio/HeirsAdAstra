@@ -301,6 +301,9 @@ function createGalacticReach(options = {}) {
 
 
   let cardSerial = 1;
+  // Counts turn starts in this session (not saved). A shared table uses it to keep
+  // Undo inside the current turn; replaying the table log reproduces it exactly.
+  let turnSerial = 0;
   let state;
   const bankSelection = { give: null, get: null };
   let storageAllocationDraft = null;
@@ -1213,6 +1216,7 @@ function createGalacticReach(options = {}) {
   }
 
   function startOperationsTurn() {
+    turnSerial += 1;
     clearAction();
     if (state.players.every(player => player.passed)) {
       logEvent('All factions have passed. Operations are complete.');
@@ -2589,6 +2593,7 @@ function createGalacticReach(options = {}) {
   }
 
   function startBuyTurn() {
+    turnSerial += 1;
     const player = state.players[state.activePlayer];
     state.turnStage = state.activePlayer === ME ? 'buy' : 'ai-buy';
     appendHistory(`${player.name} began a Buy turn.`,{kind:'turn',actor:state.activePlayer});
@@ -3471,6 +3476,13 @@ function createGalacticReach(options = {}) {
     const undoButton=$('#undo-turn-button');
     undoButton.disabled=!!state.pendingConstruct || !!state.pendingCombatReport || !!state.pendingCombat || !turnHistory.undo;
     undoButton.title=turnHistory.undo?`Restore the start of your ${turnHistory.undo.label}`:'Available after you complete a turn';
+    if (network) {
+      // Shared tables: the table service decides how far back this turn can go.
+      undoButton.disabled=!serverUndo.available || network.busy();
+      undoButton.title=serverUndo.available
+        ? (serverUndo.stop ? `Take back your choices since ${serverUndo.stop} (Undo cannot go back past that).` : 'Take back your choices this turn and return to its start.')
+        : serverUndo.reason || 'Undo works on your own turn.';
+    }
   }
 
   // Names a recorded decision with the same labels as the live table's buttons.
@@ -3816,6 +3828,7 @@ function createGalacticReach(options = {}) {
   // and every seat then receives its own private view through adoptServerView.
   // Locally the engine only renders and runs the dry-run checks the controls use.
   let serverHints = {};
+  let serverUndo = {available: false};
   let autoSentAt = null;
   function installNetworkClient() {
     const send = (...intents) => intents.length > 0 && network.act(intents) !== false;
@@ -3866,8 +3879,8 @@ function createGalacticReach(options = {}) {
     useBuyEffect = (card, id = ME) => { if (mine(id)) send({type:'buy_effect',card}); };
     decommission = (id, card, resource) => mine(id) && send({type:'decommission',card,resource});
     applyCombatAction = (id, action) => mine(id) && send(action);
-    // Shared tables have no Undo: other seats have already seen the result.
-    undoLastTurn = () => {};
+    // Shared-table Undo: the server rolls the whole table back and every seat refreshes.
+    undoLastTurn = () => { if (serverUndo.available && !network.busy()) network.undo(); };
     scheduleAiTurn = () => {};
     scheduleCombatAi = () => {};
     captureHumanTurn = () => {};
@@ -3880,6 +3893,7 @@ function createGalacticReach(options = {}) {
   function adoptServerView(view) {
     const previous = state, next = view.state;
     serverHints = view.hints || {};
+    serverUndo = view.undo || {available: false};
     const myTurn = next.winner === null && next.activePlayer === ME;
     const sameTurn = !!previous && myTurn && previous.winner === null && previous.activePlayer === ME && previous.phase === next.phase && previous.round === next.round;
     const keepOrder = sameTurn && !!previous.actionCardId && previous.turnStage === 'action' && !next.pendingConsortium && !next.pendingColonyBuild && !next.pendingConstruct
@@ -3919,7 +3933,7 @@ function createGalacticReach(options = {}) {
     fillMarket();
     beginRound();
     return createGalacticAdapter({
-      get state() { return state; },
+      get state() { return state; }, get turnSerial() { return turnSerial; },
       clone, deckContents, ALL_CARDS, BASIC_CARDS, BASIC_MARKET, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
       canAfford, cardResources, resourceGainTotal, remainingResourceCapacity, addResources,
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
@@ -3952,7 +3966,6 @@ function createGalacticReach(options = {}) {
       throw new Error(`This shared table plays rules ${network.rules}, which this page cannot show.`);
     installNetworkClient();
     wireUi();
-    $('#undo-turn-button').hidden = true;
     $('#new-game-button').hidden = true;
     adoptServerView(network.initial);
     return { sync: adoptServerView, seat: ME };

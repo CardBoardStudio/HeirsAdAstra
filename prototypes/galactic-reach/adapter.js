@@ -237,6 +237,21 @@ function createGalacticAdapter(e) {
       if (battle[`${side}Id`] !== seat && battle.commitments[side] !== null) battle.commitments[side] = 'hidden';
     return state;
   }
+  // Shared-table Undo (rulebook #shared-tables). `turn` identifies the current
+  // turn; `reveal` changes whenever an action shows anyone hidden information:
+  // a draw, a market or relic card turned up, a survey, a located relic, combat.
+  function undoMark() {
+    const state = s();
+    return {
+      turn: e.turnSerial,
+      reveal: {
+        decks: state.players.map(p => p.deck.length), market: state.advancedDeck.length, relics: state.relicDeck.length,
+        surveys: state.clusters.map(c => c.revealedBy.length), located: state.clusters.map(c => [...c.scannedBy].sort().join('.')),
+        combat: state.pendingCombat ? `${state.pendingCombat.stage}:${state.pendingCombat.volley}` : null,
+        combats: state.lastCombat ? JSON.stringify(state.lastCombat.summary) : null
+      }
+    };
+  }
   // Legal choices a seat's browser cannot check from its private view alone.
   function hints(seat) {
     return { probe: legalActions(seat).filter(a => a.type === 'probe').map(a => ({card: a.card, coord: a.coord})) };
@@ -245,6 +260,6 @@ function createGalacticAdapter(e) {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/30.35', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints };
+  return { rulesVersion: 'galactic-reach/30.35', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;

@@ -79,14 +79,107 @@ impl Feed {
     }
 }
 
+/// An action still in effect (not undone), as Undo needs to see it.
+struct Played {
+    seq: u64,
+    seat: usize,
+    /// The turn it was taken in (the engine's turn counter); absent on old events.
+    turn: Option<u64>,
+    /// What it revealed, if anything: Undo cannot go back past it.
+    revealed: Option<String>,
+}
+impl Played {
+    fn from(seq: u64, seat: usize, public: &Value) -> Self {
+        Self {
+            seq,
+            seat,
+            turn: public["turn"].as_u64(),
+            // Events from before Undo existed carry no turn and count as checkpoints.
+            revealed: match &public["revealed"] {
+                Value::String(r) => Some(r.clone()),
+                Value::Null if public.get("turn").is_some() => None,
+                _ => Some("an earlier action".into()),
+            },
+        }
+    }
+}
+
+/// What Undo would take back for a seat right now.
+struct UndoWindow {
+    /// Undo cancels this seat's actions after this sequence number.
+    to: u64,
+    actions: usize,
+    /// Why Undo cannot reach the start of the turn, when a reveal stops it.
+    stop: Option<String>,
+}
+
+/// Names what changed between two `undoMark` reveal summaries, or a fresh shuffle.
+fn revealed(before: &Value, after: &Value, shuffled: bool) -> Option<String> {
+    let (b, a) = (&before["reveal"], &after["reveal"]);
+    let changed = |k: &str| b[k] != a[k];
+    let reason = if shuffled {
+        "cards were shuffled"
+    } else if changed("decks") {
+        "cards were drawn"
+    } else if changed("market") {
+        "a new market card was turned up"
+    } else if changed("relics") {
+        "a new relic card was turned up"
+    } else if changed("surveys") {
+        "a world or moon was surveyed"
+    } else if changed("located") {
+        "a relic was located"
+    } else if changed("combat") || changed("combats") {
+        "a battle was revealed"
+    } else {
+        return None;
+    };
+    Some(reason.into())
+}
+
 struct Live {
     table: Table,
     engine: GalacticReach,
     feed: Rc<RefCell<Feed>>,
     head: u64,
     agents: HashMap<usize, BuiltinAgent>,
+    played: Vec<Played>,
 }
 impl Live {
+    /// Undo (rulebook #shared-tables): only the seat to move, only within its
+    /// current turn, and never back past an action that revealed hidden information.
+    fn undo_window(&self, seat: usize) -> Result<UndoWindow, String> {
+        if self.table.status == "finished" {
+            return Err("The game is over.".into());
+        }
+        if self.engine.active_seat() != Some(seat) {
+            return Err("Undo works on your own turn.".into());
+        }
+        let turn = self.engine.undo_mark()?["turn"].as_u64();
+        let mut first = None;
+        let mut stop = None;
+        for p in self.played.iter().rev() {
+            if p.seat != seat || p.turn.is_none() || p.turn != turn {
+                break;
+            }
+            if let Some(r) = &p.revealed {
+                stop = Some(r.clone());
+                break;
+            }
+            first = Some(p.seq);
+        }
+        match (first, stop) {
+            (Some(seq), stop) => Ok(UndoWindow {
+                to: seq - 1,
+                actions: self.played.iter().filter(|p| p.seq >= seq).count(),
+                stop,
+            }),
+            (None, Some(r)) => Err(format!(
+                "Undo stops here: {r}, so earlier choices this turn are final."
+            )),
+            (None, None) => Err("Nothing to undo this turn.".into()),
+        }
+    }
     fn take_fresh(&self) -> Result<Vec<NewEvent>, String> {
         let mut feed = self.feed.borrow_mut();
         if let Some(e) = feed.error.take() {
@@ -147,13 +240,29 @@ fn build(
         feed,
         head,
         agents: HashMap::new(),
+        played: vec![],
     };
+    // An `undo` event cancels its seat's actions after `to`. Undo never reaches
+    // a shuffle, so every logged permutation is still consumed in order.
+    let undone: Vec<(u64, u64)> = rest
+        .iter()
+        .filter(|e| e.kind == "undo")
+        .filter_map(|e| Some((e.public["to"].as_u64()?, e.seq)))
+        .collect();
     for event in rest.iter().filter(|e| e.kind == "action") {
+        if undone
+            .iter()
+            .any(|(to, at)| event.seq > *to && event.seq < *at)
+        {
+            continue;
+        }
         live.engine.extend_deadline(SHARED_STEP);
         let seat = event.seat.ok_or("A logged action has no seat.")?;
         live.engine
             .apply_action(seat, event.public["action"].clone())
             .map_err(|e| format!("Table log event {} no longer applies: {e}", event.seq))?;
+        live.played
+            .push(Played::from(event.seq, seat, &event.public));
     }
     if let Some(e) = live.feed.borrow_mut().error.take() {
         return Err(e);
@@ -220,10 +329,17 @@ impl Tables {
             let live = self.live.get_mut(id).ok_or(Refusal::NotFound)?;
             events.extend(live.take_fresh().map_err(broken)?);
             let finished = live.engine.scores().is_some() && live.table.status != "finished";
+            let first = live.head + 1;
             let mut head = self
                 .log
                 .append(id, live.head, &events)
                 .map_err(Refusal::Conflict)?;
+            for (i, e) in events.iter().enumerate() {
+                if let ("action", Some(seat)) = (e.kind, e.seat) {
+                    live.played
+                        .push(Played::from(first + i as u64, seat, &e.public));
+                }
+            }
             if finished {
                 let all = self.log.read(id).map_err(broken)?;
                 let reveal = self.authority.reveal(id, &all).map_err(broken)?;
@@ -258,12 +374,16 @@ impl Tables {
         } else {
             json!({})
         };
+        let undo = match live.undo_window(seat) {
+            Ok(w) => json!({"available": true, "actions": w.actions, "stop": w.stop}),
+            Err(reason) => json!({"available": false, "reason": reason}),
+        };
         Ok(json!({
             "id": live.table.id, "name": live.table.name, "rules_version": live.table.rules,
             "authority": live.table.authority, "status": live.table.status, "seq": live.head,
             "seat": seat, "active": active,
             "seats": live.table.seats.iter().map(|s| json!({"seat":s.seat,"name":s.name,"human":s.human(),"you":s.seat==seat})).collect::<Vec<_>>(),
-            "state": state, "hints": hints,
+            "state": state, "hints": hints, "undo": undo,
         }))
     }
     fn act(
@@ -301,23 +421,31 @@ impl Tables {
                     break;
                 }
             };
-            if let Err(e) = live.engine.apply_action(seat, action.clone()) {
-                failed = Some(e);
-                break;
-            }
-            events.push(NewEvent {
-                kind: "action",
-                seat: Some(seat),
-                public: json!({"action": action}),
-                private: None,
-            });
-            match live.take_fresh() {
-                Ok(fresh) => events.extend(fresh),
+            let before = match live.engine.undo_mark() {
+                Ok(m) => m,
                 Err(e) => {
                     failed = Some(e);
                     break;
                 }
+            };
+            if let Err(e) = live.engine.apply_action(seat, action.clone()) {
+                failed = Some(e);
+                break;
             }
+            let (after, fresh) = match (live.engine.undo_mark(), live.take_fresh()) {
+                (Ok(after), Ok(fresh)) => (after, fresh),
+                (Err(e), _) | (_, Err(e)) => {
+                    failed = Some(e);
+                    break;
+                }
+            };
+            events.push(NewEvent {
+                kind: "action",
+                seat: Some(seat),
+                public: json!({"action": action, "turn": before["turn"], "revealed": revealed(&before, &after, !fresh.is_empty())}),
+                private: None,
+            });
+            events.extend(fresh);
         }
         if let Some(e) = failed {
             // A rules exception may leave a half-applied position: fold again.
@@ -330,6 +458,30 @@ impl Tables {
         let applied = events.iter().filter(|e| e.kind == "action").count();
         let head = self.commit(id, events)?;
         Ok(json!({"seq": head, "applied": applied, "stopped": stopped}))
+    }
+    /// Takes back the seat's choices this turn, as far as the last reveal. The
+    /// undo is itself appended; the next fold skips the actions it cancels.
+    fn undo(&mut self, id: &str, account: &str, seq: u64) -> Result<Value, Refusal> {
+        let live = self.live(id)?;
+        let seat = live.seat_of(account).ok_or(Refusal::NotFound)?;
+        if seq != live.head {
+            return Err(Refusal::Conflict(
+                "The table changed. Your view has been refreshed.".into(),
+            ));
+        }
+        let window = live.undo_window(seat).map_err(Refusal::Conflict)?;
+        let event = NewEvent {
+            kind: "undo",
+            seat: Some(seat),
+            public: json!({"to": window.to, "actions": window.actions}),
+            private: None,
+        };
+        let appended = self.log.append(id, seq, &[event]);
+        // Fold again either way: the position is now the log without those actions.
+        self.live.remove(id);
+        let head = appended.map_err(Refusal::Conflict)?;
+        self.live(id)?;
+        Ok(json!({"seq": head, "undone": window.actions, "stop": window.stop}))
     }
     /// Plays one decision for an AI seat. Returns whether an AI seat acts next.
     fn step_ai(&mut self, id: &str) -> Result<bool, Refusal> {
@@ -355,14 +507,18 @@ impl Tables {
             .get(agent.select_action(&observation, &legal))
             .cloned()
             .ok_or_else(|| broken("The AI chose an illegal action."))?;
-        if let Err(e) = live.engine.apply_action(seat, action.clone()) {
+        let before = live.engine.undo_mark().map_err(broken)?;
+        let applied = live.engine.apply_action(seat, action.clone());
+        if let Err(e) = applied {
             self.live.remove(id);
             return Err(broken(e));
         }
+        let after = live.engine.undo_mark().map_err(broken)?;
+        let shuffled = !live.feed.borrow().fresh.is_empty();
         let event = NewEvent {
             kind: "action",
             seat: Some(seat),
-            public: json!({"action": action, "policy": policy}),
+            public: json!({"action": action, "policy": policy, "turn": before["turn"], "revealed": revealed(&before, &after, shuffled)}),
             private: None,
         };
         self.commit(id, vec![event])?;
@@ -480,6 +636,17 @@ impl Service {
             .await?;
         self.announce(id, result["seq"].as_u64().unwrap_or_default());
         self.kick(id);
+        Ok(result)
+    }
+    pub async fn undo(
+        self: &Arc<Self>,
+        id: &str,
+        account: &str,
+        seq: u64,
+    ) -> Result<Value, Refusal> {
+        let (key, account) = (id.to_string(), account.to_string());
+        let result = self.call(move |t| t.undo(&key, &account, seq)).await?;
+        self.announce(id, result["seq"].as_u64().unwrap_or_default());
         Ok(result)
     }
     pub async fn report(self: &Arc<Self>, id: &str, account: &str) -> Result<Value, Refusal> {
@@ -606,6 +773,23 @@ pub async fn act(
     let view = app.shared.view(&id, &u.id).await?;
     let mut result = result?;
     result["view"] = view;
+    Ok(Json(result))
+}
+
+#[derive(Deserialize)]
+pub struct Undo {
+    seq: u64,
+}
+/// Undo the signed-in seat's choices this turn, back to its last reveal.
+pub async fn undo(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(input): Json<Undo>,
+) -> ApiResult<Json<Value>> {
+    let u = user(&app, &headers)?;
+    let mut result = app.shared.undo(&id, &u.id, input.seq).await?;
+    result["view"] = app.shared.view(&id, &u.id).await?;
     Ok(Json(result))
 }
 

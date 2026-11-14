@@ -306,6 +306,7 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
         BuiltinAgent::new(Strategy::Expansion, [2; 32]),
     ];
     let mut human_moves = 0;
+    let (mut undid, mut refused_after_reveal) = (false, false);
     let mut checked_stale = false;
     for _ in 0..20000 {
         let Some((seat, observation, legal)) = a.shared.turn(&id).await else {
@@ -367,8 +368,44 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
         assert_eq!(status, StatusCode::OK, "{result}");
         assert_eq!(result["applied"], 1);
         human_moves += 1;
+        let after = &result["view"];
+        let undo_path = format!("{endpoint}/undo");
+        if after["active"] == seat {
+            if action["type"] == "buy" && action["source"] == "market" && !refused_after_reveal {
+                // Turning up a new market card is a reveal: Undo stops there.
+                refused_after_reveal = true;
+                assert_eq!(after["undo"]["available"], false);
+                let r = call(&a, "POST", &undo_path, me, json!({"seq":after["seq"]})).await;
+                assert_eq!(r.0, StatusCode::CONFLICT);
+                assert!(
+                    r.2["error"]
+                        .as_str()
+                        .unwrap()
+                        .starts_with("Undo stops here: a new market card")
+                );
+            } else if action["type"] == "resource" && !undid {
+                undid = true;
+                assert_eq!(after["undo"]["available"], true);
+                let hand = after["state"]["players"][seat]["hand"]
+                    .as_array()
+                    .unwrap()
+                    .len();
+                let r = call(&a, "POST", &undo_path, me, json!({"seq":after["seq"]})).await;
+                assert_eq!(r.0, StatusCode::OK, "{}", r.2);
+                assert!(r.2["undone"].as_u64().unwrap() >= 1);
+                assert!(
+                    r.2["view"]["state"]["players"][seat]["hand"]
+                        .as_array()
+                        .unwrap()
+                        .len()
+                        > hand
+                );
+            }
+        }
     }
     assert!(human_moves > 20, "both people played many decisions");
+    assert!(undid, "a person undid a conversion over HTTP");
+    assert!(refused_after_reveal, "a market buy was refused for Undo");
     let end = call(&a, "GET", &endpoint, &friend, json!({})).await.2;
     assert_eq!(end["status"], "finished");
     assert!(end["state"]["winner"].is_u64());
@@ -390,6 +427,18 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
         events
             .iter()
             .any(|e| e["seat"] == 2 && e["kind"] == "action")
+    );
+    assert!(events.iter().any(|e| e["kind"] == "undo"));
+    // Reveal detection on real play: conversions reveal nothing, market buys turn up a card.
+    let actions = || events.iter().filter(|e| e["kind"] == "action");
+    assert!(
+        actions()
+            .filter(|e| e["public"]["action"]["type"] == "resource")
+            .all(|e| e["public"]["revealed"].is_null())
+    );
+    assert!(
+        actions().any(|e| e["public"]["action"]["source"] == "market"
+            && e["public"]["revealed"] == "a new market card was turned up")
     );
 }
 
@@ -461,5 +510,155 @@ async fn a_live_view_streams_the_current_seat_view_first() {
             .unwrap()
             .status(),
         StatusCode::NOT_FOUND
+    );
+}
+
+fn hand_count(view: &Value, seat: usize) -> u64 {
+    view["state"]["players"][seat]["handCount"]
+        .as_u64()
+        .unwrap()
+}
+
+/// Undo (rulebook #shared-tables): back to the start of the current turn, never past
+/// a reveal, never after the turn ends; every seat's view rolls back; the log stays
+/// append-only and folds to the same position.
+#[tokio::test]
+async fn undo_takes_back_this_turn_but_not_past_a_reveal_or_the_turn() {
+    let store = store_with(&["a", "b"]);
+    let log = Arc::new(SqliteTableLog(store));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    service
+        .open(table("t3", &[("a", "Ada"), ("b", "Bo")]))
+        .await
+        .unwrap();
+    let ada = service.view("t3", "a").await.unwrap();
+    assert_eq!(ada["active"], 0);
+    assert_eq!(ada["undo"]["available"], false);
+    assert_eq!(ada["undo"]["reason"], "Nothing to undo this turn.");
+    let cards: Vec<String> = ada["state"]["players"][0]["hand"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|c| c["id"].as_str().unwrap().to_string())
+        .collect();
+    let convert = |card: &str| vec![json!({"type":"resource","card":card})];
+
+    // Two conversions this turn; Bo sees Ada's hand shrink, then Ada undoes both.
+    let mut seq = ada["seq"].as_u64().unwrap();
+    for card in &cards[..2] {
+        seq = service.act("t3", "a", seq, convert(card)).await.unwrap()["seq"]
+            .as_u64()
+            .unwrap();
+    }
+    let bo = service.view("t3", "b").await.unwrap();
+    assert_eq!(hand_count(&bo, 0), 3);
+    let ada = service.view("t3", "a").await.unwrap();
+    assert_eq!(ada["undo"]["available"], true);
+    assert_eq!(ada["undo"]["actions"], 2);
+    assert_eq!(
+        service.undo("t3", "b", seq).await,
+        Err(Refusal::Conflict("Undo works on your own turn.".into()))
+    );
+    assert!(
+        matches!(
+            service.undo("t3", "a", seq - 1).await,
+            Err(Refusal::Conflict(_))
+        ),
+        "a stale view cannot undo"
+    );
+    let undone = service.undo("t3", "a", seq).await.unwrap();
+    assert_eq!(undone["undone"], 2);
+    seq = undone["seq"].as_u64().unwrap();
+    let bo = service.view("t3", "b").await.unwrap();
+    assert_eq!(hand_count(&bo, 0), 5, "the other seat's view rolls back");
+    let ada = service.view("t3", "a").await.unwrap();
+    assert_eq!(hand_count(&ada, 0), 5);
+    assert_eq!(ada["undo"]["reason"], "Nothing to undo this turn.");
+    service.refolded("t3", 0).await;
+
+    // A reveal is a checkpoint. Mark one conversion as revealing (as a draw
+    // would be) straight in the log; Undo then stops just after it.
+    let logged = NewEvent {
+        kind: "action",
+        seat: Some(0),
+        public: json!({"action": {"type":"resource","card":cards[0],"key":cards[0].split('-').next().unwrap(),
+            "gain": if cards[0].starts_with("move") {json!({"energy":1})} else {json!({"matter":1})}},
+            "turn": log.read("t3").unwrap().iter().rev().find(|e| e.kind=="action").unwrap().public["turn"],
+            "revealed": "cards were drawn"}),
+        private: None,
+    };
+    seq = log.append("t3", seq, &[logged]).unwrap();
+    service
+        .call(|t| {
+            t.live.remove("t3");
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let ada = service.view("t3", "a").await.unwrap();
+    assert_eq!(ada["undo"]["available"], false);
+    assert_eq!(
+        ada["undo"]["reason"],
+        "Undo stops here: cards were drawn, so earlier choices this turn are final."
+    );
+    seq = service
+        .act("t3", "a", seq, convert(&cards[1]))
+        .await
+        .unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    let ada = service.view("t3", "a").await.unwrap();
+    assert_eq!(ada["undo"]["actions"], 1);
+    assert_eq!(ada["undo"]["stop"], "cards were drawn");
+    seq = service.undo("t3", "a", seq).await.unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    assert_eq!(
+        hand_count(&service.view("t3", "b").await.unwrap(), 0),
+        4,
+        "only the choice after the reveal is taken back"
+    );
+    assert!(
+        matches!(service.undo("t3", "a", seq).await, Err(Refusal::Conflict(r)) if r.starts_with("Undo stops here"))
+    );
+
+    // Passing ends the Operations turn; the Buy turn that follows starts fresh.
+    seq = service
+        .act("t3", "a", seq, vec![json!({"type":"pass"})])
+        .await
+        .unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    assert_eq!(
+        service.undo("t3", "a", seq).await,
+        Err(Refusal::Conflict("Nothing to undo this turn.".into()))
+    );
+    service.refolded("t3", 1).await;
+    // The log only grew: two undo events, nothing deleted.
+    let kinds: Vec<String> = log
+        .read("t3")
+        .unwrap()
+        .iter()
+        .map(|e| e.kind.clone())
+        .collect();
+    assert_eq!(kinds.iter().filter(|k| *k == "undo").count(), 2);
+    assert_eq!(log.read("t3").unwrap().last().unwrap().seq, seq);
+}
+
+#[test]
+fn reveal_checkpoints_name_what_changed() {
+    let mark = |decks: u64, market: u64| json!({"turn":3,"reveal":{"decks":[decks],"market":market,"relics":0,"surveys":[],"located":[],"combat":null,"combats":null}});
+    assert_eq!(revealed(&mark(5, 9), &mark(5, 9), false), None);
+    assert_eq!(
+        revealed(&mark(5, 9), &mark(5, 9), true).as_deref(),
+        Some("cards were shuffled")
+    );
+    assert_eq!(
+        revealed(&mark(5, 9), &mark(3, 9), false).as_deref(),
+        Some("cards were drawn")
+    );
+    assert_eq!(
+        revealed(&mark(5, 9), &mark(5, 8), false).as_deref(),
+        Some("a new market card was turned up")
     );
 }

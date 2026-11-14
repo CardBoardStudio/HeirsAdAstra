@@ -9,7 +9,11 @@ Two to four people play one Galactic Reach game in separate browsers; AI rivals 
 3. `POST /api/shared/<id>/act {seq, actions}` goes to the table service (`crates/server/src/shared/`). The service checks that the account owns the active seat and that `seq` is the table's head, then matches each command to exactly one legal action of the rules engine (the QuickJS adapter in `crates/galactic-reach`) and applies it.
 4. The service appends the action, plus any shuffles it caused, to the table log in one transaction and notifies every connected seat. AI seats then move one decision at a time through the same path.
 
-A table is an append-only log, and the live position is `fold(log)`. If the server restarts, or an apply fails, the service forgets its in-memory engine and folds the log again. Once the game ends, the authority appends a `reveal` event and every seat may download the full record.
+A table is an append-only log, and the live position is `fold(log)`.
+
+## Undo
+
+The seat to move may undo its own actions from the current turn (`POST /api/shared/<id>/undo {seq}`). Each action event records the turn it was taken in (the engine's runtime turn counter) and whether it revealed hidden information. The server compares `undoMark()` before and after the action: deck sizes, the market and relic piles, surveys, located relics and combat, plus any fresh shuffle. A revealing action is a checkpoint, and Undo stops just after the latest one. Undo appends an `undo` event `{to}`, and the fold skips that seat's later actions. Rows are never deleted, so the hash chain stays valid. No undone action ever caused a shuffle, so every logged permutation is replayed in order and the authority never deals again. After an undo the service folds the table again, and every connected seat receives the rolled-back view. If the server restarts, or an apply fails, the service forgets its in-memory engine and folds the log again. Once the game ends, the authority appends a `reveal` event and every seat may download the full record.
 
 ## The two seams
 
@@ -32,12 +36,13 @@ The `zk/` prototype already proves one seat's fair private draw (`zk/circuits/gr
 | `private_view` | Server projects each seat's view | Each browser assembles its own view from the public log plus its private seed and salts. The server, now a relay and indexer, never holds hands. |
 | `TableLog::append` | SQLite transaction with a `head` check | Contract calls: ledger order replaces `head`, and the contract stores the commitments. |
 | `reveal` | Server opens every commitment at the end | Not needed: every draw was proven when it happened. |
+| Undo | `undo` event; checkpoints at every reveal | Unchanged: an undo is a log entry, and checkpoints already stop it before any proven draw or opened commitment. |
 
 What still blocks that swap: the circuit covers draws from one seat's deck, while the engine also shuffles shared piles and the map; every other rule (costs, combat, scoring) would need proofs or a trusted referee; and timeouts and abandoned seats need rules (see [architecture](architecture.md#soroban-and-zkp-path)). The interfaces are small on purpose: a ZK implementation changes `authority.rs`, `log.rs` and the browser's view assembly, not the table service or the game interface.
 
 ## Limits of this version
 
-- No Undo at shared tables, and no seat timeouts: a table waits for an absent person.
+- No seat timeouts: a table waits for an absent person.
 - The game report opens only after the game ends.
 - Seats are fixed at Start; nobody can join or leave a started table.
 - Shared play runs only the current rules. A rules cutover strands unfinished shared tables: the server reports their pinned version instead of folding them with a newer engine. Archived engines would need the shared-table constructor to resume them.
