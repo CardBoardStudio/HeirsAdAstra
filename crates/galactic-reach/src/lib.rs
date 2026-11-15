@@ -87,6 +87,7 @@ mod legacy_v24;
 mod legacy_v25;
 mod legacy_v26;
 mod legacy_v27;
+mod legacy_v28;
 mod legacy_v3;
 mod legacy_v4;
 mod legacy_v5;
@@ -524,18 +525,18 @@ pub enum Strategy {
 impl Strategy {
     pub fn version(self) -> &'static str {
         match self {
-            Self::Military => "gr-military/28",
-            Self::Economy => "gr-economy/28",
-            Self::Expansion => "gr-expansion/28",
-            Self::Wanderer => "gr-wanderer/28",
+            Self::Military => "gr-military/29",
+            Self::Economy => "gr-economy/29",
+            Self::Expansion => "gr-expansion/29",
+            Self::Wanderer => "gr-wanderer/29",
         }
     }
     pub fn parse(version: &str) -> Option<Self> {
         match version {
-            "gr-military/28" => Some(Self::Military),
-            "gr-economy/28" => Some(Self::Economy),
-            "gr-expansion/28" => Some(Self::Expansion),
-            "gr-wanderer/28" => Some(Self::Wanderer),
+            "gr-military/29" => Some(Self::Military),
+            "gr-economy/29" => Some(Self::Economy),
+            "gr-expansion/29" => Some(Self::Expansion),
+            "gr-wanderer/29" => Some(Self::Wanderer),
             _ => None,
         }
     }
@@ -741,7 +742,94 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
             .filter(|g| g["key"] == key)
             .map(|g| number(&g["count"]))
             .sum::<f64>();
-    Some(10.0 + cost.iter().sum::<f64>() + prestige * 5.0 - owned * 8.0)
+    let stats = &view["cardStats"][key];
+    if !stats.is_object() {
+        return Some(10.0 + cost.iter().sum::<f64>() + prestige * 5.0 - owned * 8.0);
+    }
+    let prestige = number(&stats["gainPrestige"]);
+    let size = number(&me["handCount"])
+        + number(&me["deckCount"])
+        + me["discard"].as_array().map_or(0, Vec::len) as f64
+        + me["inPlay"].as_array().map_or(0, Vec::len) as f64;
+    let leader = view["players"]
+        .as_array()?
+        .iter()
+        .map(|p| number(&p["prestige"]))
+        .fold(0.0, f64::max);
+    let horizon = ((view["victoryTarget"].as_f64().unwrap_or(40.0) - leader) / 5.0)
+        .ceil()
+        .clamp(1.0, 5.0);
+    let draw = number(&stats["draw"]);
+    let mut value = 6.0 + prestige * 9.0 + number(&stats["prestige"]) * horizon.min(4.0) * 8.0;
+    value += draw * (7.0 + size.min(18.0) * 0.25) * (horizon / 2.0).min(1.0);
+    if military {
+        let power = |s: &Value| {
+            number(&s["attack"])
+                + number(&s["shield"]) * 0.8
+                + if s["pierce"] == true { 2.0 } else { 0.0 }
+                + number(&s["victoryPrestige"]) * 1.5
+        };
+        let mut tactics: Vec<f64> = me["military"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|c| power(&view["cardStats"][c["key"].as_str().unwrap_or("")]))
+            .collect();
+        tactics.sort_by(|a, b| b.total_cmp(a));
+        let improvement = power(stats) - tactics.get(2).copied().unwrap_or(1.0);
+        value = 10.0 + improvement * 5.0;
+        if tactics.len() >= 3 && improvement <= 0.0 {
+            value -= 18.0;
+        }
+    } else {
+        value -= owned * if draw >= 2.0 { 9.0 } else { 12.0 };
+        match stats["order"].as_str().unwrap_or("") {
+            "construct" => {
+                value += if bot_cards(me, "construct") < 3.0 {
+                    15.0
+                } else {
+                    5.0
+                }
+            }
+            "move" => {
+                value += if bot_cards(me, "move") < 4.0 {
+                    12.0
+                } else {
+                    3.0
+                }
+            }
+            "colonize" => {
+                value += if bot_units(view, seat, "settler") > 0.0 {
+                    (16.0 - bot_cards(me, "colonize") * 8.0).max(0.0)
+                } else {
+                    -15.0
+                }
+            }
+            _ => {}
+        }
+        value += stats["limits"]
+            .as_object()
+            .into_iter()
+            .flat_map(|m| m.values())
+            .map(|n| number(n).min(2.0) * 1.5)
+            .sum::<f64>();
+        if draw == 0.0 && prestige == 0.0 {
+            value -= (size - 10.0).max(0.0) * 1.3;
+        }
+        if horizon == 1.0 && prestige == 0.0 {
+            value -= 15.0;
+        }
+    }
+    let income = bot_income(view, seat);
+    value -= cost
+        .iter()
+        .enumerate()
+        .map(|(i, c)| {
+            c * (0.5 + 1.0 / (number(&income[RESOURCE_KEYS[i]]) + 1.0))
+                + (c - bot_limit(view, seat, RESOURCE_KEYS[i])).max(0.0) * 3.0
+        })
+        .sum::<f64>();
+    Some(value)
 }
 /// The resource limits a rival still needs for its best-valued market card.
 fn capacity_need(view: &Value, seat: usize) -> Option<[f64; 4]> {
@@ -832,6 +920,50 @@ fn bot_yards(view: &Value, seat: usize) -> usize {
         .flat_map(|m| m.values())
         .filter(|p| p["owner"] == json!(seat) && p["upgrade"] == "starbase")
         .count()
+}
+// Public Fleet approaches to each owned Colony, including weighted portal paths.
+fn colony_defense(view: &Value, seat: usize) -> Vec<(&str, f64, f64)> {
+    view["planets"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter(|(_, p)| p["owner"] == json!(seat) && p["hasColony"] == true)
+        .map(|(coord, _)| {
+            let attackers = view["fleets"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .filter(|(at, _)| travel_distance(view, at, coord) <= 3.0)
+                .flat_map(|(_, g)| g.as_object().into_iter().flatten())
+                .filter(|(owner, _)| *owner != &seat.to_string())
+                .map(|(_, f)| number(&f["fleet"]))
+                .fold(0.0, f64::max);
+            (
+                coord.as_str(),
+                attackers,
+                number(&view["fleets"][coord][seat.to_string()]["fleet"]),
+            )
+        })
+        .collect()
+}
+fn planning_protection(view: &Value, seat: usize) -> [f64; 4] {
+    let settlers = bot_units(view, seat, "settler") > 0.0;
+    let explorers = bot_units(view, seat, "explorer") > 0.0;
+    let mut keep: [f64; 4] = [
+        if explorers { 1.0 } else { 0.0 },
+        if explorers { 1.0 } else { 0.0 },
+        if settlers { 2.0 } else { 1.0 },
+        if explorers { 2.0 } else { 0.0 },
+    ];
+    if colony_defense(view, seat)
+        .iter()
+        .any(|(_, a, g)| *a > 0.0 && *g < *a + 1.0)
+    {
+        for (i, c) in [2.0_f64, 1.0, 1.0, 0.0].into_iter().enumerate() {
+            keep[i] = keep[i].max(c);
+        }
+    }
+    keep
 }
 fn bot_cost(view: &Value, seat: usize) -> Value {
     let me = &view["players"][seat];
@@ -1042,11 +1174,7 @@ fn bot_threat(view: &Value, seat: usize, moving: &Value, destination: &str, sour
                 .into_iter()
                 .flatten()
                 .filter_map(move |(owner, enemy)| {
-                    let range = if number(&enemy["settler"]) > 0.0 {
-                        2.0
-                    } else {
-                        3.0
-                    };
+                    let range = 3.0; // Fleets can leave their slower Settlers behind.
                     let fleets = number(&enemy["fleet"]);
                     if owner != &seat.to_string()
                         && fleets > 0.0
@@ -1251,10 +1379,31 @@ impl BuiltinAgent {
                     _ => {
                         let coord = action["coord"].as_str().unwrap();
                         let group = &view["fleets"][coord][seat.to_string()];
-                        if bot_threat(view, seat, group, coord, coord) > 0.0 {
-                            115.0
-                        } else if military && bot_units(view, seat, "fleet") < 4.0 {
+                        let urgent = colony_defense(view, seat)
+                            .into_iter()
+                            .filter(|(at, a, g)| {
+                                *a > 0.0
+                                    && *g < *a + 1.0
+                                    && number(&group["fleet"]) < *a + 1.0
+                                    && travel_distance(view, coord, at) <= 6.0
+                            })
+                            .map(|(at, _, _)| 120.0 - travel_distance(view, coord, at) * 2.0)
+                            .fold(0.0, f64::max);
+                        let enemy = view["fleets"]
+                            .as_object()
+                            .into_iter()
+                            .flat_map(|g| g.values())
+                            .flat_map(|g| g.as_object().into_iter().flatten())
+                            .any(|(id, f)| *id != seat.to_string() && number(&f["fleet"]) > 0.0);
+                        if urgent > 0.0 {
+                            urgent
+                        } else if military && bot_units(view, seat, "fleet") < 5.0 {
                             81.0
+                        } else if enemy
+                            && bot_units(view, seat, "fleet")
+                                < (colony_defense(view, seat).len() as f64).min(3.0)
+                        {
+                            80.0
                         } else {
                             8.0
                         }
@@ -1286,6 +1435,13 @@ impl BuiltinAgent {
                     })
                     .sum();
                 let key = action["key"].as_str().unwrap_or("");
+                let cantrip = me["hand"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .any(|c| c["id"] == action["card"] && c["level"] == 3)
+                    && (number(&me["deckCount"]) > 0.0
+                        || me["discard"].as_array().is_some_and(|p| !p.is_empty()));
                 let last_build = bot_yards(view, seat) == 0
                     && bot_order(key) == "construct"
                     && me["hand"]
@@ -1297,6 +1453,8 @@ impl BuiltinAgent {
                         == 1;
                 if last_build {
                     -20.0
+                } else if cantrip {
+                    80.0 + need
                 } else if need > 0.0 {
                     45.0 + need * 4.0
                 } else if deficit && bankable > 0.0 {
@@ -1400,6 +1558,22 @@ impl BuiltinAgent {
                     }
                 }
                 if !explorer {
+                    let moving = number(&fleet["fleet"]);
+                    let vacates = colony_defense(view, seat).iter().any(|(at, a, g)| {
+                        *at == from && *a > 0.0 && *g >= *a + 1.0 && *g - moving < *a + 1.0
+                    });
+                    for (at, attackers, guards) in colony_defense(view, seat) {
+                        if attackers == 0.0 {
+                            continue;
+                        }
+                        if at != from
+                            && guards < attackers + 1.0
+                            && moving > 0.0
+                            && travel_distance(view, to, at) < travel_distance(view, from, at)
+                        {
+                            best = best.max(120.0 - travel_distance(view, to, at) * 0.5);
+                        }
+                    }
                     let here_risk = bot_threat(view, seat, fleet, from, from);
                     let there_risk = bot_threat(view, seat, fleet, to, from);
                     if here_risk > there_risk {
@@ -1426,6 +1600,9 @@ impl BuiltinAgent {
                         }
                     }
                     best -= there_risk * if settlers > 0.0 { 130.0 } else { 50.0 };
+                    if vacates {
+                        best -= 120.0;
+                    }
                     // Fleets may leave Settlers behind (#movement), weighed like moving them into danger.
                     let left = number(&here_fleet["settler"]) - settlers;
                     if split && left > 0.0 {
@@ -1458,7 +1635,25 @@ impl BuiltinAgent {
                     150.0
                 }
             }
-            "excavate" => 160.0,
+            "excavate" => {
+                let key = view["relicRow"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .find(|c| c["id"] == action["relic"])
+                    .and_then(|c| c["key"].as_str())
+                    .unwrap_or("");
+                let stats = &view["cardStats"][key];
+                160.0
+                    + number(&stats["draw"]) * 4.0
+                    + stats["limits"]
+                        .as_object()
+                        .into_iter()
+                        .flat_map(|m| m.values())
+                        .map(number)
+                        .sum::<f64>()
+                        * 2.0
+            }
             // 31.36: permanent Prestige, capacity and big draws come first.
             "special"
                 if matches!(
@@ -1497,23 +1692,33 @@ impl BuiltinAgent {
 
             "buy_effect" => 100.0,
             "upgrade" => {
-                let cost = bot_cost(view, seat);
                 let r = action["resource"].as_str().unwrap();
-                let price = me["hand"]
+                let card = me["hand"]
                     .as_array()
                     .into_iter()
                     .chain(me["discard"].as_array())
                     .chain(me["inPlay"].as_array())
                     .flatten()
-                    .find(|c| c["id"] == action["card"])
-                    .map_or(2.0, |c| if c["upgraded"] == true { 3.0 } else { 2.0 });
+                    .find(|c| c["id"] == action["card"]);
+                let level_iii = card.is_some_and(|c| c["upgraded"] == true);
+                let price = if level_iii { 3.0 } else { 2.0 };
+                let index = RESOURCE_KEYS.iter().position(|k| *k == r).unwrap();
+                let leader = view["players"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|p| number(&p["prestige"]))
+                    .fold(0.0, f64::max);
                 if bot_yards(view, seat) > 0
-                    && number(&me["resources"][r]) >= (number(&cost[r]).min(2.0) + price)
+                    && number(&me["resources"][r]) >= planning_protection(view, seat)[index] + price
+                    && view["victoryTarget"].as_f64().unwrap_or(40.0) - leader > 3.0
                 {
-                    if action["key"] == "construct" {
-                        76.0
+                    if level_iii {
+                        116.0
+                    } else if card.is_some_and(|c| c["key"] == "construct") {
+                        112.0
                     } else {
-                        70.0
+                        103.0
                     }
                 } else {
                     -5.0
@@ -1524,7 +1729,17 @@ impl BuiltinAgent {
                 if bot_yards(view, seat) == 0 {
                     -10.0
                 } else {
-                    capacity_value(view, seat, key).map_or(-10.0, |v| 60.0 + v)
+                    let cost = observed_cost(view, key).unwrap_or([0.0; 4]);
+                    let keep = planning_protection(view, seat);
+                    if RESOURCE_KEYS.iter().enumerate().any(|(i, r)| {
+                        number(&me["resources"][*r]) - cost[i]
+                            < keep[i].min(number(&me["resources"][*r]))
+                    }) {
+                        -10.0
+                    } else {
+                        capacity_value(view, seat, key)
+                            .map_or(-10.0, |v| if v > 0.0 { 60.0 + v } else { -10.0 })
+                    }
                 }
             }
             "buy" => {
@@ -1761,12 +1976,101 @@ pub fn agent(version: &str, seed: [u8; 32]) -> Result<Box<dyn PlayerAgent<Galact
     if let Some(strategy) = legacy_v27::Strategy::parse(version) {
         return Ok(Box::new(legacy_v27::BuiltinAgent::new(strategy, seed)));
     }
+    if let Some(strategy) = legacy_v28::Strategy::parse(version) {
+        return Ok(Box::new(legacy_v28::BuiltinAgent::new(strategy, seed)));
+    }
     Err("Unsupported Galactic Reach policy version.".into())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn strategic_view() -> Value {
+        json!({"seat":0,"round":8,"victoryTarget":40,"players":[
+            {"id":0,"prestige":3,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":12,"energy":12,"biomass":12,"data":12},"hand":[],"discard":[],"inPlay":[],"deckContents":[],"deckCount":1,"handCount":0,"military":[]},
+            {"id":1,"prestige":3,"resources":{}},{"id":2,"prestige":3,"resources":{}},{"id":3,"prestige":3,"resources":{}}],
+            "planets":{"0,0":{"cluster":0,"type":"matter","owner":0,"hasColony":true},"-1,0":{"cluster":0,"type":"energy","owner":0,"upgrade":"starbase"}},
+            "clusters":[{"kind":"world","center":"0,0","coords":["0,0","-1,0"]}],"fleets":{},"relicRow":[],"market":[],"marketCosts":[],"cardStats":{}})
+    }
+    #[test]
+    fn strategic_rivals_upgrade_ii_in_play_before_discretionary_purchases() {
+        let mut view = strategic_view();
+        view["players"][0]["inPlay"] =
+            json!([{"id":"starter","key":"move","starter":true,"upgraded":true,"level":2}]);
+        view["players"][0]["resources"] = json!({"matter":0,"energy":0,"biomass":1,"data":3});
+        for strategy in [Strategy::Military, Strategy::Economy, Strategy::Expansion] {
+            let agent = BuiltinAgent::new(strategy, [17; 32]);
+            assert!(
+                agent.score(
+                    &view,
+                    &json!({"type":"upgrade","card":"starter","resource":"data"})
+                ) > 110.0
+            );
+            view["players"][0]["resources"]["data"] = json!(2);
+            assert!(
+                agent.score(
+                    &view,
+                    &json!({"type":"upgrade","card":"starter","resource":"data"})
+                ) < 0.0
+            );
+            view["players"][0]["resources"]["data"] = json!(3);
+        }
+        assert_eq!(
+            agent("gr-economy/28", [17; 32]).unwrap().policy_version(),
+            "gr-economy/28"
+        );
+        assert_eq!(Strategy::Economy.version(), "gr-economy/29");
+    }
+    #[test]
+    fn strategic_defense_targets_colonies_and_retains_a_guard() {
+        let mut view = strategic_view();
+        view["fleets"] = json!({"0,2":{"1":{"fleet":2}},"-2,0":{"0":{"fleet":3}}});
+        let agent = BuiltinAgent::new(Strategy::Economy, [19; 32]);
+        assert!(
+            agent.score(
+                &view,
+                &json!({"type":"build","kind":"fleet","coord":"-1,0"})
+            ) > 110.0
+        );
+        let reinforce = json!({"type":"move","source":"-2,0","destination":"0,0","moveGroup":"ships","units":{"fleet":3}});
+        assert!(agent.score(&view, &reinforce) > 110.0);
+        view["fleets"] = json!({"0,2":{"1":{"fleet":2}},"0,0":{"0":{"fleet":3}}});
+        assert!(agent.score(&view,&json!({"type":"move","source":"0,0","destination":"0,2","moveGroup":"ships","units":{"fleet":3}}))<0.0);
+        view["planets"]["8,-10"] = json!({"owner":0,"hasColony":true});
+        view["fleets"] = json!({"-10,8":{"1":{"fleet":2}}});
+        view["portalLinks"] = json!({"-10,8":"8,-10","8,-10":"-10,8"});
+        view["portalMovementCost"] = json!(2);
+        assert!(
+            colony_defense(&view, 0)
+                .iter()
+                .any(|(at, a, _)| *at == "8,-10" && *a == 2.0)
+        );
+    }
+    #[test]
+    fn strategic_card_selection_uses_draw_effects_and_cantrip_conversions() {
+        let mut view = strategic_view();
+        view["market"] = json!([{"key":"signalRelay"},{"key":"worldEngine"}]);
+        view["marketCosts"] = json!([{"energy":2,"data":1},{"matter":8,"energy":1}]);
+        view["cardStats"] = json!({"signalRelay":{"draw":2,"order":"special"},"worldEngine":{"draw":0,"order":"construct"}});
+        assert!(capacity_value(&view, 0, "signalRelay") > capacity_value(&view, 0, "worldEngine"));
+        view["players"][0]["hand"] =
+            json!([{"id":"iii","key":"move","starter":true,"upgraded":true,"level":3}]);
+        let agent = BuiltinAgent::new(Strategy::Expansion, [17; 32]);
+        assert!(
+            agent.score(
+                &view,
+                &json!({"type":"resource","card":"iii","key":"move","gain":{"energy":2}})
+            ) > 70.0
+        );
+        view["relicRow"] =
+            json!([{"id":"a","key":"warSongOfHollowStars"},{"id":"b","key":"foldedWarehouse"}]);
+        view["cardStats"]["foldedWarehouse"] =
+            json!({"draw":2,"limits":{"matter":1,"energy":1,"biomass":1,"data":1}});
+        assert!(
+            agent.score(&view, &json!({"type":"excavate","relic":"b"}))
+                > agent.score(&view, &json!({"type":"excavate","relic":"a"}))
+        );
+    }
     #[test]
     fn in_play_cards_still_count_in_owned_deck_planning() {
         let me = json!({"hand":[],"discard":[],"deckContents":[{"key":"move","count":1}],"inPlay":[{"key":"move"},{"key":"construct"}]});
@@ -2139,6 +2443,7 @@ mod tests {
             "gr-military/25",
             "gr-military/26",
             "gr-military/27",
+            "gr-military/28",
         ] {
             assert_eq!(agent(policy, [23; 32]).unwrap().policy_version(), policy);
         }
