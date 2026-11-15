@@ -1,7 +1,7 @@
-# Two channels (docs/release.md); the Rust server serves both the API and Wasm UI.
-# Stable deploys the `stable` branch (the Release PR merge); dev deploys every
-# merge to `main` and keeps its tables on a disk. Previews build PRs into each
-# service's branch: change PRs into main, the Release PR into stable.
+# The stable channel (docs/release.md); the Rust server serves both the API and
+# Wasm UI. It deploys the `stable` branch when the Release PR merges, and Render
+# previews PRs into `stable` (the Release PR). The dev channel (`main`) is
+# self-hosted: deploy/dev-host.
 services:
   - type: web
     name: drawing-board
@@ -21,34 +21,6 @@ services:
       - key: DATABASE_PATH
         value: /app/data/drawing-board.sqlite
       # Enabled only when Render also sets IS_PULL_REQUEST=true.
-      - key: PREVIEW_AUTH
-        value: "1"
-      - key: PREVIEW_ACCESS_CODE
-        generateValue: true
-  - type: web
-    name: drawing-board-dev
-    runtime: docker
-    branch: main
-    plan: 0.5c-512mb
-    region: ohio
-    dockerfilePath: ./Dockerfile
-    healthCheckPath: /api/health
-    numInstances: 1
-    autoDeployTrigger: checksPass
-    previews:
-      generation: automatic
-    disk:
-      name: dev-data
-      mountPath: /app/data
-      sizeGB: 1
-    envVars:
-      - key: RUST_LOG
-        value: info
-      - key: DATABASE_PATH
-        value: /app/data/drawing-board.sqlite
-      # Deals <release>+dev.<n> and keeps each dev revision's engine (docs/release.md#dev-channel).
-      - key: GALACTIC_REACH_CHANNEL
-        value: dev
       - key: PREVIEW_AUTH
         value: "1"
       - key: PREVIEW_ACCESS_CODE

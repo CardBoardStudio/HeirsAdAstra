@@ -20,8 +20,8 @@ A change is breaking if it can invalidate a game or materially change a player's
 2. Describe one rules hypothesis in the rulebook and PR, then implement it with supporting behavior tests.
 3. Open a PR against `main`, apply `playtest-breaking`, and add a `compat: breaking` entry in `changes/`.
 4. Leave version declarations alone: the release cut changes them once per batch.
-5. Wait for checks and the Render preview; inspect GitHub deployment statuses for that head commit and use the successful `environment_url`.
-6. Start a new game on that origin. After merge, the change goes live on dev as a new `+dev.<n>` revision; dev tables already in progress keep their engine. Never redirect stable saves into an experiment.
+5. Wait for checks and try the change locally (`scripts/dev.sh`); Render previews only the Release PR into `stable`.
+6. After merge, the change goes live on the dev host as a new `+dev.<n>` revision; dev tables already in progress keep their engine. Never redirect stable saves into an experiment.
 
 ## Preview verification
 
