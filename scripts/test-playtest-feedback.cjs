@@ -13,8 +13,8 @@ function battle(g){let n=0;while(g.s.pendingCombat&&n++<15){const a=g.a(),seat=a
 }
 {
  const g=game(),c=card(g,'probe');g.s.fleets={'0,0':{0:unit(0,1)}};const a=g.a().legalActions(0).find(a=>a.type==='probe');assert(a);g.a().applyAction(0,a);assert(g.p.inPlay.some(x=>x.id===c.id));assert(!g.p.discard.some(c=>c.key==='excavate'));const first=g.s.clusters.find(c=>c.scannedBy.includes(0)&&c.id>=4);assert(first);
- // The nearest remaining site can already be known. Re-probing never skips it.
- const located=g.s.clusters.map(c=>c.scannedBy.includes(0));g.s.activePlayer=0;g.p.hand.push(g.p.inPlay.pop());assert(g.e.probeRelic(0,'0,0',c.id));assert.deepEqual(g.s.clusters.map(c=>c.scannedBy.includes(0)),located);
+ // Re-probing from the same Explorer skips the first signal and finds a new site.
+ const located=g.s.clusters.filter(c=>c.scannedBy.includes(0)).length;g.s.activePlayer=0;g.p.hand.push(g.p.inPlay.pop());assert(g.e.probeRelic(0,'0,0',c.id));assert.equal(g.s.clusters.filter(c=>c.scannedBy.includes(0)).length,located+1);
  g.s.activePlayer=0;g.p.hand.push(g.p.inPlay.pop());const coord=first.coords.find(k=>g.s.planets[k].special==='relic');g.s.fleets={[coord]:{0:unit(0,1)}};assert(g.e.excavate(0,coord,c.id,g.s.relicRow[0].id));assert(![...g.p.hand,...g.p.inPlay,...g.p.discard].some(x=>x.id===c.id));assert.equal(g.p.relicsExcavated,1);assert.equal(g.s.fleets[coord],undefined);assert.equal(g.p.discard.length,1);
 }
 {

@@ -169,7 +169,7 @@ function createDom(timers) {
     querySelector: selector => (selector.startsWith('#') ? element(selector.slice(1)) : selector.startsWith('.hex[data-coord=') ? created.find(e=>e.dataset.coord===selector.match(/"([^"]+)"/)[1]) : null),
     querySelectorAll: selector => (selector==='.console-tab'?tabs:selector==='.tab-panel'?panels:selector==='.hex'?created.filter(e=>e.dataset.coord):/^\[data-[a-z-]+\]$/.test(selector) ? byDataAttribute(selector) : [])
   };
-  return { document, element, tabs, panels, contextButton:label=>created.filter(e=>e.tagName==='BUTTON'&&(e.textContent===label||e.innerHTML===label||e.innerHTML.startsWith(`<span>${label}</span>`))).at(-1), hex:key=>created.find(e=>e.dataset.coord===key), lastQuery: selector => queried.get(selector) || [] };
+  return { document, element, tabs, panels, toasts:()=>created.filter(e=>e.className==='toast').map(e=>e.textContent), contextButton:label=>created.filter(e=>e.tagName==='BUTTON'&&(e.textContent===label||e.innerHTML===label||e.innerHTML.startsWith(`<span>${label}</span>`))).at(-1), hex:key=>created.find(e=>e.dataset.coord===key), lastQuery: selector => queried.get(selector) || [] };
 }
 
 function boot(storage, seed = 20261013, location = {hostname:'localhost',search:''}, engineOptions = {}) {
@@ -194,9 +194,9 @@ function boot(storage, seed = 20261013, location = {hostname:'localhost',search:
     console: { log() {}, warn() {}, error: (...args) => errors.push(args) }
   });
   vm.runInContext(`${adapterSource}\n${source}`, context, { filename: sourcePath });
-  context.createGalacticReach(engineOptions);
+  const client=context.createGalacticReach(engineOptions);
   const game = {
-    dom, downloads, randomCalls:()=>randomCalls,
+    dom, downloads, randomCalls:()=>randomCalls, sync:view=>client.sync(view),
     dialog: name => dom.element(`${name}-dialog`),
     saved: () => JSON.parse(storage.getItem(SAVE_KEY)),
     // Every timer the game queues is drained, so AI turns run until the human must act.
@@ -544,6 +544,83 @@ test('Multiple Explorers let the player choose the Probe origin',()=>{
  state.fleets={'2,2':{0:{explorer:1}},'-2,2':{0:{explorer:1}}};state.players[0].hand=[{id:'choose-probe',key:'probe'}];writeSave(storage,state);
  const game=boot(storage);game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='choose-probe').click();assert.equal(game.saved().activePlayer,0);assert(game.saved().players[0].hand.some(c=>c.id==='choose-probe'));
  game.dom.hex('-2,2').click();assert(![...game.saved().players[0].hand,...game.saved().players[0].deck,...game.saved().players[0].discard].some(c=>c.id==='choose-probe'));assert.equal(game.saved().activePlayer,1);
+});
+test('Probe warns that all remaining sites are known, for one or multiple Explorers, without spending',()=>{
+ for(const multiple of [false,true]) {
+  const storage=createStorage(),state=boot(storage).saved();
+  Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep',selected:null});
+  state.clusters.forEach(c=>{c.scannedBy=[0];});
+  state.fleets={'2,2':{0:{explorer:1}}};if(multiple)state.fleets['-2,2']={0:{explorer:1}};
+  state.players[0].hand=[{id:'known-probe',key:'probe'}];writeSave(storage,state);
+  const game=boot(storage),before=game.saved(),calls=game.randomCalls();
+  game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='known-probe'&&b.dataset.orderMode==='probe').click();
+  assert.equal(game.dom.toasts().at(-1),'You have already discovered all remaining relics. Your card and action are kept.');
+  game.click('export-game-report');const after=game.downloads.at(-1).save.state;
+  assert.deepEqual(after.players,before.players);assert.deepEqual(after.fleets,before.fleets);
+  assert.deepEqual(after.clusters,before.clusters);assert.equal(after.activePlayer,0);assert.equal(after.actionMode,null);
+  assert.equal(game.randomCalls(),calls);
+ }
+});
+test('Probe distinguishes all excavated sites from all discovered sites and announces the final discovery',()=>{
+ for(const noneRemaining of [false,true]) {
+  const storage=createStorage(),state=boot(storage).saved();
+  Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep',selected:null});
+  state.fleets={'2,2':{0:{explorer:1}}};state.players[0].hand=[{id:'last-probe',key:'probe'}];
+  const moon=state.clusters.find(c=>c.kind==='moon');
+  state.clusters.forEach(c=>{c.scannedBy=c===moon?[]:[0];});
+  if(noneRemaining)Object.values(state.planets).filter(p=>p.special==='relic').forEach(p=>{p.relicClaimed=true;});
+  writeSave(storage,state);const game=boot(storage);
+  game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='last-probe'&&b.dataset.orderMode==='probe').click();
+  if(noneRemaining) {
+   assert.equal(game.dom.toasts().at(-1),'No relics remain. Your card and action are kept.');
+   assert(game.saved().players[0].hand.some(c=>c.id==='last-probe'));assert.equal(game.saved().activePlayer,0);
+  } else {
+   assert.match(game.dom.toasts().at(-1),/^Relic signal located at .*You have now discovered all remaining relics\.$/);
+   assert(game.saved().clusters[moon.id].scannedBy.includes(0));
+   assert(game.saved().players[0].inPlay.some(c=>c.id==='last-probe'));assert.equal(game.saved().activePlayer,1);
+  }
+ }
+});
+test('Market permits repeated affordable purchases and reloads with no purchase cap',()=>{
+ const storage=createStorage(),state=boot(storage).saved();
+ Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});
+ Object.assign(state.players[0],{passed:true,hand:[],deck:[],discard:[],inPlay:[],buyStartDiscardIds:[],buyStartInPlayIds:[],buyLimit:1,resources:{matter:0,energy:6,biomass:0,data:3},resourceLimits:{matter:4,energy:10,biomass:4,data:10}});
+ state.market=[{id:'purchase-1',key:'signalRelay'},{id:'purchase-2',key:'signalRelay'}];state.advancedDeck=[{id:'refill-3',key:'signalRelay'}];state.marketDiscard=[];
+ writeSave(storage,state);let game=boot(storage);
+ assert.match(game.dom.element('market-help').textContent,/as many cards as you can afford/);
+ for(let n=1;n<=3;n++) {
+  const button=game.dom.lastQuery('[data-buy-market]').find(b=>!b.disabled);assert(button,`Purchase ${n} remains enabled`);button.click();
+  assert.equal(game.saved().players[0].bought,n);assert.equal(game.saved().phase,'buy');
+  if(n===1)game=boot(storage);
+ }
+ assert.equal(game.saved().players[0].discard.length,3);assert.equal(game.saved().market.length,0);
+ assert.equal(game.saved().players[0].resources.energy,0);assert.equal(game.saved().players[0].resources.data,0);
+});
+test('Shared-table Probe uses private server availability and warns after the final signal',()=>{
+ const c=vm.createContext({});vm.runInContext(adapterSource+source,c);
+ let engine;const factory=c.createGalacticAdapter;c.createGalacticAdapter=e=>{engine=e;return factory(e);};
+ const adapter=c.createGalacticReach({headless:true,random:seededRandom(1729)}),state=engine.state;
+ Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep',selected:null});
+ state.fleets={'2,2':{0:{explorer:1}},'-2,2':{0:{explorer:1}}};
+ state.players[0].hand=[{id:'network-probe',key:'probe'}];
+ const moon=state.clusters.find(c=>c.kind==='moon');state.clusters.forEach(c=>{c.scannedBy=c===moon?[]:[0];});
+ let seq=0;const view=()=>JSON.parse(JSON.stringify({seq:++seq,state:adapter.privateState(0),hints:adapter.hints(0)}));
+ const sent=[],network={rules:adapter.rulesVersion,seat:0,busy:()=>false,initial:view(),act:intents=>{sent.push(intents);return true;}};
+ assert.equal(network.initial.state.probeStatus,'available');assert.equal(network.initial.state.planets[moon.center],undefined,'Unknown moon is redacted');
+ const game=boot(createStorage(),1729,undefined,{network});
+ game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='network-probe'&&b.dataset.orderMode==='probe').click();
+ game.dom.hex('2,2').click();assert.equal(sent.length,1);assert.equal(sent[0][0].type,'probe');
+ const command=sent[0][0],legal=adapter.legalActions(0).find(a=>a.type===command.type&&a.card===command.card&&a.coord===command.coord);
+ assert(legal);adapter.applyAction(0,legal);game.sync(view());
+ assert.equal(game.dom.toasts().at(-1),'You have now discovered all remaining relics.');
+ state.activePlayer=0;state.players[0].hand.push(state.players[0].inPlay.pop());game.sync(view());
+ game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='network-probe'&&b.dataset.orderMode==='probe').click();
+ assert.equal(sent.length,1,'All-known Probe sends no command');
+ assert.equal(game.dom.toasts().at(-1),'You have already discovered all remaining relics. Your card and action are kept.');
+ assert(state.players[0].hand.some(c=>c.id==='network-probe'));assert.equal(state.activePlayer,0);
+ Object.values(state.planets).filter(p=>p.special==='relic').forEach(p=>{p.relicClaimed=true;});game.sync(view());
+ game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='network-probe'&&b.dataset.orderMode==='probe').click();
+ assert.equal(game.dom.toasts().at(-1),'No relics remain. Your card and action are kept.');assert.equal(sent.length,1);
 });
 test('Probe UI locates a relic privately and unlocated excavation never redirects to rewards',()=>{
   const {storage,coord}=excavationStorage({affordable:true}),state=JSON.parse(storage.getItem(SAVE_KEY));

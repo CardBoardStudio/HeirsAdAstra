@@ -55,13 +55,13 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
   assert.equal(p.resourceLimits.energy, 8); p.resources.energy = 5; p.resources.data = 1;
   act(g, 0, 'buy', a => a.key === 'ionThrusters');assert(p.discard.some(c => c.id === 'ion'));assert.equal(p.resources.energy, 0);
 }
-// Military cards join the military deck; Wonders pay Prestige; Buy cards add a purchase and a discount.
+// Military cards join the military deck; Wonders pay Prestige; Buy cards discount a purchase.
 {
   const g = game(), { s, p } = g; s.phase = 'buy'; s.activePlayer = 0; p.passed = true; big(p);
   s.market = [{ key: 'novaBarrage', id: 'nova' }, { key: 'dysonLattice', id: 'dyson' }, { key: 'railBattery', id: 'rail' }];
   p.hand = [{ key: 'procurementHub', id: 'hub' }, { key: 'tradeSyndicate', id: 'syn' }];
   p.resources.energy = 25;
-  act(g, 0, 'buy_effect', a => a.card === 'hub'); assert.equal(p.buyLimit, 2);
+  act(g, 0, 'buy_effect', a => a.card === 'hub'); assert.equal(p.buyHubDiscounts, 1);
   // 34.39: Procurement Hub's purchase also costs 1 less of each; with Trade Syndicate both apply.
   assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'dysonLattice'))), { matter: 3, energy: 7, data: 1 });
   act(g, 0, 'buy_effect', a => a.card === 'syn'); assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'dysonLattice'))), { matter: 2, energy: 6, data: 0 });
@@ -73,7 +73,7 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
   act(g, 0, 'buy', a => a.key === 'novaBarrage');
   assert(p.military.some(c => c.id === 'nova')); assert(!p.discard.some(c => c.id === 'nova'), 'Military cards never enter discard');
   assert.equal(s.market.length, 10, 'Each bought slot refills from the supply, back to ten cards');
-  assert(!g.adapter().legalActions(0).some(a => a.type === 'buy'), 'Two purchases used');
+  assert(g.adapter().legalActions(0).some(a => a.type === 'buy'), 'Affordable purchases remain legal after two buys');
 }
 // One-step orders: gains, draws, limits, Prestige, production, starter trash.
 {

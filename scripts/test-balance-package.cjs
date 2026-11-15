@@ -122,16 +122,16 @@ for (const key of ['colonize', 'colonyPods']) {
   const g = game(), { s, p } = g; ops(g); p.hand = [{ key: 'worldEngine', id: 'engine' }];
   act(g, 0, 'build', a => a.card === 'engine' && a.kind === 'starbase'); assert.equal(s.pendingConstruct, null);
 }
-// Procurement Hub alone: one more purchase this Buy, and one purchase 1 less of each resource.
+// Procurement Hub alone discounts one purchase; later affordable purchases remain legal.
 {
   const g = game(), { s, p } = g; s.phase = 'buy'; s.activePlayer = 0; p.passed = true; big(p);
   s.market = [{ key: 'ionThrusters', id: 'ion' }, { key: 'dataHaven', id: 'haven' }];
   p.hand = [{ key: 'procurementHub', id: 'hub' }];
   act(g, 0, 'buy', a => a.key === 'ionThrusters'); assert.equal(p.resources.energy, 15, 'First purchase at full price');
-  act(g, 0, 'buy_effect', a => a.card === 'hub'); assert.equal(p.buyLimit, 2); assert.equal(p.buyHubDiscounts, 1);
+  act(g, 0, 'buy_effect', a => a.card === 'hub'); assert.equal(p.buyHubDiscounts, 1);
   assert.deepEqual(plain(g.e.purchaseCost(p, 'dataHaven')), { energy: 0, data: 4 });
   act(g, 0, 'buy', a => a.key === 'dataHaven'); assert.equal(p.resources.data, 16); assert.equal(p.buyHubDiscounts, 0);
-  assert(!legal(g).some(a => a.type === 'buy'), 'Both purchases used');
+  assert(legal(g).some(a => a.type === 'buy'), 'The discount is used up, but purchases are unlimited');
 }
 
 // #setup: headless games and shared tables keep the default seats; a lineup option deals rivals.
