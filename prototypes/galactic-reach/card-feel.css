@@ -148,35 +148,8 @@
 .cf-drag-arrow.cf-on-target .cf-arrow-line { stroke: #fff3cf; stroke-dasharray: none; }
 .cf-drag-arrow.cf-on-target .cf-arrow-reticle { fill: #fff3cf44; stroke: #fff; }
 
-/* Deck, In play and Discard as stacks of card stock (layout stays #53's). The deck shows the
-   printed card back; In play and Discard lie face up in the cards' cream stock. The edge
-   under each stack grows with the cards in it, and an empty pile is an outlined space. */
-.pile-stats > button.cf-pile {
-  --cf-pile-edge: none; --cf-pile-e1: #cfc09c; --cf-pile-e2: #a99a77; --cf-pile-e3: #74684d; --cf-pile-e4: #4f4634;
-  border-radius: 6px; border: 1px solid #00000030;
-  background: linear-gradient(170deg, #f6f0e1, #e7ddc4); color: #3a4a44;
-  box-shadow: inset 0 1px 0 #fffffff0, inset 0 0 0 3px #ffffff45, var(--cf-pile-edge), 0 6px 10px -6px #000c;
-  transition: transform .12s ease, box-shadow .12s ease;
-}
-.pile-stats > button.cf-pile strong { color: #1d2925; font-family: Georgia, serif; font-size: 15px; }
-.pile-stats > button.cf-pile::before { background: #b58a2c; }
-#deck-button.cf-pile {
-  --cf-pile-e1: #2b5f58; --cf-pile-e2: #1f4843; --cf-pile-e3: #15332f; --cf-pile-e4: #0c1f1c;
-  border-color: #0b1d1a;
-  background: radial-gradient(circle at 50% 40%, #f2d48830 0 22%, transparent 23%), repeating-linear-gradient(45deg, #ffffff0a 0 2px, transparent 2px 7px), linear-gradient(160deg, #24574f, #173a35);
-  color: #e9dfc3;
-  box-shadow: inset 0 0 0 3px #173a35, inset 0 0 0 4px #d9b96a88, var(--cf-pile-edge), 0 6px 10px -6px #000c;
-}
-#deck-button.cf-pile strong { color: #fff3cf; }
-#deck-button.cf-pile::before { background: var(--gold); }
-.pile-stats > button.cf-pile[data-cf-stack="1"] { --cf-pile-edge: 0 1px 0 var(--cf-pile-e1), 0 2px 0 var(--cf-pile-e3); }
-.pile-stats > button.cf-pile[data-cf-stack="2"] { --cf-pile-edge: 0 1px 0 var(--cf-pile-e1), 0 2px 0 var(--cf-pile-e2), 0 3px 0 var(--cf-pile-e3); }
-.pile-stats > button.cf-pile[data-cf-stack="3"] { --cf-pile-edge: 0 1px 0 var(--cf-pile-e1), 0 2px 0 var(--cf-pile-e2), 0 3px 0 var(--cf-pile-e3), 0 4px 0 var(--cf-pile-e4); }
-.pile-stats > button.cf-pile[data-cf-stack="4"] { --cf-pile-edge: 0 1px 0 var(--cf-pile-e1), 0 2px 0 var(--cf-pile-e2), 0 3px 0 var(--cf-pile-e2), 0 4px 0 var(--cf-pile-e3), 0 5px 0 var(--cf-pile-e4); }
-.pile-stats > button.cf-pile[data-cf-stack="0"] { background: #0f1f1c66; border: 1px dashed #94aaa499; color: #9fb0a8; box-shadow: none; }
-.pile-stats > button.cf-pile[data-cf-stack="0"] strong { color: #c9d4cc; }
-.pile-stats > button.cf-pile[data-cf-stack="0"]::before { background: #94aaa4aa; }
-.pile-stats > button.cf-pile:is(:hover, :focus-visible) { transform: translateY(-2px); outline: 2px solid var(--gold); outline-offset: 3px; }
-.pile-stats > button.cf-pile:not(#deck-button):not([data-cf-stack="0"]):is(:hover, :focus-visible) { background: linear-gradient(170deg, #fffaf0, #efe6cf); color: #3a4a44; }
-#deck-button.cf-pile:not([data-cf-stack="0"]):is(:hover, :focus-visible) { background-color: transparent; filter: brightness(1.12); color: #e9dfc3; }
-@media (prefers-reduced-motion: reduce) { .pile-stats > button.cf-pile { transition: none; } .pile-stats > button.cf-pile:is(:hover, :focus-visible) { transform: none; } }
+/* Deck, In play and Discard: #53 lays them out as card piles; give their top cards the same
+   printed finish as the cards in hand (bevelled face, light catching the coating). */
+.pile-card::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(125deg, #ffffff2e 0%, #ffffff00 38%, #ffffff00 62%, #ffffff14 100%); }
+.pile-card.face-up { box-shadow: inset 0 1px 0 #fffffff0, inset 1px 0 0 #ffffff7a, inset -1px 0 0 #3a2f1a1f, inset 0 -2px 0 #3a2f1a26, inset 0 0 0 1.5px color-mix(in srgb, var(--card-accent) 75%, #6f6650), 0 0 0 1px #0b1517; }
+.pile-stats > button[data-empty="true"] .pile-card::after { display: none; }

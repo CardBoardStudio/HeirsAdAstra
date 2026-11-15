@@ -213,19 +213,8 @@
     if (newRound) for (const resource of new Set(after.producers.map(p => p.resource)))
       if (after.resources[resource] <= before.resources[resource] && after.resources[resource] >= after.limits[resource]) $(`.resource-box[data-resource="${resource}"]`)?.classList.add('cf-wasted');
   }
-  // Piles read as stacks of the same card stock: thicker the more cards they hold, an empty
-  // pile as an outlined space on the mat.
-  function stackPiles(next) {
-    for (const [selector, count] of [['#deck-button', next.deck], ['#in-play-button', next.inPlay], ['#discard-button', next.discard]]) {
-      const pile = $(selector);
-      if (!pile) continue;
-      pile.classList.add('cf-pile');
-      pile.dataset.cfStack = String(count ? Math.min(4, Math.ceil(count / 3)) : 0);
-    }
-  }
   function rendered(next) {
     fanHand();
-    stackPiles(next);
     const before = view, saved = previous;
     view = next; previous = null;
     if (inspected) { const card = $(`#hand-row > .game-card[data-card-id="${inspected}"]`); if (card && (card.matches(':hover') || card.contains(document.activeElement))) inspectCard(card); else hideInspect(); }
