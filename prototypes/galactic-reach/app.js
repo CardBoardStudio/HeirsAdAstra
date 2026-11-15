@@ -3599,8 +3599,8 @@ function createGalacticReach(options = {}) {
       const active = state.activePlayer===id && state.winner===null;
       const elo = state.replayElo?.[id];
       const eloText = elo ? `<span class="score-elo">Elo ${Math.round(elo.before)} → ${Math.round(elo.after)} (${elo.after>=elo.before?'+':''}${(elo.after-elo.before).toFixed(1)})</span>` : '';
-      const colonies = colonyPlanets(id).length;
-      return `<article class="score-card ${active?'active':''} ${replayMode&&id===viewSeat?'viewing':''}" style="--player:${player.color}"><span class="faction-counter" aria-hidden="true">${String(id+1).padStart(2,'0')}</span><div class="score-info"><div class="score-top"><span class="score-name">${esc(player.name)}</span><span class="score-turn">${active?'Acting':player.passed?'Passed':'Ready'}</span></div><div class="score-meta"><span>${colonies} ${colonies===1?'colony':'colonies'}</span><span>${player.cardsPurchased||0} cards bought</span><span>${strongestFleet(id)} fleet power</span>${eloText}</div></div><button type="button" class="score-value" data-score-player="${id}" aria-label="${esc(player.name)}: ${calculatePrestige(id)} Prestige. Show point breakdown" aria-haspopup="dialog">${calculatePrestige(id)} <small>Prestige</small></button></article>`;
+      const colonies = colonyPlanets(id).length, points = calculatePrestige(id);
+      return `<article class="score-card ${active?'active':''} ${replayMode&&id===viewSeat?'viewing':''}" style="--player:${player.color}"><span class="faction-counter" aria-hidden="true">${String(id+1).padStart(2,'0')}</span><div class="score-info"><div class="score-top"><span class="score-name">${esc(player.name)}</span><span class="score-turn">${active?'Acting':player.passed?'Passed':'Ready'}</span></div><div class="score-meta"><span>${colonies} ${colonies===1?'colony':'colonies'}</span><span>${player.cardsPurchased||0} cards bought</span><span>${strongestFleet(id)} fleet power</span>${eloText}</div></div><button type="button" class="score-value" data-score-player="${id}" data-tip="${esc(player.name)}: ${points} Prestige" aria-label="${esc(player.name)}: ${points} Prestige. Show point breakdown" aria-haspopup="dialog">${points} <small>Prestige</small></button></article>`;
     }).join('');
     $$('[data-score-player]').forEach(button=>button.addEventListener('click',()=>showPrestigeBreakdown(Number(button.dataset.scorePlayer))));
     renderHistoryStatus();
@@ -3801,23 +3801,41 @@ function createGalacticReach(options = {}) {
   // The comms feed reads at a glance: who acted (faction colour), what kind of event (icon),
   // resource and Prestige amounts as chips, and a divider per round. The full sentence stays
   // in the entry for screen readers and on hover.
+  // Comms feed: one drawn symbol per kind of event (checked in order), so entries read at a glance.
   const LOG_KINDS = [
-    ['production', /produced|production|harvest/i, '⚙'],
-    ['battle', /attack|battle|combat|destroy|captured|retreat|escape|volley/i, '⚔'],
-    ['trade', /trade|offer|exchanged|bank/i, '⇄'],
-    ['upgrade', /upgraded/i, '▲'],
-    ['trash', /trash|decommission/i, '✕'],
-    ['buy', /bought|acquired|purchase|activated .* during Buy/i, '＋'],
-    ['convert', /converted|discarded .*(Matter|Energy|Biomass|Data)|to free storage/i, '⟳'],
-    ['relic', /relic|excavat|probe|surveyed|located/i, '◆'],
-    ['colonize', /coloniz|colony/i, '⬢'],
-    ['build', /built|commission|shipyard|starbase|build/i, '▣'],
-    ['move', /moved|move|jump|portal/i, '➜'],
-
-    ['draw', /drew|draw/i, '❐'],
-    ['prestige', /prestige|won with/i, '★'],
-    ['pass', /passed|could not/i, '⏸'],
+    ['production', /produced|production|harvest/i],
+    ['battle', /attack|battle|combat|destroy|captured|retreat|escape|volley/i],
+    ['trade', /trade|offer|exchanged|bank/i],
+    ['upgrade', /upgraded/i],
+    ['trash', /trash|decommission/i],
+    ['buy', /bought|acquired|purchase|activated .* during Buy/i],
+    ['convert', /converted|discarded .*(Matter|Energy|Biomass|Data)|to free storage/i],
+    ['relic', /relic|excavat|probe|surveyed|located/i],
+    ['colonize', /coloniz|colony/i],
+    ['build', /built|commission|shipyard|starbase|build/i],
+    ['move', /moved|move|jump|portal/i],
+    ['draw', /drew|draw/i],
+    ['prestige', /prestige|won with/i],
+    ['pass', /passed|could not/i],
   ];
+  const LOG_ICONS = {
+    production: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2.1 2.1M15.9 15.9 18 18M6 18l2.1-2.1M15.9 8.1 18 6"/>',
+    battle: '<path d="M4 4l11 11M20 4 9 15M13 17l4-4M11 17l-4-4M16.5 16.5 20 20M7.5 16.5 4 20"/>',
+    trade: '<path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4"/>',
+    upgrade: '<path d="M6 13l6-6 6 6M6 19l6-6 6 6"/>',
+    trash: '<path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>',
+    buy: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M12 8v8M8 12h8"/>',
+    convert: '<path d="M19 9a7.5 7.5 0 0 0-13.4-2M5 15a7.5 7.5 0 0 0 13.4 2"/><path d="M5.6 3v4h4M18.4 21v-4h-4"/>',
+    relic: '<path d="M7 4h10l4 5-9 11L3 9zM3 9h18M12 20 9 9l3-5 3 5z"/>',
+    colonize: '<path d="M6 21V4M6 4h12l-3 4.5 3 4.5H6"/>',
+    build: '<path d="M4 20h16M6 20V10l6-5 6 5v10M10 20v-5h4v5"/>',
+    move: '<path d="M3 12h16M13 6l6 6-6 6"/>',
+    draw: '<rect x="9" y="3" width="11" height="15" rx="2"/><path d="M6 6.5 4.6 7a2 2 0 0 0-1.2 2.5l3.6 10.2a2 2 0 0 0 2.6 1.2L15 19"/>',
+    prestige: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
+    pass: '<path d="M9 5v14M15 5v14"/>',
+    event: '<circle cx="12" cy="12" r="3.5"/>',
+  };
+  const logIcon = kind => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LOG_ICONS[kind]}</svg>`;
   const LOG_RESOURCE = { Matter:'matter', Energy:'energy', Biomass:'biomass', Data:'data' };
   function logVisual(text) {
     return esc(text)
@@ -3830,10 +3848,10 @@ function createGalacticReach(options = {}) {
     state.log.slice(0,18).forEach((item,index) => {
       const match = /^R(\d+) · ([\s\S]*)$/.exec(item), round = match ? match[1] : null, text = match ? match[2] : item;
       if (round && round !== lastRound) { parts.push(`<li class="log-round" aria-hidden="true"><span>Round ${round}</span></li>`); lastRound = round; }
-      const player = state.players.find(candidate => text.startsWith(candidate.name));
-      const [kind,,icon] = LOG_KINDS.find(([,pattern]) => pattern.test(text)) || ['event', null, '•'];
+      const player = state.players.find(candidate => text.startsWith(candidate.name) && !/^[\p{L}\p{N}]/u.test(text.slice(candidate.name.length)));
+      const [kind] = LOG_KINDS.find(([,pattern]) => pattern.test(text)) || ['event'];
       const who = player ? `<span class="log-who" style="--player:${player.color}">${esc(player.name.split(/\s+/).filter(Boolean).map(word => word[0]).join('').slice(0,3).toUpperCase())}</span>` : '<span class="log-who log-table">✦</span>';
-      parts.push(`<li class="log-entry log-${kind}${index===0?' log-latest':''}" title="${esc(item)}"><span class="sr-only">${esc(item)}</span><span class="log-line" aria-hidden="true">${who}<span class="log-icon">${icon}</span><span class="log-text">${logVisual(player ? text.slice(player.name.length).trimStart() : text)}</span></span></li>`);
+      parts.push(`<li class="log-entry log-kind-${kind}${index===0?' log-latest':''}" title="${esc(item)}"><span class="sr-only">${esc(item)}</span><span class="log-line" aria-hidden="true">${who}<span class="log-icon">${logIcon(kind)}</span><span class="log-text">${logVisual(player ? text.slice(player.name.length).trimStart() : text)}</span></span></li>`);
     });
     $('#game-log').innerHTML = parts.join('');
   }
@@ -3880,6 +3898,23 @@ function createGalacticReach(options = {}) {
     $('#deck-row').innerHTML=deckContents(player).map(group=>`<div class="deck-card-group"><strong class="deck-card-count">${group.count}×</strong>${cardMarkup(group,'deck')}</div>`).join('') || '<p class="muted discard-empty">Your draw pile is empty. Discarded cards shuffle in when you next need to draw.</p>';
   }
 
+  // A pile looks like a stack of cards: its edge thickens with the count; discard and in
+  // play show their top card face up (a replay knows only the discard's size: face down).
+  function renderPile(pile, count, top) {
+    const button = $(`#${pile}-button`);
+    button.style.setProperty('--depth', `${Math.min(6, Math.ceil(count / 3))}px`);
+    button.dataset.empty = String(!count);
+    const face = button.querySelector('.pile-card');
+    if (!face) return;
+    const definition = top && ALL_CARDS[top.key];
+    face.classList.toggle('face-up', !!definition);
+    face.style.setProperty('--card-accent', definition?.accent || 'transparent');
+    const topName = definition ? `${definition.name}${starterLevel(top)===3?' III':top.upgraded?' II':''}` : '';
+    face.innerHTML = topName ? `<span class="pile-name">${topName}</span>` : '';
+    button.dataset.title ||= button.title;
+    button.title = topName ? `${button.dataset.title}. Top card: ${topName}.` : button.dataset.title;
+  }
+
   function renderHand() {
     const player=state.players[viewSeat];
     // Replays record pile sizes, not the order or contents of deck and discard.
@@ -3890,6 +3925,9 @@ function createGalacticReach(options = {}) {
     $('#hand-pile-count').textContent=player.hand.length;
     $('#discard-count').textContent=discardCount;
     $('#in-play-count').textContent=player.inPlay.length;
+    renderPile('deck', replayMode?player.deckCount:player.deck.length, null);
+    renderPile('discard', discardCount, replayMode?null:player.discard.at(-1));
+    renderPile('in-play', player.inPlay.length, player.inPlay.at(-1));
     $('#in-play-dialog-count').textContent=player.inPlay.length;
     $('#in-play-row').innerHTML=player.inPlay.length?player.inPlay.map(card=>cardMarkup(card,'inPlay')).join(''):'<p class="muted discard-empty">No cards in play. Used cards stay here until the shared round cleanup.</p>';
     $('#discard-dialog-count').textContent=discardCount;
@@ -4087,7 +4125,7 @@ function createGalacticReach(options = {}) {
     const lanes = state.players.map((player,id) => {
       const points = calculatePrestige(id), at = Math.min(100, points / target * 100);
       const label = `${esc(player.name)}: ${points} of ${target} Prestige`;
-      return `<div class="prestige-lane" style="--player:${player.color};--at:${at}%"><span class="prestige-marker${id===state.activePlayer?' acting':''}${at>88?' flip':''}" title="${label}" role="img" aria-label="${label}"><b>${points}</b><span class="prestige-name">${esc(tag(player,id))}</span></span></div>`;
+      return `<div class="prestige-lane" style="--player:${player.color};--at:${at}%"><span class="prestige-marker${id===state.activePlayer?' acting':''}${at>88?' flip':''}" role="img" aria-label="${label}"><b>${points}</b><span class="prestige-name">${esc(tag(player,id))}</span></span></div>`;
     }).join('');
     $('#prestige-track').innerHTML = `<span class="prestige-track-goal">${target}★</span><div class="prestige-line">${ticks}${lanes}</div>`;
     $('.app-shell')?.style.setProperty('--lanes', state.players.length);
