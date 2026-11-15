@@ -8,7 +8,7 @@
 #   dev-host.sh status
 #
 # Settings live in $ROOT/dev-host.conf (BRANCH, PORT, IMAGE, CONTAINER) and the
-# server's environment in $ROOT/dev.env (APP_ORIGIN, ACCOUNT_REGISTRATION_CODE,
+# server's environment in $ROOT/dev.env (APP_ORIGIN, ACCESS,
 # NIDO_WALLET_HOST, ...). Only the container, image, units and $ROOT belong to
 # this script; it never touches other containers or services.
 set -euo pipefail
@@ -31,8 +31,9 @@ cmd_install() {
   [ -f "$ROOT/dev-host.conf" ] || printf 'BRANCH=%s\nPORT=%s\n' "$BRANCH" "$PORT" > "$ROOT/dev-host.conf"
   if [ ! -f "$ROOT/dev.env" ]; then
     : "${APP_ORIGIN:?set APP_ORIGIN to the tailnet HTTPS origin of this host, e.g. https://host.tailnet.ts.net:$PORT}"
-    (umask 077; printf 'APP_ORIGIN=%s\nACCOUNT_REGISTRATION_CODE=%s\nNIDO_WALLET_HOST=%s\nRUST_LOG=info\n' \
-      "$APP_ORIGIN" "$(openssl rand -base64 32 | tr '+/' '-_' | tr -d '=')" "${NIDO_WALLET_HOST:-test.nido.fyi}" > "$ROOT/dev.env")
+    # Invite-only: Nido accounts with an invitation (docs/invite-only.md).
+    (umask 077; printf 'APP_ORIGIN=%s\nACCESS=invite-only\nNIDO_WALLET_HOST=%s\nRUST_LOG=info\n' \
+      "$APP_ORIGIN" "${NIDO_WALLET_HOST:-test.nido.fyi}" > "$ROOT/dev.env")
   fi
   install -m 755 "$0" "$ROOT/bin/dev-host.sh"
   local src; src=$(cd "$(dirname "$0")" && pwd)

@@ -76,7 +76,7 @@ This prints `https://<origin>/#invite/<token>`. Open it, sign in with Nido, and 
 
 ## Dev host
 
-The self-hosted dev host (`deploy/dev-host/`, [release process](release.md#dev-host) once that lands) enables this with one line in its environment file:
+The self-hosted [dev host](release.md#dev-host) (`deploy/dev-host/`) writes `ACCESS=invite-only` into a new `dev.env`. A host installed earlier needs one line added:
 
 ```sh
 # /opt/drawing-board-dev/dev.env
@@ -84,8 +84,4 @@ ACCESS=invite-only
 APP_ORIGIN=https://<host>.<tailnet>.ts.net:<public port>
 ```
 
-Then `dev-host.sh update` (or the next deploy) restarts the container with it. Check `curl -s http://127.0.0.1:3200/api/session` reports `"invite_only":true`, then make the first administrator as above. Only after that should the host be made public.
-
-When the release-process docs land, fold this into the [dev host](release.md#dev-host) section:
-
-> **Public access.** Before the dev host is made public, add `ACCESS=invite-only` to `dev.env` and run `docker exec drawing-board-dev drawing-board grant-admin <your Nido wallet address>` ([invite-only hosting](invite-only.md)). The generated `ACCOUNT_REGISTRATION_CODE` then has no effect: invite-only hosts admit Nido accounts only. Tailscale Funnel serves only ports 443, 8443 and 10000, so the public origin may differ from the tailnet one on port 3200. Set `APP_ORIGIN` to the public origin exactly.
+Docker reads `dev.env` only when the container is created, so the change takes effect on the next deploy. To apply it now, remove the container and redeploy the same commit: `docker rm -f drawing-board-dev && /opt/drawing-board-dev/bin/dev-host.sh update`. Check `curl -s http://127.0.0.1:3200/api/session` reports `"invite_only":true`, then make the first administrator as above. Only after that should the host be made public.
