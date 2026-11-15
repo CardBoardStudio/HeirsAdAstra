@@ -911,6 +911,21 @@ test('storage allocations cancel atomically, survive commitment and undo with th
 
 function constructTwoSave(){const storage=createStorage(),state=boot(storage).saved(),coord=state.clusters[0].coords[1];Object.assign(state,{activePlayer:0,phase:'operations',turnStage:'prep',selected:coord});state.players[0].resources={matter:4,energy:3,biomass:3,data:2};state.players[0].hand=[{id:'two-builds',key:'construct',starter:true,upgraded:true},{id:'fund-more',key:'construct'}];writeSave(storage,state);return{storage,coord};}
 function startFirstBuild(game){game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='two-builds').click();const button=game.dom.contextButton('Build Shipyard');assert(button&&!button.disabled);button.click();game.settle();}
+test('a rival resumes its optional second build after commissioning into an enemy rival',()=>{
+ const storage=createStorage(),c=vm.createContext({});vm.runInContext(adapterSource+source,c);
+ let e;const f=c.createGalacticAdapter;c.createGalacticAdapter=x=>(e=x,f(x));
+ c.createGalacticReach({headless:true,random:seededRandom(1729)});
+ const s=e.state,coord=s.clusters[1].coords[1],card={id:'spawn-second',key:'construct',starter:true,upgraded:true};
+ s.phase='operations';s.activePlayer=1;
+ s.players.forEach((p,id)=>{p.passed=id>=2;p.hand=id===1?[card]:id===0?[{id:'wait-human',key:'move',starter:true}]:[];p.resourceLimits={matter:30,energy:30,biomass:30,data:30};p.resources={matter:20,energy:20,biomass:20,data:20};});
+ assert(e.buildUpgrade(1,coord,'starbase'));s.fleets={[coord]:{2:{settler:0,explorer:0,fleet:1}}};
+ assert(e.performConstructOrder(1,coord,'fleet',card));assert(s.pendingCombat);assert(s.pendingConstruct);
+ writeSave(storage,JSON.parse(JSON.stringify(s)));const g=boot(storage),after=g.saved();
+ assert(!after.pendingCombat);assert(!after.pendingConstruct,'The rival resolves or declines its second build after combat');
+ assert(!after.pendingBuildOrder);assert.equal(after.activePlayer,0,'The real browser timers return control to the human');
+ assert.equal(after.players[1].inPlay.filter(c=>c.id===card.id).length,1);
+});
+
 test('Construct II saves its optional second build and commits only once',()=>{
  const {storage,coord}=constructTwoSave(),game=boot(storage);startFirstBuild(game);let state=game.saved();assert(state.pendingConstruct);assert.equal(state.activePlayer,0);assert.equal(state.players[0].resources.matter,2);assert.equal(state.players[0].inPlay.filter(c=>c.id==='two-builds').length,1);assert(!game.dom.element('finish-construct').hidden);assert(game.dom.element('undo-turn-button').disabled);
  game.click('export-game-report');assert(game.downloads.at(-1).save.state.pendingConstruct);assert(game.downloads.at(-1).save.gameHistory.events.some(e=>e.changes.some(c=>c.path.join('.')==='pendingConstruct')));

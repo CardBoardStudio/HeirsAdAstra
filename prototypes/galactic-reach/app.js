@@ -2380,6 +2380,9 @@ function createGalacticReach(options = {}) {
     finishMoveOrder();
     if(state.pendingBuildOrder){const pending=state.pendingBuildOrder;state.pendingBuildOrder=null;if(!pending.second)completeAction(pending.playerId,pending.message);else state.turnStage=pending.playerId===ME?'construct-again':'ai';}
     render();saveGame();
+    // Resume an optional second build after a rival-versus-rival commissioning battle.
+    // Human battles resume after the report; headless callers drive their own decisions.
+    if(!headless && state.pendingConstruct && state.activePlayer!==ME && !state.pendingCombatReport) scheduleAiTurn('operations',runAiOperation,650);
   }
 
   function resolveCombatVolley() {
