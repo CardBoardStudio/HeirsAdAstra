@@ -6,7 +6,8 @@
 //
 //   node scripts/check-viewport-fit.cjs              # 1280x720, 1440x900 and 1920x1080
 // Pointer cases move a real mouse: pointing at a hand card must show its inspect view beside
-// the map (never over a hex or the hand), and dragging a card onto a legal hex must play it.
+// the map (never over a hex or the hand), dragging a card onto a legal hex must play it, and
+// dragging one onto your reserves must convert it; every drop target must say what a drop does.
 //   CHROME_PATH=/path/to/chrome node scripts/check-viewport-fit.cjs
 //   SHOTS=dir node scripts/check-viewport-fit.cjs    # also save a screenshot per state
 //   CHECK_ORIGIN=https://preview CHECK_ONLY='1280x720 (operations|buy)' node scripts/check-viewport-fit.cjs
@@ -146,6 +147,7 @@ const CASES = [
   { name: 'operations, inspect view (last of 8 cards)', save: operationsState(longHand), hover: '#hand-row .game-card:last-child', expect: 'inspect' },
   { name: 'operations, drag Move onto your units', save: withFleet(operationsState(['move', 'construct', 'move'])), drag: '#hand-row .game-card[data-order="move"]', expect: 'dragged' },
   { name: 'operations, drag Construct onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', expect: 'built' },
+  { name: 'operations, drag a card onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', dropOn: '.resource-panel .resource-box.cf-drop-yield', expect: 'converted' },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -350,20 +352,31 @@ async function runCase(browser, origin, testCase, [width, height]) {
     await mouse('mouseMoved', at.x, at.y);
     await browser.evaluate('new Promise(r => setTimeout(r, 450))');
   }
+  const problems0 = [];
   if (testCase.drag) {
     const from = await centre(testCase.drag);
     if (!from) return [`could not find ${testCase.drag}`];
     await mouse('mouseMoved', from.x, from.y); await mouse('mousePressed', from.x, from.y);
     for (let i = 1; i <= 3; i++) await mouse('mouseMoved', from.x, from.y - 6 * i);
-    const target = await centre('.hex.cf-drop-target');
-    if (!target) { await mouse('mouseReleased', from.x, from.y - 18); return ['drag showed no legal hex']; }
+    const dropOn = testCase.dropOn || '.hex.cf-drop-target';
+    const target = await centre(dropOn);
+    if (!target) { await mouse('mouseReleased', from.x, from.y - 18); return [`drag showed no ${testCase.dropOn ? 'marked ' + dropOn : 'legal hex'}`]; }
+    steps.before = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
     for (let i = 1; i <= 6; i++) await mouse('mouseMoved', from.x + (target.x - from.x) * i / 6, from.y - 18 + (target.y - from.y + 18) * i / 6);
-    steps.push(await browser.evaluate('({ arrow: !!document.querySelector(".cf-drag-arrow.cf-on-target"), hover: !!document.querySelector(".hex.cf-drop-target.cf-drop-hover") })'));
+    steps.push(await browser.evaluate('({ arrow: !!document.querySelector(".cf-drag-arrow.cf-on-target"), hover: !!document.querySelector(".hex.cf-drop-target.cf-drop-hover"), zone: !!document.querySelector(".resource-panel.cf-drop-zone.cf-drop-hover"), gain: document.querySelector(".resource-box.cf-drop-yield")?.dataset.cfGain || "", label: document.querySelector(".cf-drop-label:not([hidden])")?.textContent || "" })'));
+    // Every drop target says what letting go there will do.
+    if (!steps[0].label) problems0.push('no drop label under the pointer');
     await mouse('mouseReleased', target.x, target.y);
     await mouse('mouseMoved', 4, 4);
     await browser.evaluate('new Promise(r => setTimeout(r, 300))');
   }
   const { problems, slack } = await browser.evaluate(MEASURE);
+  problems.push(...problems0);
+  if (testCase.expect === 'converted') {
+    if (!steps[0]?.arrow || !steps[0]?.zone || !/^\+\d/.test(steps[0]?.gain)) problems.push('drag did not light your reserves and the gain');
+    const after = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
+    if (after.hand !== steps.before.hand - 1 || !after.stock.some((n, i) => n > steps.before.stock[i])) problems.push('dropping a card on your reserves did not convert it');
+  }
   if (testCase.expect === 'inspect') problems.push(...await browser.evaluate(`(() => {
     const view = document.querySelector('#card-inspect'), problems = [];
     if (!view || view.hidden || !view.querySelector('.game-card')) return ['inspect view did not open'];
