@@ -1312,3 +1312,12 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 .hand-tools #pass-button, .hand-tools #hand-finish-buy-button { order: -1; }
 .upgrade-list small { margin-left: 4px; opacity: .75; }
 .upgrade-list .upgrade-note { flex-basis: 100%; }
+
+/* Public corner entrances: outlines stay separate from pieces and count badges. */
+.hex .portal-ring { display:none; position:absolute; inset:2%; width:96%; height:96%; z-index:2; overflow:visible; fill:none; pointer-events:none; }
+.hex.portal-entry .portal-ring { display:block; }
+.portal-ring-base { stroke:#07101a; stroke-width:6; }
+.portal-ring-line { stroke:#ffe09f; stroke-width:2.8; stroke-dasharray:7 4; }
+.hex.portal-pair .portal-ring-line { stroke:#fff9df; stroke-width:4; stroke-dasharray:none; }
+.portal-key { color:var(--gold); }
+.portal-fact strong { color:var(--gold); }

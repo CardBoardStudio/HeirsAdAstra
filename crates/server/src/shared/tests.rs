@@ -1168,11 +1168,8 @@ fn start_deals_people_to_random_seats_and_rivals_fill_the_rest() {
     );
 }
 
-/// 33.38 #split-moves: exercise the browser command against the real shared-table
-/// server from a prepared snapshot. Every seat is human so neither bot timing nor
-/// a bot's random path to a mixed stack can decide whether the test reaches its assertion.
-#[tokio::test]
-async fn a_shared_move_can_leave_units_behind() {
+// Shared movement fixtures load a real persisted position with human-controlled seats.
+async fn prepared_shared_movement(source: &str) -> (Arc<Service>, u64) {
     let store = store_with(&["a", "b", "c", "d"]);
     let log = Arc::new(SqliteTableLog(store));
     let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
@@ -1192,7 +1189,8 @@ async fn a_shared_move_can_leave_units_behind() {
         .find(|c| c["key"] == "move")
         .unwrap()
         .clone();
-    engine["state"]["fleets"] = json!({"0,0":{"0":{"settler":1,"explorer":1,"fleet":2}}});
+    engine["state"]["fleets"] = json!({});
+    engine["state"]["fleets"][source] = json!({"0":{"settler":1,"explorer":1,"fleet":2}});
     engine["state"]["players"][0]["hand"] = json!([card]);
     snapshot["engine"] = json!(engine.to_string());
     log.save_snapshot("split", seq, &snapshot).unwrap();
@@ -1203,6 +1201,13 @@ async fn a_shared_move_can_leave_units_behind() {
         })
         .await
         .unwrap();
+    (service, seq)
+}
+
+/// #split-moves: the real server moves only the browser's chosen units.
+#[tokio::test]
+async fn a_shared_move_can_leave_units_behind() {
+    let (service, seq) = prepared_shared_movement("0,0").await;
     let (seat, _, legal) = service.turn("split").await.unwrap();
     assert_eq!(seat, 0);
     let split = legal
@@ -1485,4 +1490,37 @@ async fn undo_reuses_a_reversed_shuffle_and_resumes_its_snapshot() {
         service.view("shuffle-undo", "a").await.unwrap()["state"],
         second["state"]
     );
+}
+
+/// #corner-portals: the command service enforces the cost-2 aligned crossing.
+#[tokio::test]
+async fn a_shared_move_uses_the_aligned_corner_portal() {
+    let (service, seq) = prepared_shared_movement("-10,8").await;
+    let (seat, observation, legal) = service.turn("split").await.unwrap();
+    assert_eq!(seat, 0);
+    assert_eq!(observation["portalLinks"]["-10,8"], "8,-10");
+    assert_eq!(observation["portalMovementCost"], 2);
+    let action = legal
+        .iter()
+        .find(|a| {
+            a["type"] == "move"
+                && a["source"] == "-10,8"
+                && a["destination"] == "8,-10"
+                && a["units"] == json!({"settler":0,"explorer":0,"fleet":1})
+        })
+        .unwrap()
+        .clone();
+    let mut too_far = action.clone();
+    too_far["destination"] = json!("8,-9");
+    assert!(
+        service.act("split", "a", seq, vec![too_far]).await.is_err(),
+        "crossing plus one step costs 3, beyond Fleet Move's 2"
+    );
+    service.act("split", "a", seq, vec![action]).await.unwrap();
+    let after = service.view("split", "a").await.unwrap();
+    assert_eq!(
+        after["state"]["fleets"]["-10,8"]["0"],
+        json!({"settler":1,"explorer":1,"fleet":1})
+    );
+    assert_eq!(after["state"]["fleets"]["8,-10"]["0"]["fleet"], 1);
 }

@@ -16,8 +16,11 @@ use std::time::{Duration, Instant};
 /// cutover never strands a running shared game. At a cutover, archive the
 /// outgoing engine (rules/vNN-*, with `include_str!` arms in `boot`) and add its
 /// revision here.
-pub const SHARED_RULES: [&str; 5] = [
+pub const SHARED_RULES: [&str; 8] = [
     RULES,
+    "galactic-reach/34.39",
+    "galactic-reach/35.40",
+    "galactic-reach/36.41",
     "galactic-reach/33.38",
     "galactic-reach/32.37",
     "galactic-reach/31.36",
@@ -27,9 +30,9 @@ pub const SHARED_RULES: [&str; 5] = [
 pub fn shared_rules(rules: &str) -> Option<&'static str> {
     SHARED_RULES.iter().find(|r| **r == rules).copied()
 }
-pub const RULES: &str = "galactic-reach/36.41";
+pub const RULES: &str = "galactic-reach/37.42";
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "Playtest Feedback experiment";
+pub const EXPERIMENT: &str = "Integrated Playtest";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -49,6 +52,7 @@ mod legacy_v23;
 mod legacy_v24;
 mod legacy_v25;
 mod legacy_v26;
+mod legacy_v27;
 mod legacy_v3;
 mod legacy_v4;
 mod legacy_v5;
@@ -95,6 +99,10 @@ impl GalacticReach {
     pub fn with_rules(seed: [u8; 32], rules: &str) -> Result<Self, String> {
         let rules = match rules {
             RULES => RULES,
+            "galactic-reach/34.39" => "galactic-reach/34.39",
+            "galactic-reach/35.40" => "galactic-reach/35.40",
+            "galactic-reach/36.41" => "galactic-reach/36.41",
+
             "galactic-reach/33.38" => "galactic-reach/33.38",
             "galactic-reach/4.9" => "galactic-reach/4.9",
             "galactic-reach/5.10" => "galactic-reach/5.10",
@@ -125,7 +133,6 @@ impl GalacticReach {
             "galactic-reach/30.35" => "galactic-reach/30.35",
             "galactic-reach/31.36" => "galactic-reach/31.36",
             "galactic-reach/32.37" => "galactic-reach/32.37",
-            "galactic-reach/33.38" => "galactic-reach/33.38",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -275,6 +282,9 @@ impl GalacticReach {
                 ctx.eval::<(), _>(match rules {
                     RULES => ADAPTER,
                     "galactic-reach/33.38" => include_str!("../rules/v33-adapter.js"),
+                    "galactic-reach/34.39" => include_str!("../rules/v34-adapter.js"),
+                    "galactic-reach/35.40" => include_str!("../rules/v35-adapter.js"),
+                    "galactic-reach/36.41" => include_str!("../rules/v36-adapter.js"),
                     "galactic-reach/17.22" => include_str!("../rules/v17-adapter.js"),
                     "galactic-reach/18.23" => include_str!("../rules/v18-adapter.js"),
                     "galactic-reach/19.24" => include_str!("../rules/v19-adapter.js"),
@@ -291,7 +301,6 @@ impl GalacticReach {
                     "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
                     "galactic-reach/32.37" => include_str!("../rules/v32-adapter.js"),
-                    "galactic-reach/33.38" => include_str!("../rules/v33-adapter.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -310,6 +319,9 @@ impl GalacticReach {
                 ctx.eval::<(), _>(match rules {
                     RULES => ENGINE,
                     "galactic-reach/33.38" => include_str!("../rules/v33-app.js"),
+                    "galactic-reach/34.39" => include_str!("../rules/v34-app.js"),
+                    "galactic-reach/35.40" => include_str!("../rules/v35-app.js"),
+                    "galactic-reach/36.41" => include_str!("../rules/v36-app.js"),
                     "galactic-reach/17.22" => include_str!("../rules/v17-app.js"),
                     "galactic-reach/18.23" => include_str!("../rules/v18-app.js"),
                     "galactic-reach/19.24" => include_str!("../rules/v19-app.js"),
@@ -326,7 +338,6 @@ impl GalacticReach {
                     "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
                     "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
                     "galactic-reach/32.37" => include_str!("../rules/v32-app.js"),
-                    "galactic-reach/33.38" => include_str!("../rules/v33-app.js"),
                     "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                     "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                     "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -450,18 +461,18 @@ pub enum Strategy {
 impl Strategy {
     pub fn version(self) -> &'static str {
         match self {
-            Self::Military => "gr-military/27",
-            Self::Economy => "gr-economy/27",
-            Self::Expansion => "gr-expansion/27",
-            Self::Wanderer => "gr-wanderer/27",
+            Self::Military => "gr-military/28",
+            Self::Economy => "gr-economy/28",
+            Self::Expansion => "gr-expansion/28",
+            Self::Wanderer => "gr-wanderer/28",
         }
     }
     pub fn parse(version: &str) -> Option<Self> {
         match version {
-            "gr-military/27" => Some(Self::Military),
-            "gr-economy/27" => Some(Self::Economy),
-            "gr-expansion/27" => Some(Self::Expansion),
-            "gr-wanderer/27" => Some(Self::Wanderer),
+            "gr-military/28" => Some(Self::Military),
+            "gr-economy/28" => Some(Self::Economy),
+            "gr-expansion/28" => Some(Self::Expansion),
+            "gr-wanderer/28" => Some(Self::Wanderer),
             _ => None,
         }
     }
@@ -484,6 +495,51 @@ fn distance(a: &str, b: &str) -> f64 {
     coord(a)
         .zip(coord(b))
         .map_or(100.0, |(a, b)| point_distance(a, b))
+}
+thread_local! {
+    static PORTAL_DISTANCES: RefCell<(Value,f64,Vec<f64>)> = const { RefCell::new((Value::Null,0.0,Vec::new())) };
+}
+// Cache only public geometry. Policies never recompute the same 18-edge metric
+// for every candidate Move in a full game; archived views use physical distance.
+fn travel_distance(view: &Value, a: &str, b: &str) -> f64 {
+    let Some(links) = view["portalLinks"].as_object() else {
+        return distance(a, b);
+    };
+    let cost = view["portalMovementCost"].as_f64().unwrap_or(2.0);
+    let index = |c: (i32, i32)| {
+        ((-10..=10).contains(&c.0) && (-10..=10).contains(&c.1))
+            .then_some(((c.0 + 10) * 21 + c.1 + 10) as usize)
+    };
+    let Some((a, b)) = coord(a).and_then(index).zip(coord(b).and_then(index)) else {
+        return distance(a, b);
+    };
+    PORTAL_DISTANCES.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if cache.0 != view["portalLinks"] || cache.1 != cost || cache.2.is_empty() {
+            let pairs: Vec<_> = links
+                .iter()
+                .filter_map(|(entry, exit)| coord(entry).zip(exit.as_str().and_then(coord)))
+                .collect();
+            let points: Vec<_> = (-10..=10)
+                .flat_map(|q| (-10..=10).map(move |r| (q, r)))
+                .collect();
+            let matrix = points
+                .iter()
+                .flat_map(|a| {
+                    points.iter().map(|b| {
+                        pairs
+                            .iter()
+                            .map(|(entry, exit)| {
+                                point_distance(*a, *entry) + cost + point_distance(*exit, *b)
+                            })
+                            .fold(point_distance(*a, *b), f64::min)
+                    })
+                })
+                .collect();
+            *cache = (view["portalLinks"].clone(), cost, matrix);
+        }
+        cache.2[a * 441 + b]
+    })
 }
 fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
     view["fleets"]
@@ -931,7 +987,7 @@ fn bot_threat(view: &Value, seat: usize, moving: &Value, destination: &str, sour
                     let fleets = number(&enemy["fleet"]);
                     if owner != &seat.to_string()
                         && fleets > 0.0
-                        && distance(coord, destination) <= range
+                        && travel_distance(view, coord, destination) <= range
                     {
                         Some(if fleets > defense { 1.0 } else { 0.0 })
                     } else {
@@ -1241,15 +1297,16 @@ impl BuiltinAgent {
                             && can_settle_at(p, coord, escorted)
                             && bot_safe_fight(view, seat, fleet, coord)
                     };
-                    if goal && distance(from, coord) > distance(to, coord) {
+                    if goal && travel_distance(view, from, coord) > travel_distance(view, to, coord)
+                    {
                         best = best.max(
                             (if explorer {
                                 if known_relic { 90.0 } else { 70.0 }
                             } else {
                                 92.0
-                            }) + distance(from, coord)
-                                - distance(to, coord)
-                                - distance(to, coord) * 0.3,
+                            }) + travel_distance(view, from, coord)
+                                - travel_distance(view, to, coord)
+                                - travel_distance(view, to, coord) * 0.3,
                         );
                     }
                 }
@@ -1268,11 +1325,12 @@ impl BuiltinAgent {
                                 ) >= number(&other["explorer"]);
                             if !escape
                                 && bot_safe_fight(view, seat, fleet, coord)
-                                && distance(from, coord) > distance(to, coord)
+                                && travel_distance(view, from, coord)
+                                    > travel_distance(view, to, coord)
                             {
                                 best = best.max(
                                     (if military { 94.0 } else { 80.0 })
-                                        - distance(to, coord) * 0.3,
+                                        - travel_distance(view, to, coord) * 0.3,
                                 );
                             }
                         }
@@ -1291,7 +1349,8 @@ impl BuiltinAgent {
                                 && bot_threat(view, seat, ally, coord, coord) > 0.0;
                             if coord != from
                                 && (escort || number(&ally["fleet"]) > 0.0)
-                                && distance(to, coord) < distance(from, coord)
+                                && travel_distance(view, to, coord)
+                                    < travel_distance(view, from, coord)
                             {
                                 best = best.max(if escort {
                                     99.0
@@ -1636,6 +1695,9 @@ pub fn agent(version: &str, seed: [u8; 32]) -> Result<Box<dyn PlayerAgent<Galact
     if let Some(strategy) = legacy_v26::Strategy::parse(version) {
         return Ok(Box::new(legacy_v26::BuiltinAgent::new(strategy, seed)));
     }
+    if let Some(strategy) = legacy_v27::Strategy::parse(version) {
+        return Ok(Box::new(legacy_v27::BuiltinAgent::new(strategy, seed)));
+    }
     Err("Unsupported Galactic Reach policy version.".into())
 }
 
@@ -1681,6 +1743,25 @@ mod tests {
         assert!(bot_storage_budget(&view, 0).is_none());
     }
     use game_core::run_match;
+    #[test]
+    fn public_corner_portals_change_routes_and_visible_threats() {
+        let mut view = json!({"portalLinks":{"-10,8":"8,-10","8,-10":"-10,8"},"portalMovementCost":2,
+            "fleets":{"-10,8":{"1":{"fleet":2}}},"planets":{}});
+        assert_eq!(travel_distance(&view, "-10,8", "8,-10"), 2.0);
+        assert_eq!(travel_distance(&view, "-9,8", "8,-10"), 3.0);
+        assert_eq!(
+            bot_threat(&view, 0, &json!({"settler":1}), "8,-10", "8,-10"),
+            1.0,
+            "visible enemy Fleets threaten the opposite gate"
+        );
+        view.as_object_mut().unwrap().remove("portalLinks");
+        assert!(travel_distance(&view, "-10,8", "8,-10") > 2.0);
+        assert_eq!(
+            bot_threat(&view, 0, &json!({"settler":1}), "8,-10", "8,-10"),
+            0.0,
+            "earlier rules keep physical distance"
+        );
+    }
     // 33.38 #movement: a Move names its `units`; Fleets may leave a safe Settler behind.
     #[test]
     fn split_moves_leave_safe_settlers_and_keep_exposed_ones_escorted() {
@@ -1915,6 +1996,9 @@ mod tests {
             "galactic-reach/31.36",
             "galactic-reach/32.37",
             "galactic-reach/33.38",
+            "galactic-reach/34.39",
+            "galactic-reach/35.40",
+            "galactic-reach/36.41",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1952,6 +2036,9 @@ mod tests {
                             | "galactic-reach/31.36"
                             | "galactic-reach/32.37"
                             | "galactic-reach/33.38"
+                            | "galactic-reach/34.39"
+                            | "galactic-reach/35.40"
+                            | "galactic-reach/36.41"
                     ) {
                         0
                     } else {
@@ -1988,6 +2075,7 @@ mod tests {
             "gr-military/24",
             "gr-military/25",
             "gr-military/26",
+            "gr-military/27",
         ] {
             assert_eq!(agent(policy, [23; 32]).unwrap().policy_version(), policy);
         }

@@ -252,9 +252,13 @@ if [ -z "${SKIP_ZK_SEAT:-}" ]; then
   ./zk/build-web.sh "$PWD/dist/galactic-reach/zk"
 fi
 
-# Preserve stable Split Moves 33.38 for pinned guest/shared games and replays.
-mkdir -p dist/galactic-reach/rules/33.38
-for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js cards.html shared.js playtest-notes.js playtest-notes.css; do
-  cp "crates/galactic-reach/rules/v33-$asset" "dist/galactic-reach/rules/33.38/$asset"
+
+# Preserve all independently published workstation revisions for pinned games.
+for format in 34 35 36; do
+  revision=$((format+5))
+  mkdir -p "dist/galactic-reach/rules/$format.$revision"
+  for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css shared.js cards.html; do
+    cp "crates/galactic-reach/rules/v$format-$asset" "dist/galactic-reach/rules/$format.$revision/$asset"
+  done
+  cp prototypes/galactic-reach/table.js "dist/galactic-reach/rules/$format.$revision/table.js"
 done
-cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/33.38/table.js

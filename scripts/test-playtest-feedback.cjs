@@ -6,7 +6,7 @@ const unit=(settler=0,explorer=0,fleet=0)=>({settler,explorer,fleet});
 function card(g,key,id=key,extra={}){const c={key,id,...extra};g.p.hand.push(c);return c;}
 function battle(g){let n=0;while(g.s.pendingCombat&&n++<15){const a=g.a(),seat=a.activeSeat(),acts=a.legalActions(seat);a.applyAction(seat,acts.find(a=>a.type==='combat_stay')||acts.find(a=>a.tactic==='concentratedFire')||acts[0]);}assert(!g.s.pendingCombat);}
 {
- const g=game();assert.equal(g.s.version,36);assert.equal(g.s.rulesRevision,41);assert.equal(Object.values(g.s.planets).filter(p=>p.special==='relic').length,13);assert(g.s.clusters[12].coords.some(k=>g.s.planets[k].special==='relic'));
+ const g=game();assert.equal(g.s.version,37);assert.equal(g.s.rulesRevision,42);assert.equal(Object.values(g.s.planets).filter(p=>p.special==='relic').length,13);assert(g.s.clusters[12].coords.some(k=>g.s.planets[k].special==='relic'));
  assert.equal(Object.keys(g.e.RELIC_CARDS).length,23);assert(!g.e.ALL_CARDS.voidglassAstrolabe);
  for(const key of ['signalRelay','surveyNetwork','tacticalBriefing']){const d=g.e.ALL_CARDS[key];assert.equal(d.effect.draw,2);assert(Object.values(d.cost).every(n=>n<=4));}
  for(const d of Object.values(g.e.ALL_CARDS)){assert(!/reuse it each time/i.test(d.text));if(d.order==='special'&&d.effect)assert(d.effect.draw||d.effect.limits||d.effect.prestige||d.effect.trashStarters,'No resource-only special orders');}
@@ -48,4 +48,24 @@ function battle(g){let n=0;while(g.s.pendingCombat&&n++<15){const a=g.a(),seat=a
 {
  const g=game();card(g,'move','ai-iii',{starter:true,upgraded:true,level:3});g.p.resources={matter:0,energy:0,biomass:0,data:0};g.p.discard=[{key:'construct',id:'ai-draw'}];g.e.aiStockpile(0);assert(g.p.hand.some(c=>c.id==='ai-draw'));assert(g.p.inPlay.some(c=>c.id==='ai-iii'));
 }
-console.log('Playtest Feedback: center site, 23 relics, combined card, closest signals, one-shot capacity, off-turn authority, III draw timing, moon Shipyards, spawn combat and stationary Move passed.');
+
+// Combined balance and feedback: market second builds survive a commissioning battle too.
+for(const key of ['prefabYards','orbitalFoundry']) {
+ const g=game(),coord=g.s.clusters[0].coords[1];assert(g.e.buildUpgrade(0,coord,'starbase'));
+ g.s.fleets={[coord]:{1:unit(0,0,1)}};const c=card(g,key);
+ assert(g.e.performConstructOrder(0,coord,'fleet',c));assert(g.s.pendingCombat);battle(g);
+ assert.equal(g.s.pendingConstruct.cardName,g.e.ALL_CARDS[key].name);assert.equal(g.s.activePlayer,0);
+ assert(g.e.finishConstruct(0));assert.equal(g.s.activePlayer,1);assert.equal(g.p.inPlay.filter(x=>x.id===c.id).length,1);
+}
+// Move III crosses the portal and draws only after its card leaves hand.
+{
+ const g=game(),c=card(g,'move','portal-iii',{starter:true,upgraded:true,level:3});
+ g.s.fleets={'-10,8':{0:unit(0,0,1)}};g.p.deck=[{id:'portal-draw',key:'construct'}];
+ const a=g.a().legalActions(0).find(a=>a.type==='move'&&a.destination==='8,-9');assert(a);g.a().applyAction(0,a);
+ assert.equal(g.s.fleets['8,-9'][0].fleet,1);assert(g.p.hand.some(x=>x.id==='portal-draw'));assert(g.p.inPlay.some(x=>x.id===c.id));
+}
+// All independently published browser engines and manuals remain byte-identical.
+{
+ const crypto=require('node:crypto');for(const [file,hash] of Object.entries(JSON.parse(fs.readFileSync('scripts/workstation-integration-archive-hashes.json','utf8'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),hash,file);
+}
+console.log('Playtest Feedback and integration: center site, 23 relics, combined card, closest signals, capacity, off-turn authority, III timing, moon Shipyards, spawn/stationary combat, market continuations, portal draw and immutable archives passed.');

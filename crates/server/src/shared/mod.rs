@@ -168,7 +168,10 @@ impl Live {
         if self.table.status == "finished" {
             return Err("The game is over.".into());
         }
-        if self.table.rules == "galactic-reach/36.41" {
+        if matches!(
+            self.table.rules.as_str(),
+            "galactic-reach/36.41" | "galactic-reach/37.42"
+        ) {
             if !self.table.seats[seat].human() {
                 return Err("Only human players can undo.".into());
             }

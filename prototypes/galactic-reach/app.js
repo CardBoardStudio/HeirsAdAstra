@@ -62,6 +62,11 @@ function createGalacticReach(options = {}) {
     return { neighbor, far: far.join(' and ') };
   }
   const BOARD_RADIUS = 10;
+  const PORTAL_MOVEMENT_COST = 2;
+  // Straight-across reflection: lower-left (q,r) meets upper-right (r,q).
+  const PORTAL_PAIRS = [...Array.from({length:5},(_,i)=>[-10,6+i]),...Array.from({length:4},(_,i)=>[-9+i,10])]
+    .map(([q,r])=>[`${q},${r}`,`${r},${q}`]);
+  const CORNER_PORTAL_LINKS = Object.fromEntries(PORTAL_PAIRS.flatMap(([a,b])=>[[a,b],[b,a]]));
   const HOME_STARTS = [
     { cluster: 0, owner: 0, colonySector: 0, inwardSector: 1 },
     { cluster: 1, owner: 1, colonySector: 0, inwardSector: 6 },
@@ -112,7 +117,7 @@ function createGalacticReach(options = {}) {
   const BASIC_CARDS = {
     colonize: { name: 'Colonize', kind: 'Basic', accent: 'var(--biomass)', resource: { biomass: 1 }, order: 'colonize', text: 'Establish a Colony with a Settler on a world’s center hex, then permanently trash Colonize.' },
     construct: { name: 'Construct', kind: 'Basic', accent: 'var(--matter)', resource: { matter: 1 }, order: 'construct', text: 'Build on any empty planet hex adjacent to your Colony, or commission one ship.', cost: { matter: 1, data: 1 } },
-    move: { name: 'Move', kind: 'Basic', accent: 'var(--energy)', resource: { energy: 1 }, order: 'move', text: 'Move the units you choose from one hex (combat ships or Explorers) at the slowest one’s speed.', cost: { energy: 1, data: 1 } },
+    move: { name: 'Move', kind: 'Basic', accent: 'var(--energy)', resource: { energy: 1 }, order: 'move', text: 'Move chosen combat ships or Explorers at the slowest chosen speed. Crossing the corner portal costs 2 movement.', cost: { energy: 1, data: 1 } },
     probe: { name: 'Probe / Excavate', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'probe', text: 'Choose Probe: locate the closest remaining relic to your Explorer anywhere and keep this card. Or Excavate: at its located relic, pay 1 Matter, 1 Energy and 2 Data; gain a relic into discard and 2 Prestige, consume the Explorer and trash this card.' },
     excavate: { name: 'Excavate', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'excavate', text: 'At your Explorer’s located relic, pay 1 Matter, 1 Energy, and 2 Data. Choose a relic card into discard and gain 2 Prestige. Remove the relic and trash this card; consume one Explorer.' }
   };
@@ -736,7 +741,7 @@ function createGalacticReach(options = {}) {
     const relicRow = [relicDeck.pop(),relicDeck.pop(),relicDeck.pop()];
     const initial = {
       version: SAVE_FORMAT_VERSION, round: 1, phase: 'production', firstPlayer: 0, activePlayer: 0, players,
-      planets: galaxy.planets, clusters: galaxy.clusters, fleets, advancedDeck, market: [], marketDiscard: [],
+      portalLinks: {...CORNER_PORTAL_LINKS}, planets: galaxy.planets, clusters: galaxy.clusters, fleets, advancedDeck, market: [], marketDiscard: [],
       selected: null, actionMode: null, actionCardId: null, actionOptions: {}, moveSource: null, reachable: [],
       turnStage: 'waiting', log: [], winner: null,
       lastCombat: null, pendingCombat: null, pendingMove: null, pendingCombatReport: null, relicDeck, relicRow,
@@ -1224,7 +1229,7 @@ function createGalacticReach(options = {}) {
     return card.key==='construct' ? !!card.upgraded : !!ALL_CARDS[card.key]?.secondBuild;
   }
   function secondBuildName(card) {
-    return card.key==='construct' ? 'Construct II' : ALL_CARDS[card.key].name;
+    return card.key==='construct' ? `Construct ${card.level===3?'III':'II'}` : ALL_CARDS[card.key].name;
   }
   function pendingBuildName() {
     return state.pendingConstruct?.cardName || 'Construct II';
@@ -1366,22 +1371,44 @@ function createGalacticReach(options = {}) {
     return Object.entries(fleets).some(([owner, fleet]) => Number(owner) !== player && fleetCount(fleet));
   }
 
-  function reachableFrom(source, player, range, cannotAttack = false, movingFleet = null) {
-    const distances = new Map([[source,0]]);
-    const queue = [source];
-    while (queue.length) {
-      const current = queue.shift();
-      const distance = distances.get(current);
-      if (distance >= range) continue;
-      for (const next of movementNeighbors(current)) {
-        if (distances.has(next)) continue;
-        const destinationFleet = getFleet(next, player);
-        if (cannotAttack && hostileAt(next, player)) continue;
-        distances.set(next, distance + 1);
-        if (!hostileAt(next, player)) queue.push(next);
+  function portalExit(coord) { return state.portalLinks?.[coord] || null; }
+  function movementEdges(coord, playerId = null) {
+    const physical=playerId===null?movementNeighbors(coord):aiMovementNeighbors(coord,playerId);
+    const edges=physical.map(coord=>({coord,cost:1,portal:false})),exit=portalExit(coord);
+    if(exit)edges.push({coord:exit,cost:PORTAL_MOVEMENT_COST,portal:true});
+    return edges;
+  }
+
+  // Positive integer costs: buckets settle the cheapest route before expanding it.
+  // A cost-2 portal must never become a one-step shortcut or hide a cheaper route.
+  function travelSearch(source, edges, range=Infinity, canEnter=()=>true, canLeave=()=>true) {
+    const routes=new Map([[source,{cost:0,previous:null,portals:0}]]),buckets=[[source]];
+    for(let cost=0;cost<buckets.length&&cost<=range;cost++) for(const current of buckets[cost]||[]) {
+      const route=routes.get(current);
+      if(route.cost!==cost||!canLeave(current))continue;
+      for(const edge of edges(current)) {
+        const nextCost=cost+edge.cost;
+        if(nextCost>range||!canEnter(edge.coord)||routes.get(edge.coord)?.cost<=nextCost)continue;
+        routes.set(edge.coord,{cost:nextCost,previous:current,portals:route.portals+(edge.portal?1:0)});
+        (buckets[nextCost]??=[]).push(edge.coord);
       }
     }
-    return [...distances.keys()];
+    return routes;
+  }
+  function movementRoutes(source,player,range,cannotAttack=false) {
+    return travelSearch(source,movementEdges,range,next=>!cannotAttack||!hostileAt(next,player),current=>current===source||!hostileAt(current,player));
+  }
+  function reachableFrom(source,player,range,cannotAttack=false,movingFleet=null) {
+    return [...movementRoutes(source,player,range,cannotAttack).keys()];
+  }
+  // Public travel distance for planning only. Probe keeps ordinary hex distance.
+  let travelMetricLinks=null,travelMetricCache=new Map();
+  function travelDistance(a,b) {
+    if(travelMetricLinks!==state.portalLinks){travelMetricLinks=state.portalLinks;travelMetricCache.clear();}
+    const pair=[a,b].sort().join("|");if(travelMetricCache.has(pair))return travelMetricCache.get(pair);
+    let best=hexDistance(a,b);
+    for(const [entry,exit] of Object.entries(state.portalLinks||{}))best=Math.min(best,hexDistance(a,entry)+PORTAL_MOVEMENT_COST+hexDistance(exit,b));
+    travelMetricCache.set(pair,best);return best;
   }
 
   // Every newly acquired card enters discard; draws and returns of owned cards
@@ -1905,9 +1932,8 @@ function createGalacticReach(options = {}) {
   function resolveHumanSpecial(card, definition, playerId = 0, allocation = null) {
     if (state.pendingCombat) return false;
     const player = state.players[playerId];
-    if (definition.effect) return resolveCardEffect(playerId,card,definition);
-    if (definition.kind === 'Alien Relic') return resolveAlienSpecial(playerId,card,definition,allocation);
     if (definition.effect) return resolveCardEffect(playerId,card,definition,allocation);
+    if (definition.kind === 'Alien Relic') return resolveAlienSpecial(playerId,card,definition,allocation);
     if (!['surge','foresight','brokerage','uplink','bankTrade'].includes(definition.tag) || !player.hand.some(c=>c.id===card.id)) return false;
     if (definition.tag !== 'bankTrade') removeHandCard(player,card.id);
     if (definition.tag === 'surge') {
@@ -2074,7 +2100,7 @@ function createGalacticReach(options = {}) {
     state.actionOptions.moveGroup = moving.explorer ? 'explorer' : 'ships';
     const range = movementRange(moving,state.actionOptions);
     state.reachable = reachableFrom(key,ME,range,avoidsHostile(state.actionOptions.tag),moving);
-    toast(`${formatFleet(moving)} can move up to ${range} hex${range===1?'':'es'}. Select a highlighted destination, or untick units in Sector Scan.`);
+    toast(`${formatFleet(moving)} has ${range} movement. Portal crossing costs 2. Select a highlighted destination, or untick units in Sector Scan.`);
     render();
     return true;
   }
@@ -2479,8 +2505,9 @@ function createGalacticReach(options = {}) {
     if (state.pendingConstruct || state.pendingCombat || state.pendingMove || state.phase!=='operations' || state.activePlayer!==playerId || overflowPlayer()>=0 || !state.players[playerId].hand.some(c=>c.id===card?.id) || ALL_CARDS[card.key].order!=='move') return false;
     const moving=moveSelection(getFleet(source,playerId),options);
     if (!moving) return false;
-    if (!reachableFrom(source,playerId,movementRange(moving,card),avoidsHostile(options.tag),moving).includes(destination)) return false;
-    state.pendingMove={playerId,source,destination,cardId:card.id,message:source===destination?`${state.players[playerId].name} spent Move to stay at ${nameForCoord(source)}${hostileAt(source,playerId)?' and fight again':''}.`:`${state.players[playerId].name} moved ${formatFleet(moving)} from ${nameForCoord(source)} to ${nameForCoord(destination)}.`};
+    const route=movementRoutes(source,playerId,movementRange(moving,card),avoidsHostile(options.tag)).get(destination);
+    if(!route)return false;
+    state.pendingMove={playerId,source,destination,cardId:card.id,movementCost:route.cost,portalCrossings:route.portals,message:source===destination?`${state.players[playerId].name} spent Move to stay at ${nameForCoord(source)}${hostileAt(source,playerId)?' and fight again':''}.`:`${state.players[playerId].name} moved ${formatFleet(moving)} from ${nameForCoord(source)} to ${nameForCoord(destination)}${route.portals?' via the corner portal (2 movement to cross)':''}.`};
     removeHandCard(state.players[playerId],card.id);
     drawStarterBonus(playerId,card);
     executeMove(playerId,source,destination,{...options,units:moving});
@@ -2847,23 +2874,24 @@ function createGalacticReach(options = {}) {
       if (+owner===playerId || !enemy.fleet) continue;
       // Move II is public card content, but an opponent's current hand is not.
       const range=enemy.settler?2:3;
-      if (hexDistance(at,destination)>range) continue;
+      if (travelDistance(at,destination)>range) continue;
       const attacker=fleetGroup(enemy,'ships'),estimate=aiBattleEstimate(attacker,own,yard);
       risk=Math.max(risk,estimate.win);
     }
     return risk;
   }
 
-  function aiPath(source, goal, playerId, moving, cannotAttack) {
-    const queue=[source],came=new Map([[source,null]]);
-    for (let i=0;i<queue.length&&!came.has(goal);i++) for (const next of aiMovementNeighbors(queue[i],playerId)) {
-      if (came.has(next)) continue;
-      if (hostileAt(next,playerId) && (cannotAttack || !aiCanFight(playerId,moving,next))) continue;
-      came.set(next,queue[i]);queue.push(next);
-    }
-    if (!came.has(goal)) return null;
-    const path=[];for (let at=goal;at!==source;at=came.get(at)) path.unshift(at);
+  function aiPath(source,goal,playerId,moving,cannotAttack,maxStep=Infinity) {
+    const routes=travelSearch(source,coord=>movementEdges(coord,playerId).filter(edge=>edge.cost<=maxStep),Infinity,
+      next=>!hostileAt(next,playerId)||!cannotAttack&&aiCanFight(playerId,moving,next));
+    if(!routes.has(goal))return null;
+    const path=[];for(let at=goal;at!==source;at=routes.get(at).previous)path.unshift(at);
     return path;
+  }
+  function pathMovementCost(source,path) {
+    let cost=0,previous=source;
+    for(const next of path){cost+=portalExit(previous)===next?PORTAL_MOVEMENT_COST:1;previous=next;}
+    return cost;
   }
 
   function aiStockpile(playerId) {
@@ -3033,13 +3061,16 @@ function createGalacticReach(options = {}) {
     const targets=[];
     const add=(source,moving,goal,value,moveGroup,cannotAttack)=>{
       if (source===goal) return;
-      const path=aiPath(source,goal,playerId,moving,cannotAttack);
+      const range=movementRange(moving,card),path=aiPath(source,goal,playerId,moving,cannotAttack,range);
       if (!path?.length) return;
-      const range=movementRange(moving,card),segment=path.slice(0,range),blocker=segment.find(at=>hostileAt(at,playerId)),destination=blocker||segment[segment.length-1];
+      const segment=[];let spent=0,previous=source;
+      for(const at of path){const cost=portalExit(previous)===at?PORTAL_MOVEMENT_COST:1;if(spent+cost>range)break;segment.push(at);spent+=cost;previous=at;if(hostileAt(at,playerId))break;}
+      if(!segment.length)return;
+      const destination=segment[segment.length-1],pathCost=pathMovementCost(source,path);
       const risk=moveGroup==='ships'?aiThreat(playerId,moving,destination,source):0;
       const current=moveGroup==='ships'?aiThreat(playerId,moving,source,source):0;
       if (moving.settler && risk>.6 && risk>=current) return;
-      targets.push({source,destination,moveGroup,units:fleetGroup(moving,moveGroup),score:value-2*Math.ceil(path.length/range)+(path.length<=range?4:0)-risk*(moving.settler?55:35),goal});
+      targets.push({source,destination,moveGroup,units:fleetGroup(moving,moveGroup),score:value-2*Math.ceil(pathCost/range)+(pathCost<=range?4:0)-risk*(moving.settler?55:35),goal});
     };
     for (const [source,g] of groups) {
       const f=g[playerId],ships=fleetGroup(f,'ships'),explorers=fleetGroup(f,'explorer');
@@ -3075,7 +3106,7 @@ function createGalacticReach(options = {}) {
           // A capture needs a Fleet on the center too: one moving with the Settler or already waiting there.
           if (capture && !ships.fleet && !captureFleetAt(c.center,playerId)) continue;
           if (capture && !military && calculatePrestige(planet.owner)<victoryTarget()*.8 && state.clusters.some(w=>w.kind==='world'&&state.planets[w.center].owner===null)) continue;
-          if (groups.some(([at,other])=>at!==source&&other[playerId].settler&&hexDistance(at,c.center)<hexDistance(source,c.center))) continue;
+          if (groups.some(([at,other])=>at!==source&&other[playerId].settler&&travelDistance(at,c.center)<travelDistance(source,c.center))) continue;
           add(source,ships,c.center,42+(expansion?5:0)+(capture?military?8:2:0),'ships',avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag));
         }
       } else if (hunters) {
@@ -3095,7 +3126,7 @@ function createGalacticReach(options = {}) {
         const known=state.clusters.filter(c=>relicKnown(c,playerId)).map(relicCoordInCluster).filter(Boolean);
         const goals=known;
         for (const goal of goals) {
-          if (groups.some(([at,other])=>at!==source&&other[playerId].explorer&&hexDistance(at,goal)<hexDistance(source,goal))) continue;
+          if (groups.some(([at,other])=>at!==source&&other[playerId].explorer&&travelDistance(at,goal)<travelDistance(source,goal))) continue;
           add(source,explorers,goal,known.length?(economy?44:39):29,'explorer',true);
         }
 
@@ -3602,7 +3633,7 @@ function createGalacticReach(options = {}) {
           const button = document.createElement('button');
           button.type='button'; button.className='hex'; button.dataset.coord=key;
           button.addEventListener('click',event=>{if(!selectHex(key))showSectorScan(event.detail===0);});
-          button.innerHTML='<span class="hex-pieces"><span class="hex-fleets"></span><span class="hex-buildings"></span><span class="special"></span></span>';
+          button.innerHTML='<svg class="portal-ring" viewBox="0 0 100 116" aria-hidden="true" focusable="false"><polygon class="portal-ring-base" points="50,3 97,30 97,86 50,113 3,86 3,30"></polygon><polygon class="portal-ring-line" points="50,3 97,30 97,86 50,113 3,86 3,30"></polygon></svg><span class="hex-pieces"><span class="hex-fleets"></span><span class="hex-buildings"></span><span class="special"></span></span>';
           row.appendChild(button);
         }
         board.appendChild(row);
@@ -3616,6 +3647,8 @@ function createGalacticReach(options = {}) {
       const known = knownToViewer(cluster);
       const relicSignal = relicKnownToViewer(planet);
       hex.className = `hex ${planet ? (known ? planet.type : relicSignal ? 'fog scanned relic-signal' : 'space') : 'space'}`;
+      if (portalExit(key)) hex.classList.add('portal-entry');
+      if (state.selected && portalExit(state.selected)===key) hex.classList.add('portal-pair');
       if (state.selected === key) hex.classList.add('selected');
       if (state.moveSource === key) hex.classList.add('source');
       if (state.reachable.includes(key)) hex.classList.add('target');
@@ -3644,6 +3677,7 @@ function createGalacticReach(options = {}) {
         const fleetText = fleetAriaAt(key);
         hex.setAttribute('aria-label',`Space ${key}${fleetText?', fleet '+fleetText:''}`);
       }
+      if (portalExit(key)) hex.setAttribute('aria-label',hex.getAttribute('aria-label')+`, corner portal to ${portalExit(key)}, crossing costs 2 movement`);
     });
   }
 
@@ -3788,6 +3822,7 @@ function createGalacticReach(options = {}) {
     const actualPlanet = state.planets[key];
     const planet = actualPlanet && (knownToViewer(state.clusters[actualPlanet.cluster]) || relicKnownToViewer(actualPlanet)) ? actualPlanet : null;
     const fleets = state.fleets[key]||{};
+    const exit=portalExit(key),portalFact=exit?`<div class="fact portal-fact"><span>Corner portal</span><strong>Aligned exit ${esc(exit)} · 2 movement</strong></div>`:'';
     const fleetFacts=Object.entries(fleets).filter(([,f])=>fleetCount(f)).map(([owner,f])=>`<div class="fact"><span>${esc(state.players[owner].name)}</span><strong>${formatFleet(f)}</strong></div>`).join('');
     coordinate.textContent=key;
     if (planet) {
@@ -3798,7 +3833,7 @@ function createGalacticReach(options = {}) {
         detail.textContent = relicSignal ? 'A relic signal was located here. The surrounding terrain remains unknown.' : 'End a move here with any ship to survey this space.';
         facts.innerHTML = relicSignal ? `<div class="fact"><span>Signal</span><strong>Located privately</strong></div><div class="fact"><span>Relic</span><strong>Available</strong></div>` : '<div class="fact"><span>Status</span><strong>Unknown</strong></div>';
 
-        facts.innerHTML+=fleetFacts;
+        facts.innerHTML+=fleetFacts+portalFact;
         return;
       }
       title.textContent=planet.name;
@@ -3810,6 +3845,7 @@ function createGalacticReach(options = {}) {
       title.textContent='Empty Space'; detail.textContent='Fleets may move, fight, and retreat here.';
       facts.innerHTML=Object.entries(fleets).filter(([,f])=>fleetCount(f)).map(([owner,f])=>`<div class="fact"><span>${esc(state.players[owner].name)}</span><strong>${formatFleet(f)}</strong></div>`).join('')||'<div class="fact"><span>Status</span><strong>Vacant</strong></div>';
     }
+    facts.innerHTML+=portalFact;
     if (replayMode) {
       // Recorded decisions replace the live action buttons.
       const pending = state.pendingColonyBuild;
@@ -3833,6 +3869,11 @@ function createGalacticReach(options = {}) {
         const picker=moveUnitPicker(key);
         if (picker) actions.appendChild(picker);
         actions.appendChild(actionButton(hostileAt(key,ME)?'Fight again here · use Move':'Stay here · use Move',()=>humanSelectHex(key),state.reachable.includes(key)));
+        if (exit&&state.reachable.includes(exit)) actions.appendChild(actionButton('Cross portal · 2 movement',()=>{
+          humanSelectHex(exit);
+          $(`.hex[data-coord="${exit}"]`)?.scrollIntoView?.({block:'center',inline:'center'});
+          if(!state.pendingCombat)showSectorScan(true);
+        }));
       }
       if (state.actionMode==='construct' && planet) {
         if (canBuildStructureAt(ME,key)) Object.keys(STRUCTURES).forEach(kind=>actions.appendChild(buildButton(`Build ${STRUCTURES[kind].name}`,kind)));
@@ -3942,7 +3983,7 @@ function createGalacticReach(options = {}) {
   function renderMarket() {
     const humanBuy=!replayMode&&state.phase==='buy'&&state.activePlayer===ME;
     const me0=state.players[ME];
-    $('#market-help').textContent=replayMode?`${state.players[viewSeat].name} purchased ${state.players[viewSeat].cardsPurchased||0} cards.`:`Buy ${me0.buyLimit>1?`up to ${me0.buyLimit} cards`:'one card'} during your Buy turn${purchaseDiscount(me0)?` (${[me0.buyDiscountEach?'Trade Syndicate':'',me0.buyHubDiscounts?'Procurement Hub':''].filter(Boolean).join(' + ')}: ${purchaseDiscount(me0)} less of each resource on your next purchase)`:''}. Normal cards enter discard; military cards join your military deck. Every card needs more than a starting limit of ${STARTING_LIMIT}: raise your limits first.`;
+    $('#market-help').textContent=replayMode?`${state.players[viewSeat].name} purchased ${state.players[viewSeat].cardsPurchased||0} cards.`:`Buy ${me0.buyLimit>1?`up to ${me0.buyLimit} cards`:'one card'} during your Buy turn${purchaseDiscount(me0)?` (${[me0.buyDiscountEach?'Trade Syndicate':'',me0.buyHubDiscounts?'Procurement Hub':''].filter(Boolean).join(' + ')}: ${purchaseDiscount(me0)} less of each resource on your next purchase)`:''}. Normal cards enter discard; military cards join your military deck. The three draw-two cards fit your starting limits of ${STARTING_LIMIT}. Raise your limits for larger purchases.`;
     $('#basic-market').innerHTML='';
     $('#market-row').innerHTML=replayMode?'<p class="muted">Replays record purchases in the game log, not the market row.</p>':state.market.map((card,index)=>{
       const def=ALL_CARDS[card.key],cost=purchaseCost(me0,card.key);
@@ -4585,7 +4626,7 @@ function createGalacticReach(options = {}) {
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
       decommission, excavatedRelicCount, useBuyEffect, resolveHumanSpecial,
       colonizePlanet, buildUpgrade, probeRelic, excavate, buildShip, getFleet, fleetCount,
-      fleetGroup, moveSelection, fleetMove, fleetPower, reachableFrom, executeMove, performMoveOrder, combatActor, combatView, combatActions, applyCombatAction, nearestUnscannedRelicCluster,
+      PORTAL_MOVEMENT_COST, portalExit, movementRoutes, travelDistance, fleetGroup, moveSelection, fleetMove, fleetPower, reachableFrom, executeMove, performMoveOrder, combatActor, combatView, combatActions, applyCombatAction, nearestUnscannedRelicCluster,
       clusterKnown, clusterRevealed, clusterScanned, relicKnown, relicCoordInCluster, calculatePrestige, colonyPlanets,
       totalResources, playerCapacity, resourceLimits, resourceExcess, totalResourceExcess, storageAllocations, validStorageAllocation, overflowPlayer, discardOverflow,
       canConsortiumGain, canConsortiumExchange, consortiumGain, consortiumExchange, finishConsortium,
