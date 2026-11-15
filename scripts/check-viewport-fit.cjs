@@ -7,7 +7,8 @@
 //   node scripts/check-viewport-fit.cjs              # 1280x720, 1440x900 and 1920x1080
 // Pointer cases move a real mouse: pointing at a hand card must show its inspect view beside
 // the map (never over a hex or the hand), dragging a card onto a legal hex must play it, and
-// dragging one onto your reserves must convert it; every drop target must say what a drop does.
+// dragging one onto your reserves must convert it, from anywhere on the card (its buttons
+// too), while a still click on a button stays a click; every drop target says what a drop does.
 //   CHROME_PATH=/path/to/chrome node scripts/check-viewport-fit.cjs
 //   SHOTS=dir node scripts/check-viewport-fit.cjs    # also save a screenshot per state
 //   CHECK_ORIGIN=https://preview CHECK_ONLY='1280x720 (operations|buy)' node scripts/check-viewport-fit.cjs
@@ -148,6 +149,10 @@ const CASES = [
   { name: 'operations, drag Move onto your units', save: withFleet(operationsState(['move', 'construct', 'move'])), drag: '#hand-row .game-card[data-order="move"]', expect: 'dragged' },
   { name: 'operations, drag Construct onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', expect: 'built' },
   { name: 'operations, drag a card onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
+  // A raised card is mostly its name and buttons: picking it up by a button must work too.
+  { name: 'operations, drag a card by its Convert button onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-resource-card]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
+  { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
+  { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -353,11 +358,32 @@ async function runCase(browser, origin, testCase, [width, height]) {
     await browser.evaluate('new Promise(r => setTimeout(r, 450))');
   }
   const problems0 = [];
+  // A real click on a raised card's button (press and release without moving) is still a click.
+  if (testCase.tap) {
+    const card = await centre(testCase.tap.split(' [')[0]);
+    if (!card) return [`could not find ${testCase.tap}`];
+    await mouse('mouseMoved', card.x, card.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+    steps.before = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
+    const at = await centre(testCase.tap);
+    if (!at) return [`could not find ${testCase.tap}`];
+    await mouse('mouseMoved', at.x, at.y); await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y);
+    await mouse('mouseMoved', 4, 4);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+    steps.push({ arrow: true, zone: true, gain: '+1' });
+  }
   if (testCase.drag) {
-    const from = await centre(testCase.drag);
-    if (!from) return [`could not find ${testCase.drag}`];
+    // Point at the card first, as a player does; it lifts. Then press where the case says:
+    // anywhere on the card, its buttons included, must pick it up.
+    const card = await centre(testCase.drag);
+    if (!card) return [`could not find ${testCase.drag}`];
+    await mouse('mouseMoved', card.x, card.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+    const from = testCase.grab ? await centre(`${testCase.drag} ${testCase.grab}`) : await centre(testCase.drag);
+    if (!from) return [`could not find ${testCase.grab} on ${testCase.drag}`];
     await mouse('mouseMoved', from.x, from.y); await mouse('mousePressed', from.x, from.y);
     for (let i = 1; i <= 3; i++) await mouse('mouseMoved', from.x, from.y - 6 * i);
+    if (!(await browser.evaluate('!!document.querySelector(".cf-held") && document.body.classList.contains("cf-drag-active")'))) problems0.push('pressing and moving did not pick the card up');
     const dropOn = testCase.dropOn || '.hex.cf-drop-target';
     const target = await centre(dropOn);
     if (!target) { await mouse('mouseReleased', from.x, from.y - 18); return [`drag showed no ${testCase.dropOn ? 'marked ' + dropOn : 'legal hex'}`]; }
