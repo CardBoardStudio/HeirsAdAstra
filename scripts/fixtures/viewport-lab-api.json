@@ -1,0 +1,184 @@
+{
+ "_comment": "Waiting-room API responses captured from a local server (33.38) for scripts/check-viewport-fit.cjs; ids and URLs are placeholders.",
+ "/api/session": {
+  "user": {
+   "name": "Ada",
+   "development": false
+  },
+  "dev_auth": false,
+  "preview_auth": false,
+  "nido_available": true,
+  "registration_available": false,
+  "nido_wallet": {
+   "host": "test.nido.fyi",
+   "connect_url": "https://test.nido.fyi/connect/",
+   "account_url": "https://{account}.test.nido.fyi"
+  }
+ },
+ "/api/account": {
+  "created": 1794692327,
+  "development": false,
+  "has_recovery_key": true,
+  "id": "human:fit-check",
+  "is_admin": false,
+  "name": "Ada",
+  "sessions": 1
+ },
+ "/api/arena": {
+  "bots": [],
+  "pool": "galactic-reach/33.38:four-player:placement:policies-v26",
+  "series": []
+ },
+ "/api/tables": [
+  {
+   "game": "galactic-reach",
+   "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "name": "Friday night",
+   "players": 4,
+   "round": 1,
+   "rules_version": "galactic-reach/33.38",
+   "status": "waiting",
+   "updated": 1794692327,
+   "url": "/?game=galactic-reach#lobby/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  }
+ ],
+ "/api/arena/matches": {
+  "matches": [],
+  "ranking": "40 per lead change + 5 per battle + 2 \u00d7 max(0, 20 \u2212 final Prestige gap)",
+  "series_limit": 100
+ },
+ "/api/catalog": {
+  "games": [
+   {
+    "description": "Split Moves: a Move order can leave some of your units behind, on the Cheaper Cards market and table-chosen Prestige target. Start a new game.",
+    "experiment": "Split Moves playtest",
+    "href": "/galactic-reach/",
+    "id": "galactic-reach",
+    "mode": "Browser playtest + AI arena",
+    "name": "Galactic Reach",
+    "pool": "galactic-reach/33.38:four-player:placement:policies-v26",
+    "rated": true,
+    "rules_version": "galactic-reach/33.38",
+    "seats": 4
+   },
+   {
+    "description": "Build a fleet of cards. Play with friends or compare AI players in the rated arena.",
+    "href": "/voidwright/",
+    "id": "voidwright",
+    "mode": "Server tables + AI arena",
+    "name": "Voidwright",
+    "pool": "voidwright/2:duel:20-rounds:policies-v1",
+    "rated": true,
+    "rules_version": "voidwright/2",
+    "seats": 2
+   }
+  ],
+  "policies": [
+   {
+    "description": "Experiments with random purchases and sometimes passes.",
+    "game": "voidwright",
+    "id": "explorer",
+    "name": "Explorer",
+    "version": "explorer/1"
+   },
+   {
+    "description": "Builds a resource economy, then buys scoring colonies.",
+    "game": "voidwright",
+    "id": "merchant",
+    "name": "Merchant",
+    "version": "merchant/1"
+   },
+   {
+    "description": "Balances resource growth with a small action engine.",
+    "game": "voidwright",
+    "id": "kepler",
+    "name": "Kepler",
+    "version": "kepler/1"
+   },
+   {
+    "description": "Builds warships and shipyards, then moves toward rival colonies.",
+    "game": "galactic-reach",
+    "id": "gr-military",
+    "name": "Vanguard",
+    "version": "gr-military/26"
+   },
+   {
+    "description": "Prioritizes production, storage, and industry.",
+    "game": "galactic-reach",
+    "id": "gr-economy",
+    "name": "Architect",
+    "version": "gr-economy/26"
+   },
+   {
+    "description": "Builds Settlers and seeks new colony sites.",
+    "game": "galactic-reach",
+    "id": "gr-expansion",
+    "name": "Pathfinder",
+    "version": "gr-expansion/26"
+   },
+   {
+    "description": "Samples useful legal actions with seeded randomness.",
+    "game": "galactic-reach",
+    "id": "gr-wanderer",
+    "name": "Wanderer",
+    "version": "gr-wanderer/26"
+   }
+  ],
+  "pool": "voidwright/2:duel:20-rounds:policies-v1"
+ },
+ "lobby": {
+  "ai_rivals": 1,
+  "blocked": null,
+  "difficulties": [
+   {
+    "description": "Vanguard, Architect and Pathfinder. With friends seated, the table service plays them with the AI arena's matching policies.",
+    "id": "standard",
+    "name": "Standard"
+   },
+   {
+    "description": "Wanderer: seeded random legal play, from the AI arena.",
+    "id": "easy",
+    "name": "Easy"
+   }
+  ],
+  "difficulty": "standard",
+  "host": true,
+  "id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "invite_url": "https://drawing-board.example/?game=galactic-reach#lobby/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "max_ai_rivals": 3,
+  "member": true,
+  "min_ai_rivals": 1,
+  "name": "Friday night",
+  "rules_version": "galactic-reach/33.38",
+  "seats": [
+   {
+    "kind": "host",
+    "name": "Ada",
+    "you": true
+   },
+   {
+    "kind": "friend",
+    "name": "Bartholomew Longname-Smythe",
+    "you": false
+   },
+   {
+    "kind": "ai",
+    "difficulty": "standard"
+   },
+   {
+    "kind": "open"
+   }
+  ],
+  "shared": false,
+  "status": "waiting",
+  "table_url": null,
+  "victory_target": 40,
+  "victory_targets": [
+   20,
+   30,
+   40,
+   50,
+   60
+  ]
+ }
+}

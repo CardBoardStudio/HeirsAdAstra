@@ -1,0 +1,152 @@
+/* Galactic Reach card feel (card-feel.js): cards as printed card stock. Every card has a
+   bevelled face, a few layers of edge below it and a soft shadow that lengthens as it lifts;
+   it leans toward the pointer with a moving sheen. States change custom properties only, so
+   the gold "you can use this" ring, the selected order and shaded cards keep their meaning.
+   Loaded after styles.css. */
+.game-card {
+  --cf-lift: 0px;
+  --cf-ring: 0 0 #0000;
+  --cf-bevel: inset 0 1px 0 #fffffff0, inset 1px 0 0 #ffffff7a, inset -1px 0 0 #3a2f1a1f, inset 0 -2px 0 #3a2f1a26, inset 0 0 0 3px #ffffff52;
+  --cf-edge: 0 1px 0 #efe5cc, 0 2px 0 #cfc09c, 0 3px 0 #a99a77, 0 4px 0 #74684d;
+  --cf-drop: 0 6px 8px -3px #0008, 0 14px 22px -12px #000b;
+  box-shadow: var(--cf-ring), var(--cf-bevel), var(--cf-edge), var(--cf-drop) !important;
+  transform: perspective(900px) translateY(calc(var(--cf-arc, 0px) + var(--cf-lift))) rotate(var(--cf-fan, 0deg)) rotateX(var(--cf-rx, 0deg)) rotateY(var(--cf-ry, 0deg)) !important;
+  transition: transform .18s cubic-bezier(.2,.7,.25,1), box-shadow .18s ease, filter .18s ease;
+}
+/* Sheen: a soft highlight that follows the pointer across the face, and a faint gloss. */
+.game-card::after {
+  content: ''; position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at var(--cf-mx, 28%) var(--cf-my, 0%), #ffffff66, #ffffff00 48%), linear-gradient(162deg, #ffffff33, #ffffff00 36%, #00000000 72%, #2a20101a);
+  mix-blend-mode: soft-light; opacity: .55; transition: opacity .2s ease;
+}
+.game-card.cf-tilting::after { opacity: 1; }
+.game-card:hover:not(:disabled), .game-card:focus-within { --cf-lift: -4px; --cf-drop: 0 14px 16px -8px #0008, 0 28px 40px -18px #000c; }
+.game-card:disabled, .game-card.unavailable { --cf-edge: 0 1px 0 #c8bea6, 0 2px 0 #9d927a, 0 3px 0 #6e654f; --cf-drop: 0 3px 5px -2px #0006; }
+.game-card.alien-relic { --cf-edge: 0 1px 0 #f3e3b6, 0 2px 0 #cdb174, 0 3px 0 #a1864b, 0 4px 0 #6d5a30; }
+.game-card.order-selected { --cf-ring: 0 0 0 3px var(--gold), 0 0 18px #d9bd8066; }
+#hand-row .game-card:has(button[data-order-card]:not(:disabled)):not(.order-selected),
+.market-cards .game-card:not(:disabled) { --cf-ring: 0 0 0 2px #f2d488, 0 0 14px #f2d48866; }
+@media (prefers-reduced-motion: reduce) {
+  .game-card { transition: none; }
+  .game-card::after { transition: none; }
+}
+
+/* Your hand: held in a slight fan (card-feel.js sets each card's angle and arc). Pointing at
+   a card straightens it and lifts it a little; its full text shows beside the map. */
+#hand-row > .game-card { transform-origin: 50% 115%; cursor: grab; user-select: none; -webkit-user-select: none; }
+#hand-row > .game-card:is(:hover, :focus, :focus-within) { --cf-fan: 0deg !important; --cf-arc: 0px !important; --cf-lift: -12px; --cf-drop: 0 16px 18px -8px #0009, 0 30px 44px -18px #000c; }
+@media (min-width: 1024px) and (min-height: 600px) {
+  /* A raised card widens over its right-hand neighbour (the last card over its left one)
+     instead of pushing the row, so the hand never shifts under the pointer. */
+  #hand-row > .game-card:is(:hover, :focus-within) { margin-right: calc(var(--top-w) - max(var(--top-w), 200px)); }
+  #hand-row > .game-card:last-child:not(:first-child):is(:hover, :focus-within) { margin-right: 0; margin-left: calc(min(-10px, calc((100cqw - var(--n) * var(--top-w)) / (var(--n) - 1))) - (max(var(--top-w), 200px) - var(--top-w))); }
+  /* The full text is in the inspect view; screen readers still read it on the card. */
+  #hand-row > .game-card:is(:hover, :focus, :focus-within) .card-effect { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+
+/* Inspect: the card at reading size and in real card proportions (63 x 88 mm). */
+.card-inspect { position: fixed; z-index: 60; pointer-events: none; perspective: 1000px; }
+.card-inspect[hidden] { display: none; }
+.card-inspect .game-card {
+  width: 100%; height: auto; min-height: auto; aspect-ratio: 63 / 88; display: flex; flex-direction: column; margin: 0; padding: 13px 13px 12px;
+  border-radius: 12px; --cf-drop: 0 18px 24px -10px #000a, 0 34px 60px -20px #000d;
+  animation: cf-inspect-in .16s cubic-bezier(.2,.7,.25,1);
+}
+.card-inspect .card-type { display: block; }
+.card-inspect .card-name { margin: 4px 0 6px; font-size: 21px; }
+.card-inspect .card-headline { display: block; margin: -2px 0 8px; color: #2c3a35; font-size: 13px; font-weight: 650; }
+.card-inspect .card-art { min-height: 70px; }
+.card-inspect .card-effect { flex: 1 1 auto; font-size: 13px; line-height: 1.45; }
+.card-inspect .card-footer { display: flex; align-items: center; margin-top: 8px; padding-top: 7px; }
+.card-inspect .resource-chip strong { font-size: 13px; }
+@keyframes cf-inspect-in { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+.card-inspect .game-card.cf-steady { animation: none; }
+@media (prefers-reduced-motion: reduce) { .card-inspect .game-card, .hex.cf-drop-target::before { animation: none; } }
+
+/* Market (report #8): the price is the card's top-left corner and the gain its top-right.
+   A padlock marks a price above that resource's limit; a dashed chip one you hold too
+   little of. */
+@media (min-width: 1024px) and (min-height: 600px) {
+  :is(#market-row, #upgrade-market) .game-card { grid-template-areas: "cost gain" "name name" "type type" "head head" "effect effect" "note note"; }
+  :is(#market-row, #upgrade-market) .card-footer { align-self: center; }
+  :is(#market-row, #upgrade-market) .card-footer .resource-chip { min-height: 24px; padding: 0 5px 0 3px; }
+  :is(#market-row, #upgrade-market) .card-footer .resource-symbol { width: 17px; height: 17px; }
+  :is(#market-row, #upgrade-market) .card-footer .resource-chip strong { font-size: 14.5px; }
+}
+.game-card .resource-chip.locked { position: relative; background: repeating-linear-gradient(-45deg, #a8463a1f 0 3px, transparent 3px 6px), #f7e6dc; box-shadow: inset 0 0 0 1.5px #a8463a; }
+.game-card .resource-chip.locked strong { color: #8a2f25; }
+.chip-lock { position: absolute; top: -5px; right: -4px; width: 10px; height: 12px; color: #93362b; filter: drop-shadow(0 0 1px #fff) drop-shadow(0 1px 0 #fff); }
+.game-card .resource-chip.short { outline: 1.5px dashed #8b7b58; outline-offset: -1.5px; box-shadow: none; }
+
+/* Reserves (report #10): stock as pips out of the limit; outlined pips are next round's
+   production that still fits. Amber when full, red above the limit. */
+.resource-box[data-fill="at-cap"] { border-color: #e8b44e99; }
+.resource-box[data-fill="at-cap"] .resource-limit, .resource-box[data-fill="will-cap"] .resource-limit { color: #f0c76a; }
+.resource-box[data-fill="over-cap"] { border-color: var(--red); }
+.resource-box[data-fill="over-cap"] .resource-limit { color: var(--red); }
+.resource-box.cf-gain { animation: cf-gain .5s ease-out; }
+.resource-box.cf-spend { animation: cf-spend .45s ease-out; }
+.resource-box.cf-wasted { animation: cf-wasted .9s ease-out; }
+@keyframes cf-gain { 30% { box-shadow: 0 0 0 2px var(--resource), 0 0 14px var(--resource); } }
+@keyframes cf-spend { 30% { filter: brightness(.7); } }
+@keyframes cf-wasted { 15%, 55% { box-shadow: 0 0 0 2px #e8b44e, 0 0 16px #e8b44e; translate: -2px 0; } 35%, 75% { translate: 2px 0; } }
+@media (prefers-reduced-motion: reduce) { .resource-box.cf-gain, .resource-box.cf-spend, .resource-box.cf-wasted { animation: none; } }
+
+/* Motion (report #15): copies of cards in flight and production on its way to your reserves. */
+.cf-ghost { position: fixed; z-index: 70; pointer-events: none; }
+.cf-ghost > .game-card { width: 100%; height: 100%; min-height: 0; margin: 0 !important; overflow: hidden; --cf-fan: 0deg; --cf-arc: 0px; }
+/* In flight a card shows its top: price or gain, name and headline, as in the hand. */
+.cf-ghost > .game-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 5px 8px; }
+.cf-ghost > .game-card > :not(.card-name, .card-headline, .card-footer) { display: none; }
+.cf-ghost .card-footer { order: -1; display: flex; margin: 0; padding: 0; border: 0; }
+.cf-ghost .card-footer small { display: none; }
+.cf-ghost .card-name { margin: 0; font-size: 14.5px; line-height: 1.15; }
+.cf-ghost .card-headline { font-size: 12px; font-weight: 650; }
+.cf-floater {
+  position: fixed; z-index: 75; display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px 1px 7px; pointer-events: none;
+  border: 1px solid var(--resource); border-radius: 999px; background: color-mix(in srgb, var(--resource) 28%, #0f1d22); color: #fff; font-size: 12px; font-weight: 800;
+  box-shadow: 0 4px 10px #0008;
+}
+.cf-floater .resource-symbol { width: 14px; height: 14px; color: var(--resource); }
+
+/* Drag to play (report #18): legal hexes light up; an arrow runs from the card to the pointer. */
+.cf-drag-active, .cf-drag-active * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
+/* A hand card can be picked up from anywhere on it, on mouse, pen or touch. */
+#hand-row > .game-card { touch-action: none; -webkit-user-drag: none; -webkit-touch-callout: none; }
+#hand-row > .game-card :is(img, svg) { -webkit-user-drag: none; }
+/* The held card follows the pointer; the slot it left stays as a faint outline. */
+.cf-held { z-index: 82; transition: opacity .1s ease, scale .1s ease; transform-origin: 50% 100%; rotate: -2deg; filter: drop-shadow(0 16px 18px #000c); }
+.cf-held > .game-card { --cf-ring: 0 0 0 2px var(--gold); }
+.cf-held.cf-held-on-target { scale: .86; opacity: .92; }
+#hand-row > .game-card.cf-dragging { --cf-lift: 0px !important; --cf-ring: 0 0 0 2px #f2d48866; opacity: .38; filter: saturate(.6); }
+/* Every drop target says so while you drag: legal hexes fill gold and pulse, everything else
+   on the map dims, and a zone (your reserves, or the map for an order needing no hex) glows,
+   brighter under the pointer. The reserves a card converts into show their gain. */
+.cf-drag-active .hex:not(.cf-drop-target)::before { filter: brightness(.55) saturate(.6); }
+.hex.cf-drop-target { background: #f0cd79; z-index: 3; }
+.hex.cf-drop-target::before { background: color-mix(in srgb, #f0cd79 42%, var(--hex-fill)); animation: cf-drop-pulse 1.1s ease-in-out infinite; }
+.hex.cf-drop-target.cf-drop-hover { background: #fff3cf; z-index: 4; filter: drop-shadow(0 0 8px #f2d488); }
+.hex.cf-drop-target.cf-drop-hover::before { background: color-mix(in srgb, #fff3cf 70%, var(--hex-fill)); animation: none; }
+@keyframes cf-drop-pulse { 50% { filter: brightness(1.3); } }
+.cf-drop-zone { outline: 2px dashed #f2d488cc; outline-offset: 3px; box-shadow: 0 0 0 1px #f2d48855, 0 0 22px #f2d48840 !important; transition: box-shadow .12s ease, background-color .12s ease; }
+.cf-drop-zone.cf-drop-hover { outline: 3px solid var(--gold); box-shadow: 0 0 0 2px #f2d488aa, 0 0 34px #f2d48899 !important; background-color: color-mix(in srgb, #f2d488 12%, var(--surface, #142030)); }
+.resource-box.cf-drop-yield { position: relative; border-color: var(--resource); box-shadow: inset 0 0 0 1px var(--resource), 0 0 14px color-mix(in srgb, var(--resource) 55%, transparent); }
+.resource-box.cf-drop-yield::after {
+  content: attr(data-cf-gain); position: absolute; top: -9px; right: -6px; z-index: 2; padding: 1px 6px; border-radius: 9px;
+  background: var(--resource); color: #0b1119; font-size: 12px; font-weight: 800; line-height: 16px; box-shadow: 0 2px 6px #000a;
+}
+.cf-drop-hover .resource-box.cf-drop-yield { background: color-mix(in srgb, var(--resource) 22%, var(--surface-2)); }
+.cf-drop-label {
+  position: fixed; z-index: 81; pointer-events: none; padding: 4px 9px; border-radius: 6px; white-space: nowrap;
+  background: #fff3cf; color: #1c1608; font-size: 12px; font-weight: 750; box-shadow: 0 6px 16px #000b;
+}
+.cf-drop-label[hidden] { display: none; }
+.cf-drag-arrow { position: fixed; inset: 0; z-index: 80; width: 100vw; height: 100dvh; overflow: visible; pointer-events: none; }
+.cf-arrow-reticle { fill: #f2d48822; stroke: #f2d48899; stroke-width: 2; }
+.cf-drag-arrow.cf-on-target .cf-arrow-reticle { fill: #fff3cf44; stroke: #fff; }
+
+/* Deck, In play and Discard: #53 lays them out as card piles; give their top cards the same
+   printed finish as the cards in hand (bevelled face, light catching the coating). */
+.pile-card::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(125deg, #ffffff2e 0%, #ffffff00 38%, #ffffff00 62%, #ffffff14 100%); }
+.pile-card.face-up { box-shadow: inset 0 1px 0 #fffffff0, inset 1px 0 0 #ffffff7a, inset -1px 0 0 #3a2f1a1f, inset 0 -2px 0 #3a2f1a26, inset 0 0 0 1.5px color-mix(in srgb, var(--card-accent) 75%, #6f6650), 0 0 0 1px #0b1517; }
+.pile-stats > button[data-empty="true"] .pile-card::after { display: none; }
