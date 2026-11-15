@@ -5,6 +5,10 @@
 // map tool covers a hex. Reference content (game log, playtest notes, rulebook) may scroll.
 //
 //   node scripts/check-viewport-fit.cjs              # 1280x720, 1440x900 and 1920x1080
+// Pointer cases move a real mouse: pointing at a hand card must show its inspect view beside
+// the map (never over a hex or the hand), dragging a card onto a legal hex must play it, and
+// dragging one onto your reserves must convert it, from anywhere on the card (its buttons
+// too), while a still click on a button stays a click; every drop target says what a drop does.
 //   CHROME_PATH=/path/to/chrome node scripts/check-viewport-fit.cjs
 //   SHOTS=dir node scripts/check-viewport-fit.cjs    # also save a screenshot per state
 //   CHECK_ORIGIN=https://preview CHECK_ONLY='1280x720 (operations|buy)' node scripts/check-viewport-fit.cjs
@@ -63,6 +67,12 @@ function operationsState(handKeys) {
   Object.assign(state, { phase: 'operations', activePlayer: 0, turnStage: 'action', actionMode: null, actionCardId: null, pendingCombat: null });
   state.players[0].hand = handKeys.map(key => card(key, { starter: key === 'move' || key === 'construct' }));
   state.players[0].resources = { matter: 3, energy: 2, biomass: 4, data: 1 };
+  return state;
+}
+// Your home world with two Fleets and an Explorer on it, so Move has units to choose.
+function withFleet(state) {
+  const [home] = Object.entries(state.planets).find(([, planet]) => planet.owner === 0 && planet.hasColony);
+  state.fleets[home] = { ...(state.fleets[home] || {}), 0: { fleet: 2, explorer: 1, settler: 0 } };
   return state;
 }
 function buyState(marketKeys, resources = { matter: 4, energy: 4, biomass: 2, data: 1 }) {
@@ -134,6 +144,15 @@ const CASES = [
   // The first and last hand cards raised: they rise over the map, clear of the bank and the piles.
   { name: 'operations, first hand card raised (bank open)', save: midGameState(), focus: '#hand-row .game-card:first-child button' },
   { name: 'operations, last hand card raised', save: midGameState(), focus: '#hand-row .game-card:last-child button' },
+  { name: 'operations, inspect view (pointed-at hand card)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), hover: '#hand-row .game-card:nth-child(3)', expect: 'inspect' },
+  { name: 'operations, inspect view (last of 8 cards)', save: operationsState(longHand), hover: '#hand-row .game-card:last-child', expect: 'inspect' },
+  { name: 'operations, drag Move onto your units', save: withFleet(operationsState(['move', 'construct', 'move'])), drag: '#hand-row .game-card[data-order="move"]', expect: 'dragged' },
+  { name: 'operations, drag Construct onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', expect: 'built' },
+  { name: 'operations, drag a card onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
+  // A raised card is mostly its name and buttons: picking it up by a button must work too.
+  { name: 'operations, drag a card by its Convert button onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-resource-card]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
+  { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
+  { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -227,10 +246,11 @@ const MEASURE = `(() => {
   for (const top of document.querySelectorAll(FOLDED)) {
     if (!shown(top)) continue;
     const t = top.getBoundingClientRect();
-    if (t.top < -1 || t.bottom > H + 1) problems.push('card top outside viewport: ' + label(top));
+    if (t.top < -1 || t.bottom > H + 1 || t.left < -1 || t.right > W + 1) problems.push('card top outside viewport: ' + label(top));
     const summary = top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
-    if (!document.querySelector(':is(dialog[open], body.menu-open, #fleet-panel.active, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
+    // An open Sector Scan (a popover over the map) may cover card tops while it is open.
+    if (!document.querySelector(':is(dialog[open], body.menu-open, #fleet-panel.active, .sector-popover:popover-open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
       const c = chip.getBoundingClientRect(), hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       if (!hit || !top.contains(hit)) { problems.push('gain badge covered in ' + label(top)); break; }
     }
@@ -250,11 +270,12 @@ const MEASURE = `(() => {
     }
   }
   for (const e of scope.querySelectorAll('*')) {
-    if (!shown(e) || e.closest(scrollers) || folded(e)) continue;
+    if (!shown(e) || e.closest(scrollers) || folded(e) || e.closest('.cf-ghost, .cf-floater')) continue;
     const r = e.getBoundingClientRect();
     if (r.width <= 1 && r.height <= 1) continue; // empty or visually hidden (sr-only)
     const clips = /(auto|scroll|hidden|clip)/.test(getComputedStyle(e).overflowY + getComputedStyle(e).overflowX);
-    if (clips && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2) && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, input, textarea') && !e.closest('[aria-hidden="true"]'))
+    // Visually hidden text (clip-path: inset(50%)) is read by screen readers, not shown.
+    if (clips && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2) && !getComputedStyle(e).clipPath.includes('inset(50%)') && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, input, textarea') && !e.closest('[aria-hidden="true"]'))
       problems.push('clipped content: ' + label(e) + ' ' + e.scrollWidth + 'x' + e.scrollHeight + ' in ' + e.clientWidth + 'x' + e.clientHeight);
     if (e.matches('button, a[href], select, input, textarea, .game-card, .score-card, .resource-box, .hex, dialog[open], .lobby-seat') && !e.closest('.sr-only, .skip-link, .skip')) {
       if (r.left < -1 || r.top < -1 || r.right > W + 1 || r.bottom > H + 1) problems.push('outside viewport: ' + label(e) + ' [' + [r.left, r.top, r.right, r.bottom].map(Math.round) + ']');
@@ -292,7 +313,7 @@ const MEASURE = `(() => {
       .find(e => !toast.contains(e) && shown(e) && (() => { const r = e.getBoundingClientRect(); return r.width > 1 && r.left < t.right - 1 && r.right > t.left + 1 && r.top < t.bottom - 1 && r.bottom > t.top + 1; })());
     if (under) problems.push('toast covers ' + label(under));
   }
-  if (!modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
+  if (!modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
     // The centre and both side edges of every hex must be clickable.
     const r = hex.getBoundingClientRect(), y = r.top + r.height / 2;
     const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover'); });
@@ -335,7 +356,83 @@ async function runCase(browser, origin, testCase, [width, height]) {
     if (!ok) return [`could not focus ${testCase.focus}`];
     await browser.evaluate('new Promise(r => setTimeout(r, 250))');
   }
+  const mouse = (type, x, y) => browser.send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' ? 'none' : 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: type === 'mouseMoved' ? 0 : 1 });
+  const centre = selector => browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + Math.min(r.height / 2, 30) }; })()`);
+  const steps = [];
+  if (testCase.hover) {
+    const at = await centre(testCase.hover);
+    if (!at) return [`could not point at ${testCase.hover}`];
+    await mouse('mouseMoved', at.x, at.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 450))');
+  }
+  const problems0 = [];
+  // A real click on a raised card's button (press and release without moving) is still a click.
+  if (testCase.tap) {
+    const card = await centre(testCase.tap.split(' [')[0]);
+    if (!card) return [`could not find ${testCase.tap}`];
+    await mouse('mouseMoved', card.x, card.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+    steps.before = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
+    const at = await centre(testCase.tap);
+    if (!at) return [`could not find ${testCase.tap}`];
+    await mouse('mouseMoved', at.x, at.y); await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y);
+    await mouse('mouseMoved', 4, 4);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+    steps.push({ arrow: true, zone: true, gain: '+1' });
+  }
+  if (testCase.drag) {
+    // Point at the card first, as a player does; it lifts. Then press where the case says:
+    // anywhere on the card, its buttons included, must pick it up.
+    const card = await centre(testCase.drag);
+    if (!card) return [`could not find ${testCase.drag}`];
+    await mouse('mouseMoved', card.x, card.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+    const from = testCase.grab ? await centre(`${testCase.drag} ${testCase.grab}`) : await centre(testCase.drag);
+    if (!from) return [`could not find ${testCase.grab} on ${testCase.drag}`];
+    await mouse('mouseMoved', from.x, from.y); await mouse('mousePressed', from.x, from.y);
+    for (let i = 1; i <= 3; i++) await mouse('mouseMoved', from.x, from.y - 6 * i);
+    if (!(await browser.evaluate('!!document.querySelector(".cf-held") && document.body.classList.contains("cf-drag-active")'))) problems0.push('pressing and moving did not pick the card up');
+    const dropOn = testCase.dropOn || '.hex.cf-drop-target';
+    const target = await centre(dropOn);
+    if (!target) { await mouse('mouseReleased', from.x, from.y - 18); return [`drag showed no ${testCase.dropOn ? 'marked ' + dropOn : 'legal hex'}`]; }
+    steps.before = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
+    for (let i = 1; i <= 6; i++) await mouse('mouseMoved', from.x + (target.x - from.x) * i / 6, from.y - 18 + (target.y - from.y + 18) * i / 6);
+    steps.push(await browser.evaluate('({ arrow: !!document.querySelector(".cf-drag-arrow.cf-on-target"), hover: !!document.querySelector(".hex.cf-drop-target.cf-drop-hover"), zone: (() => { const z = document.querySelector(".cf-drop-zone.cf-drop-hover"); return !!z && z.getClientRects().length > 0 && !!z.querySelector(".resource-box"); })(), gain: document.querySelector(".resource-box.cf-drop-yield")?.dataset.cfGain || "", label: document.querySelector(".cf-drop-label:not([hidden])")?.textContent || "" })'));
+    // Every drop target says what letting go there will do.
+    if (!steps[0].label) problems0.push('no drop label under the pointer');
+    await mouse('mouseReleased', target.x, target.y);
+    await mouse('mouseMoved', 4, 4);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+  }
   const { problems, slack } = await browser.evaluate(MEASURE);
+  problems.push(...problems0);
+  if (testCase.expect === 'converted') {
+    if (!steps[0]?.arrow || !steps[0]?.zone || !/^\+\d/.test(steps[0]?.gain)) problems.push('drag did not light your reserves and the gain');
+    const after = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
+    if (after.hand !== steps.before.hand - 1 || !after.stock.some((n, i) => n > steps.before.stock[i])) problems.push('dropping a card on your reserves did not convert it');
+  }
+  if (testCase.expect === 'inspect') problems.push(...await browser.evaluate(`(() => {
+    const view = document.querySelector('#card-inspect'), problems = [];
+    if (!view || view.hidden || !view.querySelector('.game-card')) return ['inspect view did not open'];
+    const r = view.getBoundingClientRect(), overlaps = o => r.left < o.right - 1 && r.right > o.left + 1 && r.top < o.bottom - 1 && r.bottom > o.top + 1;
+    if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) problems.push('inspect view outside viewport');
+    const hex = [...document.querySelectorAll('.hex')].find(h => overlaps(h.getBoundingClientRect()));
+    if (hex) problems.push('inspect view covers hex ' + hex.dataset.coord);
+    if ([...document.querySelectorAll('#hand-row > .game-card')].some(c => overlaps(c.getBoundingClientRect()))) problems.push('inspect view covers the hand');
+    const card = view.querySelector('.game-card');
+    if (card.scrollHeight > card.clientHeight + 2) problems.push('inspect card text cut');
+    return problems;
+  })()`));
+  if (testCase.expect === 'built') {
+    if (!steps[0]?.arrow || !steps[0]?.hover) problems.push('drag did not mark the hex under the pointer');
+    if (!(await browser.evaluate('document.querySelector("#sector-popover").matches(":popover-open") && !!document.querySelector("#hand-row .game-card.order-selected")')))
+      problems.push('dropping Construct on a hex did not open its build choices');
+  }
+  if (testCase.expect === 'dragged') {
+    if (!steps[0]?.arrow || !steps[0]?.hover) problems.push('drag did not mark the hex under the pointer');
+    if (!(await browser.evaluate('!!document.querySelector(".hex.source") && !!document.querySelector("#hand-row .game-card.order-selected") && !document.querySelector(".cf-drag-arrow, .cf-drop-target")')))
+      problems.push('dropping Move on your units did not choose them as the move source');
+  }
   lastSlack = slack;
   if (testCase.lobby && !(await browser.evaluate('!!document.querySelector(".lobby-seats")'))) problems.push('waiting room did not render');
   if (testCase.shared && !(await browser.evaluate('!!document.querySelector("#shared-seats li") && !document.querySelector(".app-shell").inert'))) problems.push('shared table did not open');
