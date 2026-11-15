@@ -3,6 +3,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch: # the Release cut workflow starts it on release/next
 permissions:
   contents: read
 concurrency:
@@ -38,7 +39,8 @@ jobs:
   javascript:
     name: Galactic Reach JavaScript checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Full draw engines and the existing 24-match balance smoke need more time.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -47,6 +49,7 @@ jobs:
       - run: node --check prototypes/galactic-reach/app.js
       - run: node scripts/test-galactic-reach.cjs
       - run: node scripts/test-playtest-notes.cjs
+      - run: node scripts/test-change-queue.cjs
       - run: node scripts/test-long-reach.cjs
       - run: node scripts/test-pass-and-buy.cjs
       - run: node scripts/test-resource-actions.cjs

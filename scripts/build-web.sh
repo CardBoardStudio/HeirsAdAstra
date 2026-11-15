@@ -15,6 +15,7 @@ cp prototypes/galactic-reach/styles.css dist/galactic-reach/styles.css
 cp prototypes/galactic-reach/rulebook.html prototypes/galactic-reach/rulebook.css dist/galactic-reach/
 cp prototypes/galactic-reach/app.js dist/galactic-reach/app.js
 cp prototypes/galactic-reach/playtest-notes.js prototypes/galactic-reach/playtest-notes.css dist/galactic-reach/
+cp prototypes/galactic-reach/change-queue.js prototypes/galactic-reach/change-queue.css dist/galactic-reach/
 cp prototypes/galactic-reach/table.js dist/galactic-reach/table.js
 cp prototypes/galactic-reach/cards.html dist/galactic-reach/cards.html
 cp prototypes/galactic-reach/shared.js dist/galactic-reach/shared.js
@@ -230,7 +231,7 @@ for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css 
   cp "crates/galactic-reach/rules/v31-$asset" "dist/galactic-reach/rules/31.36/$asset"
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/31.36/table.js
-cp prototypes/galactic-reach/cards.html dist/galactic-reach/rules/31.36/cards.html
+cp crates/galactic-reach/rules/v33-cards.html dist/galactic-reach/rules/31.36/cards.html
 # Preserve the exact 32.37 Cheaper Cards browser and shared-table engine.
 mkdir -p dist/galactic-reach/rules/32.37
 for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css shared.js cards.html; do
@@ -250,3 +251,14 @@ cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/33.38/table.js
 if [ -z "${SKIP_ZK_SEAT:-}" ]; then
   ./zk/build-web.sh "$PWD/dist/galactic-reach/zk"
 fi
+
+
+# Preserve all independently published workstation revisions for pinned games.
+for format in 34 35 36; do
+  revision=$((format+5))
+  mkdir -p "dist/galactic-reach/rules/$format.$revision"
+  for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css shared.js cards.html; do
+    cp "crates/galactic-reach/rules/v$format-$asset" "dist/galactic-reach/rules/$format.$revision/$asset"
+  done
+  cp prototypes/galactic-reach/table.js "dist/galactic-reach/rules/$format.$revision/table.js"
+done

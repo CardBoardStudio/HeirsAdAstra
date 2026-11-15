@@ -12,7 +12,7 @@ const card=(key,id=key)=>({key,id});const all=p=>[...p.hand,...p.deck,...p.disca
 function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalActions(0).find(x=>x.type===type&&(!id||x.card===id)&&extra(x));assert(x,`Missing ${type} for ${id}`);a.applyAction(0,x);}
 {
  const g=game(),{e,p,s}=g;const echo=Object.keys(e.ALL_CARDS).find(k=>e.ALL_CARDS[k].tag==='alienEchoes');
- p.hand=[card('move','converted'),card('construct','built'),card(echo,'draw-order')];p.deck=[card('move','draw-one')];p.discard=[card('construct','draw-two'),card('move','draw-three')];
+ p.hand=[{...card('move','converted'),starter:true},card('construct','built'),card(echo,'draw-order')];p.deck=[card('move','draw-one')];p.discard=[card('construct','draw-two'),card('move','draw-three')];
  action(g,'resource','converted');action(g,'build','built',a=>a.kind==='harvester');
  assert.deepEqual(Array.from(p.inPlay,c=>c.id),['converted','built']);
  s.activePlayer=0;action(g,'special','draw-order');
@@ -70,13 +70,13 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
  const g=game(),{p,e}=g;p.hand=[card('aegisOfSilentArchitects','reaction')];assert(e.useReaction(0,'prevent'));assert.equal(p.hand.length,0);assert(p.inPlay.some(c=>c.id==='reaction'));e.drawCards(p,3);assert.equal(p.hand.length,0);assert.equal(e.useReaction(0,'prevent'),null,'A used reaction cannot trigger again');
 }
 {
- const g=game(),{p,s}=g;p.hand=[card('move','converted'),card('procurementHub','buy-card'),card('construct','unplayed')];
+ const g=game(),{p,s}=g;p.hand=[{...card('move','converted'),starter:true},card('procurementHub','buy-card'),card('construct','unplayed')];
  action(g,'resource','converted');action(g,'pass');action(g,'buy_effect','buy-card');
  assert.equal(p.inPlay.length,2);assert.equal(p.discard.length,0);
  // 28.33 amendment (#buy): a card in play when Buy began may be trashed; one put in play during this Buy may not.
  assert(g.adapter().legalActions(0).some(a=>a.type==='decommission'&&a.card==='converted'),'A card converted before passing can be trashed during Buy');
  assert(!g.adapter().legalActions(0).some(a=>a.type==='decommission'&&a.card==='buy-card'),'A Buy effect used this Buy turn cannot be trashed');
- assert(!g.adapter().legalActions(0).some(a=>a.type==='upgrade'&&a.card==='converted'),'Only original starters upgrade');
+ assert(g.adapter().legalActions(0).some(a=>a.type==='upgrade'&&a.card==='converted'),'The converted original starter can upgrade in Buy');
  p.relicsExcavated=20;action(g,'finish_buy');assert.equal(p.inPlay.length,2,'Finishing your Buy does not clean up your cards');assert.equal(p.hand.length,1);
  for(let seat=1;seat<4;seat++){let a=g.adapter();a.applyAction(seat,a.legalActions(seat).find(x=>x.type==='pass'));a=g.adapter();a.applyAction(seat,a.legalActions(seat).find(x=>x.type==='finish_buy'));}
  assert.equal(s.winner,0);assert.equal(p.hand.length,0);assert.equal(p.inPlay.length,0);assert.deepEqual(Array.from(p.discard,c=>c.id).sort(),['buy-card','converted','unplayed']);
@@ -92,7 +92,7 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
  assert(p.inPlay.some(c=>c.id==='used-move'));
 }
 {
- const g=game(),{p,s,e}=g;p.hand=[];s.activePlayer=1;const bot=s.players[1];Object.assign(bot,{hand:[card('move','bot-convert')],deck:[],discard:[],inPlay:[]});e.runAiOperation();assert(bot.inPlay.some(c=>c.id==='bot-convert'),'Browser rivals also retain conversions in play');
+ const g=game(),{p,s,e}=g;p.hand=[];s.activePlayer=1;const bot=s.players[1];Object.assign(bot,{hand:[{...card('move','bot-convert'),starter:true}],deck:[],discard:[],inPlay:[]});e.runAiOperation();assert(bot.inPlay.some(c=>c.id==='bot-convert'),'Browser rivals also retain conversions in play');
 }
 {
  const g=game('crates/galactic-reach/rules/v26-');g.p.hand=[card('move','old-convert')];action(g,'resource','old-convert');assert(g.p.discard.some(c=>c.id==='old-convert'));assert(!('inPlay' in g.p),'26.31 keeps its original zones');
@@ -125,7 +125,7 @@ assert.equal(replayRoutes['galactic-reach/29.34'],'/galactic-reach/rules/29.34/'
 // 31.36 archives the exact 30.35 engine: its five-card market, basic purchases and 20-point target stay.
 assert.equal(replayRoutes['galactic-reach/30.35'],'/galactic-reach/rules/30.35/','30.35 replay opens its archived browser');
 // 32.37 archives the exact 31.36 engine: original card prices, Harvester 1, 2 starting Biomass.
-assert.equal(replayRoutes['galactic-reach/31.36'],'/galactic-reach/rules/31.36/','31.36 replay opens its archived browser');assert.equal(replayRoutes['galactic-reach/34.39'],'/galactic-reach/');
+assert.equal(replayRoutes['galactic-reach/31.36'],'/galactic-reach/rules/31.36/','31.36 replay opens its archived browser');assert.equal(replayRoutes['galactic-reach/33.38'],'/galactic-reach/rules/33.38/');
 for(const [file,hash] of Object.entries(JSON.parse(read('scripts/cheaper-cards-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,`${file} must stay the published 31.36 asset`);
 {
  const g=game('crates/galactic-reach/rules/v31-'),{e,s}=g;assert.equal(g.adapter().rulesVersion,'galactic-reach/31.36');
@@ -138,7 +138,7 @@ for(const [file,hash] of Object.entries(JSON.parse(read('scripts/capacity-cards-
  p.hand=[];action(g,'pass');assert(g.adapter().legalActions(0).some(a=>a.type==='buy'&&a.source==='basic'),'30.35 tables still sell basic cards');
 }
 {
- const g=game(),{s}=g;assert.equal(g.adapter().rulesVersion,'galactic-reach/34.39');assert.equal(s.market.length,10,'32.37 shows ten market cards');assert.equal(s.victoryTarget,40);
+ const g=game(),{s}=g;assert.equal(g.adapter().rulesVersion,'galactic-reach/37.42');assert.equal(s.market.length,10,'32.37 shows ten market cards');assert.equal(s.victoryTarget,40);
 }
 
 // 33.38 preserves the exact published 32.37 whole-group engine and client assets.

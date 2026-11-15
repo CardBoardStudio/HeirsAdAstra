@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const crypto = require('node:crypto');
+const queueFixture = require('./queue-fixture.cjs');
 const root = path.resolve(__dirname, '../..');
 const source = path.join(root, 'prototypes/galactic-reach');
 const port = Number(process.env.A11Y_PORT || 8885);
@@ -11,7 +12,7 @@ const output = path.resolve(process.env.A11Y_OUTPUT || path.join(__dirname, 'rep
 const axe = require.resolve('axe-core/axe.min.js');
 fs.mkdirSync(output, {recursive:true});
 const escape = text => String(text).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const hashes = () => Object.fromEntries(['app.js','index.html','styles.css','rulebook.html','rulebook.css','playtest-notes.js','playtest-notes.css'].map(file => [file,crypto.createHash('sha256').update(fs.readFileSync(path.join(source,file))).digest('hex')]));
+const hashes = () => Object.fromEntries(['app.js','index.html','styles.css','rulebook.html','rulebook.css','playtest-notes.js','playtest-notes.css','change-queue.js','change-queue.css'].map(file => [file,crypto.createHash('sha256').update(fs.readFileSync(path.join(source,file))).digest('hex')]));
 
 function fixture(kind) {
   let engine, seed=1729;
@@ -21,21 +22,41 @@ function fixture(kind) {
   context.createGalacticAdapter=value=>{engine=value;return factory(value);};
   const adapter=context.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});
   const state=engine.state;
-  if (kind==='second' || kind==='second-empty') {
+  if(kind==='starter-economy') {
+    state.players[0].hand=[{id:'qa-I',key:'move',starter:true},{id:'qa-build-I',key:'construct',starter:true},
+      {id:'qa-II',key:'construct',starter:true,upgraded:true,level:2},{id:'qa-III',key:'move',starter:true,upgraded:true,level:3},
+      {id:'qa-draw',key:'signalRelay'},{id:'qa-wonder',key:'dysonLattice'},{id:'qa-relic',key:'firstDawnEchoes'}];
+    state.players[0].resources={matter:1,energy:1,biomass:1,data:1};
+    state.players[0].deck=[{id:'qa-III-draw',key:'surveyNetwork'}];
+    state.fleets={'0,0':{0:{fleet:1}}};state.selected='0,0';
+  } else if(['feedback','probe-last','probe-known','probe-none'].includes(kind)) {
+    state.players[0].hand=[{id:'qa-probe',key:'probe'},{id:'qa-iii',key:'move',starter:true,upgraded:true,level:3},{id:'qa-cap',key:'cargoExpansion'},{id:'qa-draw',key:'signalRelay'}];
+    state.players[0].resources={matter:4,energy:4,biomass:4,data:4};
+    state.fleets={'0,0':{0:{settler:0,explorer:1,fleet:1}}};state.selected='0,0';
+    if(kind.startsWith('probe-')) {
+      const last=state.clusters.find(c=>c.kind==='moon');
+      state.clusters.forEach(c=>{c.scannedBy=kind==='probe-last'&&c===last?[]:[0];});
+      if(kind==='probe-none')Object.values(state.planets).filter(p=>p.special==='relic').forEach(p=>{p.relicClaimed=true;});
+    }
+  } else if (kind==='second'  || kind==='second-empty') {
     const coord=state.clusters[0].coords[1];state.selected=coord;state.players[0].resources={matter:4,energy:3,biomass:3,data:2};state.players[0].hand=[{id:'qa-two',key:'construct',starter:true,upgraded:true},{id:'qa-fund',key:'construct'}];
     engine.performConstructOrder(0,coord,'starbase',state.players[0].hand[0]);
     if(kind==='second-empty')state.players[0].resources={matter:0,energy:0,biomass:0,data:0};
-  } else if (kind==='storage' || kind==='cradle') {
+  } else if (kind==='storage' || kind==='warehouse') {
     state.players[0].resources={matter:2,energy:2,biomass:2,data:2};
-    if(kind==='cradle')state.players[0].hand=[{id:'qa-cradle',key:'cradleOfLostSuns'}];
-  } else if (kind==='buy') {
+    if(kind==='warehouse')state.players[0].hand=[{id:'qa-warehouse',key:'foldedWarehouse'}];
+  } else if (kind==='buy' || kind==='buy-many') {
     Object.assign(state,{phase:'buy',turnStage:'buy',activePlayer:0});
     Object.assign(state.players[0],{passed:true,storageUpgrades:2,resources:{matter:4,energy:4,biomass:4,data:4}});
+    if(kind==='buy-many') {
+      Object.assign(state.players[0],{hand:[],deck:[],discard:[],inPlay:[],resources:{matter:0,energy:6,biomass:0,data:3},resourceLimits:{matter:4,energy:8,biomass:4,data:4}});
+      state.market=Array.from({length:3},(_,n)=>({key:'signalRelay',id:`qa-buy-${n}`}));state.advancedDeck=[];state.marketDiscard=[];
+    }
   } else if (kind==='mixed') {
     state.fleets={'-9,0':{0:{settler:8,explorer:5,fleet:10}},'-8,0':{0:{fleet:10}},'-7,0':{0:{fleet:3,explorer:2}},'9,0':{2:{settler:2,explorer:1,fleet:2},1:{explorer:2}}};
-  } else if (kind==='split') {
+  } else if (kind==='split' || kind==='portal') {
     Object.assign(state,{phase:'operations',turnStage:'prep',activePlayer:0});
-    state.fleets={'0,0':{0:{settler:1,explorer:1,fleet:2}}};
+    state.fleets={[kind==='portal'?'-10,8':'0,0']:{0:{settler:1,explorer:1,fleet:2}}};
     state.players.forEach((p,id)=>{p.passed=id!==0;});
     state.players[0].hand=[{id:'qa-move',key:'move',starter:true},{id:'qa-next',key:'move',starter:true}];
   } else if (kind==='overflow') engine.addResources(state.players[0],{matter:10,energy:6});
@@ -52,7 +73,7 @@ function fixture(kind) {
 function summary() {
   const reports=fs.readdirSync(output).filter(file=>file.endsWith('.json')).map(file=>({file,...JSON.parse(fs.readFileSync(path.join(output,file),'utf8'))}));
   const current=hashes();
-  const currentReports=reports.filter(r=>Object.entries(current).every(([file,hash])=>r.sourceHashes[file]===hash));
+  const currentReports=reports.filter(r=>Object.entries(current).every(([file,hash])=>r.sourceHashes?.[file]===hash));
   const rows=currentReports.map(r=>`<tr><td><a href="${escape(r.file)}">${escape(r.case)}</a></td><td>${r.viewport.width} × ${r.viewport.height}</td><td>${r.violations.length}</td><td>${r.contrastReview?(r.contrastReview.failures.length+(r.mapContrastReview?.failures.length||0)):'pending'}</td><td>${r.incomplete.length}</td><td>${escape(r.testedAt)}</td></tr>`).join('');
   fs.writeFileSync(path.join(output,'index.html'),`<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Galactic Reach accessibility audit</title><style>body{font:16px/1.6 system-ui;max-width:1100px;margin:40px auto;padding:20px;background:#152526;color:#fff5df}a{color:#ffe09f}table{border-collapse:collapse;width:100%}th,td{padding:12px;border:1px solid #819481;text-align:left}.scroll{overflow:auto}</style><main><h1>Galactic Reach accessibility audit</h1><p>axe-core 4.14.0 · WCAG 2.2 A/AA and best practices. Automated scans do not replace keyboard, reflow, focus and assistive-technology review. The table includes only the current source hashes. Each JSON records exact source hashes, raw axe results and conservative gradient contrast checks. Earlier scans remain in this folder as evidence. Icon controls and gradient indeterminates also receive manual review.</p><div class="scroll"><table><thead><tr><th>Case</th><th>Viewport</th><th>Violations</th><th>Contrast checks</th><th>Raw review items</th><th>Tested</th></tr></thead><tbody>${rows}</tbody></table></div></main></html>`);
 }
@@ -62,6 +83,7 @@ const send=(res,status,body,type='text/plain')=>{res.writeHead(status,{'Content-
 http.createServer(async (req,res)=>{
   try {
     const url=new URL(req.url,'http://127.0.0.1');
+    if(await queueFixture.handle(req,res,url))return;
     if(req.method==='POST'&&url.pathname==='/__audit/result') {
       let body='';for await(const part of req){body+=part;if(body.length>12_000_000)throw Error('Report too large');}
       const report=JSON.parse(body);report.sourceHashes=hashes();
@@ -79,6 +101,7 @@ http.createServer(async (req,res)=>{
     if(path.extname(filename)==='.html') {
       let html=content.toString();
       if(path.basename(filename)==='index.html') {
+        if(url.searchParams.get('fixture')==='queue')queueFixture.reset(url.searchParams.get('queue'));else queueFixture.reset('guest');
         const state=fixture(url.searchParams.get('fixture')||'fresh');
         const saved=JSON.stringify(JSON.stringify(state)).replace(/</g,'\\u003c');
         html=html.replace('  <script src="table.js',`<script>localStorage.removeItem('galactic-reach-turn-history-v${state.version}');localStorage.removeItem('galactic-reach-history-v${state.version}');localStorage.setItem('galactic-reach-save-v${state.version}',${saved});</script>\n  <script src="table.js`);

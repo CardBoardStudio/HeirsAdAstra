@@ -34,7 +34,9 @@ impl Service {
             );
             let table = t.log.table(&id).map_err(broken)?.unwrap();
             let events = t.log.read(&id).map_err(broken)?;
-            let full = build(table, events, vec![], t.authority.clone()).map_err(broken)?;
+            let source = t.channel.engine(&table.rules).unwrap();
+            let full =
+                build(table, events, vec![], t.authority.clone(), &source).map_err(broken)?;
             assert_eq!(
                 full.engine.private_state(seat).map_err(broken)?,
                 after,
@@ -396,17 +398,11 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
         let undo_path = format!("{endpoint}/undo");
         if after["active"] == seat {
             if action["type"] == "buy" && action["source"] == "market" && !refused_after_reveal {
-                // Turning up a new market card is a reveal: Undo stops there.
+                // 36.41 can rewind this human's reveal while no other human has acted.
                 refused_after_reveal = true;
-                assert_eq!(after["undo"]["available"], false);
+                assert_eq!(after["undo"]["available"], true);
                 let r = call(&a, "POST", &undo_path, me, json!({"seq":after["seq"]})).await;
-                assert_eq!(r.0, StatusCode::CONFLICT);
-                assert!(
-                    r.2["error"]
-                        .as_str()
-                        .unwrap()
-                        .starts_with("Undo stops here: a new market card")
-                );
+                assert_eq!(r.0, StatusCode::OK, "{}", r.2);
             } else if action["type"] == "resource" && !undid {
                 undid = true;
                 assert_eq!(after["undo"]["available"], true);
@@ -456,12 +452,16 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
             .any(|e| e["seat"] == rival && e["kind"] == "action")
     );
     assert!(events.iter().any(|e| e["kind"] == "undo"));
-    // Reveal detection on real play: conversions reveal nothing, market buys turn up a card.
+    // Level III conversions may draw or shuffle; ordinary conversions reveal nothing.
     let actions = || events.iter().filter(|e| e["kind"] == "action");
     assert!(
         actions()
             .filter(|e| e["public"]["action"]["type"] == "resource")
-            .all(|e| e["public"]["revealed"].is_null())
+            .all(|e| e["public"]["revealed"].is_null()
+                || matches!(
+                    e["public"]["revealed"].as_str(),
+                    Some("cards were drawn" | "cards were shuffled")
+                ))
     );
     // A market buy turns up a card (or reshuffles the pile) unless the pile is empty.
     let market: Vec<_> = actions()
@@ -612,10 +612,9 @@ async fn undo_takes_back_this_turn_but_not_past_a_reveal_or_the_turn() {
     let store = store_with(&["a", "b"]);
     let log = Arc::new(SqliteTableLog(store));
     let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
-    service
-        .open(table("t3", &[("a", "Ada"), ("b", "Bo")]))
-        .await
-        .unwrap();
+    let mut legacy = table("t3", &[("a", "Ada"), ("b", "Bo")]);
+    legacy.rules = "galactic-reach/33.38".into();
+    service.open(legacy).await.unwrap();
     let ada = service.view("t3", "a").await.unwrap();
     assert_eq!(ada["active"], 0);
     assert_eq!(ada["undo"]["available"], false);
@@ -1171,11 +1170,8 @@ fn start_deals_people_to_random_seats_and_rivals_fill_the_rest() {
     );
 }
 
-/// 33.38 #split-moves: exercise the browser command against the real shared-table
-/// server from a prepared snapshot. Every seat is human so neither bot timing nor
-/// a bot's random path to a mixed stack can decide whether the test reaches its assertion.
-#[tokio::test]
-async fn a_shared_move_can_leave_units_behind() {
+// Shared movement fixtures load a real persisted position with human-controlled seats.
+async fn prepared_shared_movement(source: &str) -> (Arc<Service>, u64) {
     let store = store_with(&["a", "b", "c", "d"]);
     let log = Arc::new(SqliteTableLog(store));
     let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
@@ -1195,7 +1191,8 @@ async fn a_shared_move_can_leave_units_behind() {
         .find(|c| c["key"] == "move")
         .unwrap()
         .clone();
-    engine["state"]["fleets"] = json!({"0,0":{"0":{"settler":1,"explorer":1,"fleet":2}}});
+    engine["state"]["fleets"] = json!({});
+    engine["state"]["fleets"][source] = json!({"0":{"settler":1,"explorer":1,"fleet":2}});
     engine["state"]["players"][0]["hand"] = json!([card]);
     snapshot["engine"] = json!(engine.to_string());
     log.save_snapshot("split", seq, &snapshot).unwrap();
@@ -1206,6 +1203,13 @@ async fn a_shared_move_can_leave_units_behind() {
         })
         .await
         .unwrap();
+    (service, seq)
+}
+
+/// #split-moves: the real server moves only the browser's chosen units.
+#[tokio::test]
+async fn a_shared_move_can_leave_units_behind() {
+    let (service, seq) = prepared_shared_movement("0,0").await;
     let (seat, _, legal) = service.turn("split").await.unwrap();
     assert_eq!(seat, 0);
     let split = legal
@@ -1264,5 +1268,425 @@ async fn a_shared_move_can_leave_units_behind() {
             Err(Refusal::Conflict(_))
         ),
         "a stale command cannot move another Fleet"
+    );
+}
+
+// 36.41 #shared-tables: human Undo crosses later bot actions, but no later human action.
+async fn exercise_human_undo(dev: bool) {
+    let store = store_with(&["a", "b"]);
+    let log = Arc::new(SqliteTableLog(store.clone()));
+    let channel = if dev {
+        let channel = Channel::dev(store, galactic_reach::dev_rules(), "undo-test".into());
+        channel.keep_current(1).unwrap();
+        channel
+    } else {
+        Channel::stable()
+    };
+    let service = Service::start_on(
+        log.clone(),
+        Arc::new(TrustedAuthority),
+        Duration::from_secs(3600),
+        Arc::new(channel),
+    );
+    let mut dealt = table("human-undo", &[("a", "Ada"), ("b", "Bo")]);
+    dealt.rules = service.channel.rules.clone();
+    service.open(dealt).await.unwrap();
+    let mut seq = service.view("human-undo", "a").await.unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    for (account, action) in [
+        ("a", "pass"),
+        ("a", "finish_buy"),
+        ("b", "pass"),
+        ("b", "finish_buy"),
+    ] {
+        seq = service
+            .act("human-undo", account, seq, vec![json!({"type":action})])
+            .await
+            .unwrap()["seq"]
+            .as_u64()
+            .unwrap();
+    }
+    assert_eq!(service.turn("human-undo").await.unwrap().0, 2);
+    service
+        .call(|tables| {
+            tables.step_ai("human-undo")?;
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let bo = service.view("human-undo", "b").await.unwrap();
+    assert_eq!(bo["undo"]["available"], true);
+    assert!(bo["undo"]["actions"].as_u64().unwrap() >= 2);
+    seq = bo["seq"].as_u64().unwrap();
+    seq = service.undo("human-undo", "b", seq).await.unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    let restored = service.view("human-undo", "b").await.unwrap();
+    assert_eq!(restored["active"], 1);
+    assert_eq!(restored["state"]["phase"], "buy");
+    service.refolded("human-undo", 1).await;
+    seq = service
+        .act("human-undo", "b", seq, vec![json!({"type":"finish_buy"})])
+        .await
+        .unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    let ada = service.view("human-undo", "a").await.unwrap();
+    let card = ada["state"]["players"][0]["hand"][0]["id"].clone();
+    seq = service
+        .act(
+            "human-undo",
+            "a",
+            seq,
+            vec![json!({"type":"resource","card":card})],
+        )
+        .await
+        .unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    assert_eq!(
+        service.view("human-undo", "b").await.unwrap()["undo"]["available"],
+        false
+    );
+    assert!(service.undo("human-undo", "b", seq).await.is_err());
+    assert!(
+        log.read("human-undo")
+            .unwrap()
+            .iter()
+            .any(|e| e.kind == "undo")
+    );
+}
+
+#[tokio::test]
+async fn human_undo_rewinds_bots_until_another_human_acts() {
+    exercise_human_undo(false).await;
+}
+#[tokio::test]
+async fn dev_human_undo_rewinds_bots_until_another_human_acts() {
+    exercise_human_undo(true).await;
+}
+
+#[tokio::test]
+async fn off_turn_economy_is_private_authorized_and_preserves_the_active_turn() {
+    let store = store_with(&["a", "b", "c", "d"]);
+    let log = Arc::new(SqliteTableLog(store));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    service
+        .open(table(
+            "free-economy",
+            &[("a", "Ada"), ("b", "Bo"), ("c", "Cy"), ("d", "Dee")],
+        ))
+        .await
+        .unwrap();
+    let bo = service.view("free-economy", "b").await.unwrap();
+    let seq = bo["seq"].as_u64().unwrap();
+    assert!(
+        service
+            .act("free-economy", "b", seq, vec![json!({"type":"pass"})])
+            .await
+            .is_err()
+    );
+    let card = bo["state"]["players"][1]["hand"][0]["id"].clone();
+    let seq = service
+        .act(
+            "free-economy",
+            "b",
+            seq,
+            vec![json!({"type":"resource","card":card})],
+        )
+        .await
+        .unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    let after = service.view("free-economy", "b").await.unwrap();
+    assert_eq!(after["active"], 0);
+    assert_eq!(
+        after["state"]["players"][1]["inPlay"]
+            .as_array()
+            .unwrap()
+            .len(),
+        1
+    );
+    assert!(
+        service
+            .act(
+                "free-economy",
+                "a",
+                seq,
+                vec![json!({"type":"resource","card":card})]
+            )
+            .await
+            .is_err()
+    );
+    service.refolded("free-economy", 1).await;
+}
+
+#[tokio::test]
+async fn undo_reuses_a_reversed_shuffle_and_resumes_its_snapshot() {
+    let store = store_with(&["a", "b", "c", "d"]);
+    let log = Arc::new(SqliteTableLog(store));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    service
+        .open(table(
+            "shuffle-undo",
+            &[("a", "Ada"), ("b", "Bo"), ("c", "Cy"), ("d", "Dee")],
+        ))
+        .await
+        .unwrap();
+    let (seq, mut snapshot) = log
+        .snapshots("shuffle-undo")
+        .unwrap()
+        .into_iter()
+        .next()
+        .unwrap();
+    let mut engine: Value = serde_json::from_str(snapshot["engine"].as_str().unwrap()).unwrap();
+    let starters = engine["state"]["players"][0]["hand"].clone();
+    engine["state"]["players"][0]["hand"] = json!([{"id":"qa-draw","key":"strategyCore"}]);
+    engine["state"]["players"][0]["deck"] = json!([]);
+    engine["state"]["players"][0]["discard"] = starters;
+    snapshot["engine"] = json!(engine.to_string());
+    log.save_snapshot("shuffle-undo", seq, &snapshot).unwrap();
+    service
+        .call(|t| {
+            t.live.remove("shuffle-undo");
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let action = json!({"type":"special","card":"qa-draw"});
+    let seq = service
+        .act("shuffle-undo", "a", seq, vec![action.clone()])
+        .await
+        .unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    let first = service.view("shuffle-undo", "a").await.unwrap();
+    assert_eq!(first["undo"]["available"], true);
+    let seq = service.undo("shuffle-undo", "a", seq).await.unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    service
+        .call(|t| {
+            t.live.remove("shuffle-undo");
+            Ok(())
+        })
+        .await
+        .unwrap();
+    let restored = service.view("shuffle-undo", "a").await.unwrap();
+    assert_eq!(restored["state"]["players"][0]["hand"][0]["id"], "qa-draw");
+    service
+        .act("shuffle-undo", "a", seq, vec![action])
+        .await
+        .unwrap();
+    let second = service.view("shuffle-undo", "a").await.unwrap();
+    assert_eq!(
+        first["state"]["players"][0]["hand"],
+        second["state"]["players"][0]["hand"]
+    );
+    let events = log.read("shuffle-undo").unwrap();
+    let dealt: Vec<_> = events
+        .iter()
+        .filter(|e| e.seq > seq - 3 && e.kind == "shuffle" && e.public["purpose"] == "deck:0")
+        .collect();
+    let last = dealt.last().unwrap();
+    assert!(
+        events
+            .iter()
+            .any(|e| e.seq < last.seq && e.kind == "shuffle" && e.public == last.public),
+        "repeating the order reuses its commitment and permutation"
+    );
+    service
+        .call(|t| {
+            t.live.remove("shuffle-undo");
+            Ok(())
+        })
+        .await
+        .unwrap();
+    assert_eq!(
+        service.view("shuffle-undo", "a").await.unwrap()["state"],
+        second["state"]
+    );
+}
+
+/// #corner-portals: the command service enforces the cost-2 aligned crossing.
+#[tokio::test]
+async fn a_shared_move_uses_the_aligned_corner_portal() {
+    let (service, seq) = prepared_shared_movement("-10,8").await;
+    let (seat, observation, legal) = service.turn("split").await.unwrap();
+    assert_eq!(seat, 0);
+    assert_eq!(observation["portalLinks"]["-10,8"], "8,-10");
+    assert_eq!(observation["portalMovementCost"], 2);
+    let action = legal
+        .iter()
+        .find(|a| {
+            a["type"] == "move"
+                && a["source"] == "-10,8"
+                && a["destination"] == "8,-10"
+                && a["units"] == json!({"settler":0,"explorer":0,"fleet":1})
+        })
+        .unwrap()
+        .clone();
+    let mut too_far = action.clone();
+    too_far["destination"] = json!("8,-9");
+    assert!(
+        service.act("split", "a", seq, vec![too_far]).await.is_err(),
+        "crossing plus one step costs 3, beyond Fleet Move's 2"
+    );
+    service.act("split", "a", seq, vec![action]).await.unwrap();
+    let after = service.view("split", "a").await.unwrap();
+    assert_eq!(
+        after["state"]["fleets"]["-10,8"]["0"],
+        json!({"settler":1,"explorer":1,"fleet":1})
+    );
+    assert_eq!(after["state"]["fleets"]["8,-10"]["0"]["fleet"], 1);
+}
+
+/// docs/release.md#dev-channel: on a dev server (every merge to main deploys),
+/// a table keeps the engine it was dealt with when a rules-changing merge
+/// deploys, a save-compatible merge reaches tables at once, and a kept revision
+/// is pruned only when no unfinished table plays it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_dev_table_keeps_its_build_when_a_rules_change_deploys() {
+    use super::channel::{Channel, KEEP_FOR};
+    use axum::{body::Body, http::Request};
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+    let store = store_with(&["a", "b"]);
+    let log = Arc::new(SqliteTableLog(store.clone()));
+    let dev = |n: u32| format!("{}+dev.{n}", galactic_reach::RULES);
+    // Each deploy is a fresh server process over the same database.
+    let deploy = |rules: String, app: &str, now: u64| {
+        let channel = Channel::dev(store.clone(), rules, format!("c{now}"));
+        channel
+            .keep_current_as(app, galactic_reach::ADAPTER_SOURCE, now)
+            .unwrap();
+        Service::start_on(
+            log.clone(),
+            Arc::new(TrustedAuthority),
+            Duration::ZERO,
+            Arc::new(channel),
+        )
+    };
+    let resource = |view: &Value| {
+        let card = view["state"]["players"][0]["hand"][0]["id"].clone();
+        vec![json!({"type":"resource","card":card})]
+    };
+    let limit = |view: &Value| view["state"]["players"][0]["resourceLimits"]["matter"].clone();
+    let current = galactic_reach::APP_SOURCE;
+    let original = "resourceLimits: { matter:4,";
+    assert!(
+        current.contains(original),
+        "the engine still sets the starting limit here"
+    );
+    // Build A's rules differ visibly: a starting Matter limit of 9.
+    let build_a = current.replace(original, "resourceLimits: { matter:9,");
+
+    // A dev revision nothing plays, last current long ago.
+    deploy(dev(0), current, 1);
+
+    // Build A deals table d1.
+    let a = deploy(dev(1), &build_a, 2 * KEEP_FOR);
+    let mut t = table("d1", &[("a", "Ada"), ("b", "Bo")]);
+    t.rules = a.channel.rules.clone();
+    a.open(t).await.unwrap();
+    let view = a.view("d1", "a").await.unwrap();
+    assert_eq!(view["rules_version"], dev(1));
+    assert_eq!(view["client_path"], "/galactic-reach/");
+    assert_eq!(limit(&view), 9);
+    let seq = view["seq"].as_u64().unwrap();
+    a.act("d1", "a", seq, resource(&view)).await.unwrap();
+    drop(a);
+
+    // Build B merges a rules change (a new breaking entry: +dev.2).
+    let b = deploy(dev(2), current, 2 * KEEP_FOR + 1);
+    assert!(
+        b.channel.kept(&dev(0)).is_none(),
+        "an unplayed revision is pruned after KEEP_FOR"
+    );
+    let view = b.view("d1", "a").await.unwrap();
+    assert_eq!(view["rules_version"], dev(1), "d1 keeps its dealt revision");
+    assert_eq!(limit(&view), 9, "d1 still plays build A's rules");
+    assert_eq!(
+        view["client_path"],
+        format!(
+            "/galactic-reach/dev/{}/",
+            dev(1).rsplit('/').next().unwrap()
+        )
+    );
+    let seq = view["seq"].as_u64().unwrap();
+    let after = b.act("d1", "a", seq, resource(&view)).await.unwrap();
+    assert!(
+        after["seq"].as_u64().unwrap() > seq,
+        "d1 keeps playing on build B's server"
+    );
+    let mut t = table("d2", &[("a", "Ada"), ("b", "Bo")]);
+    t.rules = b.channel.rules.clone();
+    b.open(t).await.unwrap();
+    let fresh = b.view("d2", "a").await.unwrap();
+    assert_eq!(fresh["rules_version"], dev(2));
+    assert_eq!(limit(&fresh), 4, "new tables get build B's rules");
+    drop(b);
+
+    // Build B' merges an interface-only change: same revision, new build.
+    let interface = format!("{current}\n// interface-only edit\n");
+    let b2 = deploy(dev(2), &interface, 2 * KEEP_FOR + 2);
+    for (id, rules, matter) in [("d1", dev(1), 9), ("d2", dev(2), 4)] {
+        let view = b2.view(id, "a").await.unwrap();
+        assert_eq!(view["rules_version"], rules);
+        assert_eq!(limit(&view), matter);
+        let seq = view["seq"].as_u64().unwrap();
+        b2.act(id, "a", seq, resource(&view)).await.unwrap();
+    }
+    assert_eq!(
+        b2.channel.kept(&dev(2)).unwrap().app,
+        interface,
+        "the current revision runs the newest build"
+    );
+
+    // d1's browser: build A's engine with the current interface files.
+    let mut app = crate::tests::app(false);
+    app.store = store.clone();
+    app.shared = b2.clone();
+    let get = |path: String| {
+        let app = app.clone();
+        async move {
+            let req = Request::builder().uri(path).body(Body::empty()).unwrap();
+            let res = crate::router(app).oneshot(req).await.unwrap();
+            let status = res.status();
+            let location = res.headers().get("location").cloned();
+            let body = res.into_body().collect().await.unwrap().to_bytes();
+            (
+                status,
+                location,
+                String::from_utf8_lossy(&body).into_owned(),
+            )
+        }
+    };
+    let base = format!("/galactic-reach/dev/{}", dev(1).rsplit('/').next().unwrap());
+    let (status, _, body) = get(format!("{base}/app.js")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        body.contains("resourceLimits: { matter:9,"),
+        "build A's engine"
+    );
+    let (_, _, body) = get(format!("{base}/channel.js")).await;
+    assert!(body.contains(&dev(1)), "the page plays build A's revision");
+    let (status, location, _) = get(format!("{base}/styles.css")).await;
+    assert_eq!(status, StatusCode::TEMPORARY_REDIRECT);
+    assert_eq!(
+        location.unwrap(),
+        "/galactic-reach/styles.css",
+        "current interface"
+    );
+    let (_, _, body) = get("/galactic-reach/channel.js".into()).await;
+    assert!(body.contains(&dev(2)) && body.contains("\"dev\""));
+    let (status, _, _) = get(format!("{base}/../../app.js")).await;
+    assert_ne!(status, StatusCode::OK);
+    let (status, _, _) = get("/galactic-reach/dev/33.38/app.js".into()).await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "released revisions are not dev builds"
     );
 }

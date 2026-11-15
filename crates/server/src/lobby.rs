@@ -375,7 +375,7 @@ pub async fn start(
             .open(crate::shared::log::Table {
                 id: id.clone(),
                 name: lobby.name.clone(),
-                rules: galactic_reach::RULES.into(),
+                rules: app.shared.channel.rules.clone(),
                 authority: String::new(),
                 status: "active".into(),
                 seats,

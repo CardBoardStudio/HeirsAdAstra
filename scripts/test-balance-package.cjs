@@ -75,31 +75,23 @@ for (const key of ['colonize', 'colonyPods']) {
 {
   const { e } = game(), C = e.ALL_CARDS;
   assert.equal(C.dysonLattice.gainPrestige, 5); assert.match(C.dysonLattice.text, /gain 5 permanent Prestige/);
-  assert.equal(C.senateSeat.gainPrestige, 3); assert.match(C.senateSeat.text, /gain 3 permanent Prestige/);
-  assert.equal(C.boardingMarines.attack, 2); assert.match(C.boardingMarines.text, /^\+2 hits/);
-  assert.equal(C.miningCharter.effect.draw, 1); assert.equal(C.bioReactor.effect.draw, 1);
-  assert(C.prefabYards.secondBuild && C.orbitalFoundry.secondBuild && !C.worldEngine.secondBuild);
+  assert(!C.senateSeat);
+  assert(!C.boardingMarines);
+  assert(!C.miningCharter && !C.bioReactor);
+  assert(C.prefabYards.secondBuild && !C.orbitalFoundry && !C.worldEngine.secondBuild);
   // Prices are unchanged by this package.
   assert.deepEqual(plain(C.dysonLattice.cost), { matter: 4, energy: 8, data: 2 });
-  assert.deepEqual(plain(C.senateSeat.cost), { energy: 3, biomass: 1, data: 6 });
+  assert.deepEqual(plain(C.monumentOfAccord.cost), { matter: 6, biomass: 2, data: 2 });
 }
 // Buying a Wonder pays its new Prestige; server rivals read it from the observation.
 {
   const g = game(), { s, p } = g; s.phase = 'buy'; s.activePlayer = 0; p.passed = true; big(p);
-  s.market = [{ key: 'senateSeat', id: 'senate' }, { key: 'dysonLattice', id: 'dyson' }, { key: 'boardingMarines', id: 'marines' }];
+  s.market = [{ key: 'monumentOfAccord', id: 'senate' }, { key: 'dysonLattice', id: 'dyson' }, { key: 'railBattery', id: 'marines' }];
   const view = g.adapter().observe(0);
   assert.deepEqual(plain(view.marketPrestige), [3, 5, 0]);
-  assert.deepEqual(plain(view.tacticStats.boardingMarines), { attack: 2, shield: 0, pierce: false });
+  assert.deepEqual(plain(view.tacticStats.railBattery), { attack: 2, shield: 0, pierce: false });
   assert.deepEqual(plain(view.tacticStats.phaseLance), { attack: 2, shield: 0, pierce: true });
-  act(g, 0, 'buy', a => a.key === 'senateSeat'); assert.equal(p.cardPrestige, 3);
-}
-// Bio-Reactor: gain, then draw one card.
-{
-  const g = game(), { p } = g; ops(g); p.resources = { matter: 0, energy: 0, biomass: 0, data: 0 };
-  p.hand = [{ key: 'bioReactor', id: 'bio' }]; p.deck = [{ key: 'move', id: 'next' }];
-  act(g, 0, 'special', a => a.card === 'bio');
-  assert.deepEqual({ biomass: p.resources.biomass, energy: p.resources.energy }, { biomass: 2, energy: 2 });
-  assert(p.hand.some(c => c.id === 'next'), 'Then draw one card');
+  act(g, 0, 'buy', a => a.key === 'monumentOfAccord'); assert.equal(p.cardPrestige, 3);
 }
 // Prefab Yards: one discounted build, then you may build once more at full price.
 {
@@ -122,16 +114,16 @@ for (const key of ['colonize', 'colonyPods']) {
   const g = game(), { s, p } = g; ops(g); p.hand = [{ key: 'worldEngine', id: 'engine' }];
   act(g, 0, 'build', a => a.card === 'engine' && a.kind === 'starbase'); assert.equal(s.pendingConstruct, null);
 }
-// Procurement Hub alone: one more purchase this Buy, and one purchase 1 less of each resource.
+// Procurement Hub alone discounts one purchase; later affordable purchases remain legal.
 {
   const g = game(), { s, p } = g; s.phase = 'buy'; s.activePlayer = 0; p.passed = true; big(p);
-  s.market = [{ key: 'ionThrusters', id: 'ion' }, { key: 'dataHaven', id: 'haven' }];
+  s.market = [{ key: 'ionThrusters', id: 'ion' }, { key: 'strategyCore', id: 'haven' }];
   p.hand = [{ key: 'procurementHub', id: 'hub' }];
   act(g, 0, 'buy', a => a.key === 'ionThrusters'); assert.equal(p.resources.energy, 15, 'First purchase at full price');
-  act(g, 0, 'buy_effect', a => a.card === 'hub'); assert.equal(p.buyLimit, 2); assert.equal(p.buyHubDiscounts, 1);
-  assert.deepEqual(plain(g.e.purchaseCost(p, 'dataHaven')), { energy: 0, data: 4 });
-  act(g, 0, 'buy', a => a.key === 'dataHaven'); assert.equal(p.resources.data, 16); assert.equal(p.buyHubDiscounts, 0);
-  assert(!legal(g).some(a => a.type === 'buy'), 'Both purchases used');
+  act(g, 0, 'buy_effect', a => a.card === 'hub'); assert.equal(p.buyHubDiscounts, 1);
+  assert.deepEqual(plain(g.e.purchaseCost(p, 'strategyCore')), { energy: 0, data: 4 });
+  act(g, 0, 'buy', a => a.key === 'strategyCore'); assert.equal(p.resources.data, 16); assert.equal(p.buyHubDiscounts, 0);
+  assert(legal(g).some(a => a.type === 'buy'), 'The discount is used up, but purchases are unlimited');
 }
 
 // #setup: headless games and shared tables keep the default seats; a lineup option deals rivals.

@@ -28,8 +28,8 @@ function game(){
  assert.equal(e.storageUpgradeCost(1).biomass,1,'Paid tiers belong to one faction');
  p.resources={matter:4,energy:4,biomass:3,data:4};const before=JSON.stringify(s);assert(!e.increaseStorage(0));assert.equal(JSON.stringify(s),before);
  // The actual free relic effect, rather than a synthetic count increment.
- p.hand=[{id:'cradle',key:'cradleOfLostSuns'}];p.resources={matter:0,energy:0,biomass:0,data:0};
- const paid=p.storagePurchases,capacity=e.playerCapacity(0);e.resolveHumanSpecial(p.hand[0],e.ALL_CARDS.cradleOfLostSuns,0,{matter:1,energy:1,biomass:1,data:1});
+ p.hand=[{id:'cradle',key:'foldedWarehouse'}];p.resources={matter:0,energy:0,biomass:0,data:0};
+ const paid=p.storagePurchases,capacity=e.playerCapacity(0);e.resolveHumanSpecial(p.hand[0],e.ALL_CARDS.foldedWarehouse,0);
  assert.equal(p.storagePurchases,paid);assert.equal(e.playerCapacity(0),capacity+4);assert.equal(e.storageUpgradeCost(0).matter,4);
 }
 {

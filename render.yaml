@@ -1,9 +1,12 @@
-# Single-service previews: the Rust server serves both the API and Wasm UI.
-# Connect this Blueprint to main once to activate PR deployments.
+# The stable channel (docs/release.md); the Rust server serves both the API and
+# Wasm UI. It deploys the `stable` branch when the Release PR merges, and Render
+# previews PRs into `stable` (the Release PR). The dev channel (`main`) is
+# self-hosted: deploy/dev-host.
 services:
   - type: web
     name: drawing-board
     runtime: docker
+    branch: stable
     plan: 0.5c-512mb
     region: ohio
     dockerfilePath: ./Dockerfile

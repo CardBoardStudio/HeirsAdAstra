@@ -16,8 +16,11 @@ use std::time::{Duration, Instant};
 /// cutover never strands a running shared game. At a cutover, archive the
 /// outgoing engine (rules/vNN-*, with `include_str!` arms in `boot`) and add its
 /// revision here.
-pub const SHARED_RULES: [&str; 5] = [
+pub const SHARED_RULES: [&str; 8] = [
     RULES,
+    "galactic-reach/34.39",
+    "galactic-reach/35.40",
+    "galactic-reach/36.41",
     "galactic-reach/33.38",
     "galactic-reach/32.37",
     "galactic-reach/31.36",
@@ -27,9 +30,43 @@ pub const SHARED_RULES: [&str; 5] = [
 pub fn shared_rules(rules: &str) -> Option<&'static str> {
     SHARED_RULES.iter().find(|r| **r == rules).copied()
 }
-pub const RULES: &str = "galactic-reach/34.39";
+pub const RULES: &str = "galactic-reach/37.42";
+/// How many rules-changing (`compat: breaking`) entries were pending in
+/// `changes/` when this was built (see build.rs). A dev build of `main` names its
+/// rules [`dev_rules`], so each breaking merge starts a new dev revision and a dev
+/// table keeps the engine it was dealt with (docs/release.md#dev-channel).
+pub const DEV_SERIES: &str = env!("GALACTIC_REACH_DEV_SERIES");
+/// The rules a dev build deals: `<RULES>+dev.<n>`. It never equals a released
+/// revision, so dev tables cannot be mistaken for released ones.
+pub fn dev_rules() -> String {
+    format!("{RULES}+dev.{DEV_SERIES}")
+}
+/// Engine sources for rules that are not compiled into this server: a dev
+/// server keeps each dev revision's [`APP_SOURCE`] and [`ADAPTER_SOURCE`] while a
+/// table still plays it.
+#[derive(Clone, Copy)]
+pub struct Sources<'a> {
+    pub app: &'a str,
+    pub adapter: &'a str,
+}
+/// The current engine (`prototypes/galactic-reach/app.js`).
+pub const APP_SOURCE: &str = ENGINE;
+/// The current headless adapter (`prototypes/galactic-reach/adapter.js`).
+pub const ADAPTER_SOURCE: &str = ADAPTER;
+/// A `'static` copy of `rules`, made once per distinct name (a dev server meets a
+/// handful of dev revisions).
+fn intern(rules: &str) -> &'static str {
+    static NAMES: std::sync::Mutex<Vec<&'static str>> = std::sync::Mutex::new(Vec::new());
+    let mut names = NAMES.lock().unwrap_or_else(|e| e.into_inner());
+    if let Some(name) = names.iter().find(|n| **n == rules) {
+        return name;
+    }
+    let name: &'static str = Box::leak(rules.to_owned().into_boxed_str());
+    names.push(name);
+    name
+}
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "Balance Package playtest";
+pub const EXPERIMENT: &str = "Integrated Playtest";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -48,6 +85,9 @@ mod legacy_v22;
 mod legacy_v23;
 mod legacy_v24;
 mod legacy_v25;
+mod legacy_v26;
+mod legacy_v27;
+mod legacy_v28;
 mod legacy_v3;
 mod legacy_v4;
 mod legacy_v5;
@@ -94,6 +134,11 @@ impl GalacticReach {
     pub fn with_rules(seed: [u8; 32], rules: &str) -> Result<Self, String> {
         let rules = match rules {
             RULES => RULES,
+            "galactic-reach/34.39" => "galactic-reach/34.39",
+            "galactic-reach/35.40" => "galactic-reach/35.40",
+            "galactic-reach/36.41" => "galactic-reach/36.41",
+
+            "galactic-reach/33.38" => "galactic-reach/33.38",
             "galactic-reach/4.9" => "galactic-reach/4.9",
             "galactic-reach/5.10" => "galactic-reach/5.10",
             "galactic-reach/6.11" => "galactic-reach/6.11",
@@ -123,7 +168,6 @@ impl GalacticReach {
             "galactic-reach/30.35" => "galactic-reach/30.35",
             "galactic-reach/31.36" => "galactic-reach/31.36",
             "galactic-reach/32.37" => "galactic-reach/32.37",
-            "galactic-reach/33.38" => "galactic-reach/33.38",
             _ => return Err("Unsupported rules version.".into()),
         };
         Self::initialize(seed, MATCH_TIMEOUT, rules)
@@ -134,6 +178,7 @@ impl GalacticReach {
         Self::boot(
             timeout,
             rules,
+            None,
             move |ctx| {
                 ctx.globals().set(
                     "gameRandom",
@@ -168,10 +213,30 @@ impl GalacticReach {
     ) -> Result<Self, String> {
         let rules = shared_rules(rules)
             .ok_or_else(|| format!("Shared tables cannot run {rules} on this server."))?;
-        Self::shared_from(rules, seats, victory_target, resume, shuffle)
+        Self::shared_from(rules, None, seats, victory_target, resume, shuffle)
+    }
+    /// [`Self::shared_on`] for rules this server does not compile in: a dev
+    /// revision the server kept, booted from its stored `sources`.
+    pub fn shared_source(
+        rules: &str,
+        sources: Sources,
+        seats: &[(String, bool); 4],
+        victory_target: u32,
+        resume: Option<&str>,
+        shuffle: impl FnMut(usize, &str) -> Vec<usize> + 'static,
+    ) -> Result<Self, String> {
+        Self::shared_from(
+            intern(rules),
+            Some(sources),
+            seats,
+            victory_target,
+            resume,
+            shuffle,
+        )
     }
     fn shared_from(
         rules: &'static str,
+        sources: Option<Sources>,
         seats: &[(String, bool); 4],
         victory_target: u32,
         resume: Option<&str>,
@@ -197,6 +262,7 @@ impl GalacticReach {
         Self::boot(
             SHARED_STEP,
             rules,
+            sources,
             move |ctx| {
                 ctx.globals().set(
                     "authorityShuffle",
@@ -257,6 +323,7 @@ impl GalacticReach {
     fn boot(
         timeout: Duration,
         rules: &'static str,
+        sources: Option<Sources>,
         globals: impl FnOnce(&rquickjs::Ctx) -> rquickjs::Result<()>,
         start: &str,
     ) -> Result<Self, String> {
@@ -270,72 +337,84 @@ impl GalacticReach {
         context
             .with(|ctx| {
                 globals(&ctx)?;
-                ctx.eval::<(), _>(match rules {
-                    RULES => ADAPTER,
-                    "galactic-reach/17.22" => include_str!("../rules/v17-adapter.js"),
-                    "galactic-reach/18.23" => include_str!("../rules/v18-adapter.js"),
-                    "galactic-reach/19.24" => include_str!("../rules/v19-adapter.js"),
-                    "galactic-reach/20.25" => include_str!("../rules/v20-adapter.js"),
-                    "galactic-reach/21.26" => include_str!("../rules/v21-adapter.js"),
-                    "galactic-reach/22.27" => include_str!("../rules/v22-adapter.js"),
-                    "galactic-reach/23.28" => include_str!("../rules/v23-adapter.js"),
-                    "galactic-reach/24.29" => include_str!("../rules/v24-adapter.js"),
-                    "galactic-reach/25.30" => include_str!("../rules/v25-adapter.js"),
-                    "galactic-reach/26.31" => include_str!("../rules/v26-adapter.js"),
-                    "galactic-reach/27.32" => include_str!("../rules/v27-adapter.js"),
-                    "galactic-reach/28.33" => include_str!("../rules/v28-adapter.js"),
-                    "galactic-reach/29.34" => include_str!("../rules/v29-adapter.js"),
-                    "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
-                    "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
-                    "galactic-reach/32.37" => include_str!("../rules/v32-adapter.js"),
-                    "galactic-reach/33.38" => include_str!("../rules/v33-adapter.js"),
-                    "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
-                    "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
-                    "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
-                    "galactic-reach/13.18" => include_str!("../rules/v13-adapter.js"),
-                    "galactic-reach/12.17" => include_str!("../rules/v12-adapter.js"),
-                    "galactic-reach/11.16" => include_str!("../rules/v11-adapter.js"),
-                    "galactic-reach/10.15" => include_str!("../rules/v10-adapter.js"),
-                    "galactic-reach/9.14" => include_str!("../rules/v9-adapter.js"),
-                    "galactic-reach/8.13" => include_str!("../rules/v8-adapter.js"),
-                    "galactic-reach/7.12" => include_str!("../rules/v7-adapter.js"),
-                    "galactic-reach/6.11" => include_str!("../rules/v6-adapter.js"),
-                    "galactic-reach/5.10" => include_str!("../rules/v5-adapter.js"),
-                    _ => include_str!("../rules/v4-adapter.js"),
+                ctx.eval::<(), _>(match (sources, rules) {
+                    (Some(s), _) => s.adapter,
+                    (None, rules) => match rules {
+                        RULES => ADAPTER,
+                        "galactic-reach/17.22" => include_str!("../rules/v17-adapter.js"),
+                        "galactic-reach/18.23" => include_str!("../rules/v18-adapter.js"),
+                        "galactic-reach/19.24" => include_str!("../rules/v19-adapter.js"),
+                        "galactic-reach/20.25" => include_str!("../rules/v20-adapter.js"),
+                        "galactic-reach/21.26" => include_str!("../rules/v21-adapter.js"),
+                        "galactic-reach/22.27" => include_str!("../rules/v22-adapter.js"),
+                        "galactic-reach/23.28" => include_str!("../rules/v23-adapter.js"),
+                        "galactic-reach/24.29" => include_str!("../rules/v24-adapter.js"),
+                        "galactic-reach/25.30" => include_str!("../rules/v25-adapter.js"),
+                        "galactic-reach/26.31" => include_str!("../rules/v26-adapter.js"),
+                        "galactic-reach/27.32" => include_str!("../rules/v27-adapter.js"),
+                        "galactic-reach/28.33" => include_str!("../rules/v28-adapter.js"),
+                        "galactic-reach/29.34" => include_str!("../rules/v29-adapter.js"),
+                        "galactic-reach/30.35" => include_str!("../rules/v30-adapter.js"),
+                        "galactic-reach/31.36" => include_str!("../rules/v31-adapter.js"),
+                        "galactic-reach/32.37" => include_str!("../rules/v32-adapter.js"),
+                        "galactic-reach/33.38" => include_str!("../rules/v33-adapter.js"),
+                        "galactic-reach/34.39" => include_str!("../rules/v34-adapter.js"),
+                        "galactic-reach/35.40" => include_str!("../rules/v35-adapter.js"),
+                        "galactic-reach/36.41" => include_str!("../rules/v36-adapter.js"),
+                        "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
+                        "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
+                        "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
+                        "galactic-reach/13.18" => include_str!("../rules/v13-adapter.js"),
+                        "galactic-reach/12.17" => include_str!("../rules/v12-adapter.js"),
+                        "galactic-reach/11.16" => include_str!("../rules/v11-adapter.js"),
+                        "galactic-reach/10.15" => include_str!("../rules/v10-adapter.js"),
+                        "galactic-reach/9.14" => include_str!("../rules/v9-adapter.js"),
+                        "galactic-reach/8.13" => include_str!("../rules/v8-adapter.js"),
+                        "galactic-reach/7.12" => include_str!("../rules/v7-adapter.js"),
+                        "galactic-reach/6.11" => include_str!("../rules/v6-adapter.js"),
+                        "galactic-reach/5.10" => include_str!("../rules/v5-adapter.js"),
+                        _ => include_str!("../rules/v4-adapter.js"),
+                    },
                 })?;
                 ctx.eval::<(), _>(include_str!("../rules/replay-view.js"))?;
-                ctx.eval::<(), _>(match rules {
-                    RULES => ENGINE,
-                    "galactic-reach/17.22" => include_str!("../rules/v17-app.js"),
-                    "galactic-reach/18.23" => include_str!("../rules/v18-app.js"),
-                    "galactic-reach/19.24" => include_str!("../rules/v19-app.js"),
-                    "galactic-reach/20.25" => include_str!("../rules/v20-app.js"),
-                    "galactic-reach/21.26" => include_str!("../rules/v21-app.js"),
-                    "galactic-reach/22.27" => include_str!("../rules/v22-app.js"),
-                    "galactic-reach/23.28" => include_str!("../rules/v23-app.js"),
-                    "galactic-reach/24.29" => include_str!("../rules/v24-app.js"),
-                    "galactic-reach/25.30" => include_str!("../rules/v25-app.js"),
-                    "galactic-reach/26.31" => include_str!("../rules/v26-app.js"),
-                    "galactic-reach/27.32" => include_str!("../rules/v27-app.js"),
-                    "galactic-reach/28.33" => include_str!("../rules/v28-app.js"),
-                    "galactic-reach/29.34" => include_str!("../rules/v29-app.js"),
-                    "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
-                    "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
-                    "galactic-reach/32.37" => include_str!("../rules/v32-app.js"),
-                    "galactic-reach/33.38" => include_str!("../rules/v33-app.js"),
-                    "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
-                    "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
-                    "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
-                    "galactic-reach/13.18" => include_str!("../rules/v13-app.js"),
-                    "galactic-reach/12.17" => include_str!("../rules/v12-app.js"),
-                    "galactic-reach/11.16" => include_str!("../rules/v11-app.js"),
-                    "galactic-reach/10.15" => include_str!("../rules/v10-app.js"),
-                    "galactic-reach/9.14" => include_str!("../rules/v9-app.js"),
-                    "galactic-reach/8.13" => include_str!("../rules/v8-app.js"),
-                    "galactic-reach/7.12" => include_str!("../rules/v7-app.js"),
-                    "galactic-reach/6.11" => include_str!("../rules/v6-app.js"),
-                    "galactic-reach/5.10" => include_str!("../rules/v5-app.js"),
-                    _ => include_str!("../rules/v4-app.js"),
+                ctx.eval::<(), _>(match (sources, rules) {
+                    (Some(s), _) => s.app,
+                    (None, rules) => match rules {
+                        RULES => ENGINE,
+                        "galactic-reach/17.22" => include_str!("../rules/v17-app.js"),
+                        "galactic-reach/18.23" => include_str!("../rules/v18-app.js"),
+                        "galactic-reach/19.24" => include_str!("../rules/v19-app.js"),
+                        "galactic-reach/20.25" => include_str!("../rules/v20-app.js"),
+                        "galactic-reach/21.26" => include_str!("../rules/v21-app.js"),
+                        "galactic-reach/22.27" => include_str!("../rules/v22-app.js"),
+                        "galactic-reach/23.28" => include_str!("../rules/v23-app.js"),
+                        "galactic-reach/24.29" => include_str!("../rules/v24-app.js"),
+                        "galactic-reach/25.30" => include_str!("../rules/v25-app.js"),
+                        "galactic-reach/26.31" => include_str!("../rules/v26-app.js"),
+                        "galactic-reach/27.32" => include_str!("../rules/v27-app.js"),
+                        "galactic-reach/28.33" => include_str!("../rules/v28-app.js"),
+                        "galactic-reach/29.34" => include_str!("../rules/v29-app.js"),
+                        "galactic-reach/30.35" => include_str!("../rules/v30-app.js"),
+                        "galactic-reach/31.36" => include_str!("../rules/v31-app.js"),
+                        "galactic-reach/32.37" => include_str!("../rules/v32-app.js"),
+                        "galactic-reach/33.38" => include_str!("../rules/v33-app.js"),
+                        "galactic-reach/34.39" => include_str!("../rules/v34-app.js"),
+                        "galactic-reach/35.40" => include_str!("../rules/v35-app.js"),
+                        "galactic-reach/36.41" => include_str!("../rules/v36-app.js"),
+                        "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
+                        "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
+                        "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
+                        "galactic-reach/13.18" => include_str!("../rules/v13-app.js"),
+                        "galactic-reach/12.17" => include_str!("../rules/v12-app.js"),
+                        "galactic-reach/11.16" => include_str!("../rules/v11-app.js"),
+                        "galactic-reach/10.15" => include_str!("../rules/v10-app.js"),
+                        "galactic-reach/9.14" => include_str!("../rules/v9-app.js"),
+                        "galactic-reach/8.13" => include_str!("../rules/v8-app.js"),
+                        "galactic-reach/7.12" => include_str!("../rules/v7-app.js"),
+                        "galactic-reach/6.11" => include_str!("../rules/v6-app.js"),
+                        "galactic-reach/5.10" => include_str!("../rules/v5-app.js"),
+                        _ => include_str!("../rules/v4-app.js"),
+                    },
                 })?;
                 ctx.eval::<(), _>(start)
             })
@@ -402,7 +481,13 @@ impl GameAdapter for GalacticReach {
         if self.snapshot.active == Some(seat) {
             self.snapshot.legal.clone()
         } else {
-            vec![]
+            self.context
+                .with(|ctx| {
+                    ctx.eval::<String, _>(format!("JSON.stringify(game.legalActions({seat}))"))
+                })
+                .ok()
+                .and_then(|json| serde_json::from_str(&json).ok())
+                .unwrap_or_default()
         }
     }
     fn apply_action(&mut self, seat: usize, action: Value) -> Result<(), String> {
@@ -410,7 +495,7 @@ impl GameAdapter for GalacticReach {
         if Instant::now() >= deadline {
             return Err(SIMULATION_TIMEOUT.into());
         }
-        if self.snapshot.active != Some(seat) || !self.snapshot.legal.contains(&action) {
+        if !self.legal_actions(seat).contains(&action) {
             return Err("Illegal action.".into());
         }
         self.context
@@ -440,18 +525,18 @@ pub enum Strategy {
 impl Strategy {
     pub fn version(self) -> &'static str {
         match self {
-            Self::Military => "gr-military/26",
-            Self::Economy => "gr-economy/26",
-            Self::Expansion => "gr-expansion/26",
-            Self::Wanderer => "gr-wanderer/26",
+            Self::Military => "gr-military/29",
+            Self::Economy => "gr-economy/29",
+            Self::Expansion => "gr-expansion/29",
+            Self::Wanderer => "gr-wanderer/29",
         }
     }
     pub fn parse(version: &str) -> Option<Self> {
         match version {
-            "gr-military/26" => Some(Self::Military),
-            "gr-economy/26" => Some(Self::Economy),
-            "gr-expansion/26" => Some(Self::Expansion),
-            "gr-wanderer/26" => Some(Self::Wanderer),
+            "gr-military/29" => Some(Self::Military),
+            "gr-economy/29" => Some(Self::Economy),
+            "gr-expansion/29" => Some(Self::Expansion),
+            "gr-wanderer/29" => Some(Self::Wanderer),
             _ => None,
         }
     }
@@ -463,14 +548,62 @@ pub struct BuiltinAgent {
 fn number(v: &Value) -> f64 {
     v.as_f64().unwrap_or(0.0)
 }
+fn coord(s: &str) -> Option<(i32, i32)> {
+    let (q, r) = s.split_once(',')?;
+    Some((q.parse().ok()?, r.parse().ok()?))
+}
+fn point_distance((aq, ar): (i32, i32), (bq, br): (i32, i32)) -> f64 {
+    ((aq - bq).abs() + (ar - br).abs() + (aq + ar - bq - br).abs()) as f64 / 2.0
+}
 fn distance(a: &str, b: &str) -> f64 {
-    let coord = |s: &str| -> Vec<f64> { s.split(',').filter_map(|n| n.parse().ok()).collect() };
-    let a = coord(a);
-    let b = coord(b);
-    if a.len() != 2 || b.len() != 2 {
-        return 100.0;
-    }
-    ((a[0] - b[0]).abs() + (a[1] - b[1]).abs() + (a[0] + a[1] - b[0] - b[1]).abs()) / 2.0
+    coord(a)
+        .zip(coord(b))
+        .map_or(100.0, |(a, b)| point_distance(a, b))
+}
+thread_local! {
+    static PORTAL_DISTANCES: RefCell<(Value,f64,Vec<f64>)> = const { RefCell::new((Value::Null,0.0,Vec::new())) };
+}
+// Cache only public geometry. Policies never recompute the same 18-edge metric
+// for every candidate Move in a full game; archived views use physical distance.
+fn travel_distance(view: &Value, a: &str, b: &str) -> f64 {
+    let Some(links) = view["portalLinks"].as_object() else {
+        return distance(a, b);
+    };
+    let cost = view["portalMovementCost"].as_f64().unwrap_or(2.0);
+    let index = |c: (i32, i32)| {
+        ((-10..=10).contains(&c.0) && (-10..=10).contains(&c.1))
+            .then_some(((c.0 + 10) * 21 + c.1 + 10) as usize)
+    };
+    let Some((a, b)) = coord(a).and_then(index).zip(coord(b).and_then(index)) else {
+        return distance(a, b);
+    };
+    PORTAL_DISTANCES.with(|cache| {
+        let mut cache = cache.borrow_mut();
+        if cache.0 != view["portalLinks"] || cache.1 != cost || cache.2.is_empty() {
+            let pairs: Vec<_> = links
+                .iter()
+                .filter_map(|(entry, exit)| coord(entry).zip(exit.as_str().and_then(coord)))
+                .collect();
+            let points: Vec<_> = (-10..=10)
+                .flat_map(|q| (-10..=10).map(move |r| (q, r)))
+                .collect();
+            let matrix = points
+                .iter()
+                .flat_map(|a| {
+                    points.iter().map(|b| {
+                        pairs
+                            .iter()
+                            .map(|(entry, exit)| {
+                                point_distance(*a, *entry) + cost + point_distance(*exit, *b)
+                            })
+                            .fold(point_distance(*a, *b), f64::min)
+                    })
+                })
+                .collect();
+            *cache = (view["portalLinks"].clone(), cost, matrix);
+        }
+        cache.2[a * 441 + b]
+    })
 }
 fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
     view["fleets"]
@@ -484,7 +617,10 @@ fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
 /// Data, printed Prestige (reusable Prestige weighted x3) and whether it joins the
 /// military deck. Policy 26 meets these keys only in 31.36 games, so its play under
 /// earlier rules is unchanged.
-const CAPACITY_CARDS: [(&str, [f64; 4], f64, bool); 36] = [
+const CAPACITY_CARDS: [(&str, [f64; 4], f64, bool); 39] = [
+    ("signalRelay", [0.0, 2.0, 0.0, 1.0], 0.0, false),
+    ("surveyNetwork", [0.0, 0.0, 1.0, 2.0], 0.0, false),
+    ("tacticalBriefing", [1.0, 0.0, 0.0, 2.0], 0.0, false),
     ("ionThrusters", [0.0, 5.0, 0.0, 1.0], 0.0, false),
     ("slipstreamCharts", [0.0, 1.0, 0.0, 5.0], 0.0, false),
     ("strikeVector", [2.0, 6.0, 0.0, 0.0], 0.0, false),
@@ -606,7 +742,94 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
             .filter(|g| g["key"] == key)
             .map(|g| number(&g["count"]))
             .sum::<f64>();
-    Some(10.0 + cost.iter().sum::<f64>() + prestige * 5.0 - owned * 8.0)
+    let stats = &view["cardStats"][key];
+    if !stats.is_object() {
+        return Some(10.0 + cost.iter().sum::<f64>() + prestige * 5.0 - owned * 8.0);
+    }
+    let prestige = number(&stats["gainPrestige"]);
+    let size = number(&me["handCount"])
+        + number(&me["deckCount"])
+        + me["discard"].as_array().map_or(0, Vec::len) as f64
+        + me["inPlay"].as_array().map_or(0, Vec::len) as f64;
+    let leader = view["players"]
+        .as_array()?
+        .iter()
+        .map(|p| number(&p["prestige"]))
+        .fold(0.0, f64::max);
+    let horizon = ((view["victoryTarget"].as_f64().unwrap_or(40.0) - leader) / 5.0)
+        .ceil()
+        .clamp(1.0, 5.0);
+    let draw = number(&stats["draw"]);
+    let mut value = 6.0 + prestige * 9.0 + number(&stats["prestige"]) * horizon.min(4.0) * 8.0;
+    value += draw * (7.0 + size.min(18.0) * 0.25) * (horizon / 2.0).min(1.0);
+    if military {
+        let power = |s: &Value| {
+            number(&s["attack"])
+                + number(&s["shield"]) * 0.8
+                + if s["pierce"] == true { 2.0 } else { 0.0 }
+                + number(&s["victoryPrestige"]) * 1.5
+        };
+        let mut tactics: Vec<f64> = me["military"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .map(|c| power(&view["cardStats"][c["key"].as_str().unwrap_or("")]))
+            .collect();
+        tactics.sort_by(|a, b| b.total_cmp(a));
+        let improvement = power(stats) - tactics.get(2).copied().unwrap_or(1.0);
+        value = 10.0 + improvement * 5.0;
+        if tactics.len() >= 3 && improvement <= 0.0 {
+            value -= 18.0;
+        }
+    } else {
+        value -= owned * if draw >= 2.0 { 9.0 } else { 12.0 };
+        match stats["order"].as_str().unwrap_or("") {
+            "construct" => {
+                value += if bot_cards(me, "construct") < 3.0 {
+                    15.0
+                } else {
+                    5.0
+                }
+            }
+            "move" => {
+                value += if bot_cards(me, "move") < 4.0 {
+                    12.0
+                } else {
+                    3.0
+                }
+            }
+            "colonize" => {
+                value += if bot_units(view, seat, "settler") > 0.0 {
+                    (16.0 - bot_cards(me, "colonize") * 8.0).max(0.0)
+                } else {
+                    -15.0
+                }
+            }
+            _ => {}
+        }
+        value += stats["limits"]
+            .as_object()
+            .into_iter()
+            .flat_map(|m| m.values())
+            .map(|n| number(n).min(2.0) * 1.5)
+            .sum::<f64>();
+        if draw == 0.0 && prestige == 0.0 {
+            value -= (size - 10.0).max(0.0) * 1.3;
+        }
+        if horizon == 1.0 && prestige == 0.0 {
+            value -= 15.0;
+        }
+    }
+    let income = bot_income(view, seat);
+    value -= cost
+        .iter()
+        .enumerate()
+        .map(|(i, c)| {
+            c * (0.5 + 1.0 / (number(&income[RESOURCE_KEYS[i]]) + 1.0))
+                + (c - bot_limit(view, seat, RESOURCE_KEYS[i])).max(0.0) * 3.0
+        })
+        .sum::<f64>();
+    Some(value)
 }
 /// The resource limits a rival still needs for its best-valued market card.
 fn capacity_need(view: &Value, seat: usize) -> Option<[f64; 4]> {
@@ -638,15 +861,20 @@ fn bot_order(key: &str) -> &str {
         | "ionThrusters"
         | "slipstreamCharts"
         | "strikeVector"
-        | "foldSpaceGate" => "move",
+        | "foldSpaceGate"
+        | "starfarersCompass"
+        | "horizonSail"
+        | "cinderDrive" => "move",
         "construct"
         | "modularConstruction"
         | "orbitalShipyards"
         | "prefabYards"
         | "orbitalFoundry"
-        | "worldEngine" => "construct",
+        | "worldEngine"
+        | "stellarCrucible"
+        | "moonforge" => "construct",
         "colonize" | "dropColonyModules" | "genesisSeedVault" | "seedArk" | "colonyPods"
-        | "genesisCharter" => "colonize",
+        | "genesisCharter" | "evergreenArk" => "colonize",
         "excavate" => "excavate",
         "probe" => "probe",
         _ => "other",
@@ -693,6 +921,56 @@ fn bot_yards(view: &Value, seat: usize) -> usize {
         .filter(|p| p["owner"] == json!(seat) && p["upgrade"] == "starbase")
         .count()
 }
+// Public Fleet approaches to each owned Colony, including weighted portal paths.
+fn colony_defense(view: &Value, seat: usize) -> Vec<(&str, f64, f64)> {
+    if let Some(rows) = view["_rival_colony_defense"].as_array() {
+        return rows
+            .iter()
+            .filter_map(|r| Some((r[0].as_str()?, number(&r[1]), number(&r[2]))))
+            .collect();
+    }
+    view["planets"]
+        .as_object()
+        .into_iter()
+        .flatten()
+        .filter(|(_, p)| p["owner"] == json!(seat) && p["hasColony"] == true)
+        .map(|(coord, _)| {
+            let attackers = view["fleets"]
+                .as_object()
+                .into_iter()
+                .flatten()
+                .filter(|(at, _)| travel_distance(view, at, coord) <= 3.0)
+                .flat_map(|(_, g)| g.as_object().into_iter().flatten())
+                .filter(|(owner, _)| *owner != &seat.to_string())
+                .map(|(_, f)| number(&f["fleet"]))
+                .fold(0.0, f64::max);
+            (
+                coord.as_str(),
+                attackers,
+                number(&view["fleets"][coord][seat.to_string()]["fleet"]),
+            )
+        })
+        .collect()
+}
+fn planning_protection(view: &Value, seat: usize) -> [f64; 4] {
+    let settlers = bot_units(view, seat, "settler") > 0.0;
+    let explorers = bot_units(view, seat, "explorer") > 0.0;
+    let mut keep: [f64; 4] = [
+        if explorers { 1.0 } else { 0.0 },
+        if explorers { 1.0 } else { 0.0 },
+        if settlers { 2.0 } else { 1.0 },
+        if explorers { 2.0 } else { 0.0 },
+    ];
+    if colony_defense(view, seat)
+        .iter()
+        .any(|(_, a, g)| *a > 0.0 && *g < *a + 1.0)
+    {
+        for (i, c) in [2.0_f64, 1.0, 1.0, 0.0].into_iter().enumerate() {
+            keep[i] = keep[i].max(c);
+        }
+    }
+    keep
+}
 fn bot_cost(view: &Value, seat: usize) -> Value {
     let me = &view["players"][seat];
     let hand = me["hand"].as_array().map(Vec::as_slice).unwrap_or(&[]);
@@ -713,7 +991,9 @@ fn bot_cost(view: &Value, seat: usize) -> Value {
         }
         if number(&f["explorer"]) > 0.0
             && p["special"] == "relic"
-            && hand.iter().any(|c| c["key"] == "excavate")
+            && hand
+                .iter()
+                .any(|c| c["key"] == "excavate" || c["key"] == "probe")
         {
             return json!({"matter":1,"energy":1,"data":2});
         }
@@ -900,15 +1180,11 @@ fn bot_threat(view: &Value, seat: usize, moving: &Value, destination: &str, sour
                 .into_iter()
                 .flatten()
                 .filter_map(move |(owner, enemy)| {
-                    let range = if number(&enemy["settler"]) > 0.0 {
-                        2.0
-                    } else {
-                        3.0
-                    };
+                    let range = 3.0; // Fleets can leave their slower Settlers behind.
                     let fleets = number(&enemy["fleet"]);
                     if owner != &seat.to_string()
                         && fleets > 0.0
-                        && distance(coord, destination) <= range
+                        && travel_distance(view, coord, destination) <= range
                     {
                         Some(if fleets > defense { 1.0 } else { 0.0 })
                     } else {
@@ -1109,10 +1385,31 @@ impl BuiltinAgent {
                     _ => {
                         let coord = action["coord"].as_str().unwrap();
                         let group = &view["fleets"][coord][seat.to_string()];
-                        if bot_threat(view, seat, group, coord, coord) > 0.0 {
-                            115.0
-                        } else if military && bot_units(view, seat, "fleet") < 4.0 {
+                        let urgent = colony_defense(view, seat)
+                            .into_iter()
+                            .filter(|(at, a, g)| {
+                                *a > 0.0
+                                    && *g < *a + 1.0
+                                    && number(&group["fleet"]) < *a + 1.0
+                                    && travel_distance(view, coord, at) <= 6.0
+                            })
+                            .map(|(at, _, _)| 120.0 - travel_distance(view, coord, at) * 2.0)
+                            .fold(0.0, f64::max);
+                        let enemy = view["fleets"]
+                            .as_object()
+                            .into_iter()
+                            .flat_map(|g| g.values())
+                            .flat_map(|g| g.as_object().into_iter().flatten())
+                            .any(|(id, f)| *id != seat.to_string() && number(&f["fleet"]) > 0.0);
+                        if urgent > 0.0 {
+                            urgent
+                        } else if military && bot_units(view, seat, "fleet") < 5.0 {
                             81.0
+                        } else if enemy
+                            && bot_units(view, seat, "fleet")
+                                < (colony_defense(view, seat).len() as f64).min(3.0)
+                        {
+                            80.0
                         } else {
                             8.0
                         }
@@ -1144,6 +1441,13 @@ impl BuiltinAgent {
                     })
                     .sum();
                 let key = action["key"].as_str().unwrap_or("");
+                let cantrip = me["hand"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .any(|c| c["id"] == action["card"] && c["level"] == 3)
+                    && (number(&me["deckCount"]) > 0.0
+                        || me["discard"].as_array().is_some_and(|p| !p.is_empty()));
                 let last_build = bot_yards(view, seat) == 0
                     && bot_order(key) == "construct"
                     && me["hand"]
@@ -1155,6 +1459,8 @@ impl BuiltinAgent {
                         == 1;
                 if last_build {
                     -20.0
+                } else if cantrip {
+                    80.0 + need
                 } else if need > 0.0 {
                     45.0 + need * 4.0
                 } else if deficit && bankable > 0.0 {
@@ -1218,15 +1524,16 @@ impl BuiltinAgent {
                             && can_settle_at(p, coord, escorted)
                             && bot_safe_fight(view, seat, fleet, coord)
                     };
-                    if goal && distance(from, coord) > distance(to, coord) {
+                    if goal && travel_distance(view, from, coord) > travel_distance(view, to, coord)
+                    {
                         best = best.max(
                             (if explorer {
                                 if known_relic { 90.0 } else { 70.0 }
                             } else {
                                 92.0
-                            }) + distance(from, coord)
-                                - distance(to, coord)
-                                - distance(to, coord) * 0.3,
+                            }) + travel_distance(view, from, coord)
+                                - travel_distance(view, to, coord)
+                                - travel_distance(view, to, coord) * 0.3,
                         );
                     }
                 }
@@ -1245,17 +1552,34 @@ impl BuiltinAgent {
                                 ) >= number(&other["explorer"]);
                             if !escape
                                 && bot_safe_fight(view, seat, fleet, coord)
-                                && distance(from, coord) > distance(to, coord)
+                                && travel_distance(view, from, coord)
+                                    > travel_distance(view, to, coord)
                             {
                                 best = best.max(
                                     (if military { 94.0 } else { 80.0 })
-                                        - distance(to, coord) * 0.3,
+                                        - travel_distance(view, to, coord) * 0.3,
                                 );
                             }
                         }
                     }
                 }
                 if !explorer {
+                    let moving = number(&fleet["fleet"]);
+                    let vacates = colony_defense(view, seat).iter().any(|(at, a, g)| {
+                        *at == from && *a > 0.0 && *g >= *a + 1.0 && *g - moving < *a + 1.0
+                    });
+                    for (at, attackers, guards) in colony_defense(view, seat) {
+                        if attackers == 0.0 {
+                            continue;
+                        }
+                        if at != from
+                            && guards < attackers + 1.0
+                            && moving > 0.0
+                            && travel_distance(view, to, at) < travel_distance(view, from, at)
+                        {
+                            best = best.max(120.0 - travel_distance(view, to, at) * 0.5);
+                        }
+                    }
                     let here_risk = bot_threat(view, seat, fleet, from, from);
                     let there_risk = bot_threat(view, seat, fleet, to, from);
                     if here_risk > there_risk {
@@ -1268,7 +1592,8 @@ impl BuiltinAgent {
                                 && bot_threat(view, seat, ally, coord, coord) > 0.0;
                             if coord != from
                                 && (escort || number(&ally["fleet"]) > 0.0)
-                                && distance(to, coord) < distance(from, coord)
+                                && travel_distance(view, to, coord)
+                                    < travel_distance(view, from, coord)
                             {
                                 best = best.max(if escort {
                                     99.0
@@ -1281,6 +1606,9 @@ impl BuiltinAgent {
                         }
                     }
                     best -= there_risk * if settlers > 0.0 { 130.0 } else { 50.0 };
+                    if vacates {
+                        best -= 120.0;
+                    }
                     // Fleets may leave Settlers behind (#movement), weighed like moving them into danger.
                     let left = number(&here_fleet["settler"]) - settlers;
                     if split && left > 0.0 {
@@ -1300,8 +1628,38 @@ impl BuiltinAgent {
                 }
                 best
             }
-            "probe" => 150.0,
-            "excavate" => 160.0,
+            "probe" => {
+                let known = view["planets"].as_object().is_some_and(|ps| {
+                    ps.values().any(|p| {
+                        (p["special"] == "relic" || p["relicSignal"] == true)
+                            && p["relicClaimed"] != true
+                    })
+                });
+                if view["combinedProbe"] == true && known {
+                    -10.0
+                } else {
+                    150.0
+                }
+            }
+            "excavate" => {
+                let key = view["relicRow"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .find(|c| c["id"] == action["relic"])
+                    .and_then(|c| c["key"].as_str())
+                    .unwrap_or("");
+                let stats = &view["cardStats"][key];
+                160.0
+                    + number(&stats["draw"]) * 4.0
+                    + stats["limits"]
+                        .as_object()
+                        .into_iter()
+                        .flat_map(|m| m.values())
+                        .map(number)
+                        .sum::<f64>()
+                        * 2.0
+            }
             // 31.36: permanent Prestige, capacity and big draws come first.
             "special"
                 if matches!(
@@ -1312,6 +1670,12 @@ impl BuiltinAgent {
                             | "hyperspaceVaults"
                             | "commandNexus"
                             | "strategyCore"
+                            | "signalRelay"
+                            | "surveyNetwork"
+                            | "tacticalBriefing"
+                            | "memoryPrism"
+                            | "keepersArchive"
+                            | "foldedWarehouse"
                     )
                 ) =>
             {
@@ -1334,15 +1698,33 @@ impl BuiltinAgent {
 
             "buy_effect" => 100.0,
             "upgrade" => {
-                let cost = bot_cost(view, seat);
                 let r = action["resource"].as_str().unwrap();
+                let card = me["hand"]
+                    .as_array()
+                    .into_iter()
+                    .chain(me["discard"].as_array())
+                    .chain(me["inPlay"].as_array())
+                    .flatten()
+                    .find(|c| c["id"] == action["card"]);
+                let level_iii = card.is_some_and(|c| c["upgraded"] == true);
+                let price = if level_iii { 3.0 } else { 2.0 };
+                let index = RESOURCE_KEYS.iter().position(|k| *k == r).unwrap();
+                let leader = view["players"]
+                    .as_array()
+                    .into_iter()
+                    .flatten()
+                    .map(|p| number(&p["prestige"]))
+                    .fold(0.0, f64::max);
                 if bot_yards(view, seat) > 0
-                    && number(&me["resources"][r]) >= (number(&cost[r]).min(2.0) + 2.0)
+                    && number(&me["resources"][r]) >= planning_protection(view, seat)[index] + price
+                    && view["victoryTarget"].as_f64().unwrap_or(40.0) - leader > 3.0
                 {
-                    if action["key"] == "construct" {
-                        76.0
+                    if level_iii {
+                        116.0
+                    } else if card.is_some_and(|c| c["key"] == "construct") {
+                        112.0
                     } else {
-                        70.0
+                        103.0
                     }
                 } else {
                     -5.0
@@ -1353,7 +1735,17 @@ impl BuiltinAgent {
                 if bot_yards(view, seat) == 0 {
                     -10.0
                 } else {
-                    capacity_value(view, seat, key).map_or(-10.0, |v| 60.0 + v)
+                    let cost = observed_cost(view, key).unwrap_or([0.0; 4]);
+                    let keep = planning_protection(view, seat);
+                    if RESOURCE_KEYS.iter().enumerate().any(|(i, r)| {
+                        number(&me["resources"][*r]) - cost[i]
+                            < keep[i].min(number(&me["resources"][*r]))
+                    }) {
+                        -10.0
+                    } else {
+                        capacity_value(view, seat, key)
+                            .map_or(-10.0, |v| if v > 0.0 { 60.0 + v } else { -10.0 })
+                    }
                 }
             }
             "buy" => {
@@ -1484,11 +1876,20 @@ impl PlayerAgent<GalacticReach> for BuiltinAgent {
     }
     fn select_action(&mut self, observation: &Value, legal: &[Value]) -> usize {
         let random = matches!(self.strategy, Strategy::Wanderer);
+        // Hundreds of legal split moves share the same public defense plan.
+        // Cache it only for this decision, never across changes to the table.
+        let mut planned = observation.clone();
+        let defense: Vec<Value> =
+            colony_defense(observation, observation["seat"].as_u64().unwrap() as usize)
+                .into_iter()
+                .map(|(at, a, g)| json!([at, a, g]))
+                .collect();
+        planned["_rival_colony_defense"] = json!(defense);
         legal
             .iter()
             .enumerate()
             .map(|(i, a)| {
-                let score = self.score(observation, a);
+                let score = self.score(&planned, a);
                 (
                     i,
                     if random && score > 0.0 {
@@ -1584,12 +1985,117 @@ pub fn agent(version: &str, seed: [u8; 32]) -> Result<Box<dyn PlayerAgent<Galact
     if let Some(strategy) = legacy_v25::Strategy::parse(version) {
         return Ok(Box::new(legacy_v25::BuiltinAgent::new(strategy, seed)));
     }
+    if let Some(strategy) = legacy_v26::Strategy::parse(version) {
+        return Ok(Box::new(legacy_v26::BuiltinAgent::new(strategy, seed)));
+    }
+    if let Some(strategy) = legacy_v27::Strategy::parse(version) {
+        return Ok(Box::new(legacy_v27::BuiltinAgent::new(strategy, seed)));
+    }
+    if let Some(strategy) = legacy_v28::Strategy::parse(version) {
+        return Ok(Box::new(legacy_v28::BuiltinAgent::new(strategy, seed)));
+    }
     Err("Unsupported Galactic Reach policy version.".into())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn strategic_view() -> Value {
+        json!({"seat":0,"round":8,"victoryTarget":40,"players":[
+            {"id":0,"prestige":3,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":12,"energy":12,"biomass":12,"data":12},"hand":[],"discard":[],"inPlay":[],"deckContents":[],"deckCount":1,"handCount":0,"military":[]},
+            {"id":1,"prestige":3,"resources":{}},{"id":2,"prestige":3,"resources":{}},{"id":3,"prestige":3,"resources":{}}],
+            "planets":{"0,0":{"cluster":0,"type":"matter","owner":0,"hasColony":true},"-1,0":{"cluster":0,"type":"energy","owner":0,"upgrade":"starbase"}},
+            "clusters":[{"kind":"world","center":"0,0","coords":["0,0","-1,0"]}],"fleets":{},"relicRow":[],"market":[],"marketCosts":[],"cardStats":{}})
+    }
+    #[test]
+    fn strategic_rivals_upgrade_ii_in_play_before_discretionary_purchases() {
+        let mut view = strategic_view();
+        view["players"][0]["inPlay"] =
+            json!([{"id":"starter","key":"move","starter":true,"upgraded":true,"level":2}]);
+        view["players"][0]["resources"] = json!({"matter":0,"energy":0,"biomass":1,"data":3});
+        for strategy in [Strategy::Military, Strategy::Economy, Strategy::Expansion] {
+            let agent = BuiltinAgent::new(strategy, [17; 32]);
+            assert!(
+                agent.score(
+                    &view,
+                    &json!({"type":"upgrade","card":"starter","resource":"data"})
+                ) > 110.0
+            );
+            view["players"][0]["resources"]["data"] = json!(2);
+            assert!(
+                agent.score(
+                    &view,
+                    &json!({"type":"upgrade","card":"starter","resource":"data"})
+                ) < 0.0
+            );
+            view["players"][0]["resources"]["data"] = json!(3);
+        }
+        assert_eq!(
+            agent("gr-economy/28", [17; 32]).unwrap().policy_version(),
+            "gr-economy/28"
+        );
+        assert_eq!(Strategy::Economy.version(), "gr-economy/29");
+    }
+    #[test]
+    fn strategic_defense_targets_colonies_and_retains_a_guard() {
+        let mut view = strategic_view();
+        view["fleets"] = json!({"0,2":{"1":{"fleet":2}},"-2,0":{"0":{"fleet":3}}});
+        let mut agent = BuiltinAgent::new(Strategy::Economy, [19; 32]);
+        assert!(
+            agent.score(
+                &view,
+                &json!({"type":"build","kind":"fleet","coord":"-1,0"})
+            ) > 110.0
+        );
+        let reinforce = json!({"type":"move","source":"-2,0","destination":"0,0","moveGroup":"ships","units":{"fleet":3}});
+        assert!(agent.score(&view, &reinforce) > 110.0);
+        let unchanged = view.clone();
+        let choices = [reinforce.clone(), json!({"type":"pass"})];
+        assert_eq!(agent.select_action(&view, &choices), 0);
+        assert_eq!(view, unchanged, "Planning never mutates the observation");
+        view["fleets"].as_object_mut().unwrap().remove("0,2");
+        assert_eq!(
+            agent.select_action(&view, &choices),
+            1,
+            "A changed board gets a fresh defense plan"
+        );
+        view["fleets"] = json!({"0,2":{"1":{"fleet":2}},"0,0":{"0":{"fleet":3}}});
+        assert!(agent.score(&view,&json!({"type":"move","source":"0,0","destination":"0,2","moveGroup":"ships","units":{"fleet":3}}))<0.0);
+        view["planets"]["8,-10"] = json!({"owner":0,"hasColony":true});
+        view["fleets"] = json!({"-10,8":{"1":{"fleet":2}}});
+        view["portalLinks"] = json!({"-10,8":"8,-10","8,-10":"-10,8"});
+        view["portalMovementCost"] = json!(2);
+        assert!(
+            colony_defense(&view, 0)
+                .iter()
+                .any(|(at, a, _)| *at == "8,-10" && *a == 2.0)
+        );
+    }
+    #[test]
+    fn strategic_card_selection_uses_draw_effects_and_cantrip_conversions() {
+        let mut view = strategic_view();
+        view["market"] = json!([{"key":"signalRelay"},{"key":"worldEngine"}]);
+        view["marketCosts"] = json!([{"energy":2,"data":1},{"matter":8,"energy":1}]);
+        view["cardStats"] = json!({"signalRelay":{"draw":2,"order":"special"},"worldEngine":{"draw":0,"order":"construct"}});
+        assert!(capacity_value(&view, 0, "signalRelay") > capacity_value(&view, 0, "worldEngine"));
+        view["players"][0]["hand"] =
+            json!([{"id":"iii","key":"move","starter":true,"upgraded":true,"level":3}]);
+        let agent = BuiltinAgent::new(Strategy::Expansion, [17; 32]);
+        assert!(
+            agent.score(
+                &view,
+                &json!({"type":"resource","card":"iii","key":"move","gain":{"energy":2}})
+            ) > 70.0
+        );
+        view["relicRow"] =
+            json!([{"id":"a","key":"warSongOfHollowStars"},{"id":"b","key":"foldedWarehouse"}]);
+        view["cardStats"]["foldedWarehouse"] =
+            json!({"draw":2,"limits":{"matter":1,"energy":1,"biomass":1,"data":1}});
+        assert!(
+            agent.score(&view, &json!({"type":"excavate","relic":"b"}))
+                > agent.score(&view, &json!({"type":"excavate","relic":"a"}))
+        );
+    }
     #[test]
     fn in_play_cards_still_count_in_owned_deck_planning() {
         let me = json!({"hand":[],"discard":[],"deckContents":[{"key":"move","count":1}],"inPlay":[{"key":"move"},{"key":"construct"}]});
@@ -1629,6 +2135,25 @@ mod tests {
         assert!(bot_storage_budget(&view, 0).is_none());
     }
     use game_core::run_match;
+    #[test]
+    fn public_corner_portals_change_routes_and_visible_threats() {
+        let mut view = json!({"portalLinks":{"-10,8":"8,-10","8,-10":"-10,8"},"portalMovementCost":2,
+            "fleets":{"-10,8":{"1":{"fleet":2}}},"planets":{}});
+        assert_eq!(travel_distance(&view, "-10,8", "8,-10"), 2.0);
+        assert_eq!(travel_distance(&view, "-9,8", "8,-10"), 3.0);
+        assert_eq!(
+            bot_threat(&view, 0, &json!({"settler":1}), "8,-10", "8,-10"),
+            1.0,
+            "visible enemy Fleets threaten the opposite gate"
+        );
+        view.as_object_mut().unwrap().remove("portalLinks");
+        assert!(travel_distance(&view, "-10,8", "8,-10") > 2.0);
+        assert_eq!(
+            bot_threat(&view, 0, &json!({"settler":1}), "8,-10", "8,-10"),
+            0.0,
+            "earlier rules keep physical distance"
+        );
+    }
     // 33.38 #movement: a Move names its `units`; Fleets may leave a safe Settler behind.
     #[test]
     fn split_moves_leave_safe_settlers_and_keep_exposed_ones_escorted() {
@@ -1863,6 +2388,9 @@ mod tests {
             "galactic-reach/31.36",
             "galactic-reach/32.37",
             "galactic-reach/33.38",
+            "galactic-reach/34.39",
+            "galactic-reach/35.40",
+            "galactic-reach/36.41",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -1900,6 +2428,9 @@ mod tests {
                             | "galactic-reach/31.36"
                             | "galactic-reach/32.37"
                             | "galactic-reach/33.38"
+                            | "galactic-reach/34.39"
+                            | "galactic-reach/35.40"
+                            | "galactic-reach/36.41"
                     ) {
                         0
                     } else {
@@ -1936,6 +2467,8 @@ mod tests {
             "gr-military/24",
             "gr-military/25",
             "gr-military/26",
+            "gr-military/27",
+            "gr-military/28",
         ] {
             assert_eq!(agent(policy, [23; 32]).unwrap().policy_version(), policy);
         }
@@ -1969,7 +2502,10 @@ mod tests {
                 .count(),
             4
         );
-        assert!(g.legal_actions(1).is_empty());
+        assert!(g.legal_actions(1).iter().all(|a| matches!(
+            a["type"].as_str(),
+            Some("resource" | "bank_trade" | "increase_storage")
+        )));
         assert!(g.apply_action(1, json!({"type":"pass"})).is_err());
         assert!(
             g.apply_action(0, json!({"type":"move", "destination":"999,999"}))

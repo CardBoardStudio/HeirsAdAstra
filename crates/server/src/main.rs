@@ -1,6 +1,8 @@
+mod access;
 mod accounts;
 mod arena;
 mod card_feedback;
+mod change_queue;
 mod config;
 mod invites;
 mod lobby;
@@ -45,11 +47,20 @@ struct App {
     shared: Arc<shared::Service>,
 }
 /// The shared-table service over this store, with the trusted server authority.
+#[cfg(test)]
 fn table_service(store: &Arc<Store>, ai_pace: std::time::Duration) -> Arc<shared::Service> {
-    shared::Service::start(
+    table_service_on(store, ai_pace, shared::channel::Channel::stable())
+}
+fn table_service_on(
+    store: &Arc<Store>,
+    ai_pace: std::time::Duration,
+    channel: shared::channel::Channel,
+) -> Arc<shared::Service> {
+    shared::Service::start_on(
         Arc::new(shared::log::SqliteTableLog(store.clone())),
         Arc::new(shared::authority::TrustedAuthority),
         ai_pace,
+        Arc::new(channel),
     )
 }
 #[derive(Debug)]
@@ -152,20 +163,38 @@ async fn protect(State(app): State<App>, request: axum::extract::Request, next: 
         {
             return ApiError(StatusCode::FORBIDDEN, "Origin not allowed.".into()).into_response();
         }
+        // Browsers that omit Origin still label cross-site requests.
+        if request
+            .headers()
+            .get("sec-fetch-site")
+            .is_some_and(|site| !matches!(site.to_str(), Ok("same-origin" | "none")))
+        {
+            return ApiError(StatusCode::FORBIDDEN, "Cross-site request refused.".into())
+                .into_response();
+        }
     }
+    let (uri, headers) = (request.uri(), request.headers());
+    let path = uri.path();
     // The 27.32 tabletop proves its Testnet seat draws in the browser; bb.js
     // needs cross-origin isolation (SharedArrayBuffer) to use threads.
-    let isolate = request.uri().path().starts_with("/galactic-reach/");
-    let check = if request.uri().path().starts_with("/api/")
-        && !request.uri().path().starts_with("/api/auth/")
-    {
-        nido::check_session(&app, request.headers()).await
-    } else {
-        Ok(())
-    };
+    let isolate = path.starts_with("/galactic-reach/");
+    let gated = app.nido.access.invite_only && !access::is_public(path);
+    let check = async {
+        access::limit(&app, path, headers).map_err(IntoResponse::into_response)?;
+        if gated || (path.starts_with("/api/") && !path.starts_with("/api/auth/")) {
+            nido::check_session(&app, headers)
+                .await
+                .map_err(IntoResponse::into_response)?;
+        }
+        match access::refusal(&app, path, uri.query(), headers) {
+            Some(refused) => Err(refused),
+            None => Ok(()),
+        }
+    }
+    .await;
     let mut response = match check {
         Ok(()) => next.run(request).await,
-        Err(e) => e.into_response(),
+        Err(refused) => refused,
     };
     response
         .headers_mut()
@@ -196,20 +225,26 @@ async fn protect(State(app): State<App>, request: axum::extract::Request, next: 
     );
     response
 }
-async fn session(State(app): State<App>, headers: HeaderMap) -> Json<SessionInfo> {
-    Json(SessionInfo {
+async fn session(State(app): State<App>, headers: HeaderMap) -> ApiResult<Json<SessionInfo>> {
+    let member = access::standing(&app, &headers)? == access::Standing::Member;
+    Ok(Json(SessionInfo {
         user: user(&app, &headers).ok().map(|u| Identity {
+            nido: u.id.starts_with("nido:"),
             name: u.name,
             development: u.development,
         }),
         dev_auth: app.dev_auth,
         preview_auth: app.preview_code_hash.is_some(),
         nido_available: app.nido.enabled,
-        registration_available: app.dev_auth
-            || app.registration_code_hash.is_some()
-            || app.preview_code_hash.is_some(),
+        // Invite-only hosts admit Nido accounts only, never recovery keys.
+        registration_available: !app.nido.access.invite_only
+            && (app.dev_auth
+                || app.registration_code_hash.is_some()
+                || app.preview_code_hash.is_some()),
         nido_wallet: Some(app.nido.wallet()),
-    })
+        invite_only: app.nido.access.invite_only,
+        member,
+    }))
 }
 #[derive(Deserialize)]
 struct Login {
@@ -493,10 +528,22 @@ async fn command(
 }
 fn router(app: App) -> Router {
     Router::new()
+        .merge(change_queue::routes(Arc::new(change_queue::Config::from_env())))
         .route(
             "/api/health",
-            get(|| async { Json(json!({"ok":true,"rules":RULES_VERSION,"galactic_reach_rules":galactic_reach::RULES})) }),
+            get(|State(app): State<App>| async move {
+                let channel = &app.shared.channel;
+                Json(json!({"ok":true,"rules":RULES_VERSION,"galactic_reach_rules":galactic_reach::RULES,
+                    "channel":channel.name,"deals":channel.rules,"commit":channel.commit}))
+            }),
         )
+        .route("/galactic-reach/channel.js", get(shared::dev::channel_script))
+        .route(
+            "/galactic-reach/rules/{version}/channel.js",
+            get(shared::dev::archived_script),
+        )
+        .route("/galactic-reach/dev/{version}/", get(shared::dev::page))
+        .route("/galactic-reach/dev/{version}/{*file}", get(shared::dev::asset))
         .route("/api/auth/nido", get(nido::begin))
         .route("/api/auth/nido/callback", get(nido::callback))
         .route("/api/session", get(session))
@@ -575,14 +622,35 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = App {
         #[cfg(test)]
         arena_seed: None,
-        shared: table_service(&store, shared::AI_PACE),
+        shared: table_service_on(&store, shared::AI_PACE, {
+            let channel = shared::channel::Channel::from_env(&store, |key| std::env::var(key).ok());
+            let pruned = channel.keep_current(now())?;
+            tracing::info!(channel = channel.name, rules = %channel.rules, pruned, "galactic reach channel");
+            channel
+        }),
         store,
         dev_auth: config.dev_auth,
         preview_code_hash: config.preview_code_hash,
         registration_code_hash: config.registration_code_hash,
         origin: config.origin.clone(),
-        nido: Arc::new(nido::load_config()?),
+        nido: Arc::new(nido::load_config()?.with_access(access::Policy::new(
+            config.invite_only,
+            config.client_ip_header.clone(),
+        ))),
     };
+    if config.invite_only && !app.nido.enabled {
+        return Err("ACCESS=invite-only admits Nido accounts only; it needs NIDO_AUTH=1.".into());
+    }
+    if std::env::args().nth(1).as_deref() == Some("grant-admin") {
+        let address = std::env::args()
+            .nth(2)
+            .ok_or("Usage: server grant-admin NIDO_WALLET_ADDRESS")?;
+        match access::grant_admin(&app, &address) {
+            Ok(id) => println!("{id} is an administrator."),
+            Err(e) => return Err(e.1.into()),
+        }
+        return Ok(());
+    }
     if std::env::args().nth(1).as_deref() == Some("bootstrap-admin") {
         match invites::bootstrap(&app) {
             Ok(invite) => println!("{}", invite["url"].as_str().unwrap()),
@@ -632,10 +700,15 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let listener = tokio::net::TcpListener::bind(config.bind).await?;
     println!(
-        "Drawing Board → {} (development: {}, preview: {})",
+        "Drawing Board → {} (development: {}, preview: {}, access: {})",
         config.origin,
         config.dev_auth,
-        config.preview_code_hash.is_some()
+        config.preview_code_hash.is_some(),
+        if config.invite_only {
+            "invite-only"
+        } else {
+            "open"
+        }
     );
     let shared = app.shared.clone();
     axum::serve(listener, router(app))

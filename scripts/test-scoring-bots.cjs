@@ -13,13 +13,14 @@ function funds(p){p.storageUpgrades=100;p.resourceLimits={matter:1000,energy:100
 const record={fixtures:0,matchedSetups:0};
 for(let n=0;n<32;n++){
  const current=game(undefined,20261111+n*7919),old=game('crates/galactic-reach/rules/v20-',20261111+n*7919);
- assert.equal(current.a.rulesVersion,'galactic-reach/34.39');assert.equal(old.a.rulesVersion,'galactic-reach/20.25');
+ assert.equal(current.a.rulesVersion,'galactic-reach/37.42');assert.equal(old.a.rulesVersion,'galactic-reach/20.25');
  // 31.36 replaces the market supply (72 cards, new serials) and adds a Prestige target; the map,
  // factions, decks and opening position still match 20.25. Supply-dependent fields are excluded.
  // 33.38 drops the ships-or-Explorers prompt (moveChoiceSource) for the unit picker.
- const supply=['advancedDeck','market','marketDiscard','relicDeck','relicRow','victoryTarget'],newPlayer=['military','cardPrestige','buyDiscountEach','buyHubDiscounts','buyDiscountData','marketManipulated','resources'];
- const normalize=g=>{const s=plain(g.s);supply.forEach(k=>delete s[k]);s.players.forEach(p=>{delete p.storagePurchases;delete p.inPlay;delete p.resourceLimits;delete p.buyStartInPlayIds;newPlayer.forEach(k=>delete p[k]);});delete s.pendingConstruct;delete s.moveChoiceSource;Object.values(s.planets).forEach(p=>delete p.occupiedBy);return {...s,version:0,rulesRevision:0,visibilityRevision:0};};assert.deepEqual(normalize(current),normalize(old));
- const observation=g=>{const v=plain(g.a.observe(0));['market','relicRow','relicDeckCount','victoryTarget'].forEach(k=>delete v[k]);['harvesterYield','marketCosts','marketPrestige','tacticStats','combatVictoryPrestige','captureNeedsFleet'].forEach(k=>delete v[k]);v.players.forEach(p=>{delete p.cardPrestige;delete p.military;delete p.resources;});delete v.pendingConstruct;Object.values(v.planets).forEach(p=>delete p.occupiedBy);v.clusters.forEach(c=>delete c.located);v.players.forEach(p=>{delete p.storagePurchases;delete p.storageUpgradeCost;delete p.inPlay;delete p.resourceLimits;p.capacity=0;p.prestige=0;});return v;};assert.deepEqual(observation(current),observation(old));const stable=g=>plain(g.a.legalActions(0)).filter(x=>!['trade_offer','bank_trade','discard_resources','resource','increase_storage'].includes(x.type));assert.deepEqual(stable(current),stable(old),'Orders match; resource-dependent actions differ with the 32.37 opening (issue #41)');record.matchedSetups++;
+ // Unlimited Buy removes the obsolete purchase cap; the dedicated Buy suite tests its new semantics.
+ const supply=['advancedDeck','market','marketDiscard','relicDeck','relicRow','victoryTarget'],newPlayer=['military','cardPrestige','buyLimit','buyDiscountEach','buyHubDiscounts','buyDiscountData','marketManipulated','resources'];
+ const normalize=g=>{const s=plain(g.s);supply.forEach(k=>delete s[k]);s.players.forEach(p=>{delete p.storagePurchases;delete p.inPlay;delete p.resourceLimits;delete p.buyStartInPlayIds;newPlayer.forEach(k=>delete p[k]);});delete s.portalLinks;delete s.pendingConstruct;delete s.moveChoiceSource;Object.values(s.planets).forEach(p=>{delete p.occupiedBy;if(p.cluster===12)p.special=null;});return {...s,version:0,rulesRevision:0,visibilityRevision:0};};assert.deepEqual(normalize(current),normalize(old));
+ const observation=g=>{const v=plain(g.a.observe(0));['market','relicRow','relicDeckCount','victoryTarget'].forEach(k=>delete v[k]);['portalLinks','portalMovementCost','harvesterYield','marketCosts','combinedProbe','cardStats','marketPrestige','tacticStats','combatVictoryPrestige','captureNeedsFleet'].forEach(k=>delete v[k]);v.players.forEach(p=>{delete p.cardPrestige;delete p.military;delete p.resources;p.deckContents?.forEach(c=>delete c.level);});delete v.pendingConstruct;Object.values(v.planets).forEach(p=>delete p.occupiedBy);v.clusters.forEach(c=>delete c.located);v.players.forEach(p=>{delete p.storagePurchases;delete p.storageUpgradeCost;delete p.inPlay;delete p.resourceLimits;p.capacity=0;p.prestige=0;});return v;};assert.deepEqual(observation(current),observation(old));const stable=g=>plain(g.a.legalActions(0)).filter(x=>!['trade_offer','bank_trade','discard_resources','resource','increase_storage'].includes(x.type));assert.deepEqual(stable(current),stable(old),'Orders match; resource-dependent actions differ with the 32.37 opening (issue #41)');record.matchedSetups++;
 }
 {
  const g=game(),p=bot(g),center=g.s.clusters[4].center;funds(p);p.hand=[{id:'col',key:'colonize'},{id:'build',key:'construct'}];g.s.fleets={[center]:{1:{settler:1,explorer:0,fleet:0}}};
@@ -32,11 +33,11 @@ for(let n=0;n<32;n++){
 {
  const g=game(),p=bot(g);p.hand=[{id:'build',key:'construct'}];p.resources={matter:0,energy:0,biomass:0,data:0};const before=JSON.stringify(g.s),calls=g.calls();
  assert.equal(g.e.aiUseResources(p,'build',{matter:2,energy:1,biomass:1,data:1}),false);assert.equal(JSON.stringify(g.s),before);assert.equal(g.calls(),calls);record.fixtures++;
- p.hand.push({id:'wild',key:'dataHaven'});assert(g.e.aiUseResources(p,'build',{data:2}));assert.equal(p.resources.data,2);record.fixtures++;
+ p.hand.push({id:'fund',key:'move',starter:true});assert(g.e.aiUseResources(p,'build',{energy:1}));assert.equal(p.resources.energy,1);record.fixtures++;
 }
 {
- const g=game(),p=bot(g);p.resourceLimits.matter=9;p.resources={matter:9,energy:0,biomass:0,data:0};p.hand=[{id:'move',key:'move',upgraded:true},{id:'build',key:'construct'}];
- assert(g.e.aiUseResources(p,'build',{matter:2,energy:1,data:1}));assert.deepEqual(plain(p.resources),{matter:5,energy:2,biomass:0,data:1});assert.equal(g.e.overflowPlayer(),-1);record.fixtures++;
+ const g=game(),p=bot(g);p.resourceLimits.matter=9;p.resources={matter:9,energy:0,biomass:0,data:0};p.hand=[{id:'move',key:'move',starter:true},{id:'build',key:'construct'}];
+ assert(g.e.aiUseResources(p,'build',{matter:2,energy:1,data:1}));assert.deepEqual(plain(p.resources),{matter:5,energy:1,biomass:0,data:1});assert.equal(g.e.overflowPlayer(),-1);record.fixtures++;
 }
 {
  const g=game(),p=bot(g),world=g.s.clusters[4],site=g.e.relicCoordInCluster(world);world.revealedBy=[0,1,2,3];world.scannedBy=[1];
@@ -53,7 +54,7 @@ for(let n=0;n<32;n++){
  assert.equal(g.e.chooseAiBuild(1).kind,'settler','A closed map still needs Settlers for captures');record.fixtures++;
 }
 {
- const g=game(),p=bot(g),world=g.s.clusters[4];funds(p);p.hand=[{id:'move',key:'move',upgraded:true}];
+ const g=game(),p=bot(g),world=g.s.clusters[4];funds(p);p.hand=[{id:'move',key:'move',starter:true,upgraded:true}];
  for(const c of g.s.clusters.filter(c=>c.kind==='world'))g.s.planets[c.center].owner=1;
  for(const coord of world.coords)Object.assign(g.s.planets[coord],{owner:2,occupiedBy:null,hasColony:coord===world.center,upgrade:coord===world.center?null:'harvester'});
  const [q,r]=world.center.split(',').map(Number),source=`${q-2},${r}`;g.s.fleets={[source]:{1:{settler:1,explorer:0,fleet:0}}};

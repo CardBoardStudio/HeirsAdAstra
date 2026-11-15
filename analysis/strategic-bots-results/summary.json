@@ -1,0 +1,764 @@
+{
+  "updated": {
+    "games": 96,
+    "completed": 96,
+    "incomplete": [],
+    "profiles": {
+      "military": {
+        "seats": 128,
+        "wins": 41,
+        "winRate": 0.3203125,
+        "meanPoints": 31.3125,
+        "meanDraws": 204.1015625,
+        "meanIII": 5.796875,
+        "meanPurchases": 5.890625,
+        "meanColony": 3.1328125,
+        "meanCombat": 6.9921875,
+        "resources": {
+          "matter": {
+            "gained": 133.796875,
+            "spent": 82.4140625,
+            "lost": 37.796875,
+            "bankGiven": 6.4375,
+            "bankReceived": 1.734375
+          },
+          "energy": {
+            "gained": 91.15625,
+            "spent": 59.8359375,
+            "lost": 16.7734375,
+            "bankGiven": 7.34375,
+            "bankReceived": 0.5625
+          },
+          "biomass": {
+            "gained": 61.421875,
+            "spent": 41.3359375,
+            "lost": 14.078125,
+            "bankGiven": 2.03125,
+            "bankReceived": 3.0234375
+          },
+          "data": {
+            "gained": 70.3203125,
+            "spent": 41.5390625,
+            "lost": 15.421875,
+            "bankGiven": 7.03125,
+            "bankReceived": 0.390625
+          }
+        }
+      },
+      "economy": {
+        "seats": 128,
+        "wins": 39,
+        "winRate": 0.3046875,
+        "meanPoints": 30.3671875,
+        "meanDraws": 236.5625,
+        "meanIII": 5.7421875,
+        "meanPurchases": 7.4609375,
+        "meanColony": 3.078125,
+        "meanCombat": 4.1328125,
+        "resources": {
+          "matter": {
+            "gained": 166.7265625,
+            "spent": 90.90625,
+            "lost": 57.390625,
+            "bankGiven": 5.71875,
+            "bankReceived": 1.53125
+          },
+          "energy": {
+            "gained": 101.921875,
+            "spent": 64.2578125,
+            "lost": 21.4765625,
+            "bankGiven": 6.46875,
+            "bankReceived": 0.609375
+          },
+          "biomass": {
+            "gained": 89.171875,
+            "spent": 46.46875,
+            "lost": 31.7109375,
+            "bankGiven": 2.875,
+            "bankReceived": 2.3125
+          },
+          "data": {
+            "gained": 84.734375,
+            "spent": 48.390625,
+            "lost": 21.609375,
+            "bankGiven": 5.90625,
+            "bankReceived": 0.7890625
+          }
+        }
+      },
+      "expansion": {
+        "seats": 128,
+        "wins": 16,
+        "winRate": 0.125,
+        "meanPoints": 24.90625,
+        "meanDraws": 221.796875,
+        "meanIII": 5.8515625,
+        "meanPurchases": 5.96875,
+        "meanColony": 3.484375,
+        "meanCombat": 2.6875,
+        "resources": {
+          "matter": {
+            "gained": 131.8515625,
+            "spent": 83.546875,
+            "lost": 38.7890625,
+            "bankGiven": 2.4375,
+            "bankReceived": 2.890625
+          },
+          "energy": {
+            "gained": 87.6875,
+            "spent": 59.96875,
+            "lost": 16.078125,
+            "bankGiven": 4.28125,
+            "bankReceived": 0.8125
+          },
+          "biomass": {
+            "gained": 85.8515625,
+            "spent": 52.0390625,
+            "lost": 21,
+            "bankGiven": 5.21875,
+            "bankReceived": 0.9140625
+          },
+          "data": {
+            "gained": 78.6875,
+            "spent": 45.015625,
+            "lost": 17.2109375,
+            "bankGiven": 8.5,
+            "bankReceived": 0.4921875
+          }
+        }
+      }
+    },
+    "policies": {
+      "baseline": {
+        "seats": 0,
+        "wins": 0,
+        "winRate": 0,
+        "meanPoints": 0,
+        "meanDraws": 0,
+        "meanIII": 0,
+        "meanPurchases": 0,
+        "meanColony": 0,
+        "meanCombat": 0,
+        "resources": {
+          "matter": {
+            "gained": 0,
+            "spent": 0,
+            "lost": 0,
+            "bankGiven": 0,
+            "bankReceived": 0
+          },
+          "energy": {
+            "gained": 0,
+            "spent": 0,
+            "lost": 0,
+            "bankGiven": 0,
+            "bankReceived": 0
+          },
+          "biomass": {
+            "gained": 0,
+            "spent": 0,
+            "lost": 0,
+            "bankGiven": 0,
+            "bankReceived": 0
+          },
+          "data": {
+            "gained": 0,
+            "spent": 0,
+            "lost": 0,
+            "bankGiven": 0,
+            "bankReceived": 0
+          }
+        }
+      },
+      "updated": {
+        "seats": 384,
+        "wins": 96,
+        "winRate": 0.25,
+        "meanPoints": 28.861979166666668,
+        "meanDraws": 220.8203125,
+        "meanIII": 5.796875,
+        "meanPurchases": 6.440104166666667,
+        "meanColony": 3.2317708333333335,
+        "meanCombat": 4.604166666666667,
+        "resources": {
+          "matter": {
+            "gained": 144.125,
+            "spent": 85.62239583333333,
+            "lost": 44.658854166666664,
+            "bankGiven": 4.864583333333333,
+            "bankReceived": 2.0520833333333335
+          },
+          "energy": {
+            "gained": 93.58854166666667,
+            "spent": 61.354166666666664,
+            "lost": 18.109375,
+            "bankGiven": 6.03125,
+            "bankReceived": 0.6614583333333334
+          },
+          "biomass": {
+            "gained": 78.81510416666667,
+            "spent": 46.614583333333336,
+            "lost": 22.263020833333332,
+            "bankGiven": 3.375,
+            "bankReceived": 2.0833333333333335
+          },
+          "data": {
+            "gained": 77.9140625,
+            "spent": 44.981770833333336,
+            "lost": 18.080729166666668,
+            "bankGiven": 7.145833333333333,
+            "bankReceived": 0.5572916666666666
+          }
+        }
+      }
+    },
+    "seats": {
+      "0": {
+        "seats": 96,
+        "wins": 26,
+        "winRate": 0.2708333333333333,
+        "meanPoints": 28.947916666666668,
+        "meanDraws": 222.125,
+        "meanIII": 5.885416666666667,
+        "meanPurchases": 7.3125,
+        "meanColony": 3.2395833333333335,
+        "meanCombat": 4.677083333333333,
+        "resources": {
+          "matter": {
+            "gained": 152.33333333333334,
+            "spent": 88.07291666666667,
+            "lost": 45.40625,
+            "bankGiven": 6.958333333333333,
+            "bankReceived": 1.8229166666666667
+          },
+          "energy": {
+            "gained": 95.07291666666667,
+            "spent": 62.354166666666664,
+            "lost": 18.697916666666668,
+            "bankGiven": 4.958333333333333,
+            "bankReceived": 0.6770833333333334
+          },
+          "biomass": {
+            "gained": 76.77083333333333,
+            "spent": 46.197916666666664,
+            "lost": 22.010416666666668,
+            "bankGiven": 2.2083333333333335,
+            "bankReceived": 2.28125
+          },
+          "data": {
+            "gained": 80.61458333333333,
+            "spent": 47.041666666666664,
+            "lost": 18.15625,
+            "bankGiven": 6.875,
+            "bankReceived": 0.46875
+          }
+        }
+      },
+      "1": {
+        "seats": 96,
+        "wins": 17,
+        "winRate": 0.17708333333333334,
+        "meanPoints": 27.875,
+        "meanDraws": 223.83333333333334,
+        "meanIII": 5.739583333333333,
+        "meanPurchases": 5.895833333333333,
+        "meanColony": 3.0625,
+        "meanCombat": 4.458333333333333,
+        "resources": {
+          "matter": {
+            "gained": 137.41666666666666,
+            "spent": 85.72916666666667,
+            "lost": 40.958333333333336,
+            "bankGiven": 3.2083333333333335,
+            "bankReceived": 2.2291666666666665
+          },
+          "energy": {
+            "gained": 87,
+            "spent": 59.40625,
+            "lost": 16.34375,
+            "bankGiven": 4.791666666666667,
+            "bankReceived": 0.7708333333333334
+          },
+          "biomass": {
+            "gained": 81.35416666666667,
+            "spent": 46.635416666666664,
+            "lost": 22.885416666666668,
+            "bankGiven": 4.375,
+            "bankReceived": 1.4583333333333333
+          },
+          "data": {
+            "gained": 80.19791666666667,
+            "spent": 45.239583333333336,
+            "lost": 19,
+            "bankGiven": 8.041666666666666,
+            "bankReceived": 0.6458333333333334
+          }
+        }
+      },
+      "2": {
+        "seats": 96,
+        "wins": 26,
+        "winRate": 0.2708333333333333,
+        "meanPoints": 28.9375,
+        "meanDraws": 219.65625,
+        "meanIII": 5.802083333333333,
+        "meanPurchases": 6.479166666666667,
+        "meanColony": 3.2395833333333335,
+        "meanCombat": 4.666666666666667,
+        "resources": {
+          "matter": {
+            "gained": 152.91666666666666,
+            "spent": 88.13541666666667,
+            "lost": 49.802083333333336,
+            "bankGiven": 5.958333333333333,
+            "bankReceived": 1.8125
+          },
+          "energy": {
+            "gained": 91.55208333333333,
+            "spent": 60.145833333333336,
+            "lost": 18.802083333333332,
+            "bankGiven": 5.166666666666667,
+            "bankReceived": 0.7916666666666666
+          },
+          "biomass": {
+            "gained": 84.38541666666667,
+            "spent": 48.59375,
+            "lost": 24.875,
+            "bankGiven": 4.083333333333333,
+            "bankReceived": 2.1875
+          },
+          "data": {
+            "gained": 74.55208333333333,
+            "spent": 43.21875,
+            "lost": 17.791666666666668,
+            "bankGiven": 6.541666666666667,
+            "bankReceived": 0.6458333333333334
+          }
+        }
+      },
+      "3": {
+        "seats": 96,
+        "wins": 27,
+        "winRate": 0.28125,
+        "meanPoints": 29.6875,
+        "meanDraws": 217.66666666666666,
+        "meanIII": 5.760416666666667,
+        "meanPurchases": 6.072916666666667,
+        "meanColony": 3.3854166666666665,
+        "meanCombat": 4.614583333333333,
+        "resources": {
+          "matter": {
+            "gained": 133.83333333333334,
+            "spent": 80.55208333333333,
+            "lost": 42.46875,
+            "bankGiven": 3.3333333333333335,
+            "bankReceived": 2.34375
+          },
+          "energy": {
+            "gained": 100.72916666666667,
+            "spent": 63.510416666666664,
+            "lost": 18.59375,
+            "bankGiven": 9.208333333333334,
+            "bankReceived": 0.40625
+          },
+          "biomass": {
+            "gained": 72.75,
+            "spent": 45.03125,
+            "lost": 19.28125,
+            "bankGiven": 2.8333333333333335,
+            "bankReceived": 2.40625
+          },
+          "data": {
+            "gained": 76.29166666666667,
+            "spent": 44.427083333333336,
+            "lost": 17.375,
+            "bankGiven": 7.125,
+            "bankReceived": 0.46875
+          }
+        }
+      }
+    },
+    "meanRounds": 24.03125
+  },
+  "mixed": {
+    "games": 192,
+    "completed": 192,
+    "incomplete": [],
+    "profiles": {
+      "military": {
+        "seats": 256,
+        "wins": 62,
+        "winRate": 0.2421875,
+        "meanPoints": 29.27734375,
+        "meanDraws": 178.19921875,
+        "meanIII": 2.91796875,
+        "meanPurchases": 9.46484375,
+        "meanColony": 3.12890625,
+        "meanCombat": 5.47265625,
+        "resources": {
+          "matter": {
+            "gained": 117.3125,
+            "spent": 81.0078125,
+            "lost": 20.20703125,
+            "bankGiven": 11.578125,
+            "bankReceived": 1.828125
+          },
+          "energy": {
+            "gained": 89.69140625,
+            "spent": 65.68359375,
+            "lost": 10.1328125,
+            "bankGiven": 9.453125,
+            "bankReceived": 1.8046875
+          },
+          "biomass": {
+            "gained": 58.27734375,
+            "spent": 41.51171875,
+            "lost": 8.671875,
+            "bankGiven": 5.5,
+            "bankReceived": 3.8515625
+          },
+          "data": {
+            "gained": 70.61328125,
+            "spent": 47.16796875,
+            "lost": 9.15234375,
+            "bankGiven": 9.828125,
+            "bankReceived": 1.60546875
+          }
+        }
+      },
+      "economy": {
+        "seats": 256,
+        "wins": 82,
+        "winRate": 0.3203125,
+        "meanPoints": 30.86328125,
+        "meanDraws": 212.80078125,
+        "meanIII": 2.8984375,
+        "meanPurchases": 15.14453125,
+        "meanColony": 2.859375,
+        "meanCombat": 3.0859375,
+        "resources": {
+          "matter": {
+            "gained": 145.734375,
+            "spent": 88.9609375,
+            "lost": 33.33203125,
+            "bankGiven": 14.859375,
+            "bankReceived": 2.22265625
+          },
+          "energy": {
+            "gained": 110.82421875,
+            "spent": 72.39453125,
+            "lost": 17.90625,
+            "bankGiven": 13.03125,
+            "bankReceived": 1.53515625
+          },
+          "biomass": {
+            "gained": 82.59765625,
+            "spent": 47.0625,
+            "lost": 18.20703125,
+            "bankGiven": 10.71875,
+            "bankReceived": 2.578125
+          },
+          "data": {
+            "gained": 88.26953125,
+            "spent": 64.2109375,
+            "lost": 12.33203125,
+            "bankGiven": 6.390625,
+            "bankReceived": 4.9140625
+          }
+        }
+      },
+      "expansion": {
+        "seats": 256,
+        "wins": 48,
+        "winRate": 0.1875,
+        "meanPoints": 27.46875,
+        "meanDraws": 201.6484375,
+        "meanIII": 2.91796875,
+        "meanPurchases": 11.98828125,
+        "meanColony": 3.73828125,
+        "meanCombat": 2.53125,
+        "resources": {
+          "matter": {
+            "gained": 120.4609375,
+            "spent": 83.41796875,
+            "lost": 23.56640625,
+            "bankGiven": 8.75,
+            "bankReceived": 2.73046875
+          },
+          "energy": {
+            "gained": 91.703125,
+            "spent": 67.59765625,
+            "lost": 12.2890625,
+            "bankGiven": 6.609375,
+            "bankReceived": 2.12109375
+          },
+          "biomass": {
+            "gained": 86.51171875,
+            "spent": 53.51171875,
+            "lost": 15.17578125,
+            "bankGiven": 11.09375,
+            "bankReceived": 1.20703125
+          },
+          "data": {
+            "gained": 81.5,
+            "spent": 56.17578125,
+            "lost": 11.43359375,
+            "bankGiven": 8.296875,
+            "bankReceived": 2.62890625
+          }
+        }
+      }
+    },
+    "policies": {
+      "baseline": {
+        "seats": 384,
+        "wins": 61,
+        "winRate": 0.15885416666666666,
+        "meanPoints": 26.8515625,
+        "meanDraws": 159.5234375,
+        "meanIII": 0,
+        "meanPurchases": 16.239583333333332,
+        "meanColony": 2.7317708333333335,
+        "meanCombat": 2.4817708333333335,
+        "resources": {
+          "matter": {
+            "gained": 111.38802083333333,
+            "spent": 77.796875,
+            "lost": 11.494791666666666,
+            "bankGiven": 17.645833333333332,
+            "bankReceived": 2.3229166666666665
+          },
+          "energy": {
+            "gained": 95.359375,
+            "spent": 70.47395833333333,
+            "lost": 8.018229166666666,
+            "bankGiven": 12.6875,
+            "bankReceived": 2.9375
+          },
+          "biomass": {
+            "gained": 72.65625,
+            "spent": 47.122395833333336,
+            "lost": 7.575520833333333,
+            "bankGiven": 14.6875,
+            "bankReceived": 2.6901041666666665
+          },
+          "data": {
+            "gained": 76.08854166666667,
+            "spent": 61.6328125,
+            "lost": 4.505208333333333,
+            "bankGiven": 8.229166666666666,
+            "bankReceived": 5.361979166666667
+          }
+        }
+      },
+      "updated": {
+        "seats": 384,
+        "wins": 131,
+        "winRate": 0.3411458333333333,
+        "meanPoints": 31.5546875,
+        "meanDraws": 235.57552083333334,
+        "meanIII": 5.822916666666667,
+        "meanPurchases": 8.158854166666666,
+        "meanColony": 3.7526041666666665,
+        "meanCombat": 4.911458333333333,
+        "resources": {
+          "matter": {
+            "gained": 144.28385416666666,
+            "spent": 91.12760416666667,
+            "lost": 39.908854166666664,
+            "bankGiven": 5.8125,
+            "bankReceived": 2.1979166666666665
+          },
+          "energy": {
+            "gained": 99.453125,
+            "spent": 66.64322916666667,
+            "lost": 18.8671875,
+            "bankGiven": 6.708333333333333,
+            "bankReceived": 0.703125
+          },
+          "biomass": {
+            "gained": 78.93489583333333,
+            "spent": 47.6015625,
+            "lost": 20.4609375,
+            "bankGiven": 3.5208333333333335,
+            "bankReceived": 2.4010416666666665
+          },
+          "data": {
+            "gained": 84.16666666666667,
+            "spent": 50.0703125,
+            "lost": 17.440104166666668,
+            "bankGiven": 8.114583333333334,
+            "bankReceived": 0.7369791666666666
+          }
+        }
+      }
+    },
+    "seats": {
+      "0": {
+        "seats": 192,
+        "wins": 43,
+        "winRate": 0.22395833333333334,
+        "meanPoints": 28.3125,
+        "meanDraws": 193.10416666666666,
+        "meanIII": 2.890625,
+        "meanPurchases": 11.786458333333334,
+        "meanColony": 3.2239583333333335,
+        "meanCombat": 3.671875,
+        "resources": {
+          "matter": {
+            "gained": 130.78125,
+            "spent": 84.94791666666667,
+            "lost": 25.760416666666668,
+            "bankGiven": 13.75,
+            "bankReceived": 2.1197916666666665
+          },
+          "energy": {
+            "gained": 94.61979166666667,
+            "spent": 66.38541666666667,
+            "lost": 13.338541666666666,
+            "bankGiven": 9.104166666666666,
+            "bankReceived": 1.7916666666666667
+          },
+          "biomass": {
+            "gained": 71.95833333333333,
+            "spent": 46.359375,
+            "lost": 12.421875,
+            "bankGiven": 8.583333333333334,
+            "bankReceived": 3.1302083333333335
+          },
+          "data": {
+            "gained": 77.05729166666667,
+            "spent": 54.307291666666664,
+            "lost": 9.119791666666666,
+            "bankGiven": 8.770833333333334,
+            "bankReceived": 3.0104166666666665
+          }
+        }
+      },
+      "1": {
+        "seats": 192,
+        "wins": 58,
+        "winRate": 0.3020833333333333,
+        "meanPoints": 30.520833333333332,
+        "meanDraws": 203.56770833333334,
+        "meanIII": 2.8958333333333335,
+        "meanPurchases": 12.765625,
+        "meanColony": 3.3177083333333335,
+        "meanCombat": 3.6875,
+        "resources": {
+          "matter": {
+            "gained": 124.625,
+            "spent": 83.49479166666667,
+            "lost": 24.942708333333332,
+            "bankGiven": 10.375,
+            "bankReceived": 2.4479166666666665
+          },
+          "energy": {
+            "gained": 93.46875,
+            "spent": 68.20833333333333,
+            "lost": 11.953125,
+            "bankGiven": 7.9375,
+            "bankReceived": 1.9583333333333333
+          },
+          "biomass": {
+            "gained": 77.49479166666667,
+            "spent": 47.40625,
+            "lost": 14.635416666666666,
+            "bankGiven": 8.791666666666666,
+            "bankReceived": 1.53125
+          },
+          "data": {
+            "gained": 86.109375,
+            "spent": 59.546875,
+            "lost": 12.213541666666666,
+            "bankGiven": 8.729166666666666,
+            "bankReceived": 3.0208333333333335
+          }
+        }
+      },
+      "2": {
+        "seats": 192,
+        "wins": 45,
+        "winRate": 0.234375,
+        "meanPoints": 29.21875,
+        "meanDraws": 197.78125,
+        "meanIII": 2.9427083333333335,
+        "meanPurchases": 11.828125,
+        "meanColony": 3.2239583333333335,
+        "meanCombat": 3.71875,
+        "resources": {
+          "matter": {
+            "gained": 135.19270833333334,
+            "spent": 87.49479166666667,
+            "lost": 27.6875,
+            "bankGiven": 12.833333333333334,
+            "bankReceived": 1.9010416666666667
+          },
+          "energy": {
+            "gained": 91.90104166666667,
+            "spent": 66.890625,
+            "lost": 12.223958333333334,
+            "bankGiven": 8.104166666666666,
+            "bankReceived": 2.0260416666666665
+          },
+          "biomass": {
+            "gained": 79.875,
+            "spent": 48.911458333333336,
+            "lost": 15.223958333333334,
+            "bankGiven": 10.208333333333334,
+            "bankReceived": 2.4270833333333335
+          },
+          "data": {
+            "gained": 77.03645833333333,
+            "spent": 54.255208333333336,
+            "lost": 10.619791666666666,
+            "bankGiven": 7.395833333333333,
+            "bankReceived": 3.28125
+          }
+        }
+      },
+      "3": {
+        "seats": 192,
+        "wins": 46,
+        "winRate": 0.23958333333333334,
+        "meanPoints": 28.760416666666668,
+        "meanDraws": 195.74479166666666,
+        "meanIII": 2.9166666666666665,
+        "meanPurchases": 12.416666666666666,
+        "meanColony": 3.203125,
+        "meanCombat": 3.7083333333333335,
+        "resources": {
+          "matter": {
+            "gained": 120.74479166666667,
+            "spent": 81.91145833333333,
+            "lost": 24.416666666666668,
+            "bankGiven": 9.958333333333334,
+            "bankReceived": 2.5729166666666665
+          },
+          "energy": {
+            "gained": 109.63541666666667,
+            "spent": 72.75,
+            "lost": 16.255208333333332,
+            "bankGiven": 13.645833333333334,
+            "bankReceived": 1.5052083333333333
+          },
+          "biomass": {
+            "gained": 73.85416666666667,
+            "spent": 46.770833333333336,
+            "lost": 13.791666666666666,
+            "bankGiven": 8.833333333333334,
+            "bankReceived": 3.09375
+          },
+          "data": {
+            "gained": 80.30729166666667,
+            "spent": 55.296875,
+            "lost": 11.9375,
+            "bankGiven": 7.791666666666667,
+            "bankReceived": 2.8854166666666665
+          }
+        }
+      }
+    },
+    "meanRounds": 24.411458333333332
+  }
+}

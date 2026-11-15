@@ -1,5 +1,12 @@
 # Playtest roadmap
 
+## Developer change queue
+
+- Add a desktop administrator side panel for requested changes stored as GitHub issues, with linked implementation PRs, current checks and exact-head previews.
+- Use a temporary per-administrator GitHub connection; explicit approval merges a reviewed head into main after fresh server checks. Show deployment separately.
+
+Status: implemented on a separate PR from the now-stable 27.32 main. Rust workspace tests, Clippy, formatting, source rulebook/rules-contract checks and client reference/origin validation pass. Twenty desktop browser audits report zero axe or supplementary contrast failures; manual request/link/connection/approval and keyboard checks pass against local fixtures. Publication and native image checks are tracked in the PR. This tool changes no game rules or saves. See [developer queue specification](developer-change-queue.md).
+
 ## Tabletop interface in 27.32
 
 - Give the shared galaxy a printed board treatment, put faction standings and references in reserved board corners, and group the human hand, resource tokens and card piles into one player mat.
@@ -190,3 +197,14 @@ Permanently trash Probe after a successful nearest-relic search and Colonize aft
 ## Streamlined Operations 29.34
 
 The five queued requests are implemented in this release: automatic excess discards, optional full-cost second builds for Construct II, no per-hex ship cap, removal of occupation/production blocking and seizing messages, and editable one-of-each capacity defaults. See the canonical rulebook and `docs/rules/streamlined-operations.md` for grounding and verification. This release preserves 28.33 games and native policy 24.
+
+## Current requested changes
+
+Implementation in `codex/experiment-starter-conversion`; pending PR review and merge:
+
+- Level III Move and Construct draw one card only when their order is used.
+- Only level I original Move and Construct starters may convert to resources. Bulk conversion leaves every other card in hand.
+- Remove cards whose played effects grant resources, including combined effects, repeated production, build rewards and combat loot. Remove Galactic Senate Seat as requested.
+- Keep Monument of Accord and Dyson Lattice: award Prestige when bought, gain the card into discard for normal deck circulation, give it no playable or conversion effect, and allow it to be trashed on a later Buy turn without losing earned Prestige.
+
+Earlier queued portal and November 14 feedback work was adopted in [PR #61](https://github.com/CardBoardStudio/drawing_board/pull/61). Probe skips known relics and unlimited affordable purchases were merged in [PR #62](https://github.com/CardBoardStudio/drawing_board/pull/62). The current strategic rivals were merged in [PR #63](https://github.com/CardBoardStudio/drawing_board/pull/63). Those completed items are not pending.

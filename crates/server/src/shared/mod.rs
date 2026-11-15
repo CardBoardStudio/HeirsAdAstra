@@ -7,11 +7,14 @@
 //! connected seat to refresh its own private view (`authority::HiddenInfoAuthority`).
 //! AI rivals are server-driven seats in the same log.
 pub mod authority;
+pub mod channel;
+pub mod dev;
 pub mod log;
 
 use crate::*;
 use authority::HiddenInfoAuthority;
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
+use channel::{Channel, Engine};
 use galactic_reach::{BuiltinAgent, GalacticReach, SHARED_STEP, Strategy};
 use game_core::{GameAdapter, PlayerAgent};
 use log::{Event, NewEvent, Seat, Table, TableLog};
@@ -59,6 +62,7 @@ struct Feed {
     authority: Arc<dyn HiddenInfoAuthority>,
     logged: VecDeque<Event>,
     fresh: Vec<NewEvent>,
+    reusable: Vec<Event>,
     count: u64,
     error: Option<String>,
 }
@@ -67,6 +71,21 @@ impl Feed {
         let order = match self.logged.pop_front() {
             Some(event) => self.authority.replay_shuffle(&event, n, purpose)?,
             None => {
+                if let Some(event) = self.reusable.iter().rev().find(|event| {
+                    event.public["index"] == self.count
+                        && event.public["n"] == n
+                        && event.public["purpose"] == purpose
+                }) {
+                    let order = self.authority.replay_shuffle(event, n, purpose)?;
+                    self.fresh.push(NewEvent {
+                        kind: "shuffle",
+                        seat: None,
+                        public: event.public.clone(),
+                        private: event.private.clone(),
+                    });
+                    self.count += 1;
+                    return Ok(order);
+                }
                 let shuffle = self
                     .authority
                     .shuffle(&self.table, self.count, n, purpose)?;
@@ -152,6 +171,39 @@ impl Live {
         if self.table.status == "finished" {
             return Err("The game is over.".into());
         }
+        if matches!(
+            self.table.rules.split('+').next().unwrap_or_default(),
+            "galactic-reach/36.41" | "galactic-reach/37.42"
+        ) {
+            if !self.table.seats[seat].human() {
+                return Err("Only human players can undo.".into());
+            }
+            let mark = self.engine.undo_mark()?;
+            if !mark["reveal"]["combat"].is_null() {
+                return Err("Finish the battle before Undo.".into());
+            }
+            let mut first = None;
+            let mut turn = None;
+            for p in self.played.iter().rev() {
+                if self.table.seats[p.seat].human() {
+                    if p.seat != seat {
+                        break;
+                    }
+                    if turn.is_some() && p.turn != turn {
+                        break;
+                    }
+                    turn = p.turn;
+                    first = Some(p.seq);
+                }
+            }
+            return first
+                .map(|seq| UndoWindow {
+                    to: seq - 1,
+                    actions: self.played.iter().filter(|p| p.seq >= seq).count(),
+                    stop: None,
+                })
+                .ok_or_else(|| "Nothing to undo before another human acted.".into());
+        }
         if self.engine.active_seat() != Some(seat) {
             return Err("Undo works on your own turn.".into());
         }
@@ -210,6 +262,7 @@ fn build(
     events: Vec<Event>,
     snapshots: Vec<(u64, Value)>,
     authority: Arc<dyn HiddenInfoAuthority>,
+    engine: &Engine,
 ) -> Result<Live, String> {
     if table.authority != authority.name() {
         return Err(format!("This table was dealt by {}.", table.authority));
@@ -230,6 +283,7 @@ fn build(
             Some((*seq, snapshot)),
             &undone,
             authority.clone(),
+            engine,
         ) {
             Ok(live) => return Ok(live),
             Err(e) => {
@@ -237,7 +291,7 @@ fn build(
             }
         }
     }
-    fold(&table, &events, None, &undone, authority)
+    fold(&table, &events, None, &undone, authority, engine)
 }
 
 /// Replays `events` after `from` (a snapshot and the event it was taken after),
@@ -249,6 +303,7 @@ fn fold(
     from: Option<(u64, &Value)>,
     undone: &[(u64, u64)],
     authority: Arc<dyn HiddenInfoAuthority>,
+    engine: &Engine,
 ) -> Result<Live, String> {
     let start = from.map(|(seq, _)| seq).unwrap_or(0);
     let head = events.last().map(|e| e.seq).unwrap_or(0);
@@ -258,10 +313,15 @@ fn fold(
         authority,
         logged: events
             .iter()
-            .filter(|e| e.kind == "shuffle" && e.seq > start)
+            .filter(|e| e.kind == "shuffle" && e.seq > start && !cancelled(e.seq))
             .cloned()
             .collect(),
         fresh: vec![],
+        reusable: events
+            .iter()
+            .filter(|e| e.kind == "shuffle" && cancelled(e.seq))
+            .cloned()
+            .collect(),
         count: from.and_then(|(_, s)| s["shuffles"].as_u64()).unwrap_or(0),
         error: None,
     }));
@@ -278,7 +338,8 @@ fn fold(
         })
     };
     // The table plays the rules revision it was dealt with, on that revision's
-    // archived engine once the current rules move on (as solo tables do).
+    // archived engine once the current rules move on (as solo tables do), or on
+    // a dev revision's kept engine (channel.rs).
     let resume = match from {
         Some((_, snapshot)) => Some(
             snapshot["engine"]
@@ -287,8 +348,19 @@ fn fold(
         ),
         None => None,
     };
-    let engine =
-        GalacticReach::shared_on(&table.rules, &seats, table.victory_target, resume, shuffle)?;
+    let engine = match engine {
+        Engine::Builtin => {
+            GalacticReach::shared_on(&table.rules, &seats, table.victory_target, resume, shuffle)?
+        }
+        Engine::Kept(kept) => GalacticReach::shared_source(
+            &table.rules,
+            kept.sources(),
+            &seats,
+            table.victory_target,
+            resume,
+            shuffle,
+        )?,
+    };
     let mut live = Live {
         table: table.clone(),
         engine,
@@ -364,6 +436,7 @@ struct Tables {
     ai_errors: HashMap<String, String>,
     log: Arc<dyn TableLog>,
     authority: Arc<dyn HiddenInfoAuthority>,
+    channel: Arc<Channel>,
 }
 impl Tables {
     fn live(&mut self, id: &str) -> Result<&mut Live, Refusal> {
@@ -374,21 +447,22 @@ impl Tables {
                 .map_err(broken)?
                 .ok_or(Refusal::NotFound)?;
             let events = self.log.read(id).map_err(broken)?;
-            if galactic_reach::shared_rules(&table.rules).is_none() {
+            let Some(source) = self.channel.engine(&table.rules) else {
                 return Err(Refusal::Conflict(format!(
                     "This shared table plays {}, which this server cannot run.",
                     table.rules
                 )));
-            }
+            };
             let snapshots = self.log.snapshots(id).map_err(broken)?;
-            let live = build(table, events, snapshots, self.authority.clone()).map_err(|e| {
-                if e.starts_with("Table log event") || e.contains("other rules") {
-                    tracing::error!(table=%id, error=%e, "shared table no longer replays");
-                    Refusal::Conflict(EARLIER_BUILD.into())
-                } else {
-                    broken(e)
-                }
-            })?;
+            let live =
+                build(table, events, snapshots, self.authority.clone(), &source).map_err(|e| {
+                    if e.starts_with("Table log event") || e.contains("other rules") {
+                        tracing::error!(table=%id, error=%e, "shared table no longer replays");
+                        Refusal::Conflict(EARLIER_BUILD.into())
+                    } else {
+                        broken(e)
+                    }
+                })?;
             self.live.insert(id.into(), live);
         }
         let live = self.live.get_mut(id).ok_or(Refusal::NotFound)?;
@@ -458,13 +532,24 @@ impl Tables {
     fn open(&mut self, mut table: Table) -> Result<u64, Refusal> {
         table.authority = self.authority.name().into();
         let id = table.id.clone();
-        let live = build(table.clone(), vec![], vec![], self.authority.clone()).map_err(broken)?;
+        let source = self.channel.engine(&table.rules).ok_or_else(|| {
+            Refusal::Conflict(format!("This server cannot deal {}.", table.rules))
+        })?;
+        let live = build(
+            table.clone(),
+            vec![],
+            vec![],
+            self.authority.clone(),
+            &source,
+        )
+        .map_err(broken)?;
         self.log.create(&table).map_err(broken)?;
         self.live.insert(id.clone(), live);
         self.commit(&id, vec![])
     }
     fn view(&mut self, id: &str, account: &str) -> Result<Value, Refusal> {
         let authority = self.authority.clone();
+        let channel = self.channel.clone();
         let ai_error = self.ai_errors.get(id).cloned();
         let live = self.live(id)?;
         let seat = live.seat_of(account).ok_or(Refusal::NotFound)?;
@@ -481,7 +566,7 @@ impl Tables {
         };
         Ok(json!({
             "id": live.table.id, "name": live.table.name, "rules_version": live.table.rules,
-            "client_path": client_path(&live.table.rules),
+            "client_path": channel.client_path(&live.table.rules),
             "authority": live.table.authority, "status": live.table.status, "seq": live.head,
             "seat": seat, "active": active,
             "seats": live.table.seats.iter().map(|s| json!({"seat":s.seat,"name":s.name,"human":s.human(),"you":s.seat==seat})).collect::<Vec<_>>(),
@@ -513,10 +598,6 @@ impl Tables {
         let mut stopped = None;
         let mut failed = None;
         for intent in intents {
-            if live.engine.active_seat() != Some(seat) {
-                stopped = Some("It is not your turn.".to_string());
-                break;
-            }
             let action = match resolve(&live.engine.legal_actions(seat), intent) {
                 Ok(a) => a,
                 Err(e) => {
@@ -593,7 +674,11 @@ impl Tables {
             hash: String::new(),
         });
         let snapshots = self.log.snapshots(id).map_err(broken)?;
-        let rolled_back = build(table, events, snapshots, self.authority.clone()).map_err(|e| {
+        let engine = self
+            .channel
+            .engine(&table.rules)
+            .ok_or_else(|| Refusal::Conflict(format!("This server cannot run {}.", table.rules)))?;
+        let rolled_back = build(table, events, snapshots, self.authority.clone(), &engine).map_err(|e| {
             tracing::warn!(table=%id, error=%e, "undo refused: no rebuildable position");
             Refusal::Conflict(
                 "Undo is not available here: this table moved to a newer build of the rules after your turn began."
@@ -712,15 +797,28 @@ pub struct Service {
     /// old process keeps serving a frozen copy of every table.)
     closing: tokio::sync::watch::Sender<bool>,
     ai_running: Mutex<HashSet<String>>,
+    /// The rules this server deals and the engines it keeps (channel.rs).
+    pub channel: Arc<Channel>,
 }
 impl Service {
+    /// A table service dealing the released rules (the stable channel).
+    #[cfg(test)]
     pub fn start(
         log: Arc<dyn TableLog>,
         authority: Arc<dyn HiddenInfoAuthority>,
         ai_pace: Duration,
     ) -> Arc<Self> {
+        Self::start_on(log, authority, ai_pace, Arc::new(Channel::stable()))
+    }
+    pub fn start_on(
+        log: Arc<dyn TableLog>,
+        authority: Arc<dyn HiddenInfoAuthority>,
+        ai_pace: Duration,
+        channel: Arc<Channel>,
+    ) -> Arc<Self> {
         let (tx, rx) = mpsc::channel::<Job>();
         let shelf = log.clone();
+        let tables_channel = channel.clone();
         std::thread::Builder::new()
             .name("galactic-reach-tables".into())
             .spawn(move || {
@@ -729,6 +827,7 @@ impl Service {
                     ai_errors: HashMap::new(),
                     log,
                     authority,
+                    channel: tables_channel,
                 };
                 for job in rx {
                     job(&mut tables);
@@ -743,6 +842,7 @@ impl Service {
             ping_ms: (PING_EVERY.as_millis() as u64).into(),
             closing: tokio::sync::watch::channel(false).0,
             ai_running: Mutex::new(HashSet::new()),
+            channel,
         })
     }
     /// Ends every live stream (server shutdown).
@@ -888,19 +988,6 @@ impl Service {
                 running.remove(&id);
             }
         });
-    }
-}
-
-/// The browser that plays a table's rules revision: the current game, or the
-/// revision's archived copy (as solo tables open theirs).
-pub fn client_path(rules: &str) -> String {
-    if rules == galactic_reach::RULES {
-        "/galactic-reach/".into()
-    } else {
-        format!(
-            "/galactic-reach/rules/{}/",
-            rules.rsplit('/').next().unwrap_or(rules)
-        )
     }
 }
 
