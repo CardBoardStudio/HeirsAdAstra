@@ -135,17 +135,17 @@ for(const tag of [null,'overdrive']){
  g.s.fleets={'0,0':{0:{fleet:1}},'1,0':{1:{fleet:1}}};g.start();assert.equal(g.s.pendingCombat.hands.attacker.phaseLance,1,'Restored for the next battle');finish(g);
 }
 {
- // Boarding Marines loot after any battle; Victory Doctrine adds 2 Prestige only on a decisive win.
+ // Victory Doctrine adds 2 Prestige only on a decisive win; surviving tactics grant no resource loot.
  const g=fixture({d:{settler:1}});g.s.players[0].resourceLimits={matter:10,energy:10,biomass:10,data:10};
- g.s.players[0].military=[{key:'boardingMarines',id:'marines'},{key:'victoryDoctrine',id:'doctrine'}];g.start();stays(g);
- volley(g,'victoryDoctrine','defensiveScreen');if(g.s.pendingCombat)volley(g,'boardingMarines','defensiveScreen');finish(g);
+ g.s.players[0].military=[{key:'railBattery',id:'marines'},{key:'victoryDoctrine',id:'doctrine'}];g.start();stays(g);
+ volley(g,'victoryDoctrine','defensiveScreen');if(g.s.pendingCombat)volley(g,'railBattery','defensiveScreen');finish(g);
  assert.equal(g.s.lastCombat.prestigeWinner,0);assert.equal(g.s.players[0].combatVictories,1);assert.equal(g.s.players[0].cardPrestige,2);
  assert.equal(g.e.calculatePrestige(0),4,'Combat 2 (34.39) + Victory Doctrine 2 (the fixture has no Colony)');
 }
 {
  const g=fixture({d:{fleet:2}});g.s.players[0].military=[{key:'victoryDoctrine',id:'doctrine'}];g.s.players[0].resourceLimits={matter:10,energy:10,biomass:10,data:10};
- g.s.players[0].military.push({key:'boardingMarines',id:'marines'});g.start();stays(g);volley(g,'boardingMarines','concentratedFire');finish(g);
- assert.equal(g.s.players[0].cardPrestige||0,0,'No decisive win, no Victory Doctrine Prestige');assert.equal(g.s.players[0].resources.matter,2);assert.equal(g.s.players[0].resources.data,1,'Boarding Marines loot even in defeat');
+ g.s.players[0].military.push({key:'railBattery',id:'marines'});g.start();stays(g);volley(g,'railBattery','concentratedFire');finish(g);
+ assert.equal(g.s.players[0].cardPrestige||0,0,'No decisive win, no Victory Doctrine Prestige');assert.equal(g.s.players[0].resources.matter,0);assert.equal(g.s.players[0].resources.data,0,'Military tactics grant no resource loot after a defeat');
 }
 {
  // Strike Vector (N03) adds 2 hits to the attacker's first volley only.

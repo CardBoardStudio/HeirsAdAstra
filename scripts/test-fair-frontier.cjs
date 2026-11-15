@@ -96,9 +96,6 @@ for(const resource of ['matter','energy','biomass','data']){
 {
  const g=game();assert(!g.e.ALL_CARDS.terraformingProtocols);
  assert(Object.values(g.s.planets).every(p=>!('rich'in p)&&p.special!=='rich'));
- g.p.hand=[{key:'worldweaverSpore',id:'spore'}];g.p.resources={matter:0,energy:0,biomass:0,data:0};
- const home=g.s.clusters[0];g.s.planets[home.coords[1]].owner=0;
- const before=plain(g.s.planets);const action=g.adapter().legalActions(0).find(x=>x.type==='special');
- g.adapter().applyAction(0,action);assert.equal(g.e.totalResources(g.p),2);assert.deepEqual(plain(g.s.planets),before,'Spore makes no permanent terrain changes');
+ assert(!g.e.ALL_CARDS.worldweaverSpore,'Resource-granting relics are removed from the current pool');
 }
 console.log('Fair Frontier: private unordered deck inspection without RNG/state changes, four upgrade currencies and atomic mixed-payment rejection, one Explorer consumed, all newly gained cards in discard and normal draw circulation, and no Rich/terraforming passed.');

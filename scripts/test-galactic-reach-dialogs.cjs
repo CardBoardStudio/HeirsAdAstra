@@ -284,14 +284,14 @@ for(const attacker of [0,1]) for(const stage of ['escape','tactic','committed','
   reportReload.click('message-continue');assert(!reportReload.saved().pendingCombatReport);
 });
 
-test('salvage caps automatically before the saved final report',()=>{
+test('30.35 archive: salvage caps automatically before the saved final report',archived(()=>{
  const storage=combatStorage(0,'tactic'),state=JSON.parse(storage.getItem(SAVE_KEY));
  for(const seat of [0,1]){state.players[seat].resources.matter=4;state.players[seat].hand.push({key:'naniteOssuary',id:`salvage-${seat}`});}
  writeSave(storage,state);const game=boot(storage);let choices=0;
  while(game.saved().pendingCombat){assert(choices++<8);game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();}
  assert(game.dialog('message').open);assert(!game.dialog('overflow').open);assert.equal(game.saved().players[0].resources.matter,4);assert(game.saved().log.some(l=>l.includes('automatically discarded')));
  const reload=boot(storage);assert(reload.dialog('message').open);assert.equal(reload.saved().players[0].resources.matter,4);reload.click('message-continue');assert(!reload.saved().pendingCombatReport);
-});
+}));
 
 test('pass opens Buy before any rival acts, and a Buy reload can finish', () => {
   const storage = createStorage();
@@ -330,13 +330,50 @@ function overflowStorage() {
   return storage;
 }
 
+test('Only level I starters show conversion controls; bulk conversion preserves other cards',()=>{
+ const storage=createStorage(),state=boot(storage).saved();
+ Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ state.players[0].hand=[{id:'level-I',key:'move',starter:true},
+  {id:'level-II',key:'construct',starter:true,upgraded:true,level:2},
+  {id:'level-III',key:'move',starter:true,upgraded:true,level:3},
+  {id:'unit',key:'probe'},{id:'market',key:'signalRelay'},
+  {id:'wonder',key:'dysonLattice'},{id:'relic',key:'firstDawnEchoes'}];
+ state.players[0].resources={matter:0,energy:0,biomass:0,data:0};writeSave(storage,state);
+ const game=boot(storage),before=game.saved();
+ assert.deepEqual(game.dom.lastQuery('[data-resource-card]').map(b=>b.dataset.resourceCard),['level-I']);
+ assert.equal(game.dom.element('convert-all-button').disabled,false);
+ game.click('convert-all-button');const after=game.saved();
+ assert.deepEqual(after.players[0].hand.map(c=>c.id),before.players[0].hand.filter(c=>c.id!=='level-I').map(c=>c.id));
+ assert.equal(after.players[0].resources.energy,1);assert.equal(after.phase,'operations');assert.equal(after.activePlayer,0);
+ assert.equal(game.dom.element('convert-all-button').disabled,true);
+ assert.equal(game.dom.lastQuery('[data-resource-card]').length,0);
+ const reload=boot(storage);assert.equal(reload.dom.lastQuery('[data-resource-card]').length,0);
+});
+test('Wonders in hand have no order or conversion and remain until cleanup or later trash',()=>{
+ const storage=createStorage(),state=boot(storage).saved();
+ state.players[0].hand=[{key:'monumentOfAccord',id:'monument'},{key:'dysonLattice',id:'dyson'}];writeSave(storage,state);
+ const game=boot(storage);assert.equal(game.dom.lastQuery('[data-resource-card]').length,0);
+ assert.equal(game.dom.lastQuery('[data-order-card]').length,0);assert(game.dom.element('convert-all-button').disabled);
+ game.click('convert-all-button');assert.equal(game.saved().players[0].hand.length,2);
+ assert.equal(game.saved().phase,'operations');
+});
+test('Shared-table bulk conversion sends only eligible starters and no empty request',()=>{
+ const state=boot(createStorage()).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ state.players[0].hand=[{id:'valid',key:'construct',starter:true},{id:'III',key:'move',starter:true,upgraded:true,level:3},{id:'wonder',key:'dysonLattice'}];
+ const sent=[],network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:intents=>{sent.push(JSON.parse(JSON.stringify(intents)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});game.click('convert-all-button');
+ assert.deepEqual(sent,[[{type:'resource',card:'valid'}]]);
+ const next=JSON.parse(JSON.stringify(state));next.players[0].hand=next.players[0].hand.filter(c=>c.id!=='valid');
+ game.sync({seq:2,state:next});assert(game.dom.element('convert-all-button').disabled);
+ game.click('convert-all-button');assert.equal(sent.length,1);
+});
 test('resource conversion discards excess without a dialog or extra choice',()=>{
- const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:4,energy:0,biomass:0,data:0};state.players[0].hand=[{id:'auto-cap',key:'construct'}];writeSave(storage,state);
+ const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:4,energy:0,biomass:0,data:0};state.players[0].hand=[{id:'auto-cap',key:'construct',starter:true}];writeSave(storage,state);
  const game=boot(storage);game.click('convert-all-button');assert.equal(game.saved().players[0].resources.matter,4);assert(!game.dialog('overflow').open);assert.equal(game.saved().players[0].inPlay.length,1);assert(game.saved().log.some(l=>l.includes('automatically discarded 1 Matter')));
 });
 
 test('automatic excess results persist across reload without a pending choice',()=>{
- const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:4,energy:4,biomass:0,data:0};state.players[0].hand=[{id:'m',key:'construct'},{id:'e',key:'move'}];writeSave(storage,state);
+ const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:4,energy:4,biomass:0,data:0};state.players[0].hand=[{id:'m',key:'construct',starter:true},{id:'e',key:'move',starter:true}];writeSave(storage,state);
  const game=boot(storage);game.click('convert-all-button');const saved=game.saved();assert.equal(saved.players[0].hand.length,0);assert.deepEqual(saved.players[0].resources,{matter:4,energy:4,biomass:0,data:0});const reload=boot(storage);assert.deepEqual(reload.saved(),saved);assert(!reload.dialog('overflow').open);
 });
 
@@ -454,7 +491,7 @@ test('paid storage button preserves Buy and survives reload without a map buildi
 });
 
 test('convert-all continues after automatic excess loss',()=>{
- const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:4,energy:0,biomass:0,data:1};state.players[0].hand=[{id:'full',key:'construct'},{id:'next',key:'move'}];writeSave(storage,state);
+ const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:4,energy:0,biomass:0,data:1};state.players[0].hand=[{id:'full',key:'construct',starter:true},{id:'next',key:'move',starter:true}];writeSave(storage,state);
  const game=boot(storage);game.click('convert-all-button');assert(!game.dialog('overflow').open);assert.equal(game.saved().players[0].resources.matter,4);assert.equal(game.saved().players[0].resources.energy,1);assert.equal(game.saved().players[0].hand.length,0);
 });
 
@@ -480,8 +517,8 @@ test('trashing uses three of the selected resource type in the live Buy UI', () 
 function excavationStorage({selected=true,affordable=false}={}) {
   const storage=createStorage(),state=boot(storage).saved(),coord=Object.keys(state.planets).find(k=>state.planets[k].special==='relic');
   state.clusters[state.planets[coord].cluster].revealedBy=[0,1,2,3];state.clusters[state.planets[coord].cluster].scannedBy=[0];state.selected=selected?coord:null;
-  state.players[0].hand=[{key:'excavate',id:'tab-dig'},{key:'construct',id:'tab-matter'},{key:'move',id:'tab-energy'},{key:'dataHaven',id:'tab-data'}];
-  state.players[0].resources=affordable?{matter:1,energy:1,biomass:0,data:2}:{matter:0,energy:0,biomass:0,data:0};state.fleets[coord]={0:{explorer:1,fleet:1}};
+  state.players[0].hand=[{key:'excavate',id:'tab-dig'},{key:'construct',id:'tab-matter',starter:true},{key:'move',id:'tab-energy',starter:true},{key:'construct',id:'tab-extra',starter:true}];
+  state.players[0].resources=affordable?{matter:1,energy:1,biomass:0,data:2}:{matter:0,energy:0,biomass:0,data:2};state.fleets[coord]={0:{explorer:1,fleet:1}};
   writeSave(storage,state);return {storage,coord};
 }
 function assertTab(game,name){
@@ -645,7 +682,7 @@ test('Hand Excavate opens Relics with disabled choices, permits conversions, and
   game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='tab-dig').click();assertTab(game,'relics');assert.equal(game.saved().actionMode,'excavate');
   assert(game.dom.lastQuery('[data-excavate-relic]').every(b=>b.disabled));assert.match(game.dom.element('relic-row-help').textContent,/Switch to Hand/);assert.match(game.dom.element('relic-cost').innerHTML,/Matter|matter/);
   const resumed=boot(storage);assertTab(resumed,'relics');resumed.click('hand-tab');
-  for(const id of ['tab-matter','tab-energy','tab-data']){resumed.dom.lastQuery('[data-resource-card]').find(b=>b.dataset.resourceCard===id).click();assertTab(resumed,'hand');}
+  for(const id of ['tab-matter','tab-energy','tab-extra']){resumed.dom.lastQuery('[data-resource-card]').find(b=>b.dataset.resourceCard===id).click();assertTab(resumed,'hand');}
   assert.equal(resumed.saved().actionMode,'excavate');resumed.click('relics-tab');assert(resumed.dom.lastQuery('[data-excavate-relic]').every(b=>!b.disabled));
   const ready=resumed.saved();resumed.click('cancel-excavate');assertTab(resumed,'hand');assert.equal(resumed.saved().actionMode,null);assert.deepEqual(resumed.saved().players,ready.players);assert.deepEqual(resumed.saved().fleets,before.fleets);assert.deepEqual(resumed.saved().relicRow,before.relicRow);
 });
@@ -1077,7 +1114,7 @@ test('Buy upgrades and trashes starters in hand, discard and in play (28.33 #buy
 });
 test('the last conversion passes into Buy without waiting for a click',()=>{
  const storage=createStorage(),state=boot(storage).saved();
- state.players[0].hand=[{id:'last',key:'construct'}];state.players[0].resources={matter:3,energy:3,biomass:3,data:3};
+ state.players[0].hand=[{id:'last',key:'construct',starter:true}];state.players[0].resources={matter:3,energy:3,biomass:3,data:3};
  writeSave(storage,state);const game=boot(storage);game.click('convert-all-button');
  const after=game.saved();assert.equal(after.phase,'buy');assert.equal(after.activePlayer,0);assert.equal(after.players[0].hand.length,0);assert(after.players[0].inPlay.some(c=>c.id==='last'));
 });
