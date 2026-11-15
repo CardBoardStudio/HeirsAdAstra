@@ -20,7 +20,7 @@ impl GameKind {
     fn pool(self) -> &'static str {
         match self {
             Self::Voidwright => "voidwright/2:duel:20-rounds:policies-v1",
-            Self::GalacticReach => "galactic-reach/37.42:four-player:placement:policies-v28",
+            Self::GalacticReach => "galactic-reach/37.42:four-player:placement:policies-v29",
         }
     }
     fn seats(self) -> usize {
@@ -174,7 +174,7 @@ pub async fn create_bot(
         "{}/{}",
         input.strategy,
         if input.game == GameKind::GalacticReach {
-            28
+            29
         } else {
             1
         }
