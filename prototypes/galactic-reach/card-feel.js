@@ -12,6 +12,7 @@
   const $$ = selector => [...document.querySelectorAll(selector)];
   const center = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   const shown = element => Boolean(element?.getClientRects().length);
+  const RESOURCE_LABELS = { matter: 'Matter', energy: 'Energy', biomass: 'Biomass', data: 'Data' };
   let api = null, previous = null, view = null, drag = null;
 
   // ---- Tilt and sheen: a card leans a few degrees toward the pointer. ----
@@ -212,8 +213,19 @@
     if (newRound) for (const resource of new Set(after.producers.map(p => p.resource)))
       if (after.resources[resource] <= before.resources[resource] && after.resources[resource] >= after.limits[resource]) $(`.resource-box[data-resource="${resource}"]`)?.classList.add('cf-wasted');
   }
+  // Piles read as stacks of the same card stock: thicker the more cards they hold, an empty
+  // pile as an outlined space on the mat.
+  function stackPiles(next) {
+    for (const [selector, count] of [['#deck-button', next.deck], ['#in-play-button', next.inPlay], ['#discard-button', next.discard]]) {
+      const pile = $(selector);
+      if (!pile) continue;
+      pile.classList.add('cf-pile');
+      pile.dataset.cfStack = String(count ? Math.min(4, Math.ceil(count / 3)) : 0);
+    }
+  }
   function rendered(next) {
     fanHand();
+    stackPiles(next);
     const before = view, saved = previous;
     view = next; previous = null;
     if (inspected) { const card = $(`#hand-row > .game-card[data-card-id="${inspected}"]`); if (card && (card.matches(':hover') || card.contains(document.activeElement))) inspectCard(card); else hideInspect(); }
@@ -250,6 +262,13 @@
     const hexes = targets.map(target => { const hex = $(`.hex[data-coord="${target.coord}"]`); hex?.classList.add('cf-drop-target'); return hex; }).filter(Boolean);
     const reserves = convert ? $('.resource-panel') : null;
     reserves?.classList.add('cf-drop-zone');
+    // The reserves this card converts into show what they will gain.
+    const yields = convert ? [...card.querySelectorAll('.card-footer .resource-chip')].map(chip => {
+      const resource = Object.keys(RESOURCE_LABELS).find(name => chip.classList.contains(name)), box = resource && reserves?.querySelector(`.resource-box.${resource}`);
+      box?.classList.add('cf-drop-yield');
+      box?.setAttribute('data-cf-gain', `+${chip.querySelector('strong')?.textContent || 1}`);
+      return box;
+    }).filter(Boolean) : [];
     const board = special ? $('.board-map-region') : null;
     board?.classList.add('cf-drop-zone');
     const overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -257,9 +276,14 @@
     overlay.setAttribute('aria-hidden', 'true');
     overlay.innerHTML = '<defs><marker id="cf-arrow-head" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs><path class="cf-arrow-line" marker-end="url(#cf-arrow-head)"/><circle class="cf-arrow-reticle" r="13"/>';
     document.body.append(overlay);
+    const label = document.createElement('div');
+    label.className = 'cf-drop-label';
+    label.setAttribute('aria-hidden', 'true');
+    document.body.append(label);
     card.classList.add('cf-dragging');
     document.body.classList.add('cf-drag-active');
-    drag = { card, id, hexes, reserves, board, special: Boolean(special), convert: Boolean(convert), overlay, over: null };
+    const name = card.querySelector('.card-name')?.textContent.trim() || 'order';
+    drag = { card, id, name, hexes, reserves, yields, board, special: Boolean(special), convert: Boolean(convert), overlay, label, over: null };
     moveDrag(event);
   }
   function dropUnder(x, y) {
@@ -283,25 +307,35 @@
     }
     drag.over = over;
     drag.overlay.classList.toggle('cf-on-target', Boolean(over));
+    // Say what letting go here will do; nothing is shown where a drop plays nothing.
+    const text = !over ? '' : over.kind === 'convert' ? `Convert ${drag.yields.map(box => `${box.dataset.cfGain} ${RESOURCE_LABELS[box.dataset.resource]}`).join(', ')}`.trim()
+      : over.kind === 'play' ? `Play ${drag.name}` : `${drag.name} here`;
+    drag.label.textContent = text;
+    drag.label.hidden = !text;
+    drag.label.style.left = `${Math.min(innerWidth - 12 - drag.label.offsetWidth, ex + 18)}px`;
+    drag.label.style.top = `${Math.max(8, ey - 34)}px`;
   }
   function cleanupDrag() {
     for (const hex of drag.hexes) hex.classList.remove('cf-drop-target', 'cf-drop-hover');
     for (const zone of [drag.reserves, drag.board]) zone?.classList.remove('cf-drop-zone', 'cf-drop-hover');
+    for (const box of drag.yields) { box.classList.remove('cf-drop-yield'); box.removeAttribute('data-cf-gain'); }
     drag.card.classList.remove('cf-dragging');
     drag.overlay.remove();
+    drag.label.remove();
     document.body.classList.remove('cf-drag-active');
     drag = null;
   }
   function cancelDrag() { cleanupDrag(); }
   function endDrag(event) {
     const { id } = drag, over = dropUnder(event.clientX, event.clientY);
+    cleanupDrag();
+    // Play first: the drop clicks the card's own Convert or Use order button, which the
+    // guard below would otherwise swallow along with the browser's click after pointerup.
+    if (over?.kind === 'hex') api.playAt(id, over.element.dataset.coord);
+    else if (over?.kind === 'convert') $(`#hand-row [data-resource-card="${id}"]`)?.click();
+    else if (over?.kind === 'play') $(`#hand-row [data-order-card="${id}"]`)?.click();
     swallowClick = true;
     setTimeout(() => { swallowClick = false; }, 0);
-    cleanupDrag();
-    if (!over) return;
-    if (over.kind === 'hex') api.playAt(id, over.element.dataset.coord);
-    else if (over.kind === 'convert') $(`#hand-row [data-resource-card="${id}"]`)?.click();
-    else if (over.kind === 'play') $(`#hand-row [data-order-card="${id}"]`)?.click();
   }
 
   globalThis.galacticReachCardFeel = { attach(next) { api = next; }, beforeRender, rendered };
