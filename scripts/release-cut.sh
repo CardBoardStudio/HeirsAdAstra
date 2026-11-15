@@ -6,6 +6,10 @@
 #
 #   scripts/release-cut.sh [--dry-run]   # needs git, node, gh (GH_TOKEN) and a full clone
 #
+# With the workflow's own GITHUB_TOKEN (DISPATCH_CI=true, the default) it starts
+# CI on release/next itself, and when GitHub refuses that token a new PR, it
+# leaves a compare link in the job summary instead.
+#
 # release/next belongs to this script: every run that has something new replaces
 # it. Its head commit records what it was cut from (Cut-From, Cut-Name trailers),
 # so a run with nothing new changes nothing.
@@ -42,7 +46,7 @@ declared_save() { git show "$1:prototypes/galactic-reach/app.js" | grep -oE 'con
 
 body() { # body MAIN NAME COMPAT REPORT
   cat <<EOF
-The [Release cut workflow](../actions/workflows/release-cut.yml) keeps this PR current: it is \`node scripts/release.cjs cut\` applied to \`$BASE\` at $1, cut again whenever \`$BASE\` moves. Commits pushed to \`$CUT_BRANCH\` are replaced, so fixes go in their own PR into \`$BASE\`.
+The [Release cut workflow]($URL/actions/workflows/release-cut.yml) keeps this PR current: it is \`node scripts/release.cjs cut\` applied to \`$BASE\` at $1, cut again whenever \`$BASE\` moves. Commits pushed to \`$CUT_BRANCH\` are replaced, so fixes go in their own PR into \`$BASE\`.
 
 Release name: $2
 
@@ -54,7 +58,7 @@ Compatibility: **$3**
 $4
 \`\`\`
 
-Review what the cut lists, check that CI passed on the head commit, merge this PR, then merge the Release PR (\`$BASE\` → \`stable\`) with a merge commit. See [docs/release.md](../blob/$BASE/docs/release.md#cut-a-release).
+Review what the cut lists, check that CI passed on the head commit, merge this PR, then merge the Release PR (\`$BASE\` → \`stable\`) with a merge commit. See [docs/release.md]($URL/blob/$BASE/docs/release.md#cut-a-release).
 EOF
 }
 
@@ -62,6 +66,7 @@ git fetch --quiet --prune origin "+refs/heads/$BASE:refs/remotes/origin/$BASE" "
 git fetch --quiet origin "+refs/heads/$CUT_BRANCH:refs/remotes/origin/$CUT_BRANCH" 2>/dev/null ||
   git update-ref -d "refs/remotes/origin/$CUT_BRANCH"
 main=$(git rev-parse "origin/$BASE")
+URL=${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}
 pr=$(gh pr list --base "$BASE" --head "$CUT_BRANCH" --state open --json number,body --jq '.[0] // {}')
 number=$(jq -r '.number // empty' <<<"$pr")
 
@@ -107,19 +112,33 @@ compat=safe other=breaking
 [ "$(declared_save "$head")" = "$(declared_save origin/stable)" ] || { compat=breaking other=safe; }
 report=$(git log -1 --format=%b "$head" | sed '/^Cut-From: /,$d')
 text=$(body "$main" "$name" "$compat" "$report")
-if [ -n "$number" ]; then
-  write "update PR #$number ($compat)" gh pr edit "$number" --title "$TITLE" --body "$text" --add-label "playtest-$compat"
-  write "unlabel PR #$number playtest-$other" gh pr edit "$number" --remove-label "playtest-$other" >/dev/null 2>&1 || true
-else
-  write "open the cut PR ($compat)" gh pr create --base "$BASE" --head "$CUT_BRANCH" --title "$TITLE" --body "$text" --label "playtest-$compat"
-fi
 
-# A push with the workflow's GITHUB_TOKEN starts no other workflow, so start
-# the checks on the new head by hand.
-if [ -n "$pushed" ]; then
+# A push with the workflow's own GITHUB_TOKEN starts no other workflow, so start
+# the checks on the new head by hand. (A GitHub App token's push starts them.)
+if [ -n "$pushed" ] && [ "${DISPATCH_CI:-true}" = true ]; then
   for workflow in ci.yml rules.yml; do
     write "run $workflow on $CUT_BRANCH" gh workflow run "$workflow" --ref "$CUT_BRANCH" ||
       log "could not start $workflow on $CUT_BRANCH; run it from the Actions tab"
   done
+fi
+
+if [ -n "$number" ]; then
+  write "update PR #$number ($compat)" gh pr edit "$number" --title "$TITLE" --body "$text" --add-label "playtest-$compat"
+  write "unlabel PR #$number playtest-$other" gh pr edit "$number" --remove-label "playtest-$other" >/dev/null 2>&1 || true
+elif ! write "open the cut PR ($compat)" gh pr create --base "$BASE" --head "$CUT_BRANCH" --title "$TITLE" --body "$text" --label "playtest-$compat"; then
+  # GITHUB_TOKEN may not open PRs (an organization policy). The branch is cut;
+  # leave a person the link and the description.
+  link="$URL/compare/$BASE...$CUT_BRANCH?expand=1&title=Cut%3A+next+release&labels=playtest-$compat"
+  echo "::warning title=Cut PR not opened::GitHub refused to open the cut PR with this token. Open it from $link (docs/release.md#cut-a-release)."
+  cat >> "${GITHUB_STEP_SUMMARY:-/dev/stderr}" <<EOF
+## Cut PR not opened
+
+\`$CUT_BRANCH\` is cut from \`$BASE\` ${main:0:12}, but this token may not open pull requests. [Open the PR]($link) and paste this description:
+
+\`\`\`\`markdown
+$text
+\`\`\`\`
+EOF
+  exit 0
 fi
 log "cut PR holds $BASE ${main:0:12} as '$name' ($compat)"
