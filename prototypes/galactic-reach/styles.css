@@ -1734,11 +1734,11 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #hand-row .game-card.order-selected { box-shadow: 0 0 0 3px var(--gold), 0 -2px 10px #0006; }
   .market-cards .game-card.unavailable { background: #c9c3b4; filter: saturate(.6); }
 
-  /* Your hand: card tops held along the bottom edge of the board, overlapping slightly. */
+  /* Your hand: card tops held along the bottom edge of the board, within its width, overlapping slightly. */
   #hand-row {
     --n: 5; --top-w: clamp(124px, calc((100cqw + (var(--n) - 1) * 12px) / var(--n)), 210px);
-    grid-column: 1 / -1; grid-row: 7; align-self: end; justify-self: stretch; z-index: 6; display: flex; flex-wrap: nowrap; align-items: flex-end; justify-content: flex-start;
-    height: var(--strip-h); margin: 0 calc(var(--tools-w) + 12px + var(--pile-w) + 14px) 0 calc(52px + 2 * var(--pile-w) + 9px + 14px); padding: 0; container-type: inline-size; gap: 0;
+    grid-column: 2; grid-row: 7; align-self: end; justify-self: stretch; z-index: 6; display: flex; flex-wrap: nowrap; align-items: flex-end; justify-content: flex-start;
+    height: var(--strip-h); margin: 0; padding: 0; container-type: inline-size; gap: 0;
   }
   #hand-row:not(:has(> :nth-child(5))) { --n: 4; }
   #hand-row:not(:has(> :nth-child(4))) { --n: 3; }

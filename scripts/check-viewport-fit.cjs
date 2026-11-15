@@ -131,6 +131,9 @@ const CASES = [
   { name: 'standings overview (keyboard focus)', save: midGameState(), focus: '.score-card:nth-child(2) button.score-value' },
   // The bank lies open at the table; choosing both sides fills its preview line.
   { name: 'bank & discards, exchange chosen', save: midGameState(), click: ['#bank-give-biomass', '#bank-get-data'] },
+  // The first and last hand cards raised: they rise over the map, clear of the bank and the piles.
+  { name: 'operations, first hand card raised (bank open)', save: midGameState(), focus: '#hand-row .game-card:first-child button' },
+  { name: 'operations, last hand card raised', save: midGameState(), focus: '#hand-row .game-card:last-child button' },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -263,6 +266,16 @@ const MEASURE = `(() => {
     if (!shown(button) || modal) continue;
     const b = button.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
     if (!hit || !button.contains(hit)) problems.push('raised card button covered: ' + label(button) + ' by ' + (hit ? label(hit) : 'nothing'));
+  }
+  // A raised card may lie over the map and over cards in its own hand or supply, never over
+  // another control (the bank, the piles, the turn's buttons, standings or menus).
+  for (const raised of document.querySelectorAll(':is(#hand-row, .market-cards, .relic-row) .game-card:is(:hover, :focus, :focus-within)')) {
+    if (modal) break;
+    const home = raised.closest('#hand-row, #market-panel, #relics-panel'), own = raised.closest('#market-panel, #relics-panel') ? '#market-panel, #relics-panel' : '#hand-row';
+    const r = raised.getBoundingClientRect();
+    const under = [...document.querySelectorAll('button, a[href], select, input, textarea, summary, .game-card, .score-card, .resource-box')]
+      .find(e => !raised.contains(e) && !e.closest(own) && !e.closest('.hex') && home && shown(e) && (() => { const c = e.getBoundingClientRect(); return c.width > 1 && c.height > 1 && c.left < r.right - 1 && c.right > r.left + 1 && c.top < r.bottom - 1 && c.bottom > r.top + 1; })());
+    if (under) problems.push('raised card ' + label(raised).slice(0, 60) + ' overlaps ' + label(under));
   }
   // A toast may lie over reference text, never over a card, a control or the map.
   for (const toast of document.querySelectorAll('.toast')) {
