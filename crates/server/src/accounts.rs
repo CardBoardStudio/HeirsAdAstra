@@ -66,6 +66,16 @@ pub fn session_response(app: &App, token: &str, body: serde_json::Value) -> Resp
     };
     ([(header::SET_COOKIE, format!("drawing_board_alien_v11_session={token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400{secure}"))],Json(body)).into_response()
 }
+/// Invite-only hosts admit Nido accounts only (docs/invite-only.md).
+fn nido_only(app: &App) -> ApiResult<()> {
+    if app.nido.access.invite_only {
+        return Err(ApiError(
+            StatusCode::FORBIDDEN,
+            "This server admits Nido accounts only. Sign in with Nido.".into(),
+        ));
+    }
+    Ok(())
+}
 #[derive(Deserialize)]
 pub struct Register {
     name: String,
@@ -79,6 +89,7 @@ pub async fn register(
     headers: HeaderMap,
     Json(input): Json<Register>,
 ) -> ApiResult<Response> {
+    nido_only(&app)?;
     let name = clean(&input.name, 32)?;
     let mut db = app.store.0.lock().map_err(internal)?;
     rate_limit(&db)?;
@@ -126,6 +137,7 @@ pub async fn login(
     headers: HeaderMap,
     Json(input): Json<KeyLogin>,
 ) -> ApiResult<Response> {
+    nido_only(&app)?;
     let mut db = app.store.0.lock().map_err(internal)?;
     rate_limit(&db)?;
     let account: Option<(String, String)> = db

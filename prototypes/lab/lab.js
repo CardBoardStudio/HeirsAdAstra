@@ -75,9 +75,20 @@ function notice(message, error = false) {
   el.hidden = !message;
   el.classList.toggle("error", error);
 }
+// Invite-only host (docs/invite-only.md): until this browser holds a member
+// session, only the sign-in and invitation claim are available.
+const gated = () => session?.invite_only && !session.member;
+const PENDING = "drawing-board-after-invite";
+function remember(path) { try { localStorage.setItem(PENDING, path); } catch {} }
+function resume() {
+  let path = "";
+  try { path = localStorage.getItem(PENDING) || ""; localStorage.removeItem(PENDING); } catch {}
+  if (/^\/\?game=galactic-reach#lobby\/[a-f0-9]{32}(?:\/[a-f0-9]{64})?$/.test(path)) { location.assign(path); return true; }
+  return false;
+}
 async function refresh() {
   session = await api("/api/session");
-  if (session.user)
+  if (session.user && !gated())
     [profile, arena, tables,matches] = await Promise.all([
       api("/api/account"),
       api(`/api/arena?game=${arenaGame}`),
@@ -94,6 +105,7 @@ async function refresh() {
     try { invitation = await api("/api/invites/inspect", {token:inviteToken()}); inviteError = null; }
     catch (e) { invitation = null; inviteError = e.message; }
   }
+  if (gated()) { if (page() === "lobby") remember(location.pathname + location.search + location.hash); render(); return; }
   if (page() === "lobby") await loadLobby();
   catalog ??= await api("/api/catalog");
   render();
@@ -243,6 +255,17 @@ function adminView() {
   return head("BRING PEOPLE TO THE TABLE", "Invite your next player.", "Create a link, share it privately, and keep track of the seats you’ve offered.") +
     `<div class="split"><section class="panel"><h2>Create an invitation</h2><form id="invite-form"><label for="invite-label">Who is it for?</label><input id="invite-label" name="label" maxlength="80" required placeholder="Friday game night"><label for="invite-days">Expires in</label><select id="invite-days" name="days"><option value="1">24 hours</option><option value="7" selected>7 days</option><option value="30">30 days</option></select><label for="invite-uses">Number of people</label><input id="invite-uses" name="max_uses" type="number" min="1" max="20" value="1" required><button class="primary">Create invite link →</button><p class="form-note">Invites create player accounts. They never grant administrator access. Copy the link when it appears; it is shown once.</p></form></section><section class="panel"><h2>Your invitations</h2>${invitations.length ? invitations.map(i => `<article class="invitation-row"><strong>${esc(i.label)}</strong><p>${i.uses}/${i.max_uses} people · ${status(i)}<br>Expires ${new Date(i.expires*1000).toLocaleDateString()} · Created by ${esc(i.created_by)}</p>${status(i)==="Active" ? `<button class="secondary" data-revoke-invite="${esc(i.id)}">Revoke link</button>` : ""}</article>`).join("") : '<p>No invitations yet. Create your first link.</p>'}</section></div>`;
 }
+function gateView() {
+  const here = location.pathname + location.search + location.hash;
+  const signIn = `<a class="primary" href="/api/auth/nido?return_to=${encodeURIComponent(here)}">Continue with Nido ↗</a>`;
+  const signOut = '<button class="secondary" id="logout">Sign out</button>';
+  const offered = invitation ? `<p>Invitation: <strong>${esc(invitation.label)}</strong></p>` : inviteToken() ? `<p class="hint">${esc(inviteError || "This invitation link is unavailable.")}</p>` : "";
+  const intro = head("INVITE ONLY", "This playtest server is invite-only.", "Members sign in with a Nido wallet. An administrator’s invitation link admits a new member.");
+  if (!session.user) return intro + `<section class="panel">${offered}<p>Sign in with Nido${invitation ? " to accept this invitation" : ""}. You’ll approve a sign-in message in Nido.</p>${signIn}</section>`;
+  if (!session.user.nido) return intro + `<section class="panel"><p>You’re signed in as ${esc(session.user.name)}, which isn’t a Nido account. This server admits Nido accounts only.</p>${signOut}</section>`;
+  if (invitation) return intro + `<section class="panel">${offered}<p>Accept as ${esc(session.user.name)}${invitation.role === "admin" ? " to become the host administrator" : ""}.</p><button class="primary" id="accept-invite">${invitation.role === "admin" ? "Set up administrator" : "Accept invitation"} →</button></section>`;
+  return intro + `<section class="panel">${offered}<p>You’re signed in with Nido as ${esc(session.user.name)}, but this account has no invitation. Ask an administrator for an invitation link and open it in this browser.${page() === "lobby" ? " You’ll come back to this table after you accept it." : ""}</p>${signOut}</section>`;
+}
 function inviteView() {
   if (!invitation) return head("YOUR INVITATION", "This link is unavailable.", esc(inviteError || "Ask the host for a new invitation.")) + '<a class="secondary" href="#account">Go to your account</a>';
   const admin = invitation.role === "admin";
@@ -273,9 +296,17 @@ function render() {
     lobby: "Waiting room",
   }[current];
   $("#admin-nav").hidden = !profile?.is_admin;
-  $("#account-link").innerHTML = profile
-    ? `<span class="avatar">${esc(profile.name.slice(0, 1).toUpperCase())}</span>${esc(profile.name)}`
+  // A gated visitor has no profile yet, but may already be signed in.
+  const who = profile ?? (gated() ? session.user : null);
+  $("#account-link").innerHTML = who
+    ? `<span class="avatar">${esc(who.name.slice(0, 1).toUpperCase())}</span>${esc(who.name)}`
     : "Sign in <span>↗</span>";
+  if (gated()) {
+    $("#page-name").textContent = "Invitation required";
+    $("#main").innerHTML = gateView();
+    bind();
+    return;
+  }
   $("#main").innerHTML = ({arena:arenaView,account:accountView,library:libraryView,admin:adminView,invite:inviteView,tables:tablesView,lobby:lobbyView}[current])();
   bind();
   pollLobby();
@@ -329,6 +360,7 @@ function bind() {
   });
   onClick("#accept-invite", async () => {
     await api("/api/invites/accept",{token:inviteToken()});
+    if (resume()) return;
     location.hash = invitation.role === "admin" ? "admin" : "tables";
     notice("Invitation accepted. Welcome to the lab.");
   });
@@ -462,7 +494,7 @@ $(".skip").addEventListener("click", (event) => {
   $("#main").scrollIntoView();
 });
 window.addEventListener("hashchange", () => {
-  if (page() === "invite" || page() === "lobby") { refresh().catch(e => notice(e.message, true)); return; }
+  if (gated() || page() === "invite" || page() === "lobby") { refresh().catch(e => notice(e.message, true)); return; }
   if (catalog) {
     render();
     $("#main").focus();

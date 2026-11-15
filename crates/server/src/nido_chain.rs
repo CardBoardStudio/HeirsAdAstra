@@ -17,6 +17,8 @@ pub struct Config {
     rpc: String,
     client: reqwest::Client,
     slots: tokio::sync::Semaphore,
+    /// Which signed-in Nido accounts this host admits (docs/invite-only.md).
+    pub access: crate::access::Policy,
 }
 impl Config {
     pub fn new(enabled: bool, rpc: String) -> Result<Self, Box<dyn std::error::Error>> {
@@ -33,7 +35,12 @@ impl Config {
                 .redirect(reqwest::redirect::Policy::none())
                 .build()?,
             slots: tokio::sync::Semaphore::new(8),
+            access: Default::default(),
         })
+    }
+    pub fn with_access(mut self, access: crate::access::Policy) -> Self {
+        self.access = access;
+        self
     }
     pub async fn keys(&self, account: &str) -> ApiResult<Vec<String>> {
         if !self.enabled {

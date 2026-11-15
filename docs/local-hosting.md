@@ -53,6 +53,8 @@ After building the current server, run:
 
 Open the printed one-time setup link, sign in or create your persistent account, and accept administrator access. It expires after 24 hours. Once claimed, bootstrap is closed. Then use **Invitations** in the sidebar to create, copy, and revoke player enrollment links. You no longer need to share the host enrollment code. Nido remains an independent sign-in option when enabled.
 
+To admit only Nido accounts holding an invitation, and refuse everything else before sign-in, set `ACCESS=invite-only` in `.local/host.env`. See [invite-only hosting](invite-only.md).
+
 The setup link grants administrator access to whoever claims it first. Keep it private. Regenerating it before acceptance invalidates the old link. Existing accounts, tables, sessions, and ratings survive this additive database migration.
 
 ## Stop or inspect
