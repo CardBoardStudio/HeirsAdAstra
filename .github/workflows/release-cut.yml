@@ -1,0 +1,43 @@
+name: Release cut
+# Keeps the one "Cut: next release" PR (release/next -> main) holding the
+# pending changes/ entries cut by scripts/release.cjs (docs/release.md#cut-a-release).
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [edited] # a renamed release on the cut PR
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      name:
+        description: Release name for a rules-changing cut (default "Playtest <date>")
+        required: false
+permissions:
+  contents: write # push release/next
+  pull-requests: write # open and update the cut PR
+  actions: write # start CI on release/next (GITHUB_TOKEN pushes trigger no workflows)
+concurrency:
+  group: release-cut
+  cancel-in-progress: false
+jobs:
+  cut:
+    name: Cut the next release
+    # On the cut PR itself, only a description edit (a new release name) reruns it.
+    if: >-
+      github.event_name != 'pull_request' ||
+      (github.head_ref == 'release/next' && github.event.pull_request.head.repo.full_name == github.repository &&
+      github.event.changes.body != null)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: scripts/release-cut.sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_NAME: ${{ inputs.name }}

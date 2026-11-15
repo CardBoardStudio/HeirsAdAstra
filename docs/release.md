@@ -34,7 +34,21 @@ Interface edits inside `app.js` reach only tables on the current dev revision. A
 
 ## Cut a release
 
-The standing Release PR (`main` → `stable`) always shows what is unreleased. Render previews only PRs into a service's own branch, so the Release PR is the one PR with a Render preview; change PRs into `main` are checked locally (`scripts/dev.sh`) and then on the dev host after merge. Its Render preview, a PR preview of the stable service, runs the batch exactly as it would ship. When the batch is ready:
+The standing Release PR (`main` → `stable`) always shows what is unreleased. Render previews only PRs into a service's own branch, so the Release PR is the one PR with a Render preview; change PRs into `main` are checked locally (`scripts/dev.sh`) and then on the dev host after merge. Its Render preview, a PR preview of the stable service, runs the batch exactly as it would ship.
+
+The cut PR appears automatically. After every push to `main` that leaves entries in `changes/`, the **Release cut** workflow (`.github/workflows/release-cut.yml`, running `scripts/release-cut.sh`) cuts them on a fresh `release/next` from `main` and opens or updates the single **"Cut: next release"** PR into `main`, labelled `playtest-breaking` or `playtest-safe`. A rules-changing release is named "Playtest <date>" by default. To rename it, edit the `Release name:` line in the PR description; the workflow cuts again with that name. You can also run the workflow from the Actions tab with a name. When the batch is ready:
+
+1. Check that CI passed on the cut PR's head commit, review what the cut lists in the PR (rulebook prose, the catalog description), and merge it.
+2. Verify the Release PR's preview, announce the reset if rules changed, and merge the Release PR with a **merge commit** (squash or rebase would detach `stable` from `main`).
+
+`release/next` belongs to the workflow: each new `main` commit replaces it, so a fix goes in its own change PR into `main`. Nothing pending is a no-op, and if a cut merges by hand, the workflow closes its stale PR. It never reopens a cut PR someone closed until `main` moves.
+
+The workflow uses the built-in `GITHUB_TOKEN` (contents, pull requests and actions write), so no personal token is stored anywhere. Two consequences:
+
+- The repository must allow it: **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**.
+- GitHub starts no workflow for a push or PR made with `GITHUB_TOKEN`, so CI would not run on the cut PR by itself. The workflow therefore starts `ci.yml` and `rules.yml` on `release/next` with `workflow_dispatch` after each push; their results show on the PR's head commit. The `pull_request`-only step of `rules.yml` (the change-PR policy) is skipped there, which is correct for a `release/*` branch. If branch protection ever requires checks that only `pull_request` runs produce, switch the workflow to a GitHub App token (`actions/create-github-app-token`, with contents and pull requests write on this repository): pushes made with it trigger CI normally, and the dispatch step becomes unnecessary.
+
+To cut by hand (for an edit the cut PR cannot hold):
 
 ```sh
 git switch -c release/cut origin/main
@@ -52,7 +66,9 @@ If any pending entry is `breaking`, `cut` makes a single version bump for the wh
 
 A batch with only `safe` entries makes no bump. It writes a save-compatible update section, and games in progress continue. `--name` is needed only when rules change. Rerunning `cut` later in the same cycle adds newly merged entries to the same release without bumping again.
 
-Then review what the script lists (rulebook prose, the catalog description), run the checks from [AGENTS.md](../AGENTS.md#verification) plus `node scripts/test-release.cjs`, and open `release/cut` as a PR into `main` labelled with the release's compatibility. Merge it. The Release PR now contains the bump. Verify the Release PR's preview, announce the reset if rules changed, and merge the Release PR with a **merge commit** (squash or rebase would detach `stable` from `main`). Render deploys `stable`. Verify the stable deployment's game and rulebook.
+Then review what the script lists (rulebook prose, the catalog description), run the checks from [AGENTS.md](../AGENTS.md#verification) plus `node scripts/test-release.cjs`, and open `release/cut` as a PR into `main` labelled with the release's compatibility. Merge it, and the workflow closes its own cut PR.
+
+Either way, the Release PR now contains the bump. Once it merges, Render deploys `stable`. Verify the stable deployment's game and rulebook.
 
 The same check fails a Release PR that still has pending entries: cut them first.
 
@@ -71,7 +87,8 @@ The same check fails a Release PR that still has pending entries: cut them first
 2. Merge the PR that adds this process. The Blueprint (`render.yaml`) points `drawing-board` at `stable`; sync it in Render.
 3. Set up a [dev host](#dev-host), or point an existing one at `main` (`BRANCH=main` in its `dev-host.conf`).
 4. Open the standing Release PR: `main` → `stable`, titled "Release: next".
-5. Optionally protect `stable` so only PR merges reach it.
+5. Allow the Release cut workflow to open PRs: **Settings → Actions → General → Allow GitHub Actions to create and approve pull requests**.
+6. Optionally protect `stable` so only PR merges reach it.
 
 ## Dev host
 
