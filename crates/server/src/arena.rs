@@ -101,10 +101,10 @@ pub async fn catalog() -> Json<serde_json::Value> {
         {"game":"voidwright","id":"explorer","version":"explorer/1","name":"Explorer","description":"Experiments with random purchases and sometimes passes."},
         {"game":"voidwright","id":"merchant","version":"merchant/1","name":"Merchant","description":"Builds a resource economy, then buys scoring colonies."},
         {"game":"voidwright","id":"kepler","version":"kepler/1","name":"Kepler","description":"Balances resource growth with a small action engine."}
-        ,{"game":"galactic-reach","id":"gr-military","version":"gr-military/28","name":"Vanguard","description":"Builds warships and shipyards, then moves toward rival colonies."}
-        ,{"game":"galactic-reach","id":"gr-economy","version":"gr-economy/28","name":"Architect","description":"Prioritizes production, storage, and industry."}
-        ,{"game":"galactic-reach","id":"gr-expansion","version":"gr-expansion/28","name":"Pathfinder","description":"Builds Settlers and seeks new colony sites."}
-        ,{"game":"galactic-reach","id":"gr-wanderer","version":"gr-wanderer/28","name":"Wanderer","description":"Samples useful legal actions with seeded randomness."}
+        ,{"game":"galactic-reach","id":"gr-military","version":"gr-military/29","name":"Vanguard","description":"Builds warships and shipyards, then moves toward rival colonies."}
+        ,{"game":"galactic-reach","id":"gr-economy","version":"gr-economy/29","name":"Architect","description":"Prioritizes production, storage, and industry."}
+        ,{"game":"galactic-reach","id":"gr-expansion","version":"gr-expansion/29","name":"Pathfinder","description":"Builds Settlers and seeks new colony sites."}
+        ,{"game":"galactic-reach","id":"gr-wanderer","version":"gr-wanderer/29","name":"Wanderer","description":"Samples useful legal actions with seeded randomness."}
     ],"pool":GameKind::Voidwright.pool()}))
 }
 #[derive(Serialize)]
@@ -483,10 +483,10 @@ pub fn calibrate(
     }
     let game = GameKind::GalacticReach;
     let policies: Vec<String> = [
-        "gr-military/28",
-        "gr-economy/28",
-        "gr-expansion/28",
-        "gr-wanderer/28",
+        "gr-military/29",
+        "gr-economy/29",
+        "gr-expansion/29",
+        "gr-wanderer/29",
     ]
     .into_iter()
     .map(String::from)
