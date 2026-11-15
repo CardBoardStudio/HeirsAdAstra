@@ -1,7 +1,7 @@
 name: Rules contract
 on:
   push:
-    branches: [main]
+    branches: [main, stable]
   pull_request:
     types: [opened, synchronize, reopened, edited, ready_for_review]
   workflow_dispatch: # the Release cut workflow starts it on release/next

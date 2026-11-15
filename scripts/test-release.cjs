@@ -41,6 +41,9 @@ try {
   const git = (...args) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' });
   const release = (...args) => execFileSync(process.execPath, [path.join(repo, 'scripts/release.cjs'), ...args], { cwd: repo, encoding: 'utf8' });
   execFileSync('git', ['clone', '--quiet', '--no-local', root, repo]);
+  // The fixture owns its main/stable branches, regardless of the caller's
+  // checkout (including CI running directly on stable or a detached tag).
+  git('checkout', '--quiet', '-B', 'main');
   // Bring this checkout's (possibly uncommitted) tooling into the clone.
   const local = execFileSync('git', ['ls-files', '-m', '-o', '--exclude-standard'], { cwd: root, encoding: 'utf8' }).split('\n').filter(Boolean);
   for (const rel of local) {
@@ -54,7 +57,7 @@ try {
   }
   git('add', '-A');
   git('-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '--quiet', '--allow-empty', '-m', 'tooling');
-  git('branch', 'stable');
+  git('branch', '--force', 'stable');
   const app = () => fs.readFileSync(path.join(repo, 'prototypes/galactic-reach/app.js'), 'utf8');
   const from = /SAVE_FORMAT_VERSION = (\d+);[\s\S]*?RULES_REVISION = (\d+);/.exec(app()).slice(1).map(Number);
   const add = (name, compat, title) => fs.writeFileSync(path.join(repo, 'changes', name), `---\ncompat: ${compat}\ntitle: ${title}\n---\n${title} body. [Movement](rulebook.html#movement).\n`);
