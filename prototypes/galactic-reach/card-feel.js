@@ -222,22 +222,48 @@
   }
 
   // ---- Drag a hand card onto the map (or onto your reserves to convert it). ----
-  const DRAG_START = 8;
+  // A card can be picked up anywhere on it, its buttons included: a press that moves more
+  // than a few pixels is a drag, a press that stays put is still that button's click.
+  const DRAG_START = 6;
   let pressed = null, swallowClick = false;
   document.addEventListener('pointerdown', event => {
     const card = handCard(event.target);
-    if (!card || event.button !== 0 || event.target.closest('button, a, input, select') || !api) return;
+    if (!card || event.button !== 0 || event.target.closest('a, input, select, textarea') || !api || drag) return;
     pressed = { card, id: card.dataset.cardId, x: event.clientX, y: event.clientY, pointer: event.pointerId };
   });
+  // No native drag of the card's text or art, which would cancel the pointer stream.
+  document.addEventListener('dragstart', event => { if (handCard(event.target)) event.preventDefault(); });
   document.addEventListener('pointermove', event => {
     if (drag) return moveDrag(event);
     if (!pressed || event.pointerId !== pressed.pointer) return;
     if (Math.hypot(event.clientX - pressed.x, event.clientY - pressed.y) >= DRAG_START) startDrag(event);
   });
-  document.addEventListener('pointerup', event => { if (drag) endDrag(event); pressed = null; });
+  document.addEventListener('pointerup', event => {
+    if (drag) endDrag(event);
+    pressed = null;
+    // The browser's click follows this pointerup in the same task; let it be swallowed, then stop.
+    if (swallowClick) setTimeout(() => { swallowClick = false; }, 0);
+  });
   document.addEventListener('pointercancel', () => { if (drag) cancelDrag(); pressed = null; });
   document.addEventListener('keydown', event => { if (drag && event.key === 'Escape') { event.preventDefault(); cancelDrag(); } });
   document.addEventListener('click', event => { if (swallowClick) { swallowClick = false; event.stopPropagation(); event.preventDefault(); } }, true);
+  // While held, the card follows the pointer, carried just above it so the hex or reserve
+  // under the pointer stays visible.
+  function holdCard(card) {
+    const held = document.createElement('div');
+    held.className = 'cf-ghost cf-held';
+    held.setAttribute('aria-hidden', 'true');
+    held.inert = true;
+    const copy = card.cloneNode(true);
+    copy.querySelector('.card-buttons')?.remove();
+    for (const name of ['data-card-id', 'data-order', 'id']) copy.removeAttribute(name);
+    copy.classList.remove('cf-tilting', 'cf-dragging', 'order-selected');
+    held.append(copy);
+    const width = Math.min(200, Math.max(150, card.getBoundingClientRect().width));
+    Object.assign(held.style, { width: `${width}px`, height: '66px', left: '0px', top: '0px' });
+    document.body.append(held);
+    return held;
+  }
 
   function startDrag(event) {
     const { card, id } = pressed;
@@ -245,8 +271,10 @@
     const targets = api.dropTargets(id);
     const special = card.dataset.order === 'special' && card.querySelector('[data-order-card]:not(:disabled)');
     const convert = card.querySelector('[data-resource-card]:not(:disabled)');
-    if (!targets.length && !special && !convert) return;
+    // A card with nowhere to go is still picked up, and says so, rather than ignoring the drag.
+    const stuck = !targets.length && !special && !convert;
     hideInspect();
+    try { card.setPointerCapture(event.pointerId); } catch { /* the pointer already left */ }
     if (tilted) { untilt(tilted); tilted = null; }
     const hexes = targets.map(target => { const hex = $(`.hex[data-coord="${target.coord}"]`); hex?.classList.add('cf-drop-target'); return hex; }).filter(Boolean);
     // The reserve tiles themselves: #53's table may lay the panel out as display: contents.
@@ -264,7 +292,7 @@
     const overlay = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     overlay.classList.add('cf-drag-arrow');
     overlay.setAttribute('aria-hidden', 'true');
-    overlay.innerHTML = '<defs><marker id="cf-arrow-head" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z"/></marker></defs><path class="cf-arrow-line" marker-end="url(#cf-arrow-head)"/><circle class="cf-arrow-reticle" r="13"/>';
+    overlay.innerHTML = '<circle class="cf-arrow-reticle" r="13"/>';
     document.body.append(overlay);
     const label = document.createElement('div');
     label.className = 'cf-drop-label';
@@ -273,7 +301,7 @@
     card.classList.add('cf-dragging');
     document.body.classList.add('cf-drag-active');
     const name = card.querySelector('.card-name')?.textContent.trim() || 'order';
-    drag = { card, id, name, hexes, reserves, yields, board, special: Boolean(special), convert: Boolean(convert), overlay, label, over: null };
+    drag = { card, id, name, hexes, reserves, yields, board, stuck, special: Boolean(special), convert: Boolean(convert), overlay, label, held: holdCard(card), over: null };
     moveDrag(event);
   }
   function dropUnder(x, y) {
@@ -285,9 +313,8 @@
     return null;
   }
   function moveDrag(event) {
-    const from = drag.card.getBoundingClientRect(), sx = from.left + from.width / 2, sy = from.top + 6;
-    const ex = event.clientX, ey = event.clientY, bend = Math.min(160, Math.abs(ex - sx) / 2 + 40);
-    drag.overlay.querySelector('.cf-arrow-line').setAttribute('d', `M${sx},${sy} Q${(sx + ex) / 2},${Math.min(sy, ey) - bend} ${ex},${ey}`);
+    const ex = event.clientX, ey = event.clientY, w = drag.held.offsetWidth;
+    drag.held.style.transform = `translate(${Math.round(Math.min(innerWidth - w - 4, Math.max(4, ex - w / 2)))}px, ${Math.round(Math.max(4, ey - 66 - 20))}px)`;
     const reticle = drag.overlay.querySelector('.cf-arrow-reticle');
     reticle.setAttribute('cx', ex); reticle.setAttribute('cy', ey);
     const over = dropUnder(ex, ey);
@@ -297,13 +324,14 @@
     }
     drag.over = over;
     drag.overlay.classList.toggle('cf-on-target', Boolean(over));
+    drag.held.classList.toggle('cf-held-on-target', Boolean(over));
     // Say what letting go here will do; nothing is shown where a drop plays nothing.
-    const text = !over ? '' : over.kind === 'convert' ? `Convert ${drag.yields.map(box => `${box.dataset.cfGain} ${RESOURCE_LABELS[box.dataset.resource]}`).join(', ')}`.trim()
+    const text = drag.stuck ? 'Nowhere to play this now' : !over ? '' : over.kind === 'convert' ? `Convert ${drag.yields.map(box => `${box.dataset.cfGain} ${RESOURCE_LABELS[box.dataset.resource]}`).join(', ')}`.trim()
       : over.kind === 'play' ? `Play ${drag.name}` : `${drag.name} here`;
     drag.label.textContent = text;
     drag.label.hidden = !text;
     drag.label.style.left = `${Math.min(innerWidth - 12 - drag.label.offsetWidth, ex + 18)}px`;
-    drag.label.style.top = `${Math.max(8, ey - 34)}px`;
+    drag.label.style.top = `${Math.min(innerHeight - 30, ey + 16)}px`;
   }
   function cleanupDrag() {
     for (const hex of drag.hexes) hex.classList.remove('cf-drop-target', 'cf-drop-hover');
@@ -312,10 +340,11 @@
     drag.card.classList.remove('cf-dragging');
     drag.overlay.remove();
     drag.label.remove();
+    drag.held.remove();
     document.body.classList.remove('cf-drag-active');
     drag = null;
   }
-  function cancelDrag() { cleanupDrag(); }
+  function cancelDrag() { cleanupDrag(); swallowClick = true; }
   function endDrag(event) {
     const { id } = drag, over = dropUnder(event.clientX, event.clientY);
     cleanupDrag();
@@ -325,7 +354,6 @@
     else if (over?.kind === 'convert') $(`#hand-row [data-resource-card="${id}"]`)?.click();
     else if (over?.kind === 'play') $(`#hand-row [data-order-card="${id}"]`)?.click();
     swallowClick = true;
-    setTimeout(() => { swallowClick = false; }, 0);
   }
 
   globalThis.galacticReachCardFeel = { attach(next) { api = next; }, beforeRender, rendered };

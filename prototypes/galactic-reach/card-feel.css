@@ -118,7 +118,14 @@
 
 /* Drag to play (report #18): legal hexes light up; an arrow runs from the card to the pointer. */
 .cf-drag-active, .cf-drag-active * { cursor: grabbing !important; user-select: none; -webkit-user-select: none; }
-#hand-row > .game-card.cf-dragging { --cf-fan: 0deg !important; --cf-arc: 0px !important; --cf-lift: -18px; --cf-ring: 0 0 0 2px var(--gold), 0 0 22px #f2d48899; }
+/* A hand card can be picked up from anywhere on it, on mouse, pen or touch. */
+#hand-row > .game-card { touch-action: none; -webkit-user-drag: none; -webkit-touch-callout: none; }
+#hand-row > .game-card :is(img, svg) { -webkit-user-drag: none; }
+/* The held card follows the pointer; the slot it left stays as a faint outline. */
+.cf-held { z-index: 82; transition: opacity .1s ease, scale .1s ease; transform-origin: 50% 100%; rotate: -2deg; filter: drop-shadow(0 16px 18px #000c); }
+.cf-held > .game-card { --cf-ring: 0 0 0 2px var(--gold); }
+.cf-held.cf-held-on-target { scale: .86; opacity: .92; }
+#hand-row > .game-card.cf-dragging { --cf-lift: 0px !important; --cf-ring: 0 0 0 2px #f2d48866; opacity: .38; filter: saturate(.6); }
 /* Every drop target says so while you drag: legal hexes fill gold and pulse, everything else
    on the map dims, and a zone (your reserves, or the map for an order needing no hex) glows,
    brighter under the pointer. The reserves a card converts into show their gain. */
@@ -142,10 +149,7 @@
 }
 .cf-drop-label[hidden] { display: none; }
 .cf-drag-arrow { position: fixed; inset: 0; z-index: 80; width: 100vw; height: 100dvh; overflow: visible; pointer-events: none; }
-.cf-arrow-line { fill: none; stroke: #f2d488; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 2 9; filter: drop-shadow(0 2px 3px #000a); }
-.cf-drag-arrow marker path { fill: #f2d488; }
 .cf-arrow-reticle { fill: #f2d48822; stroke: #f2d48899; stroke-width: 2; }
-.cf-drag-arrow.cf-on-target .cf-arrow-line { stroke: #fff3cf; stroke-dasharray: none; }
 .cf-drag-arrow.cf-on-target .cf-arrow-reticle { fill: #fff3cf44; stroke: #fff; }
 
 /* Deck, In play and Discard: #53 lays them out as card piles; give their top cards the same
