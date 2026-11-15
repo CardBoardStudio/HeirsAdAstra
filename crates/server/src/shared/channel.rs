@@ -76,13 +76,14 @@ impl Channel {
             kept: Mutex::default(),
         }
     }
-    /// `GALACTIC_REACH_CHANNEL=dev` selects the dev channel; Render supplies
-    /// `RENDER_GIT_COMMIT`.
+    /// `GALACTIC_REACH_CHANNEL=dev` selects the dev channel. The deployed commit
+    /// comes from `GIT_COMMIT` (deploy/dev-host) or Render's `RENDER_GIT_COMMIT`.
     pub fn from_env(store: &Arc<Store>, get: impl Fn(&str) -> Option<String>) -> Self {
         if get("GALACTIC_REACH_CHANNEL").as_deref() != Some("dev") {
             return Self::stable();
         }
-        let commit = get("RENDER_GIT_COMMIT")
+        let commit = get("GIT_COMMIT")
+            .or_else(|| get("RENDER_GIT_COMMIT"))
             .map(|c| c.chars().take(7).collect())
             .unwrap_or_else(|| "local".into());
         Self::dev(store.clone(), galactic_reach::dev_rules(), commit)
