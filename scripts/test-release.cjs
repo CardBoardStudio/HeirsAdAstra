@@ -7,7 +7,7 @@ const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
-const { parseEntry, cloneAfter, html } = require('./release.cjs');
+const { parseEntry, cloneAfter, html, nextRelease } = require('./release.cjs');
 
 const root = path.join(__dirname, '..');
 
@@ -21,6 +21,10 @@ assert.equal(html('A **Fleet** <b> [Combat](../prototypes/galactic-reach/ruleboo
 assert.equal(cloneAfter('a "x/1"\nb\n', /"x\/1"/, l => l.replace('x/1', 'x/2')), 'a "x/1"\na "x/2"\nb\n');
 assert.equal(cloneAfter('a "x/1"\na "x/2"\n', /"x\/1"/, l => l.replace('x/1', 'x/2')), 'a "x/1"\na "x/2"\n', 'idempotent');
 
+// Published experiment identifiers are never reused by the next stable cut.
+assert.deepEqual(nextRelease({save:34,rev:39}, n=>[35,36].includes(n)),{save:37,rev:42});
+assert.deepEqual(nextRelease({save:37,rev:42}, ()=>false),{save:38,rev:43});
+
 // Every archive the cut wrote still has its published bytes.
 const hashes = path.join(root, 'scripts/archive-hashes');
 for (const name of fs.existsSync(hashes) ? fs.readdirSync(hashes) : []) {
@@ -32,7 +36,8 @@ for (const name of fs.existsSync(hashes) ? fs.readdirSync(hashes) : []) {
 // Worked example: two change PRs merge to main, one cut, one version bump.
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'gr-release-'));
 try {
-  const repo = path.join(tmp, 'repo');
+ for (const reservePreviews of [false,true]) {
+  const repo = path.join(tmp, reservePreviews ? 'reserved-repo' : 'repo');
   const git = (...args) => execFileSync('git', args, { cwd: repo, encoding: 'utf8' });
   const release = (...args) => execFileSync(process.execPath, [path.join(repo, 'scripts/release.cjs'), ...args], { cwd: repo, encoding: 'utf8' });
   execFileSync('git', ['clone', '--quiet', '--no-local', root, repo]);
@@ -49,12 +54,20 @@ try {
   const from = /SAVE_FORMAT_VERSION = (\d+);[\s\S]*?RULES_REVISION = (\d+);/.exec(app()).slice(1).map(Number);
   const add = (name, compat, title) => fs.writeFileSync(path.join(repo, 'changes', name), `---\ncompat: ${compat}\ntitle: ${title}\n---\n${title} body. [Movement](rulebook.html#movement).\n`);
   fs.mkdirSync(path.join(repo, 'changes'), { recursive: true });
+  const reserved = [];
+  if(reservePreviews)for(const offset of [1,2]) {
+    const rel=`crates/galactic-reach/rules/v${from[0]+offset}-app.js`;
+    const bytes=app().replace(`SAVE_FORMAT_VERSION = ${from[0]};`,`SAVE_FORMAT_VERSION = ${from[0]+offset};`).replace(`RULES_REVISION = ${from[1]};`,`RULES_REVISION = ${from[1]+offset};`);
+    fs.writeFileSync(path.join(repo,rel),bytes);reserved.push([rel,bytes]);
+  }
   add('wider-hexes.md', 'safe', 'Wider hexes');
   add('harbors.md', 'breaking', 'Harbors refit Fleets');
   assert.match(release('status', '--released', 'stable'), new RegExp(`\\+dev\\.1`));
   assert.throws(() => release('cut', '--released', 'stable'), /--name/);
   release('cut', '--released', 'stable', '--name', 'Harbor playtest');
-  const to = [from[0] + 1, from[1] + 1];
+  const delta=reservePreviews?3:1;
+  const to = [from[0] + delta, from[1] + delta];
+  for(const [rel,bytes] of reserved)assert.equal(fs.readFileSync(path.join(repo,rel),'utf8'),bytes,'A cut must not overwrite an already-published preview engine');
   assert.match(app(), new RegExp(`SAVE_FORMAT_VERSION = ${to[0]};[\\s\\S]*RULES_REVISION = ${to[1]};`), 'one bump for the batch');
   const archived = path.join(repo, `crates/galactic-reach/rules/v${from[0]}-app.js`);
   assert.equal(fs.readFileSync(archived, 'utf8'), git('show', 'stable:prototypes/galactic-reach/app.js'), 'the released engine, byte for byte');
@@ -80,6 +93,7 @@ try {
   assert.equal((fs.readFileSync(path.join(repo, 'docs/releases.md'), 'utf8').match(new RegExp(`^## ${to.join('.')} `, 'gm')) || []).length, 1, 'one section for the release');
   assert.match(fs.readFileSync(path.join(repo, 'prototypes/galactic-reach/index.html'), 'utf8'), /Harbors refit Fleets[\s\S]*Late fix/);
   assert.throws(() => release('cut', '--released', 'stable'), /nothing new/);
+ }
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
 }

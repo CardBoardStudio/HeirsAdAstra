@@ -62,6 +62,7 @@ struct Feed {
     authority: Arc<dyn HiddenInfoAuthority>,
     logged: VecDeque<Event>,
     fresh: Vec<NewEvent>,
+    reusable: Vec<Event>,
     count: u64,
     error: Option<String>,
 }
@@ -70,6 +71,21 @@ impl Feed {
         let order = match self.logged.pop_front() {
             Some(event) => self.authority.replay_shuffle(&event, n, purpose)?,
             None => {
+                if let Some(event) = self.reusable.iter().rev().find(|event| {
+                    event.public["index"] == self.count
+                        && event.public["n"] == n
+                        && event.public["purpose"] == purpose
+                }) {
+                    let order = self.authority.replay_shuffle(event, n, purpose)?;
+                    self.fresh.push(NewEvent {
+                        kind: "shuffle",
+                        seat: None,
+                        public: event.public.clone(),
+                        private: event.private.clone(),
+                    });
+                    self.count += 1;
+                    return Ok(order);
+                }
                 let shuffle = self
                     .authority
                     .shuffle(&self.table, self.count, n, purpose)?;
@@ -154,6 +170,39 @@ impl Live {
     fn undo_window(&self, seat: usize) -> Result<UndoWindow, String> {
         if self.table.status == "finished" {
             return Err("The game is over.".into());
+        }
+        if matches!(
+            self.table.rules.split('+').next().unwrap_or_default(),
+            "galactic-reach/36.41" | "galactic-reach/37.42"
+        ) {
+            if !self.table.seats[seat].human() {
+                return Err("Only human players can undo.".into());
+            }
+            let mark = self.engine.undo_mark()?;
+            if !mark["reveal"]["combat"].is_null() {
+                return Err("Finish the battle before Undo.".into());
+            }
+            let mut first = None;
+            let mut turn = None;
+            for p in self.played.iter().rev() {
+                if self.table.seats[p.seat].human() {
+                    if p.seat != seat {
+                        break;
+                    }
+                    if turn.is_some() && p.turn != turn {
+                        break;
+                    }
+                    turn = p.turn;
+                    first = Some(p.seq);
+                }
+            }
+            return first
+                .map(|seq| UndoWindow {
+                    to: seq - 1,
+                    actions: self.played.iter().filter(|p| p.seq >= seq).count(),
+                    stop: None,
+                })
+                .ok_or_else(|| "Nothing to undo before another human acted.".into());
         }
         if self.engine.active_seat() != Some(seat) {
             return Err("Undo works on your own turn.".into());
@@ -264,10 +313,15 @@ fn fold(
         authority,
         logged: events
             .iter()
-            .filter(|e| e.kind == "shuffle" && e.seq > start)
+            .filter(|e| e.kind == "shuffle" && e.seq > start && !cancelled(e.seq))
             .cloned()
             .collect(),
         fresh: vec![],
+        reusable: events
+            .iter()
+            .filter(|e| e.kind == "shuffle" && cancelled(e.seq))
+            .cloned()
+            .collect(),
         count: from.and_then(|(_, s)| s["shuffles"].as_u64()).unwrap_or(0),
         error: None,
     }));
@@ -544,10 +598,6 @@ impl Tables {
         let mut stopped = None;
         let mut failed = None;
         for intent in intents {
-            if live.engine.active_seat() != Some(seat) {
-                stopped = Some("It is not your turn.".to_string());
-                break;
-            }
             let action = match resolve(&live.engine.legal_actions(seat), intent) {
                 Ok(a) => a,
                 Err(e) => {

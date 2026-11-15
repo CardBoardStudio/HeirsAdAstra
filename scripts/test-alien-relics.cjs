@@ -1,10 +1,11 @@
+// Original relic effects remain verified on 33.38; current reward expansion has a dedicated suite.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 const plain = x => JSON.parse(JSON.stringify(x));
-function game(version = null) {
+function game(version = 33) {
   const base = version ? `crates/galactic-reach/rules/v${version}-` : 'prototypes/galactic-reach/';
   const c = vm.createContext({});
   vm.runInContext(['adapter.js','app.js'].map(n=>fs.readFileSync(path.join(root,base+n),'utf8')).join('\n'),c);
@@ -19,7 +20,7 @@ function effect(key) {
 }
 function special(g) {const action=g.a.legalActions(0).find(a=>a.type==='special');assert(action);g.a.applyAction(0,action);assert(g.p.inPlay.some(c=>c.id==='relic-order'));assert.equal(g.s.activePlayer,1);}
 {
-  const {e,a,s}=game();assert.equal(a.rulesVersion,'galactic-reach/34.39');assert.deepEqual(plain(s.fleets),{});
+  const {e,a,s}=game();assert.equal(a.rulesVersion,'galactic-reach/33.38');assert.deepEqual(plain(s.fleets),{});
   for(const p of s.players) {
     const cards=[...p.deck,...p.hand,...p.discard];assert.equal(cards.length,6);
     assert.equal(cards.filter(c=>c.key==='move').length,3);assert.equal(cards.filter(c=>c.key==='construct').length,3);
@@ -112,6 +113,6 @@ assert.deepEqual(plain(battle('naniteOssuary',5,'overdrive').p.resources),{matte
 {
   const {e,a,s,p}=game(10);assert.equal(a.rulesVersion,'galactic-reach/10.15');assert.equal(s.fleets[s.clusters[0].center][0].settler,1);assert(e.recoverRelic&&e.exchangeRelic);assert('relicRecoveries' in p);
 }
-const book=fs.readFileSync(path.join(root,'prototypes/galactic-reach/rulebook.html'),'utf8');
+const book=fs.readFileSync(path.join(root,'crates/galactic-reach/rules/v33-rulebook.html'),'utf8');
 for(const [key,c] of Object.entries(game().e.RELIC_CARDS)){assert(book.includes(`data-card="${key}"`));assert(book.includes(c.name));}
 console.log('Alien relics: Colony-only six-card start, Shipyard-only Explorers, unit bundles, atomic private station draws, all 12 relic effects including real combat, no old exchanges, and archived 10.15 passed.');

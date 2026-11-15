@@ -212,6 +212,13 @@ function notes(from, to, entries, bumped) {
   write(index, page);
 }
 
+/** The next unused version: legacy previews may already own otherwise-next IDs. */
+function nextRelease(from, occupied = save => exists(`crates/galactic-reach/rules/v${save}-app.js`)) {
+  let save = from.save + 1;
+  while (occupied(save)) save += 1;
+  return {save, rev: from.rev + save - from.save};
+}
+
 function cut(opts) {
   const ref = opts.released || 'origin/stable';
   const from = released(ref);
@@ -220,9 +227,10 @@ function cut(opts) {
   const breaking = entries.some(e => e.compat === 'breaking');
   const already = now.save !== from.save || now.rev !== from.rev;
   if (!entries.length) fail(already ? `already cut ${now.label}; nothing new in ${CHANGES}/` : `nothing to release: ${CHANGES}/ is empty`);
-  if (already && (now.save !== from.save + 1 || now.rev !== from.rev + 1)) fail(`${now.label} is not one release after ${from.label} on ${ref}`);
+  const next = nextRelease(from);
+  if (already && (now.save !== next.save || now.rev !== next.rev)) fail(`${now.label} is not the next unused release after ${from.label} on ${ref}`);
   const bumped = breaking || already;
-  const to = bumped ? { save: from.save + 1, rev: from.rev + 1, name: already ? now.name : opts.name } : from;
+  const to = bumped ? { ...next, name: already ? now.name : opts.name } : from;
   if (bumped && !to.name) fail('this release changes rules: give its player-facing --name, e.g. --name "Harbor Ships playtest"');
   to.label = `${to.save}.${to.rev}`;
   to.rules = `galactic-reach/${to.label}`;
@@ -250,7 +258,7 @@ function status(opts) {
   console.log(`dev builds deal ${now.rules}+dev.${breaking}`);
   for (const e of entries) console.log(`  ${e.compat.padEnd(8)} ${e.name}: ${e.title}`);
   if (!entries.length) console.log('  (no pending entries)');
-  else console.log(`next release: ${breaking || (from && now.label !== from.label) ? `${from ? `${from.save + 1}.${from.rev + 1}` : 'next'} (rules change)` : `${now.label} save-compatible update`}`);
+  else console.log(`next release: ${breaking || (from && now.label !== from.label) ? `${from ? `${nextRelease(from).save}.${nextRelease(from).rev}` : 'next'} (rules change)` : `${now.label} save-compatible update`}`);
 }
 
 /** CI policy. A change PR into main adds entries but never deletes them, edits
@@ -294,4 +302,4 @@ if (require.main === module) {
   if (!command) fail('usage: release.cjs status|cut|check (see docs/release.md)');
   command(opts);
 }
-module.exports = { parseEntry, version, cloneAfter, html, slug };
+module.exports = { parseEntry, version, cloneAfter, html, slug, nextRelease };
