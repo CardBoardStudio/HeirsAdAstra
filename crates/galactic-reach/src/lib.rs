@@ -923,6 +923,12 @@ fn bot_yards(view: &Value, seat: usize) -> usize {
 }
 // Public Fleet approaches to each owned Colony, including weighted portal paths.
 fn colony_defense(view: &Value, seat: usize) -> Vec<(&str, f64, f64)> {
+    if let Some(rows) = view["_rival_colony_defense"].as_array() {
+        return rows
+            .iter()
+            .filter_map(|r| Some((r[0].as_str()?, number(&r[1]), number(&r[2]))))
+            .collect();
+    }
     view["planets"]
         .as_object()
         .into_iter()
@@ -1870,11 +1876,20 @@ impl PlayerAgent<GalacticReach> for BuiltinAgent {
     }
     fn select_action(&mut self, observation: &Value, legal: &[Value]) -> usize {
         let random = matches!(self.strategy, Strategy::Wanderer);
+        // Hundreds of legal split moves share the same public defense plan.
+        // Cache it only for this decision, never across changes to the table.
+        let mut planned = observation.clone();
+        let defense: Vec<Value> =
+            colony_defense(observation, observation["seat"].as_u64().unwrap() as usize)
+                .into_iter()
+                .map(|(at, a, g)| json!([at, a, g]))
+                .collect();
+        planned["_rival_colony_defense"] = json!(defense);
         legal
             .iter()
             .enumerate()
             .map(|(i, a)| {
-                let score = self.score(observation, a);
+                let score = self.score(&planned, a);
                 (
                     i,
                     if random && score > 0.0 {
@@ -2025,7 +2040,7 @@ mod tests {
     fn strategic_defense_targets_colonies_and_retains_a_guard() {
         let mut view = strategic_view();
         view["fleets"] = json!({"0,2":{"1":{"fleet":2}},"-2,0":{"0":{"fleet":3}}});
-        let agent = BuiltinAgent::new(Strategy::Economy, [19; 32]);
+        let mut agent = BuiltinAgent::new(Strategy::Economy, [19; 32]);
         assert!(
             agent.score(
                 &view,
@@ -2034,6 +2049,16 @@ mod tests {
         );
         let reinforce = json!({"type":"move","source":"-2,0","destination":"0,0","moveGroup":"ships","units":{"fleet":3}});
         assert!(agent.score(&view, &reinforce) > 110.0);
+        let unchanged = view.clone();
+        let choices = [reinforce.clone(), json!({"type":"pass"})];
+        assert_eq!(agent.select_action(&view, &choices), 0);
+        assert_eq!(view, unchanged, "Planning never mutates the observation");
+        view["fleets"].as_object_mut().unwrap().remove("0,2");
+        assert_eq!(
+            agent.select_action(&view, &choices),
+            1,
+            "A changed board gets a fresh defense plan"
+        );
         view["fleets"] = json!({"0,2":{"1":{"fleet":2}},"0,0":{"0":{"fleet":3}}});
         assert!(agent.score(&view,&json!({"type":"move","source":"0,0","destination":"0,2","moveGroup":"ships","units":{"fleet":3}}))<0.0);
         view["planets"]["8,-10"] = json!({"owner":0,"hasColony":true});
