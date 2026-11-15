@@ -46,11 +46,20 @@ struct App {
     shared: Arc<shared::Service>,
 }
 /// The shared-table service over this store, with the trusted server authority.
+#[cfg(test)]
 fn table_service(store: &Arc<Store>, ai_pace: std::time::Duration) -> Arc<shared::Service> {
-    shared::Service::start(
+    table_service_on(store, ai_pace, shared::channel::Channel::stable())
+}
+fn table_service_on(
+    store: &Arc<Store>,
+    ai_pace: std::time::Duration,
+    channel: shared::channel::Channel,
+) -> Arc<shared::Service> {
+    shared::Service::start_on(
         Arc::new(shared::log::SqliteTableLog(store.clone())),
         Arc::new(shared::authority::TrustedAuthority),
         ai_pace,
+        Arc::new(channel),
     )
 }
 #[derive(Debug)]
@@ -520,8 +529,19 @@ fn router(app: App) -> Router {
     Router::new()
         .route(
             "/api/health",
-            get(|| async { Json(json!({"ok":true,"rules":RULES_VERSION,"galactic_reach_rules":galactic_reach::RULES})) }),
+            get(|State(app): State<App>| async move {
+                let channel = &app.shared.channel;
+                Json(json!({"ok":true,"rules":RULES_VERSION,"galactic_reach_rules":galactic_reach::RULES,
+                    "channel":channel.name,"deals":channel.rules,"commit":channel.commit}))
+            }),
         )
+        .route("/galactic-reach/channel.js", get(shared::dev::channel_script))
+        .route(
+            "/galactic-reach/rules/{version}/channel.js",
+            get(shared::dev::archived_script),
+        )
+        .route("/galactic-reach/dev/{version}/", get(shared::dev::page))
+        .route("/galactic-reach/dev/{version}/{*file}", get(shared::dev::asset))
         .route("/api/auth/nido", get(nido::begin))
         .route("/api/auth/nido/callback", get(nido::callback))
         .route("/api/session", get(session))
@@ -600,7 +620,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let app = App {
         #[cfg(test)]
         arena_seed: None,
-        shared: table_service(&store, shared::AI_PACE),
+        shared: table_service_on(&store, shared::AI_PACE, {
+            let channel = shared::channel::Channel::from_env(&store, |key| std::env::var(key).ok());
+            let pruned = channel.keep_current(now())?;
+            tracing::info!(channel = channel.name, rules = %channel.rules, pruned, "galactic reach channel");
+            channel
+        }),
         store,
         dev_auth: config.dev_auth,
         preview_code_hash: config.preview_code_hash,

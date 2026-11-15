@@ -35,5 +35,9 @@ if (require.main === module) {
     if (errors.length) throw new Error(errors.join('\n'));
     console.log('Rules contract passed: grounding declared; rule-bearing edits paired with the rulebook.');
   } catch (error) { console.error(error.message); process.exitCode = 1; }
+  // The release policy (docs/release.md) runs here too, so CI covers it without a workflow edit.
+  try {
+    execFileSync(process.execPath, [require('node:path').join(__dirname, 'release.cjs'), 'check'], { stdio: 'inherit' });
+  } catch (_) { process.exitCode = 1; }
 }
 module.exports = { validate, ruleBearing, RULEBOOK };
