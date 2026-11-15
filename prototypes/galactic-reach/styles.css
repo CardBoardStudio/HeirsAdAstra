@@ -2451,3 +2451,12 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .log-panel.open { z-index: 30 !important; }
   .log-panel.open .game-log .log-text { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; }
 }
+
+/* ==== The map fills the space the other pieces leave (see fitMap): on a landscape table it may
+   reach into the left strip, with the Prestige track and a notice spot in its top-left corner and
+   the comms card in its bottom-left corner. ==== */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .galaxy-board, .has-saved-table .galaxy-board, .has-replay .galaxy-board { width: var(--map-w, min(100cqw, 100cqh * 1.0543, var(--board-w))) !important; }
+  .log-panel:not(.open) { align-self: end !important; }
+  .toast { top: calc(80px * var(--table-zoom, 1)); bottom: auto; left: calc(16px * var(--table-zoom, 1)); }
+}
