@@ -147,7 +147,7 @@ const CASES = [
   { name: 'operations, inspect view (last of 8 cards)', save: operationsState(longHand), hover: '#hand-row .game-card:last-child', expect: 'inspect' },
   { name: 'operations, drag Move onto your units', save: withFleet(operationsState(['move', 'construct', 'move'])), drag: '#hand-row .game-card[data-order="move"]', expect: 'dragged' },
   { name: 'operations, drag Construct onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', expect: 'built' },
-  { name: 'operations, drag a card onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', dropOn: '.resource-panel .resource-box.cf-drop-yield', expect: 'converted' },
+  { name: 'operations, drag a card onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -363,7 +363,7 @@ async function runCase(browser, origin, testCase, [width, height]) {
     if (!target) { await mouse('mouseReleased', from.x, from.y - 18); return [`drag showed no ${testCase.dropOn ? 'marked ' + dropOn : 'legal hex'}`]; }
     steps.before = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
     for (let i = 1; i <= 6; i++) await mouse('mouseMoved', from.x + (target.x - from.x) * i / 6, from.y - 18 + (target.y - from.y + 18) * i / 6);
-    steps.push(await browser.evaluate('({ arrow: !!document.querySelector(".cf-drag-arrow.cf-on-target"), hover: !!document.querySelector(".hex.cf-drop-target.cf-drop-hover"), zone: !!document.querySelector(".resource-panel.cf-drop-zone.cf-drop-hover"), gain: document.querySelector(".resource-box.cf-drop-yield")?.dataset.cfGain || "", label: document.querySelector(".cf-drop-label:not([hidden])")?.textContent || "" })'));
+    steps.push(await browser.evaluate('({ arrow: !!document.querySelector(".cf-drag-arrow.cf-on-target"), hover: !!document.querySelector(".hex.cf-drop-target.cf-drop-hover"), zone: (() => { const z = document.querySelector(".cf-drop-zone.cf-drop-hover"); return !!z && z.getClientRects().length > 0 && !!z.querySelector(".resource-box"); })(), gain: document.querySelector(".resource-box.cf-drop-yield")?.dataset.cfGain || "", label: document.querySelector(".cf-drop-label:not([hidden])")?.textContent || "" })'));
     // Every drop target says what letting go there will do.
     if (!steps[0].label) problems0.push('no drop label under the pointer');
     await mouse('mouseReleased', target.x, target.y);

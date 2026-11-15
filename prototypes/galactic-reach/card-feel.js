@@ -249,7 +249,8 @@
     hideInspect();
     if (tilted) { untilt(tilted); tilted = null; }
     const hexes = targets.map(target => { const hex = $(`.hex[data-coord="${target.coord}"]`); hex?.classList.add('cf-drop-target'); return hex; }).filter(Boolean);
-    const reserves = convert ? $('.resource-panel') : null;
+    // The reserve tiles themselves: #53's table may lay the panel out as display: contents.
+    const reserves = convert ? $('.resource-grid') || $('.resource-panel') : null;
     reserves?.classList.add('cf-drop-zone');
     // The reserves this card converts into show what they will gain.
     const yields = convert ? [...card.querySelectorAll('.card-footer .resource-chip')].map(chip => {
