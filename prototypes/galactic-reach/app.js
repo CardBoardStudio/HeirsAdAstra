@@ -3657,14 +3657,10 @@ function createGalacticReach(options = {}) {
     $('#discard-resource-button').disabled = !enabled || state.activePlayer!==ME || !Number.isInteger(amount) || amount < 1 || amount > (player.resources[resource] || 0);
   }
 
-  // Capacity as pips: filled for what you hold, outlined for next round's production that
-  // still fits, red for anything above the limit. Large limits draw one bar instead.
-  function resourcePips(have, cap, next) {
-    if (cap > 12) return `<span class="resource-pips bar" aria-hidden="true" style="--have:${Math.min(have,cap)/cap};--next:${Math.min(have+next,cap)/cap}"></span>`;
-    const pips = Array.from({ length: Math.max(cap, have) }, (_, i) => i >= cap ? 'over' : i < have ? 'full' : i < have + next ? 'next' : '');
-    return `<span class="resource-pips" aria-hidden="true">${pips.map(kind => `<i${kind ? ` class="${kind}"` : ''}></i>`).join('')}</span>`;
-  }
 
+  // Player mat tracks: slots 0..N-1; a value past the last slot sits there with its number shown.
+  const MAT_PRODUCTION_SLOTS = 10, MAT_CAPACITY_SLOTS = 26, MAT_BOWL_CUBES = 25;
+  const matSeen = {};
   function renderResources() {
     const player = state.players[viewSeat];
     const production = aiIncome(viewSeat);
@@ -3673,19 +3669,29 @@ function createGalacticReach(options = {}) {
     if (replayMode) $('#command-eyebrow').textContent = `${player.name.toUpperCase()} · COMMAND`;
     $('#capacity-value').textContent = `${stored} stored · four separate limits`;
     const limits = resourceLimits(viewSeat);
-    $('#resource-grid').innerHTML = RESOURCES.map(resource => {
+    // The player mat, as on a printed board: per resource a bowl holding the stock as cubes, a
+    // production track and a capacity track, each with a marker cube in the slot for its value.
+    // Markers slide from their last slot and new stock cubes drop into the bowl.
+    const before = matSeen[viewSeat] || {};
+    $('#resource-grid').innerHTML = `<div class="mat-head" aria-hidden="true"><span>Stock</span><span>Production</span><span>Capacity</span></div>` + RESOURCES.map(resource => {
       const have = player.resources[resource], cap = limits[resource], next = production[resource];
       const fill = have > cap ? 'over-cap' : have >= cap ? 'at-cap' : have + next > cap ? 'will-cap' : '';
+      const was = before[resource] || { have, cap, next };
+      const cubes = Array.from({ length: Math.min(have, MAT_BOWL_CUBES) }, (_, i) => `<i class="mat-stock${i >= was.have ? ' new' : ''}${i >= cap ? ' over' : ''}" style="--i:${i}"></i>`).join('');
+      const track = (kind, value, from, slots) => `<span class="mat-track ${kind}" aria-hidden="true" style="--slots:${slots};--at:${Math.min(value, slots - 1)};--from:${Math.min(from, slots - 1)}"><i class="mat-marker"></i>${value > slots - 1 ? `<b class="mat-lap">${value}</b>` : ''}</span>`;
       return `
-      <article class="resource-box ${resource}" style="--resource:var(--${resource})" data-resource="${resource}"${fill?` data-fill="${fill}"`:''} aria-label="${RESOURCE_NAMES[resource]}: ${have} available, limit ${cap}, +${next} per round${fill==='over-cap'?', above the limit':fill==='at-cap'?', full':fill==='will-cap'?', next production will fill it':''}">
+      <article class="resource-box ${resource}" style="--resource:var(--${resource})" data-resource="${resource}"${fill?` data-fill="${fill}"`:''} aria-label="${RESOURCE_NAMES[resource]}: ${have} available, limit ${cap}, +${next} per round${fill==='over-cap'?', above the limit':fill==='at-cap'?', full':fill==='will-cap'?', next round would pass the limit':''}">
         ${resourceDot(resource)}
         <span class="resource-name">${RESOURCE_NAMES[resource]}</span>
+        <span class="mat-bowl" aria-hidden="true">${cubes}</span>
         <strong class="resource-amount">${have}</strong>
-        <span class="resource-limit" title="Limit ${cap}">Limit ${cap}</span>
+        ${track('production', next, was.next, MAT_PRODUCTION_SLOTS)}
         <span class="resource-production" aria-hidden="true" title="Current production per round">+${next}</span>
-        ${resourcePips(have, cap, next)}
+        ${track('capacity', cap, was.cap, MAT_CAPACITY_SLOTS)}
+        <span class="resource-limit" title="Limit ${cap}">${cap}</span>
       </article>`;
     }).join('');
+    matSeen[viewSeat] = Object.fromEntries(RESOURCES.map(resource => [resource, { have: player.resources[resource], cap: limits[resource], next: production[resource] }]));
     const upgrade = $('#upgrade-storage-button');
     upgrade.disabled = !canIncreaseStorage(ME);
     upgrade.title = canManageResources(ME) ? `Pay ${storageUpgradeCost(ME).matter} of each resource for 4 capacity points to distribute (paid upgrade ${(player.storagePurchases || 0)+1}).` : 'Available during Operations or Buy, including off turn.';
@@ -4445,6 +4451,7 @@ function createGalacticReach(options = {}) {
 
   function render() {
     if (headless) return;
+    fitTable();
     drawEach({ 'card feel (before)': () => cardFeel?.beforeRender?.() });
     const targetText=$('#victory-target-text');
     if (targetText) targetText.textContent=`${victoryTarget()} Prestige`;
@@ -4470,6 +4477,20 @@ function createGalacticReach(options = {}) {
     if (typeof window !== 'undefined') window.galacticReachRenderErrors = renderErrors;
     // Under Node (the test suites) a drawing failure is still a test failure.
     if (typeof window === 'undefined' || globalThis.process?.versions?.node) throw failed[0][1];
+  }
+
+  // The desktop table is laid out at one logical size, 1600 units wide by at least 900 tall, and
+  // the whole table is scaled uniformly to the window: every component keeps one physical scale.
+  const TABLE_W = 1600, TABLE_H = 900;
+  function fitTable() {
+    if (typeof document === 'undefined' || !document.documentElement?.style) return;
+    const root = document.documentElement, shell = document.querySelector('.app-shell');
+    if (!tableLayout() || !shell) { ['--table-zoom','--table-w','--table-h'].forEach(name => root.style.removeProperty(name)); return; }
+    const width = window.innerWidth, height = Math.max(1, window.innerHeight - Math.max(0, shell.getBoundingClientRect().top));
+    const zoom = Math.min(width / TABLE_W, height / TABLE_H);
+    root.style.setProperty('--table-zoom', String(zoom));
+    root.style.setProperty('--table-w', `${width / zoom}px`);
+    root.style.setProperty('--table-h', `${height / zoom}px`);
   }
 
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
@@ -4555,6 +4576,8 @@ function createGalacticReach(options = {}) {
       discardResources(ME,$('#discard-resource-type').value,Number($('#discard-resource-amount').value));
     });
     window.addEventListener('resize',positionSectorScan);
+    fitTable();
+    window.addEventListener('resize',fitTable);
     document.addEventListener('scroll',event=>{if(!$('#sector-popover').contains(event.target))positionSectorScan();},true);
     $('#open-map-key').addEventListener('click',()=>$('#map-key-dialog').showModal());
     $('#close-map-key').addEventListener('click',()=>$('#map-key-dialog').close());
