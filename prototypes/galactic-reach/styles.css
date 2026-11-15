@@ -1420,27 +1420,23 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 
   .app-shell, .has-saved-table .app-shell, .has-replay .app-shell {
     --bars-h: 0px;
-    --left-w: clamp(190px, 15vw, 250px);
-    --front-h: clamp(72px, 9.5dvh, 100px);
+    --left-w: 250px;
+    --front-h: 130px;
     --strip-h: var(--front-h);
     --lanes: 4;
     --lane-h: 13px;
     --track-h: calc(var(--lanes) * var(--lane-h) + 16px);
-    --board-w: calc((100dvh - var(--bars-h) - var(--front-h) - var(--track-h) - 46px) * 1.0543 + 26px);
+    --board-w: calc((var(--table-h, 100dvh) - 16px - var(--front-h) - var(--track-h) - 46px) * 1.0543 + 26px);
     --score-h: 26px;
-    --log-h: clamp(170px, 31dvh, 300px);
     --cap-w: 150px;
     --res-w: 238px;
     --pile-w: max(52px, calc((var(--front-h) - 26px) * .716));
     --tools-w: 206px;
     --bank-h: 234px;
-    --log-h: clamp(72px, calc(13dvh - var(--bars-h) / 2), 140px);
-    flex: 1 1 auto; min-height: 0; width: 100%; height: auto; margin: 0; padding: 8px 16px 8px;
-    display: grid; grid-template-columns: var(--left-w) minmax(0, var(--board-w)) minmax(340px, 1fr);
+    flex: none; min-height: 0; width: var(--table-w, 100%); height: var(--table-h, auto); zoom: var(--table-zoom, 1); margin: 0; padding: 8px 16px 8px;
+    display: grid; grid-template-columns: var(--left-w) minmax(0, var(--board-w)) minmax(0, 1fr);
     grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto var(--front-h); gap: 6px 14px;
   }
-  .has-saved-table .app-shell { --bars-h: 44px; }
-  .has-replay .app-shell { --bars-h: 84px; }
   .game-layout, .board-column, .board-stage, .board-canvas, .board-heading, .board-shared,
   .faction-mats, .board-reference, .player-tableau, .console, .console-body, #hand-panel,
   #hand-panel > .section-intro { display: contents; }
@@ -1479,9 +1475,9 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .playtest-changes summary { padding: 4px; white-space: nowrap; }
   .playtest-changes .new-feature { margin: 0; font-size: 10px; letter-spacing: .03em; }
   .playtest-changes .summary-text { display: none; }
-  .playtest-changes[open] > ul { position: fixed; left: 322px; bottom: calc(var(--front-h) + 56px); top: auto; width: min(640px, calc(100vw - 346px)); max-height: calc(100dvh - var(--front-h) - 90px); overflow: auto; margin: 0; padding: 14px 18px 14px 34px; border: 1px solid #a49c6f99; border-radius: 10px 10px 0 0; background: #1b2b2d; box-shadow: 0 25px 80px #0008; }
+  .playtest-changes[open] > ul { position: fixed; left: 322px; bottom: calc(var(--front-h) + 56px); top: auto; width: min(640px, calc(var(--table-w) - 346px)); max-height: calc(var(--table-h) - var(--front-h) - 90px); overflow: auto; margin: 0; padding: 14px 18px 14px 34px; border: 1px solid #a49c6f99; border-radius: 10px 10px 0 0; background: #1b2b2d; box-shadow: 0 25px 80px #0008; }
   .playtest-changes[open] > .button { display: none; }
-  .playtest-changes[open] > p { position: fixed; left: 322px; bottom: calc(var(--front-h) + 14px); top: auto; transform: none; width: min(640px, calc(100vw - 346px)); min-height: 42px; margin: 0; padding: 8px 18px; border: 1px solid #a49c6f99; border-top-color: var(--line); border-radius: 0 0 10px 10px; background: #1b2b2d; box-sizing: border-box; }
+  .playtest-changes[open] > p { position: fixed; left: 322px; bottom: calc(var(--front-h) + 14px); top: auto; transform: none; width: min(640px, calc(var(--table-w) - 346px)); min-height: 42px; margin: 0; padding: 8px 18px; border: 1px solid #a49c6f99; border-top-color: var(--line); border-radius: 0 0 10px 10px; background: #1b2b2d; box-sizing: border-box; }
 
   /* ---- Left of the board: every faction's standings, then the comms feed. ---- */
   .board-shared .score-ribbon { grid-column: 1; grid-row: 1 / 8; z-index: 8; align-self: start; margin: 12px 0 0 12px !important; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: var(--score-h); gap: 5px; padding: 0; }
@@ -1588,9 +1584,9 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 
   /* ---- The board: a printed board lying on the table, as large as the height allows. ---- */
   .board-map-region {
-    grid-column: 1 / 3; grid-row: 1 / 8; align-self: stretch; justify-self: stretch; position: relative; min-width: 0; min-height: 0;
+    grid-column: 2; grid-row: 1 / 8; align-self: stretch; justify-self: stretch; position: relative; min-width: 0; min-height: 0;
     display: grid; place-items: center; container-type: size; overflow: hidden;
-    padding: var(--track-h) 0 10px calc(var(--left-w) + 14px);
+    padding: var(--track-h) 0 10px;
     border: 1px solid #a28e5f55; border-radius: 10px;
     background: radial-gradient(ellipse at 50% 50%, #233d47 0%, #152a32 60%, #10222a 100%);
     box-shadow: inset 0 0 0 5px #0f1e24, inset 0 0 0 6px #a28e5f40, 0 2px 0 #0a1416, 0 7px 0 #071012, 0 22px 44px #000a;
@@ -1778,7 +1774,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #hand-row .game-card:is(:hover, :focus-within) { width: max(var(--top-w), 200px); max-height: none; margin-right: calc(-1 * max(0px, 200px - var(--top-w))); }
   /* The last card grows to the left when raised, so it never pushes past the window's edge. */
   #hand-row .game-card:last-child:not(:first-child):is(:hover, :focus-within) { margin-right: 0; margin-left: calc(var(--step) - max(0px, 200px - var(--top-w))); }
-  .app-shell.app-shell:has(#hand-row > :nth-child(7)) { --front-h: clamp(90px, 11.5dvh, 110px); }
+  .app-shell.app-shell:has(#hand-row > :nth-child(7)) { --front-h: 140px; }
   #hand-row:has(> :nth-child(7)) .game-card { grid-template-areas: "type type" "name name" "cost cost" "head head" "effect effect" "buttons buttons"; padding-top: 4px; }
   #hand-row:has(> :nth-child(7)) .card-footer { grid-row: auto; }
 
@@ -1905,30 +1901,19 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   }
 }
 /* Short windows: the standings drop to one line and the market card tops tighten. */
-@media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
-  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { row-gap: 4px; --log-h: calc(76px - var(--bars-h) / 3); }
-  .board-shared .score-meta { display: none; }
-  .market-cards { gap: 4px; }
-  :is(#market-row, #upgrade-market) .card-name { font-size: 13px; line-height: 1.1; }
-  :is(#market-row, #upgrade-market) .card-effect { line-height: 1.2; }
-  :is(#market-row, #upgrade-market) .game-card { padding: 2px 7px 3px; }
-}
-@media (min-width: 1024px) and (min-height: 860px) {
+@media (min-width: 1024px) and (min-height: 600px) {
   :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: nowrap; display: block; }
 }
-@media (min-width: 1024px) and (min-height: 1000px) {
+@media (min-width: 1024px) and (min-height: 600px) {
   :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 }
 /* Notices: in the comms column above the menu button, never over the hand, the map or a control. */
 @media (min-width: 1024px) and (min-height: 600px) {
-  .toast { left: 10px; right: auto; bottom: calc(clamp(90px, 11.5dvh, 110px) + 262px); width: calc(clamp(190px, 15vw, 250px) - 12px); max-width: none; align-items: flex-start; line-height: 1.35; }
+  .toast { right: auto; max-width: none; align-items: flex-start; line-height: 1.35; }
 }
-@media (min-width: 1024px) and (min-height: 860px) {
+@media (min-width: 1024px) and (min-height: 600px) {
   #upgrade-market { --utop-h: 84px; }
   #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 2; line-clamp: 2; }
-}
-@media (min-width: 1024px) and (min-height: 600px) and (max-height: 859px) {
-  #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: nowrap; display: block; }
 }
 /* Short windows with a wide supply: four market cards to a row, so ten cards take three rows. */
 @media (min-width: 1024px) and (min-height: 600px) {
@@ -1945,9 +1930,88 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .relic-row > div { gap: 3px; }
 }
 /* Short windows: the upgrades tray and your reserves tighten so the market keeps a readable line. */
-@media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
-  #upgrade-market { --utop-h: 60px; padding: 3px; }
-  .resource-grid { padding-top: 3px; padding-bottom: 3px; gap: 2px 4px; }
-  .storage-upgrade-control { padding-top: 3px; padding-bottom: 3px; }
-  .board-toolbar #turn-instruction { font-size: 12px; line-height: 1.3; }
+/* ---- Your player mat, like a printed board: for each resource a bowl of stock cubes, then a
+   production track and a capacity track with a marker in the slot for each value. ---- */
+@property --pos { syntax: '<number>'; inherits: false; initial-value: 0; }
+@keyframes mat-slide { from { --pos: var(--from); } to { --pos: var(--at); } }
+@keyframes mat-drop { from { translate: 0 -14px; opacity: 0; } 60% { opacity: 1; } to { translate: 0 0; opacity: 1; } }
+@media (min-width: 1024px) and (min-height: 600px) {
+  .resource-grid {
+    --mat-cols: 16px minmax(46px, 1.1fr) 18px minmax(64px, 1fr) 20px minmax(104px, 1.9fr) 18px;
+    grid-column: 3; grid-row: 7; justify-self: stretch; align-self: stretch; width: auto !important; margin: 0 !important;
+    display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: 16px; align-content: center; gap: 3px; padding: 4px 10px 6px !important;
+    border-radius: 10px !important; background: linear-gradient(160deg, #34473f, #26352f); box-shadow: inset 0 1px 0 #ffffff1a, inset 0 0 0 1px #0000004d, 0 3px 0 #0a1513, 0 10px 18px #0006;
+  }
+  .mat-head { display: grid; grid-template-columns: var(--mat-cols); column-gap: 6px; align-items: end; color: #c9b98a; font-size: 8.5px; font-weight: 800; line-height: 1; letter-spacing: .14em; text-transform: uppercase; }
+  .mat-head span:nth-child(1) { grid-column: 2 / 4; }
+  .mat-head span:nth-child(2) { grid-column: 4 / 6; }
+  .mat-head span:nth-child(3) { grid-column: 6 / 8; }
+  .resource-grid .resource-box { display: grid; grid-template-columns: var(--mat-cols); grid-template-rows: 16px; align-items: center; column-gap: 6px; min-height: 0; padding: 0; border: 0; border-radius: 0; background: none; box-shadow: none; }
+  .resource-grid .resource-box > .resource-symbol { grid-column: 1; grid-row: 1; width: 16px; height: 16px; padding: 2px; margin: 0; }
+  .mat-bowl { grid-column: 2; grid-row: 1; height: 16px; display: flex; flex-wrap: wrap; align-content: center; gap: 1px; padding: 1px 6px; border-radius: 8px; overflow: hidden;
+    background: radial-gradient(ellipse at 50% 30%, #081113, #182629 85%); box-shadow: inset 0 2px 4px #000d, inset 0 -1px 0 #ffffff12, 0 1px 0 #ffffff14; }
+  .mat-stock { flex: none; width: 5px; height: 5px; border-radius: 1px; background: linear-gradient(145deg, color-mix(in srgb, var(--resource) 55%, #fff), var(--resource) 55%, color-mix(in srgb, var(--resource) 55%, #000)); box-shadow: 0 1px 1px #000a; }
+  .mat-stock.over { box-shadow: 0 0 0 1px var(--red); }
+  .mat-stock.new { animation: mat-drop .4s cubic-bezier(.3, .6, .4, 1) both; animation-delay: calc(var(--i) * 18ms); }
+  .resource-grid .resource-amount { grid-column: 3; grid-row: 1; font-size: 14px; line-height: 1; text-align: center; }
+  .mat-track { position: relative; grid-row: 1; height: 14px; border-radius: 3px; background-color: #0d181a;
+    background-image: linear-gradient(90deg, transparent calc(100% - 1px), #ffffff26 0); background-size: calc(100% / var(--slots)) 100%; box-shadow: inset 0 1px 3px #000c, 0 1px 0 #ffffff12; }
+  .mat-track.production { grid-column: 4; }
+  .mat-track.capacity { grid-column: 6; background-image: linear-gradient(90deg, transparent calc(100% - 1px), #ffffff26 0), linear-gradient(90deg, transparent calc(100% - 1.5px), #d9bd8088 0); background-size: calc(100% / var(--slots)) 100%, calc(400% / var(--slots)) 100%; }
+  .mat-marker { --pos: var(--at); position: absolute; top: 2px; bottom: 2px; left: calc((var(--pos) + .5) * 100% / var(--slots)); width: max(6px, min(11px, calc(100% / var(--slots) - 2px))); translate: -50% 0; animation: mat-slide .5s ease-out both; }
+  .mat-track.production .mat-marker { border-radius: 2px; background: linear-gradient(145deg, color-mix(in srgb, var(--resource) 55%, #fff), var(--resource) 55%, color-mix(in srgb, var(--resource) 50%, #000)); box-shadow: 0 1px 1px #000c, inset 0 1px 0 #ffffff66; }
+  .mat-track.capacity .mat-marker { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fffdf3, #d9cfb4 60%, #8f856c); box-shadow: 0 1px 1px #000c; }
+  .mat-lap { position: absolute; right: 1px; top: -5px; padding: 0 3px; border-radius: 3px; background: var(--gold); color: #10201c; font-size: 9px; line-height: 1.2; }
+  .resource-grid .resource-production { grid-column: 5; grid-row: 1; font-size: 11px; text-align: left; }
+  .resource-grid .resource-limit { grid-column: 7; grid-row: 1; font-size: 12px; font-weight: 700; text-align: right; color: var(--text); }
+  /* Add 4 capacity sits just below the mat, at the left of your seat row. */
+  .storage-upgrade-control { grid-column: 3; grid-row: 8; z-index: 6; justify-self: start; align-self: center; width: auto !important; margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; border-radius: 0 !important; }
+  .storage-upgrade-button { min-height: 0 !important; padding: 4px 8px !important; gap: 3px !important; font-size: 11.5px !important; }
+}
+@media (prefers-reduced-motion: reduce) { .mat-marker, .mat-stock.new { animation: none; } }
+@media (min-width: 1024px) and (min-height: 600px) {
+  /* ---- One table: every piece lies on the felt as an object with its own shadow. ---- */
+  .board-map-region { border: 0 !important; border-radius: 14px !important;
+    background: radial-gradient(ellipse at 50% 45%, #1f3944 0%, #132833 62%, #0e1f27 100%) !important;
+    box-shadow: inset 0 0 0 2px #2c4650, inset 0 0 0 7px #0d1b21, inset 0 0 0 8px #a28e5f55, 0 3px 0 #0b1518, 0 6px 0 #081114, 0 22px 40px #000b !important; }
+  /* Standings: small faction mats at the table's top-left. */
+  .board-shared .score-ribbon { margin: 0 !important; }
+  /* The comms feed: a sheet lying on the table at the left, under the standings. */
+  .log-panel {
+    grid-column: 1 !important; grid-row: 1 / 8 !important; align-self: stretch !important; height: auto !important;
+    margin: calc(var(--lanes) * (var(--score-h) + 5px) + 12px) 0 calc(var(--bank-h) + 14px) !important;
+    padding: 8px 8px 6px 10px !important; border: 1px solid #d9bd8030; border-radius: 10px;
+    background: linear-gradient(170deg, #12242acc, #0c1a1ecc); box-shadow: 0 2px 0 #0a1416, 0 14px 26px #0008; backdrop-filter: blur(2px);
+    transform: rotate(-.6deg);
+  }
+  .log-panel::before { min-height: 0 !important; margin-bottom: 4px !important; }
+  /* The bank: a tray at the table's bottom-left. */
+  .resource-tools { margin: 0 !important; }
+  /* Turn prompt and phases: small markers on the table above the supply; Fleet and Trade beside them. */
+  .board-toolbar { grid-row: 1 !important; align-self: start; margin-right: 150px; padding: 6px 10px !important; border: 1px solid #d9bd8040; border-radius: 10px; background: #0d1b1fd9; box-shadow: 0 2px 0 #0a1416, 0 10px 18px #0007; }
+  .phase-stepper { grid-row: 2 !important; justify-self: start !important; padding: 4px 8px !important; border-radius: 999px !important; background: #0d1b1fd9 !important; box-shadow: 0 2px 0 #0a1416, 0 8px 14px #0006; }
+  .console-nav { grid-row: 1 !important; justify-self: end !important; align-self: start !important; }
+  /* Your seat along the bottom edge: Deck and In play, your hand, then your player mat and Discard;
+     the turn's buttons sit just above Discard. */
+  #discard-button { justify-self: end; margin-right: 0 !important; }
+  #hand-panel .hand-tools { grid-row: 7 !important; grid-template-rows: auto !important; grid-auto-flow: column !important; width: auto !important; justify-self: end !important; align-self: end !important; }
+  .resource-grid { grid-row: 8 !important; margin: 0 calc(var(--pile-w) + 14px) 0 0 !important;
+    --mat-cols: 18px minmax(64px, 1.2fr) 22px minmax(90px, 1fr) 24px minmax(156px, 2fr) 22px;
+    grid-auto-rows: 21px !important; gap: 4px !important; padding: 6px 12px 8px !important; }
+  .resource-grid .resource-box { grid-template-rows: 21px !important; }
+  .mat-bowl, .resource-grid .resource-box > .resource-symbol { height: 21px !important; }
+  .resource-grid .resource-box > .resource-symbol { width: 18px !important; }
+  .mat-stock { width: 6px; height: 6px; }
+  .mat-track { height: 17px !important; }
+  .mat-head { font-size: 9px !important; }
+  .resource-grid .resource-amount { font-size: 16px; }
+  /* Add 4 capacity: a small token just above the mat, left of the turn's buttons. */
+  .storage-upgrade-control { grid-row: 7 !important; justify-self: start !important; align-self: end !important; margin: 0 !important; }
+  .storage-upgrade-button { flex-direction: row !important; align-items: center !important; padding: 1px 6px !important; gap: 4px !important; font-size: 10px !important; border-radius: 999px !important; }
+  .storage-upgrade-button .resource-chip { min-height: 14px !important; padding: 0 2px !important; }
+  .storage-upgrade-button .resource-symbol { width: 10px !important; height: 10px !important; }
+}
+/* Notices: over the comms sheet's lower part, above the bank tray (body-level, so scaled here). */
+@media (min-width: 1024px) and (min-height: 600px) {
+  .toast { left: calc(16px * var(--table-zoom, 1)); bottom: calc((8px + 130px + 6px + 234px + 22px) * var(--table-zoom, 1)); width: calc(244px * var(--table-zoom, 1)); }
 }
