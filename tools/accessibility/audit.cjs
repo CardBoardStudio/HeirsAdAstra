@@ -22,7 +22,14 @@ function fixture(kind) {
   context.createGalacticAdapter=value=>{engine=value;return factory(value);};
   const adapter=context.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});
   const state=engine.state;
-  if(['feedback','probe-last','probe-known','probe-none'].includes(kind)) {
+  if(kind==='starter-economy') {
+    state.players[0].hand=[{id:'qa-I',key:'move',starter:true},{id:'qa-build-I',key:'construct',starter:true},
+      {id:'qa-II',key:'construct',starter:true,upgraded:true,level:2},{id:'qa-III',key:'move',starter:true,upgraded:true,level:3},
+      {id:'qa-draw',key:'signalRelay'},{id:'qa-wonder',key:'dysonLattice'},{id:'qa-relic',key:'firstDawnEchoes'}];
+    state.players[0].resources={matter:1,energy:1,biomass:1,data:1};
+    state.players[0].deck=[{id:'qa-III-draw',key:'surveyNetwork'}];
+    state.fleets={'0,0':{0:{fleet:1}}};state.selected='0,0';
+  } else if(['feedback','probe-last','probe-known','probe-none'].includes(kind)) {
     state.players[0].hand=[{id:'qa-probe',key:'probe'},{id:'qa-iii',key:'move',starter:true,upgraded:true,level:3},{id:'qa-cap',key:'cargoExpansion'},{id:'qa-draw',key:'signalRelay'}];
     state.players[0].resources={matter:4,energy:4,biomass:4,data:4};
     state.fleets={'0,0':{0:{settler:0,explorer:1,fleet:1}}};state.selected='0,0';
@@ -35,9 +42,9 @@ function fixture(kind) {
     const coord=state.clusters[0].coords[1];state.selected=coord;state.players[0].resources={matter:4,energy:3,biomass:3,data:2};state.players[0].hand=[{id:'qa-two',key:'construct',starter:true,upgraded:true},{id:'qa-fund',key:'construct'}];
     engine.performConstructOrder(0,coord,'starbase',state.players[0].hand[0]);
     if(kind==='second-empty')state.players[0].resources={matter:0,energy:0,biomass:0,data:0};
-  } else if (kind==='storage' || kind==='cradle') {
+  } else if (kind==='storage' || kind==='warehouse') {
     state.players[0].resources={matter:2,energy:2,biomass:2,data:2};
-    if(kind==='cradle')state.players[0].hand=[{id:'qa-cradle',key:'cradleOfLostSuns'}];
+    if(kind==='warehouse')state.players[0].hand=[{id:'qa-warehouse',key:'foldedWarehouse'}];
   } else if (kind==='buy' || kind==='buy-many') {
     Object.assign(state,{phase:'buy',turnStage:'buy',activePlayer:0});
     Object.assign(state.players[0],{passed:true,storageUpgrades:2,resources:{matter:4,energy:4,biomass:4,data:4}});

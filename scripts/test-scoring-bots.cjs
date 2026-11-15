@@ -33,11 +33,11 @@ for(let n=0;n<32;n++){
 {
  const g=game(),p=bot(g);p.hand=[{id:'build',key:'construct'}];p.resources={matter:0,energy:0,biomass:0,data:0};const before=JSON.stringify(g.s),calls=g.calls();
  assert.equal(g.e.aiUseResources(p,'build',{matter:2,energy:1,biomass:1,data:1}),false);assert.equal(JSON.stringify(g.s),before);assert.equal(g.calls(),calls);record.fixtures++;
- p.hand.push({id:'wild',key:'dataHaven'});assert(g.e.aiUseResources(p,'build',{data:2}));assert.equal(p.resources.data,2);record.fixtures++;
+ p.hand.push({id:'fund',key:'move',starter:true});assert(g.e.aiUseResources(p,'build',{energy:1}));assert.equal(p.resources.energy,1);record.fixtures++;
 }
 {
- const g=game(),p=bot(g);p.resourceLimits.matter=9;p.resources={matter:9,energy:0,biomass:0,data:0};p.hand=[{id:'move',key:'move',upgraded:true},{id:'build',key:'construct'}];
- assert(g.e.aiUseResources(p,'build',{matter:2,energy:1,data:1}));assert.deepEqual(plain(p.resources),{matter:5,energy:2,biomass:0,data:1});assert.equal(g.e.overflowPlayer(),-1);record.fixtures++;
+ const g=game(),p=bot(g);p.resourceLimits.matter=9;p.resources={matter:9,energy:0,biomass:0,data:0};p.hand=[{id:'move',key:'move',starter:true},{id:'build',key:'construct'}];
+ assert(g.e.aiUseResources(p,'build',{matter:2,energy:1,data:1}));assert.deepEqual(plain(p.resources),{matter:5,energy:1,biomass:0,data:1});assert.equal(g.e.overflowPlayer(),-1);record.fixtures++;
 }
 {
  const g=game(),p=bot(g),world=g.s.clusters[4],site=g.e.relicCoordInCluster(world);world.revealedBy=[0,1,2,3];world.scannedBy=[1];
@@ -54,7 +54,7 @@ for(let n=0;n<32;n++){
  assert.equal(g.e.chooseAiBuild(1).kind,'settler','A closed map still needs Settlers for captures');record.fixtures++;
 }
 {
- const g=game(),p=bot(g),world=g.s.clusters[4];funds(p);p.hand=[{id:'move',key:'move',upgraded:true}];
+ const g=game(),p=bot(g),world=g.s.clusters[4];funds(p);p.hand=[{id:'move',key:'move',starter:true,upgraded:true}];
  for(const c of g.s.clusters.filter(c=>c.kind==='world'))g.s.planets[c.center].owner=1;
  for(const coord of world.coords)Object.assign(g.s.planets[coord],{owner:2,occupiedBy:null,hasColony:coord===world.center,upgrade:coord===world.center?null:'harvester'});
  const [q,r]=world.center.split(',').map(Number),source=`${q-2},${r}`;g.s.fleets={[source]:{1:{settler:1,explorer:0,fleet:0}}};
