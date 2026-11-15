@@ -869,6 +869,7 @@ button.score-value { display: grid; place-items: center; gap: 3px; min-width: 40
 .resource-box .resource-name { order: 3; font-size: 9px; color: #c0cab9; text-transform: uppercase; }
 .pile-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 18px; border: 0; background: none; overflow: visible; }
 .pile-stats > span { display: none; }
+.pile-card { display: none; }
 .pile-stats > button { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; min-height: 84px; padding: 8px 4px; border: 1px solid #94aaa47a; border-radius: 4px; background: repeating-linear-gradient(135deg,#7fa79b12 0 1px,transparent 1px 6px),#263c3a; color: var(--text); font-size: 9px; box-shadow: 2px 2px #192725,3px 3px #8b9f8e,4px 4px #172724; }
 .pile-stats > button::before { content: ''; width: 18px; height: 18px; background: var(--gold); clip-path: polygon(50% 0,65% 35%,100% 50%,65% 65%,50% 100%,35% 65%,0 50%,35% 35%); }
 .pile-stats > button strong { margin: 0; font-size: 13px; color: var(--text); }
@@ -1353,8 +1354,21 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 .game-log .log-line { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .game-log .log-who { flex: none; display: grid; place-items: center; min-width: 26px; height: 16px; padding: 0 3px; border-radius: 8px; background: var(--player, #6c7a72); color: #0d1a1d; font-size: 9.5px; font-weight: 800; letter-spacing: .02em; }
 .game-log .log-who.log-table { background: #2a3d3a; color: var(--gold); }
-.game-log .log-icon { flex: none; width: 14px; color: var(--gold); font-size: 12px; line-height: 1; text-align: center; }
-.game-log .log-battle .log-icon { color: #ef8b74; }
+.game-log .log-icon { --kind: var(--gold); flex: none; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: color-mix(in srgb, var(--kind) 16%, #0d1a1d); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--kind) 55%, transparent); color: var(--kind); }
+.game-log .log-icon svg { width: 14px; height: 14px; }
+.game-log .log-latest .log-icon { width: 26px; height: 26px; }
+.game-log .log-latest .log-icon svg { width: 16px; height: 16px; }
+.game-log .log-kind-battle .log-icon { --kind: #ef8b74; }
+.game-log :is(.log-kind-build, .log-kind-colonize) .log-icon { --kind: #8fd19e; }
+.game-log :is(.log-kind-buy, .log-kind-upgrade) .log-icon { --kind: #f2d488; }
+.game-log :is(.log-kind-convert, .log-kind-trade) .log-icon { --kind: #6fd3e8; }
+.game-log .log-kind-move .log-icon { --kind: #a9c4ff; }
+.game-log .log-kind-production .log-icon { --kind: #c9e27a; }
+.game-log .log-kind-draw .log-icon { --kind: #e8dcc0; }
+.game-log .log-kind-relic .log-icon { --kind: #d6a6ff; }
+.game-log .log-kind-prestige .log-icon { --kind: #f2c94c; }
+.game-log .log-kind-trash .log-icon { --kind: #d0a48c; }
+.game-log :is(.log-kind-pass, .log-kind-event) .log-icon { --kind: #9fb0a8; }
 .game-log .log-text { min-width: 0; }
 .game-log .log-res { display: inline-flex; align-items: center; gap: 1px; margin: 0 1px; vertical-align: -2px; }
 .game-log .log-res .resource-symbol { width: 12px; height: 12px; }
@@ -1452,29 +1466,41 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
     background: linear-gradient(160deg, #2d403b, #22322f); box-shadow: inset 0 1px 0 #ffffff14, 0 3px 0 #0a1513, 0 8px 14px #0005;
   }
   .board-shared .score-card.active { box-shadow: inset 0 0 0 1.5px var(--player), 0 3px 0 #0a1513, 0 8px 14px #0005; }
-  .board-shared .score-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; padding-right: 26px; }
+  .board-shared .score-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; }
   .board-shared .score-meta { display: flex; flex-wrap: wrap; flex: 1 1 100%; min-width: 0; gap: 0 6px; font-size: 10px; line-height: 1.25; color: var(--muted); }
   .board-shared .score-card .score-top { display: contents; }
   .board-shared .score-card .score-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
   .board-shared .score-card .score-turn, .board-shared .score-meta > * { font-size: 10px; line-height: 1.25; color: var(--muted); white-space: nowrap; }
   .board-shared .score-card.active .score-turn { color: var(--text); }
-  .board-shared button.score-value { position: absolute; top: 3px; right: 4px; min-width: 24px; min-height: 26px; padding: 0 2px; font-size: 19px; line-height: 1; gap: 0; }
+  /* The score is on the Prestige lanes: the whole box opens the breakdown and shows the score
+     in a tip when pointed at or focused. */
+  .board-shared button.score-value { position: absolute; inset: 0; z-index: 1; width: auto; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: inherit; background: none; box-shadow: none; color: transparent; font-size: 0; cursor: pointer; }
+  .board-shared button.score-value:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
+  .board-shared button.score-value::after, .prestige-marker::after {
+    content: attr(data-tip); position: absolute; z-index: 40; padding: 4px 9px; border: 1px solid var(--player); border-radius: 6px; background: #0d1a1d; color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; font-weight: 700; line-height: 1.3; letter-spacing: 0; white-space: nowrap; text-shadow: none; box-shadow: 0 6px 16px #0008; display: none; pointer-events: none;
+  }
+  .board-shared button.score-value::after { left: calc(100% + 8px); top: 50%; transform: translateY(-50%); }
+  .board-shared .score-card:hover button.score-value::after, .board-shared button.score-value:focus-visible::after, .prestige-marker:hover::after { display: block; }
+  .board-shared .score-ribbon { z-index: 8; }
+  .board-shared .score-card:nth-child(n) { overflow: visible; }
   .board-shared .score-value small, .faction-counter { display: none; }
   /* The comms feed fills the rest of the left side; it scrolls on its own, newest first. */
   .log-panel {
-    grid-column: 1; grid-row: 1 / 6; align-self: stretch; position: relative; z-index: 4; min-width: 0; min-height: 0; display: flex; flex-direction: column;
+    grid-column: 1; grid-row: 1 / 6; align-self: start; height: clamp(170px, 31dvh, 300px); position: relative; z-index: 4; min-width: 0; min-height: 0; display: flex; flex-direction: column;
     margin: calc(var(--lanes) * (var(--score-h) + 5px) + 8px) 0 0; padding: 0;
   }
   .log-panel .panel-heading { display: none; }
   .log-panel::before { content: 'Comms'; flex: none; margin: 0 0 4px 2px; color: #c9b98a; font-size: 9.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
-  .board-reference .game-log, .game-log { flex: 1 1 auto; height: auto; min-height: 0; max-height: none; margin: 0; padding: 0 2px 0 18px; border: 0; background: none; font-size: 11.5px; line-height: 1.35; overflow: hidden; }
-  .game-log:is(:hover, :focus) { overflow: auto; }
+  .board-reference .game-log, .game-log { flex: 1 1 auto; height: auto; min-height: 0; max-height: none; margin: 0; padding: 0 2px 0 18px; border: 0; background: none; font-size: 11.5px; line-height: 1.35; position: relative; overflow: auto; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), #0000); mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), #0000); scrollbar-width: thin; scrollbar-color: #d9bd8055 transparent; }
   .game-log li { padding: 3px 0; border-bottom: 1px solid #d9bd8014; }
   .game-log .log-entry { margin-left: -16px; }
   .game-log .log-latest { padding: 5px 6px; margin: 0 0 2px -16px; border: 0; border-radius: 6px; background: #ffffff0d; font-size: 12.5px; }
   .game-log .log-latest .log-who { height: 18px; min-width: 30px; font-size: 10.5px; }
   .game-log .log-line { align-items: flex-start; }
-  .game-log .log-who, .game-log .log-icon { margin-top: 1px; }
+  .game-log .log-line { gap: 6px; }
+  .game-log .log-who { margin-top: 3px; }
+  .game-log .log-text { padding-top: 3px; }
 
   /* ---- Right of the board: the turn prompt and actions, phases, then the supply. ---- */
   .board-toolbar { grid-row: 1; grid-column: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 0; padding: 0; }
@@ -1549,6 +1575,8 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .prestige-marker b { flex: none; display: grid; place-items: center; min-width: 14px; height: 14px; padding: 0 2px; border: 1.5px solid #0d1a1d; border-radius: 7px; background: var(--player); color: #0d1a1d; font-size: 9.5px; font-weight: 800; }
   .prestige-name { font-weight: 700; letter-spacing: .02em; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
   .prestige-marker.acting b { box-shadow: 0 0 0 1.5px #fff; }
+  .prestige-marker::after { content: attr(aria-label); left: 0; top: calc(100% + 4px); }
+  .prestige-marker.flip::after { left: auto; right: 0; }
   .prestige-marker.acting .prestige-name { color: #fff; }
   .map-tools { z-index: 5; align-self: start; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-top: calc(var(--track-h) + 4px); padding: 0 12px; pointer-events: none; }
   .map-tools > * { pointer-events: auto; }
@@ -1588,10 +1616,24 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .resource-tools[open] > #bank-trade-form { border-radius: 10px 10px 0 0; border-bottom: 0; bottom: calc(100% + 4px + var(--discard-form-height, 110px)); }
   .resource-tools[open] > #discard-resource-form { border-radius: 0 0 10px 10px; border-top: 0; }
   /* Piles: Deck, In play and Discard as small stacks on the mat. */
-  .pile-stats { grid-area: piles; display: grid; grid-template-columns: repeat(3, 44px); gap: 5px; align-self: center; margin: 0; }
-  .pile-stats > button { width: auto; height: min(56px, calc(var(--front-h) - 18px)); min-height: 0; margin: 0; padding: 3px 1px; gap: 1px; font-size: 10px; box-shadow: 1px 1px #192725, 2px 2px #8b9f8e, 3px 3px #192725; }
-  .pile-stats > button::before { width: 10px; height: 10px; }
-  .pile-stats > button strong { font-size: 13px; }
+  /* Piles: Deck face down, In play and Discard with their top card face up; the stack's edge
+     thickens with the count (the same card stock as the hand). */
+  .pile-stats { grid-area: piles; display: grid; grid-template-columns: repeat(3, auto); gap: 9px; align-self: stretch; align-items: end; margin: 0; border: 0; background: none; }
+  .pile-stats > button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; width: auto; height: auto; min-width: 0; min-height: 0; margin: 0; padding: 0 0 1px; border: 0; background: none; box-shadow: none; color: #c9b98a; }
+  .pile-stats > button::before { display: none; }
+  .pile-card {
+    display: flex; position: relative; height: calc(var(--front-h) - 26px - var(--depth, 0px)); aspect-ratio: 63 / 88; margin-bottom: var(--depth, 0px); padding: 4px 3px; border-radius: 4px;
+    background: radial-gradient(circle at 50% 50%, #d9bd8070 0 13%, #0000 14%), radial-gradient(circle at 50% 50%, #0000 0 24%, #d9bd8033 25% 27%, #0000 28%), repeating-linear-gradient(45deg, #23414d 0 3px, #1b3441 3px 6px);
+    box-shadow: inset 0 0 0 2px #10202a, inset 0 0 0 3px #d9bd8080, 0 0 0 1px #0b1517; top: 0; transition: top .15s;
+  }
+  .pile-card::before { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; transform: translate(calc(var(--depth, 0px) * .4), var(--depth, 0px)); background: repeating-linear-gradient(to bottom, #efe5cc 0 1px, #a99a77 1px 2px); box-shadow: 0 3px 6px #0007; }
+  .pile-card.face-up { background: linear-gradient(170deg, color-mix(in srgb, var(--card-accent) 22%, #fbf4e3), #f3ead6 60%); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--card-accent) 75%, #6f6650), inset 0 0 0 3px #fff8, 0 0 0 1px #0b1517; }
+  .pile-stats > button[data-empty="true"] .pile-card { background: #0000001f; box-shadow: inset 0 0 0 1.5px #d9bd8050; }
+  .pile-stats > button[data-empty="true"] .pile-card::before { display: none; }
+  .pile-stats > button:is(:hover, :focus-visible) .pile-card { top: -3px; }
+  .pile-name { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; line-clamp: 4; overflow: hidden; color: #2a2418; font-size: 8px; font-weight: 750; line-height: 1.1; hyphens: auto; overflow-wrap: break-word; }
+  .pile-label { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; line-height: 1; text-transform: uppercase; white-space: nowrap; }
+  .pile-stats > button strong { position: absolute; top: -5px; right: -7px; z-index: 1; display: grid; place-items: center; min-width: 19px; height: 19px; margin: 0; padding: 0 4px; border-radius: 10px; background: #0d1a1d; box-shadow: 0 0 0 1.5px #d9bd8088; color: var(--gold); font-size: 11px; line-height: 1; }
 
   /* ---- Card tops, shared by your hand and the market panel. ---- */
   .game-card { min-height: 0; }
@@ -1777,7 +1819,6 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 @media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
   .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { --score-h: 30px; row-gap: 4px; }
   .board-shared .score-meta { display: none; }
-  .board-shared button.score-value { top: 1px; min-height: 24px; font-size: 17px; }
   .market-cards { gap: 4px; }
   :is(#market-row, #upgrade-market) .card-name { font-size: 13px; line-height: 1.1; }
   :is(#market-row, #upgrade-market) .card-effect { line-height: 1.2; }

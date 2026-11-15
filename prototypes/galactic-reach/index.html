@@ -141,10 +141,10 @@
         </div>
         <div class="resource-grid" id="resource-grid"></div>
         <div class="pile-stats" role="group" aria-label="Your card piles">
-          <button id="deck-button" type="button" title="Inspect remaining cards without revealing draw order">Deck <strong id="deck-count">0</strong></button>
+          <button id="deck-button" type="button" title="Inspect remaining cards without revealing draw order"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Deck</span> <strong id="deck-count">0</strong></button>
           <span>Hand <strong id="hand-pile-count">0</strong></span>
-          <button id="in-play-button" type="button" title="Inspect used cards held outside discard until shared cleanup">In play <strong id="in-play-count">0</strong></button>
-          <button id="discard-button" type="button" title="Browse your discard pile">Discard <strong id="discard-count">0</strong></button>
+          <button id="in-play-button" type="button" title="Inspect used cards held outside discard until shared cleanup"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">In play</span> <strong id="in-play-count">0</strong></button>
+          <button id="discard-button" type="button" title="Browse your discard pile"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Discard</span> <strong id="discard-count">0</strong></button>
         </div>
         <div class="storage-upgrade-control">
           <button class="button storage-upgrade-button" id="upgrade-storage-button" type="button" aria-describedby="storage-upgrade-help"><span>Add 4 capacity</span><span id="storage-upgrade-cost"></span></button>

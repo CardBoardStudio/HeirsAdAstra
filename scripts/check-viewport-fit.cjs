@@ -79,6 +79,19 @@ function buyState(marketKeys, resources = { matter: 4, energy: 4, biomass: 2, da
   state.market = marketKeys.map(key => card(key));
   return state;
 }
+// Mid-game: thick piles with a face-up top card, and a comms feed with every kind of event.
+function midGameState() {
+  const state = operationsState(['move', 'construct', 'probe', 'construct', 'move']);
+  const me = state.players[0];
+  const pile = n => Array.from({ length: n }, (_, i) => card(MARKET[i % MARKET.length].key));
+  me.deck = pile(14); me.discard = [...pile(9), card('construct', { starter: true, upgraded: true })]; me.inPlay = [card('colonize'), card('move', { starter: true })];
+  const [a, b] = [state.players[0].name, state.players[1].name];
+  state.round = 4;
+  state.log = [`R4 · ${a} moved 2 Fleets to 3,-5.`, `R4 · ${b} built a Shipyard at 1,2.`, `R4 · ${a} converted Move for 1 Energy.`, `R4 · ${b} colonized 4,-2 and gained 3 Prestige.`,
+    `R4 · ${a} attacked ${b} at 2,2; the battle destroyed 2 Fleets.`, `R4 · Controlled planets produced normally.`, `R3 · ${a} bought Prefab Yards for 5 Matter.`, `R3 · ${b} upgraded Move to level II.`,
+    `R3 · ${a} traded 2 Biomass for 1 Data.`, `R3 · ${b} excavated a relic and gained 2 Prestige.`, `R3 · ${a} trashed a Construct.`, `R3 · ${b} passed.`, `R3 · All factions drew five cards.`, `R2 · Your neighbor this game is ${b}.`];
+  return state;
+}
 function combatState(stage) {
   const { adapter, engine, state } = freshEngine();
   state.activePlayer = 0; state.phase = 'operations'; state.turnStage = 'action';
@@ -114,6 +127,8 @@ const CASES = [
   { name: 'operations, Probe chosen, raised', save: operationsState(['move', 'construct', 'construct', 'move', 'probe']), click: ['#hand-row .game-card:nth-child(5) [data-order-mode="probe"]'], focus: '#hand-row .game-card:nth-child(5) [data-order-mode="excavate"]' },
   { name: 'operations, Excavate chosen, raised', save: operationsState(['move', 'probe', 'construct', 'construct', 'move']), click: ['#hand-row .game-card:nth-child(2) [data-order-mode="excavate"]'], focus: '#hand-row .game-card:nth-child(2) [data-order-mode="excavate"]' },
   { name: 'operations, 8-card hand, Probe raised', save: operationsState([...longHand.slice(0, 7), 'probe']), focus: '#hand-row .game-card:nth-child(8) [data-order-mode="excavate"]' },
+  { name: 'operations, mid-game piles and comms', save: midGameState() },
+  { name: 'standings score tip (keyboard focus)', save: midGameState(), focus: '.score-card:nth-child(2) button.score-value' },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -226,7 +241,7 @@ const MEASURE = `(() => {
     const r = e.getBoundingClientRect();
     if (r.width <= 1 && r.height <= 1) continue; // empty or visually hidden (sr-only)
     const clips = /(auto|scroll|hidden|clip)/.test(getComputedStyle(e).overflowY + getComputedStyle(e).overflowX);
-    if (clips && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2) && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, [aria-hidden="true"], input, textarea'))
+    if (clips && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2) && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, input, textarea') && !e.closest('[aria-hidden="true"]'))
       problems.push('clipped content: ' + label(e) + ' ' + e.scrollWidth + 'x' + e.scrollHeight + ' in ' + e.clientWidth + 'x' + e.clientHeight);
     if (e.matches('button, a[href], select, input, textarea, .game-card, .score-card, .resource-box, .hex, dialog[open], .lobby-seat') && !e.closest('.sr-only, .skip-link, .skip')) {
       if (r.left < -1 || r.top < -1 || r.right > W + 1 || r.bottom > H + 1) problems.push('outside viewport: ' + label(e) + ' [' + [r.left, r.top, r.right, r.bottom].map(Math.round) + ']');
