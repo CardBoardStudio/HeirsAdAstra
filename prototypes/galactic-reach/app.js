@@ -3798,8 +3798,44 @@ function createGalacticReach(options = {}) {
 
 
 
+  // The comms feed reads at a glance: who acted (faction colour), what kind of event (icon),
+  // resource and Prestige amounts as chips, and a divider per round. The full sentence stays
+  // in the entry for screen readers and on hover.
+  const LOG_KINDS = [
+    ['production', /produced|production|harvest/i, '⚙'],
+    ['battle', /attack|battle|combat|destroy|captured|retreat|escape|volley/i, '⚔'],
+    ['trade', /trade|offer|exchanged|bank/i, '⇄'],
+    ['upgrade', /upgraded/i, '▲'],
+    ['trash', /trash|decommission/i, '✕'],
+    ['buy', /bought|acquired|purchase|activated .* during Buy/i, '＋'],
+    ['convert', /converted|discarded .*(Matter|Energy|Biomass|Data)|to free storage/i, '⟳'],
+    ['relic', /relic|excavat|probe|surveyed|located/i, '◆'],
+    ['colonize', /coloniz|colony/i, '⬢'],
+    ['build', /built|commission|shipyard|starbase|build/i, '▣'],
+    ['move', /moved|move|jump|portal/i, '➜'],
+
+    ['draw', /drew|draw/i, '❐'],
+    ['prestige', /prestige|won with/i, '★'],
+    ['pass', /passed|could not/i, '⏸'],
+  ];
+  const LOG_RESOURCE = { Matter:'matter', Energy:'energy', Biomass:'biomass', Data:'data' };
+  function logVisual(text) {
+    return esc(text)
+      .replace(/(\d+) (?:permanent )?Prestige/g, (_, n) => `<span class="log-prestige">${n}★</span>`)
+      .replace(/(\d+) (Matter|Energy|Biomass|Data)\b/g, (_, n, name) => `<span class="log-res ${LOG_RESOURCE[name]}">${resourceDot(LOG_RESOURCE[name])}<b>${n}</b></span>`);
+  }
   function renderLog() {
-    $('#game-log').innerHTML=state.log.slice(0,18).map(item=>`<li>${replayMode?esc(item):item}</li>`).join('');
+    const parts = [];
+    let lastRound = null;
+    state.log.slice(0,18).forEach((item,index) => {
+      const match = /^R(\d+) · ([\s\S]*)$/.exec(item), round = match ? match[1] : null, text = match ? match[2] : item;
+      if (round && round !== lastRound) { parts.push(`<li class="log-round" aria-hidden="true"><span>Round ${round}</span></li>`); lastRound = round; }
+      const player = state.players.find(candidate => text.startsWith(candidate.name));
+      const [kind,,icon] = LOG_KINDS.find(([,pattern]) => pattern.test(text)) || ['event', null, '•'];
+      const who = player ? `<span class="log-who" style="--player:${player.color}">${esc(player.name.split(/\s+/).filter(Boolean).map(word => word[0]).join('').slice(0,3).toUpperCase())}</span>` : '<span class="log-who log-table">✦</span>';
+      parts.push(`<li class="log-entry log-${kind}${index===0?' log-latest':''}" title="${esc(item)}"><span class="sr-only">${esc(item)}</span><span class="log-line" aria-hidden="true">${who}<span class="log-icon">${icon}</span><span class="log-text">${logVisual(player ? text.slice(player.name.length).trimStart() : text)}</span></span></li>`);
+    });
+    $('#game-log').innerHTML = parts.join('');
   }
 
   // Printed emblems reuse the board's unit vocabulary. They are decorative;
@@ -4482,6 +4518,12 @@ function createGalacticReach(options = {}) {
     $('#close-trash').addEventListener('click',()=>$('#trash-dialog').close());
     $('#close-upgrade').addEventListener('click',()=>$('#upgrade-dialog').close());
     $('#open-trade').addEventListener('click',()=>{renderTrade();$('#trade-dialog').showModal();});
+    const menuButton=$('#table-menu-button');
+    const setMenu=open=>{document.body.classList.toggle('menu-open',open);menuButton.setAttribute('aria-expanded',String(open));};
+    menuButton.addEventListener('click',()=>setMenu(!document.body.classList.contains('menu-open')));
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('menu-open')){setMenu(false);menuButton.focus();}});
+    document.addEventListener('click',event=>{if(document.body.classList.contains('menu-open')&&!event.target.closest('.topbar, .playtest-changes, .personal-report, #table-menu-button'))setMenu(false);});
+    $$('.topbar .header-actions').forEach(actions=>actions.addEventListener('click',event=>{if(event.target.closest('button, a'))setMenu(false);}));
     $('#close-trade').addEventListener('click',()=>$('#trade-dialog').close());
     $('#board-primary').addEventListener('click',()=>{ const target=$(`#${$('#board-primary').dataset.target}`); if (target && !target.hidden) target.click(); });
     $('#consortium-form').addEventListener('submit',event=>{event.preventDefault();consortiumExchange(ME,$('#consortium-give').value,$('#consortium-get').value);});

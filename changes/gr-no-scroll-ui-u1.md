@@ -3,4 +3,4 @@ compat: safe
 title: The whole table fits your window
 pr: 53
 ---
-On a desktop window the game no longer scrolls: your hand is held as card tops along the bottom of the board, with the standings, the round's phases, one lane per faction on the race to the Prestige goal, and your reserves and piles on the board's edges. The market, fleet and relics share the side panel, Trade opens in its own window, starter upgrades appear as market cards, and cards you can't buy yet are shaded with the reason ([Buy](rulebook.html#buy)).
+On a desktop window the game no longer scrolls: the board lies in the middle of one table with one lane per faction for the race to the Prestige goal along its edge, standings and a visual comms feed to its left, the market, fleet and relics to its right, and your player mat and hand in front. The page header folds into a menu, Trade opens in its own window, starter upgrades appear as market cards, and cards you can't buy yet are shaded with the reason ([Buy](rulebook.html#buy)).
