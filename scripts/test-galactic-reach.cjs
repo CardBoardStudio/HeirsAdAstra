@@ -94,6 +94,7 @@ require('./test-split-moves.cjs');
 
 require('./test-playtest-feedback.cjs');
 require('./test-probe-discovery.cjs');
+require('./test-unlimited-buys.cjs');
 
 require('./test-corner-portals.cjs');
 require('./test-change-queue.cjs');

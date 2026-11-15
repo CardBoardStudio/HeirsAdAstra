@@ -581,6 +581,21 @@ test('Probe distinguishes all excavated sites from all discovered sites and anno
   }
  }
 });
+test('Market permits repeated affordable purchases and reloads with no purchase cap',()=>{
+ const storage=createStorage(),state=boot(storage).saved();
+ Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});
+ Object.assign(state.players[0],{passed:true,hand:[],deck:[],discard:[],inPlay:[],buyStartDiscardIds:[],buyStartInPlayIds:[],buyLimit:1,resources:{matter:0,energy:6,biomass:0,data:3},resourceLimits:{matter:4,energy:10,biomass:4,data:10}});
+ state.market=[{id:'purchase-1',key:'signalRelay'},{id:'purchase-2',key:'signalRelay'}];state.advancedDeck=[{id:'refill-3',key:'signalRelay'}];state.marketDiscard=[];
+ writeSave(storage,state);let game=boot(storage);
+ assert.match(game.dom.element('market-help').textContent,/as many cards as you can afford/);
+ for(let n=1;n<=3;n++) {
+  const button=game.dom.lastQuery('[data-buy-market]').find(b=>!b.disabled);assert(button,`Purchase ${n} remains enabled`);button.click();
+  assert.equal(game.saved().players[0].bought,n);assert.equal(game.saved().phase,'buy');
+  if(n===1)game=boot(storage);
+ }
+ assert.equal(game.saved().players[0].discard.length,3);assert.equal(game.saved().market.length,0);
+ assert.equal(game.saved().players[0].resources.energy,0);assert.equal(game.saved().players[0].resources.data,0);
+});
 test('Shared-table Probe uses private server availability and warns after the final signal',()=>{
  const c=vm.createContext({});vm.runInContext(adapterSource+source,c);
  let engine;const factory=c.createGalacticAdapter;c.createGalacticAdapter=e=>{engine=e;return factory(e);};

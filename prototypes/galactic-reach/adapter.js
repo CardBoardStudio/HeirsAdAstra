@@ -72,13 +72,11 @@ function createGalacticAdapter(e) {
       p.hand.forEach(card=>{const gain=e.cardResources(card),def=e.ALL_CARDS[card.key];if(def.wildcard)gain.data=(gain.data||0)+def.wildcard;actions.push({type:'resource',card:card.id,key:card.key,gain});});
     } else if (state.phase === 'buy') {
       actions.push({ type: 'finish_buy' });
-      if (p.bought < p.buyLimit) {
-        // 31.36: only the ten-card market is for sale (rules #buy).
-        state.market.forEach((card, index) => {
-          if (e.canAfford(p, e.purchaseCost(p, card.key)))
-            actions.push({ type: 'buy', source: 'market', index, key: card.key });
-        });
-      }
+      // #buy: any number of affordable market purchases, including refilled cards.
+      state.market.forEach((card, index) => {
+        if (e.canAfford(p, e.purchaseCost(p, card.key)))
+          actions.push({ type: 'buy', source: 'market', index, key: card.key });
+      });
       [...p.hand, ...p.discard, ...p.inPlay].forEach(card => {
         if (card.starter && e.starterLevel(card)<3) for (const resource of e.RESOURCES)
           if (p.resources[resource] >= e.upgradePrice(card)) actions.push({type:'upgrade',card:card.id,resource});
