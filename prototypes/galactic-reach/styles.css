@@ -1414,10 +1414,11 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
     --res-w: 238px;
     --pile-w: max(52px, calc((var(--front-h) - 26px) * .716));
     --tools-w: 206px;
-    --bank-h: 214px;
+    --bank-h: 234px;
+    --log-h: clamp(84px, 13dvh, 140px);
     flex: 1 1 auto; min-height: 0; width: 100%; height: auto; margin: 0; padding: 8px 16px 8px;
     display: grid; grid-template-columns: var(--left-w) minmax(0, var(--board-w)) minmax(340px, 1fr);
-    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto var(--front-h); gap: 6px 14px;
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto var(--front-h); gap: 6px 14px;
   }
   .has-saved-table .app-shell { --bars-h: 44px; }
   .has-replay .app-shell { --bars-h: 84px; }
@@ -1432,7 +1433,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 
   /* ---- The menu: the page header and playtest notes open from the bottom-left corner. ---- */
   .table-menu-button {
-    grid-column: 1; grid-row: 7; align-self: end; justify-self: start; z-index: 30; display: grid; place-items: center;
+    grid-column: 1; grid-row: 8; align-self: end; justify-self: start; z-index: 30; display: grid; place-items: center;
     width: 40px; height: 40px; margin: 0 0 4px; padding: 0; border: 1px solid #a49c6f70; border-radius: 50%;
     background: linear-gradient(160deg, #31443f, #22322f); box-shadow: 0 3px 0 #0a1513, 0 8px 16px #0007; color: var(--text); cursor: pointer;
   }
@@ -1464,7 +1465,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .playtest-changes[open] > p { position: fixed; left: 322px; bottom: calc(var(--front-h) + 14px); top: auto; transform: none; width: min(640px, calc(100vw - 346px)); min-height: 42px; margin: 0; padding: 8px 18px; border: 1px solid #a49c6f99; border-top-color: var(--line); border-radius: 0 0 10px 10px; background: #1b2b2d; box-sizing: border-box; }
 
   /* ---- Left of the board: every faction's standings, then the comms feed. ---- */
-  .board-shared .score-ribbon { grid-column: 1; grid-row: 1 / 7; z-index: 5; align-self: start; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: var(--score-h); gap: 5px; padding: 0; }
+  .board-shared .score-ribbon { grid-column: 1; grid-row: 1 / 8; z-index: 8; align-self: start; margin: 12px 0 0 12px !important; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: var(--score-h); gap: 5px; padding: 0; }
   .board-shared .score-card, .board-shared .score-card:nth-child(n) {
     grid-row: auto; grid-column: auto; position: relative; display: block; width: auto; max-width: none; height: var(--score-h); margin: 0; padding: 0 8px 0 9px; justify-self: stretch; overflow: hidden;
     border: 0; border-left: 4px solid var(--player); border-radius: 7px;
@@ -1499,15 +1500,17 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .board-shared .score-value small, .faction-counter { display: none; }
   /* The comms feed fills the rest of the left side; it scrolls on its own, newest first. */
   .log-panel {
-    grid-column: 1; grid-row: 1 / 7; align-self: stretch; height: auto; position: relative; z-index: 4; min-width: 0; min-height: 0; display: flex; flex-direction: column;
-    margin: calc(var(--lanes) * (var(--score-h) + 5px) + 8px) 0 calc(var(--bank-h) + 10px); padding: 0;
+    grid-column: 3; grid-row: 1; align-self: start; height: var(--log-h); position: relative; z-index: 4; min-width: 0; min-height: 0; display: flex; flex-direction: column;
+    margin: 0; padding: 0;
   }
   .log-panel .panel-heading { display: none; }
-  .log-panel::before { content: 'Comms'; flex: none; margin: 0 0 4px 2px; color: #c9b98a; font-size: 9.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+  .log-panel::before { content: 'Comms'; flex: none; display: flex; align-items: center; min-height: 28px; margin: 0 0 2px 2px; color: #c9b98a; font-size: 9.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
   .board-reference .game-log, .game-log { flex: 1 1 auto; height: auto; min-height: 0; max-height: none; margin: 0; padding: 0 2px 0 18px; border: 0; background: none; font-size: 11.5px; line-height: 1.35; position: relative; overflow: auto; overscroll-behavior: contain; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), #0000); mask-image: linear-gradient(to bottom, #000 calc(100% - 22px), #0000); scrollbar-width: thin; scrollbar-color: #d9bd8055 transparent; }
-  .game-log li { padding: 3px 0; border-bottom: 1px solid #d9bd8014; }
+  .game-log li { padding: 2px 0; border-bottom: 1px solid #d9bd8014; }
+  .game-log .log-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; }
+  .game-log .log-entry:hover .log-text { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; }
   .game-log .log-entry { margin-left: -16px; }
-  .game-log .log-latest { padding: 5px 6px; margin: 0 0 2px -16px; border: 0; border-radius: 6px; background: #ffffff0d; font-size: 12.5px; }
+  .game-log .log-latest { padding: 3px 6px; margin: 0 0 2px -16px; border: 0; border-radius: 6px; background: #ffffff0d; font-size: 12px; }
   .game-log .log-latest .log-who { height: 18px; min-width: 30px; font-size: 10.5px; }
   .game-log .log-line { align-items: flex-start; }
   .game-log .log-line { gap: 6px; }
@@ -1515,14 +1518,14 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .game-log .log-text { padding-top: 3px; }
 
   /* ---- Right of the board: the turn prompt and actions, phases, then the supply. ---- */
-  .board-toolbar { grid-row: 1; grid-column: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 0; padding: 0; }
+  .board-toolbar { grid-row: 2; grid-column: 3; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 0; padding: 0; }
   .board-toolbar > div { display: block; flex: 1 1 100%; }
   .board-toolbar strong { font-size: 15px; }
   .board-toolbar #turn-instruction { display: inline; max-width: none; margin: 0 0 0 4px; font-size: 12.5px; line-height: 1.35; }
   .board-toolbar .button { min-height: 26px; padding: 2px 8px; font-size: 12px; }
   .status-dot { vertical-align: middle; margin-right: 6px; }
   /* The turn's main button and Convert sit in the bottom-right corner, beside your discard. */
-  #hand-panel .hand-tools { grid-row: 7; grid-column: 1 / -1; z-index: 6; justify-self: end; align-self: center; display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); align-content: center; gap: 5px; width: var(--tools-w); max-width: none; margin: 0; }
+  #hand-panel .hand-tools { grid-row: 8; grid-column: 1 / -1; z-index: 6; justify-self: end; align-self: center; display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); align-content: center; gap: 5px; width: var(--tools-w); max-width: none; margin: 0; }
   #hand-panel .hand-tools .table-jump { display: none; }
   #hand-panel .hand-tools:not(:has(.button:not([hidden]))) { display: none; }
   #hand-panel .hand-tools .button { min-height: 30px; padding: 3px 10px; font-size: 13px; justify-content: center; white-space: nowrap; box-shadow: 0 3px 0 #0a1513, 0 6px 12px #0006; }
@@ -1535,17 +1538,17 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .board-primary[hidden] { display: none; }
   #pass-button, #hand-finish-buy-button, #finish-buy-button { display: none; }
   /* The round's phases as a row of chits. */
-  .phase-stepper { grid-row: 3; grid-column: 3; z-index: 5; display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; border: 0; background: none; font-size: 11.5px; }
+  .phase-stepper { grid-row: 3; grid-column: 3; justify-self: start; z-index: 5; display: flex; align-items: center; gap: 6px; margin: 0; padding: 0; border: 0; background: none; font-size: 11.5px; }
   .phase-stepper strong { flex: none; color: var(--gold); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
   .phase-stepper ol { display: flex; flex-wrap: wrap; gap: 3px; margin: 0; padding: 0; list-style: none; }
   .phase-stepper li { padding: 1px 7px; border-radius: 999px; color: var(--muted); background: #ffffff0a; line-height: 1.4; }
   .phase-stepper li.current { color: #10201c; background: var(--gold); font-weight: 700; }
   /* Supply tabs and Trade as chits on the table. */
-  .console-nav { grid-row: 4; grid-column: 3; display: flex; align-items: center; gap: 5px; padding: 0; border: 0; }
+  .console-nav { grid-row: 1; grid-column: 3; justify-self: end; align-self: start; z-index: 6; display: flex; align-items: center; gap: 5px; padding: 0; border: 0; }
   .console-nav .console-tabs { display: flex; gap: 5px; padding: 0; border: 0; }
   .console-tab { min-height: 28px; padding: 3px 14px; border: 1px solid #a49c6f40; border-radius: 999px; background: linear-gradient(160deg, #2d403b, #22322f); box-shadow: 0 2px 0 #0a1513; color: var(--muted); font-size: 12.5px; text-align: center; }
   .console-tab.active, .console-tab[aria-selected="true"] { border-color: var(--gold); color: var(--gold); background: linear-gradient(160deg, #3a4a3c, #2a382f); }
-  .console-tab.trade-open { margin-left: auto; color: var(--text); white-space: nowrap; }
+  .console-tab.trade-open { color: var(--text); white-space: nowrap; }
   .tab-panel { grid-row: 5; grid-column: 3; min-height: 0; }
   #market-tab, #relics-tab { display: none; }
   #market-panel, #market-panel[hidden] { display: flex; flex-direction: column; min-height: 0; overflow: visible; }
@@ -1566,9 +1569,9 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 
   /* ---- The board: a printed board lying on the table, as large as the height allows. ---- */
   .board-map-region {
-    grid-column: 2; grid-row: 1 / 7; align-self: stretch; justify-self: stretch; position: relative; min-width: 0; min-height: 0;
+    grid-column: 1 / 3; grid-row: 1 / 8; align-self: stretch; justify-self: stretch; position: relative; min-width: 0; min-height: 0;
     display: grid; place-items: center; container-type: size; overflow: hidden;
-    padding: var(--track-h) 0 10px;
+    padding: var(--track-h) 0 10px calc(var(--left-w) + 14px);
     border: 1px solid #a28e5f55; border-radius: 10px;
     background: radial-gradient(ellipse at 50% 50%, #233d47 0%, #152a32 60%, #10222a 100%);
     box-shadow: inset 0 0 0 5px #0f1e24, inset 0 0 0 6px #a28e5f40, 0 2px 0 #0a1416, 0 7px 0 #071012, 0 22px 44px #000a;
@@ -1578,7 +1581,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .board-map-region .hex .hex-pieces .board-icon-count { min-width: 10px; height: 10px; font-size: 9px; line-height: 10px; }
   .board-stage.map-zoomed .board-map-region { display: block; overflow: auto; overscroll-behavior: contain; }
   .board-stage.map-zoomed .galaxy-board { width: 1500px; min-width: 1500px; }
-  .prestige-track, .map-tools { grid-column: 2; grid-row: 1 / 7; }
+  .prestige-track, .map-tools { grid-column: 2; grid-row: 1 / 8; }
   /* The race to the Prestige goal, printed along the board's top edge: one thin lane per faction,
      each marker exactly at its score; hairlines mark each quarter of the goal. */
   .prestige-track { z-index: 5; display: block; position: relative; align-self: start; justify-self: stretch; height: calc(var(--track-h) - 4px); margin: 4px 60px 0 18px; }
@@ -1608,16 +1611,16 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 
   /* ---- In front of you: your player mat (reserves, piles, capacity), then your hand. ---- */
   .player-tableau .resource-panel { display: contents; }
-  .resource-grid, .storage-upgrade-control { grid-column: 3; grid-row: 2; z-index: 5; justify-self: start; align-self: stretch; background: linear-gradient(160deg, #2f423d, #23332f); box-shadow: inset 0 1px 0 #ffffff14, 0 3px 0 #0a1513, 0 10px 18px #0006; }
-  .resource-grid { display: grid; grid-template-columns: repeat(2, 108px); align-content: center; gap: 3px 4px; width: min(var(--res-w), calc(100% - var(--cap-w))); margin: 0; padding: 5px 8px 5px 10px; border-radius: 9px 0 0 9px; }
+  .resource-grid, .storage-upgrade-control { grid-column: 3; grid-row: 7; z-index: 5; justify-self: end; align-self: stretch; background: linear-gradient(160deg, #2f423d, #23332f); box-shadow: inset 0 1px 0 #ffffff14, 0 3px 0 #0a1513, 0 10px 18px #0006; }
+  .resource-grid { display: grid; grid-template-columns: repeat(2, 108px); align-content: center; gap: 3px 4px; width: min(var(--res-w), calc(100% - var(--cap-w))); margin: 0 var(--cap-w) 0 0 !important; padding: 5px 8px 5px 10px; border-radius: 9px 0 0 9px; }
   .resource-box { display: grid; grid-template-columns: 16px auto minmax(0,1fr) auto; align-items: center; gap: 0 4px; padding: 2px 6px; border-radius: 6px; }
   .resource-box > .resource-symbol { grid-column: 1; grid-row: 1; width: 16px; height: 16px; padding: 2px; margin: 0; }
   .resource-box .resource-amount { grid-column: 2; grid-row: 1; font-size: 17px; line-height: 1.15; text-align: left; }
   .resource-box .resource-production { grid-column: 3; grid-row: 1; font-size: 10.5px; text-align: left; }
   .resource-box .resource-limit { grid-column: 4; grid-row: 1; font-size: 10px; text-align: right; white-space: nowrap; }
   .resource-box .resource-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .storage-upgrade-control { display: flex; align-items: center; width: var(--cap-w); margin-left: min(var(--res-w), calc(100% - var(--cap-w))) !important; padding: 5px 10px 5px 2px; border-radius: 0 9px 9px 0; }
-  .resource-tools { grid-column: 1; grid-row: 1 / 7; z-index: 9; align-self: end; display: flex; flex-direction: column; gap: 5px; height: var(--bank-h); overflow: hidden; }
+  .storage-upgrade-control { display: flex; align-items: center; width: var(--cap-w); padding: 5px 10px 5px 2px; border-radius: 0 9px 9px 0; }
+  .resource-tools { grid-column: 1; grid-row: 1 / 8; z-index: 9; align-self: end; display: flex; flex-direction: column; gap: 5px; height: var(--bank-h); overflow: hidden; margin: 0 0 12px 12px !important; padding: 8px 8px 9px !important; border: 1px dashed #d9bd8055 !important; border-radius: 10px; background: #0b181d99; box-shadow: inset 0 2px 8px #0008; }
   .resource-tools summary { flex: none; display: block; padding: 0 0 0 2px; color: #c9b98a; font-size: 9.5px !important; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; list-style: none; cursor: default; }
   .resource-tools summary::-webkit-details-marker, .resource-tools summary::marker { display: none; content: ''; }
   /* Export game report is a page action: it lives in the game menu. */
@@ -1655,7 +1658,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   /* Piles: Deck face down, In play and Discard with their top card face up; the stack's edge
      thickens with the count (the same card stock as the hand). */
   .pile-stats { display: contents; }
-  .pile-stats > button[id] { grid-column: 1 / -1; grid-row: 7; z-index: 5; justify-self: start; align-self: stretch; width: var(--pile-w); padding-bottom: 4px; }
+  .pile-stats > button[id] { grid-column: 1 / -1; grid-row: 8; z-index: 5; justify-self: start; align-self: stretch; width: var(--pile-w); padding-bottom: 4px; }
   #deck-button { margin-left: 52px !important; }
   #in-play-button { margin-left: calc(52px + var(--pile-w) + 9px) !important; }
   #discard-button { justify-self: end; margin-right: calc(var(--tools-w) + 12px) !important; }
@@ -1737,7 +1740,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   /* Your hand: card tops held along the bottom edge of the board, within its width, overlapping slightly. */
   #hand-row {
     --n: 5; --top-w: clamp(124px, calc((100cqw + (var(--n) - 1) * 12px) / var(--n)), 210px);
-    grid-column: 2; grid-row: 7; align-self: end; justify-self: stretch; z-index: 6; display: flex; flex-wrap: nowrap; align-items: flex-end; justify-content: flex-start;
+    grid-column: 2; grid-row: 8; align-self: end; justify-self: stretch; z-index: 6; display: flex; flex-wrap: nowrap; align-items: flex-end; justify-content: flex-start;
     height: var(--strip-h); margin: 0; padding: 0; container-type: inline-size; gap: 0;
   }
   #hand-row:not(:has(> :nth-child(5))) { --n: 4; }
@@ -1748,10 +1751,14 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #hand-row:has(> :nth-child(9)) { --n: 9; }
   #hand-row:has(> :nth-child(10)) { --n: 10; }
   #hand-row .game-card { flex: none; width: var(--top-w); height: var(--strip-h); border-bottom-width: 0; border-radius: 9px 9px 4px 4px; grid-template-areas: "type type" "cost name" "cost head" "effect effect" "buttons buttons"; }
-  #hand-row .game-card + .game-card { margin-left: min(-10px, calc((100cqw - var(--n) * var(--top-w)) / (var(--n) - 1))); }
+  #hand-row { --step: min(4px, calc((100cqw - var(--n) * var(--top-w)) / (var(--n) - 1))); }
+  #hand-row .game-card + .game-card { margin-left: var(--step); }
+  /* The part of a top under its right-hand neighbour stays blank: text and badges end before it. */
+  #hand-row .game-card:not(:last-child):not(:hover):not(:focus-within) { padding-right: calc(8px + max(0px, -1 * var(--step))); }
+  #hand-row .level-badge { display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 6px; border-radius: 12px; background: color-mix(in srgb, var(--card-accent) 26%, #fffaf0); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--card-accent) 65%, #5c5442); color: #2a2418; font-family: Georgia, serif; font-size: 13px; font-weight: 700; }
   #hand-row .game-card:is(:hover, :focus-within) { width: max(var(--top-w), 200px); max-height: none; margin-right: calc(-1 * max(0px, 200px - var(--top-w))); }
   /* The last card grows to the left when raised, so it never pushes past the window's edge. */
-  #hand-row .game-card:last-child:not(:first-child):is(:hover, :focus-within) { margin-right: 0; margin-left: calc(min(-10px, calc((100cqw - var(--n) * var(--top-w)) / (var(--n) - 1))) - max(0px, 200px - var(--top-w))); }
+  #hand-row .game-card:last-child:not(:first-child):is(:hover, :focus-within) { margin-right: 0; margin-left: calc(var(--step) - max(0px, 200px - var(--top-w))); }
   .app-shell.app-shell:has(#hand-row > :nth-child(7)) { --front-h: clamp(90px, 11.5dvh, 110px); }
   #hand-row:has(> :nth-child(7)) .game-card { grid-template-areas: "type type" "name name" "cost cost" "head head" "effect effect" "buttons buttons"; padding-top: 4px; }
   #hand-row:has(> :nth-child(7)) .card-footer { grid-row: auto; }
@@ -1760,16 +1767,25 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
      lower rows raise upward so a raised card stays on screen. */
   #market-panel.active { overflow: visible; }
   #market-panel, #fleet-panel, #relics-panel { container-type: inline-size; }
+  #market-panel { position: relative; }
   #market-panel .section-intro { margin-bottom: 5px; }
+  #market-panel .section-intro:not(:has(p:not([hidden]):not(#market-help))) { height: 0; margin: 0; }
   #market-panel .section-intro:not(:has(:is(p, button):not([hidden]):not(#market-help))) { display: none; }
   #market-panel .section-intro p:not([hidden]) { display: block; font-size: 11.5px; line-height: 1.35; }
   #market-panel .section-intro .hand-tools { flex: 0 0 auto; }
   .market-cards {
     --mtop-max: 150px;
-    flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 5px;
-    margin: 0; padding: 0; align-content: start; container-type: inline-size;
+    flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); gap: 7px 6px;
+    margin: 0; padding: 0; container-type: inline-size;
   }
-  .upgrade-market, .market-row { display: contents; }
+  /* Starter upgrades: a separate tray, labelled down its left edge. */
+  #upgrade-market { grid-column: 1; grid-row: 1; min-height: 0; display: grid; grid-template-columns: 18px repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, var(--utop-h, 66px)); gap: 5px; padding: 4px; border: 1px dashed #d9bd8055; border-radius: 9px; background: #ffffff06; }
+  #upgrade-market[hidden] { display: none; }
+  #upgrade-market::before { content: 'Upgrades'; grid-column: 1; grid-row: 1; align-self: center; justify-self: center; writing-mode: vertical-rl; transform: rotate(180deg); color: #c9b98a; font-size: 9.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+  #open-trash { grid-column: 2; grid-row: 1; align-self: stretch; width: 86px; min-height: 0; margin: 0; padding: 4px 8px; border: 1px dashed #d9bd8077; border-radius: 9px; background: #ffffff08; color: var(--gold); font-size: 12px; line-height: 1.25; white-space: normal; text-align: center; }
+  #open-trash[hidden] { display: none; }
+  /* The market: ten card tops, sharing what is left down to the relics. */
+  #market-row { grid-column: 1 / -1; grid-row: 2; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 5px; margin: 0; padding: 0; }
   .market-cards .game-card { height: min(100%, var(--mtop-max)); align-self: start; --lift: 0px; }
   .market-cards .card-footer .resource-dots { gap: 2px; }
   #market-row .game-card:nth-child(n+5) { align-self: end; }
@@ -1822,7 +1838,9 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #relics-panel > .section-intro h2 { font-size: 14px; }
   #relics-panel > .section-intro p { font-size: 11px; color: var(--muted); }
   #relic-row-help { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0; }
-  .relic-payment { display: flex; align-items: center; gap: 4px; margin: 0; color: var(--muted); font-size: 11px; white-space: nowrap; }
+  .relic-payment { display: flex; align-items: center; gap: 4px; margin: 0; color: var(--muted); font-size: 0; white-space: nowrap; }
+  #relic-cost { display: inline-flex; align-items: center; gap: 3px; font-size: 11px; }
+  #relic-cost::before { content: 'Excavate'; margin-right: 2px; color: var(--muted); font-size: 11px; }
   .relic-payment .resource-chip { min-height: 20px; padding: 0 4px 0 2px; }
   .relic-payment .resource-symbol { width: 13px; height: 13px; }
   #open-relic-catalog { margin: 0 0 0 auto !important; min-height: 24px; white-space: nowrap; padding: 1px 9px; font-size: 11px; }
@@ -1862,14 +1880,14 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 
   /* A wide supply area lays out three market cards to a row. */
   @container (min-width: 380px) {
-    .market-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    #market-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     #market-row .game-card:nth-child(n+5) { align-self: start; }
-    #market-row .game-card:nth-child(n+8) { align-self: end; }
+    #market-row .game-card:nth-child(n+7) { align-self: end; }
   }
 }
 /* Short windows: the standings drop to one line and the market card tops tighten. */
 @media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
-  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { row-gap: 4px; }
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { row-gap: 4px; --log-h: 76px; }
   .board-shared .score-meta { display: none; }
   .market-cards { gap: 4px; }
   :is(#market-row, #upgrade-market) .card-name { font-size: 13px; line-height: 1.1; }
@@ -1877,12 +1895,40 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   :is(#market-row, #upgrade-market) .game-card { padding: 2px 7px 3px; }
 }
 @media (min-width: 1024px) and (min-height: 860px) {
-  :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
+  :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: nowrap; display: block; }
 }
 @media (min-width: 1024px) and (min-height: 1000px) {
-  :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 4; line-clamp: 4; }
+  :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 }
 /* Notices: in the comms column above the menu button, never over the hand, the map or a control. */
 @media (min-width: 1024px) and (min-height: 600px) {
-  .toast { left: 10px; right: auto; bottom: calc(clamp(90px, 11.5dvh, 110px) + 236px); width: calc(clamp(190px, 15vw, 250px) - 12px); max-width: none; align-items: flex-start; line-height: 1.35; }
+  .toast { left: 10px; right: auto; bottom: calc(clamp(90px, 11.5dvh, 110px) + 262px); width: calc(clamp(190px, 15vw, 250px) - 12px); max-width: none; align-items: flex-start; line-height: 1.35; }
+}
+@media (min-width: 1024px) and (min-height: 860px) {
+  #upgrade-market { --utop-h: 84px; }
+  #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 2; line-clamp: 2; }
+}
+@media (min-width: 1024px) and (min-height: 600px) and (max-height: 859px) {
+  #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: nowrap; display: block; }
+}
+/* Short windows with a wide supply: four market cards to a row, so ten cards take three rows. */
+@media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
+  @container (min-width: 420px) {
+    #market-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    #market-row .game-card:nth-child(n+5) { align-self: start; }
+    #market-row .game-card:nth-child(n+7) { align-self: start; }
+    #market-row .game-card:nth-child(n+9) { align-self: end; }
+  }
+}
+@media (min-width: 1024px) and (min-height: 600px) {
+  #relics-panel #cancel-excavate { min-height: 24px; padding: 1px 10px; font-size: 12px; }
+  .relic-row > div > .button { min-height: 0; padding: 2px 6px; font-size: 11px; line-height: 1.2; }
+  .relic-row > div { gap: 3px; }
+}
+/* Short windows: the upgrades tray and your reserves tighten so the market keeps a readable line. */
+@media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
+  #upgrade-market { --utop-h: 60px; padding: 3px; }
+  .resource-grid { padding-top: 3px; padding-bottom: 3px; gap: 2px 4px; }
+  .storage-upgrade-control { padding-top: 3px; padding-bottom: 3px; }
+  .board-toolbar #turn-instruction { font-size: 12px; line-height: 1.3; }
 }
