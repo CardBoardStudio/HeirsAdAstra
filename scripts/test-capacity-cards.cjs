@@ -35,7 +35,7 @@ const prices = Object.values(cards).map(c => Object.values(c.cost).reduce((n, x)
 assert.equal(Math.min(...prices), 3, 'The cheapest cards cost exactly 5 of one resource');
 assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
 assert.equal(prices.reduce((n, p) => n + p, 0), 275, 'The set costs 266 resources (31.36: 376, 29% less)');
-assert.equal(catalog.rulesVersion, 'galactic-reach/36.41');
+assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
 
 // Setup: ten face-up cards from one 72-card supply that mixes both decks; target defaults to 40.
 {

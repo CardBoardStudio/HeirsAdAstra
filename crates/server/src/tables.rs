@@ -234,6 +234,7 @@ fn validate(save: &serde_json::Value) -> ApiResult<()> {
         || (s["version"] == 31 && s["rulesRevision"] == 36)
         || (s["version"] == 32 && s["rulesRevision"] == 37)
         || (s["version"] == 33 && s["rulesRevision"] == 38)
+        || (s["version"] == 35 && s["rulesRevision"] == 40)
         || (s["version"] == 34 && s["rulesRevision"] == 39)
         || (s["version"] == 36 && s["rulesRevision"] == 41)
         || (s["version"] == 37 && s["rulesRevision"] == 42))

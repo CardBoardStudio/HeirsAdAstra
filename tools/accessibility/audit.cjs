@@ -38,9 +38,9 @@ function fixture(kind) {
     Object.assign(state.players[0],{passed:true,storageUpgrades:2,resources:{matter:4,energy:4,biomass:4,data:4}});
   } else if (kind==='mixed') {
     state.fleets={'-9,0':{0:{settler:8,explorer:5,fleet:10}},'-8,0':{0:{fleet:10}},'-7,0':{0:{fleet:3,explorer:2}},'9,0':{2:{settler:2,explorer:1,fleet:2},1:{explorer:2}}};
-  } else if (kind==='split') {
+  } else if (kind==='split' || kind==='portal') {
     Object.assign(state,{phase:'operations',turnStage:'prep',activePlayer:0});
-    state.fleets={'0,0':{0:{settler:1,explorer:1,fleet:2}}};
+    state.fleets={[kind==='portal'?'-10,8':'0,0']:{0:{settler:1,explorer:1,fleet:2}}};
     state.players.forEach((p,id)=>{p.passed=id!==0;});
     state.players[0].hand=[{id:'qa-move',key:'move',starter:true},{id:'qa-next',key:'move',starter:true}];
   } else if (kind==='overflow') engine.addResources(state.players[0],{matter:10,energy:6});
