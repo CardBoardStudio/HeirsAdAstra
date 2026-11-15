@@ -1321,3 +1321,403 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 .hex.portal-pair .portal-ring-line { stroke:#fff9df; stroke-width:4; stroke-dasharray:none; }
 .portal-key { color:var(--gold); }
 .portal-fact strong { color:var(--gold); }
+
+/* Unavailable market cards are shaded but stay readable; the reason is in the note and on hover. */
+.game-card.unavailable { background: #c9c3b4; color: #3f4a46; box-shadow: 0 2px 0 #7d7462, 0 3px 5px #0003, inset 0 0 0 999px #1a28290f; filter: saturate(.55); }
+.game-card.unavailable .card-name, .game-card.unavailable .card-effect { color: #3a4542; }
+.card-limit-note { display: block; margin-top: 6px; color: #7a3b2c; font-size: 12px; font-weight: 650; line-height: 1.35; }
+.upgrade-market { display: grid; gap: 12px; }
+.market-cards { display: grid; grid-template-columns: minmax(0,1fr); gap: 12px; }
+.upgrade-offer { border-style: dashed; }
+.upgrade-price { display: inline-flex; align-items: baseline; gap: 4px; font-size: 12px; }
+.upgrade-price strong { font-size: 14px; }
+.upgrade-resource-label { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.upgrade-resource-label select { min-height: 40px; padding: 6px 8px; border: 1px solid var(--line-bright); border-radius: 4px; background: var(--surface-2); color: var(--text); font-size: 15px; }
+.upgrade-options { display: flex; flex-wrap: wrap; gap: 8px; }
+.trash-dialog .decommission { margin: 0; }
+.trash-dialog .decommission-list { margin: 0; }
+.trash-dialog .dialog-heading p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.upgrade-options .button small { margin-left: 6px; color: var(--muted); font-weight: 500; }
+/* Board-edge HUD and card headlines appear only in the desktop layout below. */
+.phase-stepper, .prestige-track, .board-primary, .card-headline { display: none; }
+
+/* Trade opens as a dialog from the button beside the tabs. */
+.console-nav { display: flex; align-items: stretch; gap: 3px; }
+.console-nav .console-tabs { flex: 1 1 auto; min-width: 0; }
+.trade-open { flex: none; }
+.trade-dialog .trade-form { margin-top: 4px; }
+.trade-dialog .trade-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12.5px; }
+/* Desktop table: game screens fit the viewport at 1280x720 and larger, so no scrolling is
+   needed to view or play (AGENTS.md). Wrapper sections become layout-transparent and their
+   pieces sit in one viewport grid. The board dominates: the map is scaled to fit; the race to
+   the Prestige goal runs along its top edge, one lane per faction; the standings sit top-left
+   and the round's phases bottom-left; map tools and your reserves and piles sit top-right, the
+   hand's tools and the turn's main action bottom-right, and your hand is held as card tops along
+   its bottom edge. The side column is the table: the turn line, the Market / Fleet / Relics
+   panels (Trade opens a dialog) and a short comms feed. */
+@media (min-width: 1024px) and (min-height: 600px) {
+  html, body { height: 100%; }
+  body { display: flex; flex-direction: column; height: 100dvh; min-height: 0; }
+  .table-save-bar, .replay-meta, .replay-controls { flex: none; position: static; padding: 4px 16px; gap: 4px 10px; }
+  .table-save-bar #table-sync, .shared-seats li { font-size: 12px; }
+  .table-save-bar .button, .replay-meta .button, .replay-controls .button { min-height: 30px; padding: 3px 10px; font-size: 13px; }
+  .shared-seats li { padding: 1px 8px; line-height: 1.2; }
+  .replay-select select { min-height: 30px; }
+
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell {
+    --side-w: clamp(390px, 25vw, 480px);
+    --strip-h: clamp(72px, 9dvh, 96px);
+    --lanes: 4;
+    --lane-h: 13px;
+    --track-h: calc(var(--lanes) * var(--lane-h) + 16px);
+    --board-rows: 2 / 7;
+    flex: 1 1 auto; min-height: 0; width: 100%; height: auto; margin: 0; padding: 6px 16px 10px;
+    display: grid; grid-template-columns: minmax(0, 1fr) var(--side-w);
+    grid-template-rows: auto auto auto auto minmax(0, 1fr) auto; gap: 6px 14px;
+  }
+  .topbar, .game-layout, .board-column, .board-stage, .board-canvas, .board-heading, .board-shared,
+  .faction-mats, .board-reference, .player-tableau, .console, .console-body, #hand-panel,
+  #hand-panel > .section-intro { display: contents; }
+  .board-heading .board-inscription, .board-key, .prestige-legend, .table-jump, .map-pan-hint,
+  .brand-block .eyebrow, .brand-seal, .summary-text, .summary-hint, .round-block { display: none !important; }
+  #hand-panel > .section-intro > div:first-child, #market-panel .section-intro h2, #market-help, .resource-panel .panel-heading, #storage-upgrade-help, #history-status, #resource-tools-help {
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0;
+  }
+
+  /* ---- Head row: title and playtest notes, then the page actions. ---- */
+  .brand-block { grid-row: 1; grid-column: 1; align-self: center; justify-self: start; gap: 8px; min-width: 0; }
+  h1 { font-size: 22px; white-space: nowrap; }
+  .rules-badge { align-self: center; margin: 0; }
+  .playtest-changes { grid-row: 1; grid-column: 1; justify-self: start; align-self: center; margin: 0 0 0 268px; position: relative; z-index: 25; padding: 0; border: 0; font-size: 12px; }
+  .playtest-changes summary { padding: 4px; white-space: nowrap; }
+  .playtest-changes .new-feature { margin: 0; font-size: 10px; letter-spacing: .03em; }
+  .playtest-changes[open] > ul { position: absolute; top: 100%; left: 0; width: min(720px, calc(100vw - 48px)); max-height: calc(100dvh - 160px); overflow: auto; margin: 0; padding: 14px 18px 84px 34px; border: 1px solid #a49c6f99; border-radius: 10px; background: #1b2b2d; box-shadow: 0 25px 80px #0008; }
+  .playtest-changes[open] > .button { display: none; }
+  .playtest-changes[open] > p { position: absolute; left: 1px; top: 100%; transform: translateY(calc(min(100dvh - 160px, 100vh) - 100% - 2px)); width: calc(min(720px, calc(100vw - 48px)) - 2px); margin: 0; padding: 8px 18px; border-top: 1px solid var(--line); border-radius: 0 0 10px 10px; background: #1b2b2d; }
+  .header-actions { grid-row: 1; grid-column: 1 / -1; justify-self: end; align-self: center; flex-wrap: nowrap; gap: 2px; }
+  .header-actions .button, .header-actions .playtest-notes-button { min-height: 30px; padding: 3px 6px; font-size: 12.5px; white-space: nowrap; }
+
+  /* ---- Side column: whose turn, standings, tabs, the open panel, and a short comms feed. ---- */
+  .board-toolbar { grid-row: 2; grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 0; padding: 0; }
+  .board-toolbar > div { display: block; flex: 1 1 100%; }
+  .board-toolbar strong { font-size: 14px; }
+  .board-toolbar #turn-instruction { display: inline; max-width: none; margin: 0 0 0 4px; font-size: 12.5px; line-height: 1.35; }
+  .board-toolbar .button { min-height: 26px; padding: 2px 8px; font-size: 12px; }
+  .status-dot { vertical-align: middle; margin-right: 6px; }
+  .board-shared .score-ribbon { grid-column: 1; grid-row: var(--board-rows); z-index: 5; align-self: start; justify-self: start; display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; width: 138px; margin: calc(var(--track-h) + 4px) 0 0 8px; padding: 0; }
+  .board-shared .score-card, .board-shared .score-card:nth-child(n) { grid-row: auto; grid-column: auto; position: relative; display: block; width: auto; max-width: none; margin: 0; padding: 3px 6px 4px 8px; justify-self: stretch; background: #102026e6; }
+  .board-shared .score-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; padding-right: 24px; }
+  .board-shared .score-meta { display: flex; flex-wrap: wrap; flex: 1 1 100%; min-width: 0; gap: 0 6px; font-size: 10px; line-height: 1.25; color: var(--muted); }
+  .board-shared .score-card .score-top { display: contents; }
+  .board-shared .score-card .score-name { flex: 1 1 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
+  .board-shared .score-card .score-turn, .board-shared .score-meta > * { font-size: 10px; line-height: 1.25; color: var(--muted); white-space: nowrap; }
+  .board-shared .score-card.active .score-turn { color: var(--text); }
+  .board-shared button.score-value { position: absolute; top: 2px; right: 3px; min-width: 24px; min-height: 26px; padding: 0 2px; font-size: 18px; line-height: 1; gap: 0; }
+  .board-shared .score-value small, .faction-counter { display: none; }
+  .console-nav { grid-row: 4; grid-column: 2; display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 1.25fr); gap: 3px; padding: 0 0 5px; border-bottom: 1px solid #a6af9640; }
+  .console-nav .console-tabs { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 3px; padding: 0; border: 0; }
+  .console-tab { min-height: 28px; padding: 3px 6px; font-size: 12.5px; text-align: center; }
+  .console-tab.trade-open { border: 1px dashed #a49c6f80; color: var(--text); white-space: nowrap; }
+  .console-tab.trade-open:hover { border-style: solid; }
+  .tab-panel { grid-row: 5; grid-column: 2; min-height: 0; }
+  .tab-panel.active { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+  .section-intro { flex: none; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 6px; }
+  .section-intro > div:first-child { min-width: 0; flex: 1 1 100%; }
+  .section-intro .eyebrow { display: none; }
+  .section-intro h2 { display: inline; margin-right: 6px; font-size: 16px; }
+  .section-intro p { display: inline; max-width: none; margin: 0; font-size: 12px; line-height: 1.4; }
+  #trade-panel .section-intro p, #fleet-panel .section-intro p { display: block; }
+  .section-intro .turn-notice { display: block; margin-top: 4px; padding: 3px 8px; font-size: 12px; }
+  .section-intro .turn-notice[hidden] { display: none; }
+  .hand-tools { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-start; gap: 5px; max-width: none; }
+  .hand-tools .button { min-height: 28px; padding: 2px 9px; font-size: 12.5px; }
+  #pass-button, #hand-finish-buy-button, #finish-buy-button { display: none; }
+  /* The comms feed: a few recent lines; point at it or focus it to read further back. */
+  .log-panel { grid-row: 6; grid-column: 2; position: relative; z-index: 20; min-width: 0; padding: 0; }
+  .log-panel .panel-heading { display: none; }
+  .board-reference .game-log, .game-log { height: auto; max-height: 64px; margin: 0; padding: 4px 8px 4px 24px; border: 1px solid #78857546; border-radius: 6px; background: #142427; font-size: 12px; line-height: 1.35; overflow: auto; transition: max-height .15s; }
+  .game-log li { padding: 1px 0; }
+  .log-panel:is(:hover, :focus-within) .game-log { position: absolute; bottom: 0; left: 0; right: 0; max-height: min(50dvh, 420px); box-shadow: 0 -12px 40px #000a; }
+
+  /* ---- The board: it takes every row beside the side column; the map scales to fit. ---- */
+  .board-map-region {
+    grid-column: 1; grid-row: var(--board-rows); align-self: stretch; justify-self: stretch; position: relative; min-width: 0; min-height: 0;
+    display: grid; place-items: center; container-type: size; overflow: hidden;
+    padding: var(--track-h) 0 calc(var(--strip-h) + 12px);
+    border: 1px solid #8b87664f; border-radius: 12px;
+    background: radial-gradient(ellipse at 50% 46%, #47616522, transparent 62%), #13252b;
+    box-shadow: inset 0 0 0 4px #101d21, inset 0 0 0 5px #a28e5f35;
+  }
+  /* A radius-10 board is 21 hexes wide and 19.92 hex-widths tall (rows overlap by sqrt(3)/8). */
+  .galaxy-board, .has-saved-table .galaxy-board, .has-replay .galaxy-board { width: min(100cqw - 2 * 150px, 100cqh * 1.0543); min-width: 0; padding: 0; }
+  .board-map-region .hex .hex-pieces .board-icon-count { min-width: 10px; height: 10px; font-size: 9px; line-height: 10px; }
+  .board-stage.map-zoomed .board-map-region { display: block; overflow: auto; overscroll-behavior: contain; }
+  .board-stage.map-zoomed .galaxy-board { width: 1500px; min-width: 1500px; }
+  .phase-stepper, .prestige-track, .map-tools, .resource-panel, #hand-row, #hand-panel .hand-tools { grid-column: 1; grid-row: var(--board-rows); }
+
+  /* Top edge: phases (top-left), the race to the Prestige goal, map tools (top-right). */
+  .phase-stepper { z-index: 5; display: grid; gap: 3px; align-self: end; justify-self: start; margin: 0 0 calc(var(--strip-h) + 16px) 10px; padding: 6px 8px; border: 1px solid #a49c6f40; border-radius: 8px; background: #102026e6; font-size: 11.5px; }
+  .phase-stepper strong { color: var(--gold); font-size: 10px; letter-spacing: .12em; text-transform: uppercase; }
+  .phase-stepper ol { display: grid; gap: 1px; margin: 0; padding: 0; list-style: none; }
+  .phase-stepper li { padding: 1px 6px; border-radius: 4px; color: var(--muted); line-height: 1.35; }
+  .phase-stepper li.current { color: #10201c; background: var(--gold); font-weight: 700; }
+  /* The race to the Prestige goal: one thin lane per faction, each marker exactly at its score;
+     hairlines mark each quarter of the goal, labelled above the lanes. */
+  .prestige-track { z-index: 5; display: block; position: relative; align-self: start; justify-self: stretch; height: calc(var(--track-h) - 4px); margin: 2px 64px 0 22px; }
+  .prestige-line { position: absolute; inset: 11px 0 0; }
+  .prestige-tick { position: absolute; left: var(--at); top: -11px; bottom: 0; width: 1px; background: #d9bd8040; }
+  .prestige-tick > span { position: absolute; top: 0; left: 50%; transform: translateX(-50%); color: #c9b98a; font-size: 9.5px; font-weight: 700; line-height: 1; }
+  .prestige-track-goal { position: absolute; right: 0; top: 50%; transform: translate(100%, -50%); padding-left: 8px; color: var(--gold); font-size: 13px; font-weight: 800; white-space: nowrap; }
+  .prestige-lane { position: relative; height: var(--lane-h); }
+  .prestige-lane::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 3px; transform: translateY(-50%); border-radius: 2px; background: color-mix(in srgb, var(--player) 22%, #d9bd8020); }
+  .prestige-lane::after { content: ''; position: absolute; left: 0; top: 50%; width: var(--at); height: 3px; transform: translateY(-50%); border-radius: 2px; background: color-mix(in srgb, var(--player) 70%, transparent); }
+  .prestige-marker { position: absolute; z-index: 1; left: var(--at); top: 50%; display: inline-flex; align-items: center; gap: 3px; transform: translate(-7px, -50%); color: var(--text); font-size: 10px; line-height: 1; white-space: nowrap; }
+  .prestige-marker.flip { flex-direction: row-reverse; transform: translate(calc(-100% + 7px), -50%); }
+  .prestige-marker b { flex: none; display: grid; place-items: center; min-width: 14px; height: 14px; padding: 0 2px; border: 1.5px solid #0d1a1d; border-radius: 7px; background: var(--player); color: #0d1a1d; font-size: 9.5px; font-weight: 800; }
+  .prestige-name { font-weight: 700; letter-spacing: .02em; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
+  .prestige-marker.acting b { box-shadow: 0 0 0 1.5px #fff; }
+  .prestige-marker.acting .prestige-name { color: #fff; }
+  .map-tools { z-index: 5; align-self: start; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-top: calc(var(--track-h) + 2px); padding: 0 10px; pointer-events: none; }
+  .map-tools > * { pointer-events: auto; }
+  .map-tools .button { min-height: 28px; padding: 2px 9px; font-size: 12px; background: #1b2f31e6; }
+  #development-tools { position: absolute; top: -100%; }
+
+  /* Bottom-left: your reserves and piles, a small player mat on the table. */
+  .player-tableau .resource-panel {
+    z-index: 5; align-self: start; justify-self: end; display: grid; grid-template-columns: minmax(0, 1fr); width: 138px; margin: calc(var(--track-h) + 70px) 6px 0 0;
+    padding: 6px; gap: 5px; border: 1px solid #81948160; border-radius: 9px; background: linear-gradient(130deg, #2a3b38f2, #202f2ef2);
+    box-shadow: inset 0 0 0 3px #192823, 0 6px 18px #0006; container-type: inline-size;
+  }
+  .resource-grid { display: grid; grid-template-columns: 1fr; gap: 3px; }
+  .resource-box { display: grid; grid-template-columns: 18px auto minmax(0,1fr) auto; align-items: center; gap: 0 5px; padding: 2px 6px; border-radius: 6px; }
+  .resource-box > .resource-symbol { grid-column: 1; grid-row: 1; width: 18px; height: 18px; padding: 2px; margin: 0; }
+  .resource-box .resource-amount { grid-column: 2; grid-row: 1; font-size: 18px; line-height: 1.15; text-align: left; }
+  .resource-box .resource-production { grid-column: 3; grid-row: 1; font-size: 11px; text-align: left; }
+  .resource-box .resource-limit { grid-column: 4; grid-row: 1; font-size: 10.5px; text-align: right; white-space: nowrap; }
+  .resource-box .resource-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .storage-upgrade-control, .resource-tools, .personal-report { margin: 0; padding: 0; border: 0; min-width: 0; }
+  .storage-upgrade-button { width: 100%; min-height: 26px; padding: 2px 4px; gap: 3px; font-size: 11px; justify-content: center; flex-wrap: wrap; }
+  .storage-upgrade-button .resource-chip { min-height: 18px; padding: 0 3px; gap: 2px; }
+  .storage-upgrade-button .resource-chip strong { font-size: 10.5px; }
+  .storage-upgrade-button .resource-symbol { width: 12px; height: 12px; }
+  .resource-tools summary { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .personal-report { display: block; }
+  .personal-report .button { width: auto; min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; color: var(--gold); font-size: 11.5px; text-decoration: underline; }
+  .resource-tools[open] { position: relative; z-index: 26; }
+  .resource-tools[open] > form { position: absolute; right: 0; bottom: calc(100% + 4px); width: 360px; margin: 0; padding: 12px; border: 1px solid #a49c6f99; background: #1b2b2d; box-shadow: 0 25px 80px #0008; }
+  .resource-tools[open] > #bank-trade-form { border-radius: 10px 10px 0 0; border-bottom: 0; bottom: calc(100% + 4px + var(--discard-form-height, 110px)); }
+  .resource-tools[open] > #discard-resource-form { border-radius: 0 0 10px 10px; border-top: 0; }
+  /* Piles: Deck, In play and Discard as a row of small stacks on the same mat. */
+  .pile-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; margin: 2px 0 0; }
+  .pile-stats > button { width: auto; height: 46px; min-height: 0; margin: 0; padding: 3px 1px; gap: 1px; font-size: 10px; box-shadow: 1px 1px #192725, 2px 2px #8b9f8e; }
+  .pile-stats > button::before { width: 10px; height: 10px; }
+  .pile-stats > button strong { font-size: 12px; }
+  #hand-panel .hand-tools {
+    z-index: 6; align-self: end; justify-self: end; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: flex-end; gap: 5px;
+    width: auto; max-width: 150px; margin: 0 10px calc(var(--strip-h) + 16px) 0;
+  }
+  #hand-panel .hand-tools .button { box-shadow: 0 6px 16px #0007; }
+  #hand-panel .hand-tools .button[hidden] { display: none; }
+  #convert-all-button { flex-wrap: wrap; justify-content: center; gap: 2px 4px; width: 140px; min-height: 0; padding: 4px 6px; font-size: 12px; line-height: 1.2; text-align: center; }
+  #convert-all-button .conversion-symbols { display: inline-flex; gap: 2px; }
+  #convert-all-button .resource-symbol, #convert-all-button svg { width: 13px; height: 13px; }
+  #finish-construct, #skip-colony-build { width: 140px; white-space: normal; line-height: 1.2; }
+  .board-primary { min-height: 34px; padding: 4px 14px; font-size: 13.5px; }
+  .board-primary:not([hidden]) { display: inline-flex; align-items: center; }
+  .board-primary[hidden] { display: none; }
+
+  /* ---- Card tops, shared by your hand and the market panel. ---- */
+  .game-card { min-height: 0; }
+  :is(#hand-row, .market-cards) .game-card {
+    position: relative; min-width: 0; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; column-gap: 7px; row-gap: 2px;
+    grid-template-areas: "type type" "cost name" "gain head" "effect effect" "note note" "buttons buttons"; grid-template-rows: repeat(6, max-content);
+    padding: 5px 8px 7px; border: 2px solid color-mix(in srgb, var(--card-accent) 75%, #6f6650); border-radius: 9px;
+    background: linear-gradient(170deg, color-mix(in srgb, var(--card-accent) 16%, #fbf4e3), var(--paper) 55%);
+    box-shadow: 0 -2px 10px #0006, inset 0 0 0 3px #fff8; transition: transform .15s, box-shadow .15s; text-align: left;
+  }
+  :is(#hand-row, .market-cards) .game-card > * { min-width: 0; }
+  :is(#hand-row, .market-cards) :is(.card-art, .card-lore, .card-type, .card-limit-note) { display: none; }
+  :is(#hand-row, .market-cards) .card-type { grid-area: type; margin: 0 0 2px; font-size: 9.5px; }
+  :is(#hand-row, .market-cards) .card-name { grid-area: name; align-self: center; margin: 0; font-size: 14.5px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  :is(#hand-row, .market-cards) .card-headline, :is(#hand-row, .market-cards) .card-effect { grid-area: head; align-self: center; margin: 0; font-size: 12px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  :is(#hand-row, .market-cards) .card-headline { display: block; font-weight: 650; color: #2c3a35; }
+  :is(#hand-row, .market-cards) .card-headline ~ .card-effect { display: none; }
+  :is(#hand-row, .market-cards) .card-buttons { grid-area: buttons; flex-direction: row; gap: 4px; margin-top: 6px; opacity: 0; }
+  :is(#hand-row, .market-cards) .card-buttons .button { flex: 1 1 0; min-width: 0; min-height: 30px; padding: 2px 4px; font-size: 12.5px; }
+  :is(#hand-row, .market-cards) .card-buttons .label-detail { display: none; }
+  /* Resource icons inside a card top's text keep to the line height. */
+  :is(#hand-row, .market-cards) :is(.card-effect, .card-headline) .inline-resource .resource-symbol { width: 1.15em; height: 1.15em; }
+  :is(#hand-row, .market-cards) :is(.card-effect, .card-headline) .inline-resource { vertical-align: -.2em; }
+  /* Badges: in the hand the gain leads (top-left, never covered); in the market the cost leads and the gain sits below it. */
+  #hand-row .card-footer { grid-area: cost; grid-row: 2 / 4; align-self: start; margin: 0; padding: 0; border: 0; }
+  #hand-row .card-footer small, .market-cards .card-footer small { display: none; }
+  .market-cards .card-footer { grid-area: cost; align-self: center; margin: 0; padding: 0; border: 0; }
+  .market-cards .card-gain { grid-area: gain; align-self: center; }
+  .market-cards .upgrade-price { font-size: 12px; white-space: nowrap; }
+  .market-cards .upgrade-price strong { font-size: 15px; }
+  :is(#hand-row, .market-cards) .resource-dots { flex-wrap: nowrap; gap: 2px; }
+  :is(#hand-row, .market-cards) .resource-chip { min-height: 26px; padding: 1px 7px 1px 5px; gap: 3px; border: 0; background: color-mix(in srgb, var(--card-accent) 26%, #fffaf0); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--card-accent) 65%, #5c5442); }
+  :is(#hand-row, .market-cards) .resource-symbol { width: 18px; height: 18px; }
+  :is(#hand-row, .market-cards) .resource-chip strong { font-size: 14.5px; font-weight: 800; }
+  .market-cards .card-gain .resource-chip { min-height: 22px; padding: 0 5px 0 4px; background: transparent; }
+  .market-cards .card-gain .resource-symbol { width: 15px; height: 15px; }
+  .market-cards .card-gain .resource-chip strong { font-size: 12px; }
+  .market-cards .card-gain::before { content: '+'; margin-right: 1px; color: var(--ink-muted); font-weight: 700; }
+  .market-cards .card-gain { display: flex; align-items: center; }
+  :is(#hand-row, .market-cards) .resource-dots:has(> :nth-child(2)) .resource-chip { min-height: 24px; padding: 0 4px 0 3px; gap: 2px; }
+  :is(#hand-row, .market-cards) .resource-dots:has(> :nth-child(2)) .resource-symbol { width: 15px; height: 15px; }
+  :is(#hand-row, .market-cards) .resource-dots:has(> :nth-child(2)) .resource-chip strong { font-size: 13px; }
+  /* Raised: point at a card, or focus it or its buttons, to read it in full and act. */
+  :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) {
+    z-index: 30; height: auto; overflow: visible; transform: translateY(var(--lift, -6px));
+    box-shadow: 0 14px 40px #000a, inset 0 0 0 3px #fff8;
+  }
+  :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) :is(.card-type, .card-limit-note) { display: block; }
+  :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-type { white-space: normal; }
+  :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-effect { display: block; grid-area: effect; white-space: normal; overflow: visible; margin-top: 3px; }
+  :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-name { white-space: normal; }
+  :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-buttons { opacity: 1; }
+  .market-cards .card-limit-note { grid-area: note; margin: 3px 0 0; font-size: 11px; }
+  /* Gold outline: a hand card whose order is legal now, a market card you can buy now. */
+  #hand-row .game-card:has(button[data-order-card]:not(:disabled)):not(.order-selected),
+  .market-cards .game-card:not(:disabled) { box-shadow: 0 0 0 2px #f2d488, 0 0 14px #f2d48866, inset 0 0 0 3px #fff8; }
+  #hand-row .game-card.order-selected { box-shadow: 0 0 0 3px var(--gold), 0 -2px 10px #0006; }
+  .market-cards .game-card.unavailable { background: #c9c3b4; filter: saturate(.6); }
+
+  /* Your hand: card tops held along the bottom edge of the board, overlapping slightly. */
+  #hand-row {
+    --n: 5; --top-w: clamp(124px, calc((100cqw + (var(--n) - 1) * 12px) / var(--n)), 210px);
+    align-self: end; justify-self: stretch; z-index: 6; display: flex; flex-wrap: nowrap; align-items: flex-end; justify-content: center;
+    height: var(--strip-h); margin: 0 12px 8px; padding: 0; container-type: inline-size; gap: 0;
+  }
+  #hand-row:not(:has(> :nth-child(5))) { --n: 4; }
+  #hand-row:not(:has(> :nth-child(4))) { --n: 3; }
+  #hand-row:has(> :nth-child(6)) { --n: 6; }
+  #hand-row:has(> :nth-child(7)) { --n: 7; }
+  #hand-row:has(> :nth-child(8)) { --n: 8; }
+  #hand-row:has(> :nth-child(9)) { --n: 9; }
+  #hand-row:has(> :nth-child(10)) { --n: 10; }
+  #hand-row .game-card { flex: none; width: var(--top-w); height: var(--strip-h); border-bottom-width: 0; border-radius: 9px 9px 4px 4px; grid-template-areas: "type type" "cost name" "cost head" "effect effect" "buttons buttons"; }
+  #hand-row .game-card + .game-card { margin-left: min(-10px, calc((100cqw - var(--n) * var(--top-w)) / (var(--n) - 1))); }
+  #hand-row .game-card:is(:hover, :focus-within) { width: max(var(--top-w), 200px); max-height: none; }
+  .app-shell.app-shell:has(#hand-row > :nth-child(7)) { --strip-h: clamp(90px, 11.5dvh, 110px); }
+  #hand-row:has(> :nth-child(7)) .game-card { grid-template-areas: "type type" "name name" "cost cost" "head head" "effect effect" "buttons buttons"; padding-top: 4px; }
+  #hand-row:has(> :nth-child(7)) .card-footer { grid-row: auto; }
+
+  /* Market: compact card tops in the side panel, two to a row (starter upgrades first). The
+     lower rows raise upward so a raised card stays on screen. */
+  #market-panel.active { overflow: visible; }
+  #market-panel .section-intro { margin-bottom: 5px; }
+  #market-panel .section-intro:not(:has(:is(p, button):not([hidden]):not(#market-help))) { display: none; }
+  #market-panel .section-intro p:not([hidden]) { display: block; font-size: 11.5px; line-height: 1.35; }
+  #market-panel .section-intro .hand-tools { flex: 0 0 auto; }
+  .market-cards {
+    --mtop-max: 84px;
+    flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, var(--mtop-max)); gap: 5px;
+    margin: 0; padding: 0; align-content: start; container-type: inline-size;
+  }
+  .upgrade-market, .market-row { display: contents; }
+  .market-cards .game-card { height: min(100%, var(--mtop-max)); align-self: start; --lift: 0px; }
+  .market-cards .card-footer .resource-dots { gap: 2px; }
+  #market-row .game-card:nth-child(n+5) { align-self: end; }
+  :is(#market-row, #upgrade-market) .game-card { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "type type" "name name" "cost gain" "head head" "effect effect" "note note"; row-gap: 2px; padding: 3px 7px 4px; }
+  :is(#market-row, #upgrade-market) .card-name { font-size: 13.5px; }
+  :is(#market-row, #upgrade-market) .card-gain { justify-self: end; }
+  :is(#market-row, #upgrade-market) .card-footer { justify-self: start; }
+  :is(#market-row, #upgrade-market) .card-effect { font-size: 11.5px; }
+  #upgrade-market .card-footer { flex-wrap: nowrap; }
+  #upgrade-market .upgrade-price { display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; font-size: 11.5px; }
+  #upgrade-market .upgrade-price strong { font-size: 15px; }
+  :is(#market-row, #upgrade-market) .card-footer .resource-chip { min-height: 21px; padding: 0 4px 0 3px; gap: 2px; }
+  :is(#market-row, #upgrade-market) .card-footer .resource-symbol { width: 15px; height: 15px; }
+  :is(#market-row, #upgrade-market) .card-footer .resource-chip strong { font-size: 13px; }
+  :is(#market-row, #upgrade-market) .card-gain .resource-dots { gap: 0; }
+  .market-cards .gain-each { color: var(--ink-muted); font-size: 12px; font-weight: 700; white-space: nowrap; }
+  :is(#market-row, #upgrade-market) .card-gain::before { margin-right: 0; }
+  :is(#market-row, #upgrade-market) .card-gain .resource-chip { min-height: 20px; padding: 0 2px; box-shadow: none; }
+  :is(#market-row, #upgrade-market) .card-gain .resource-symbol { width: 14px; height: 14px; }
+  .market-cards .game-card:is(:hover, :focus, :focus-within) { height: auto; min-height: min(100%, var(--mtop-max)); }
+  .upgrade-offer { border-style: dashed; }
+  .basic-market:empty { display: none; }
+
+  /* Fleet and Relics are side panels too; Trade opens as a dialog. */
+  #fleet-panel.active, #relics-panel.active { overflow: hidden; }
+  .trade-dialog { width: min(820px, calc(100vw - 24px)); }
+  .trade-form { grid-template-columns: repeat(4, minmax(0,1fr)) auto; gap: 6px; }
+  .trade-form label, .trade-form input, .trade-form select { font-size: 13px; }
+  .trade-form select, .trade-form input { min-height: 32px; padding: 4px 6px; }
+  .trade-response { margin-top: 4px; }
+  .trade-offers { grid-template-columns: repeat(3, minmax(0,1fr)); margin: 6px 0; gap: 6px; }
+  .trade-offer { padding: 6px 8px; }
+  .trade-offers > p { grid-column: 1 / -1; margin: 0; font-size: 13px; }
+  .trade-offer p { margin: 2px 0; font-size: 12px; }
+  .trade-terms { margin-top: 4px; font-size: 13px; }
+  .trade-ledger { margin-top: 4px; grid-template-columns: repeat(3, minmax(0,1fr)); }
+  .fleet-summary { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 5px; }
+  .fleet-faction { padding: 4px 7px; }
+  .fleet-faction span { font-size: 11.5px; }
+  .military-deck-heading { flex-direction: column; align-items: stretch; margin: 6px 0 4px; padding-top: 5px; gap: 2px; }
+  .military-deck-heading h3 { margin: 0; font-size: 13px; }
+  .military-deck-heading p { font-size: 11.5px; }
+  .military-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+  .military-card { min-height: 0; padding: 4px 7px; }
+  .military-card span { font-size: 11px; }
+  .military-card small { margin-top: 2px; }
+  #relic-row-help, .relic-payment { flex: none; margin: 0 0 4px; font-size: 12px; }
+  #open-relic-catalog { align-self: start; min-height: 28px; margin: 0 0 4px; padding: 2px 10px; font-size: 12px; }
+  .relic-row { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: max-content; gap: 5px; }
+  .relic-row .game-card .card-type { margin: 0; font-size: 9.5px; }
+  .relic-row > div > .button { align-self: start; }
+  .relic-row > div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+  .relic-row .game-card { flex: none; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "type type" "name gain" "effect effect"; align-items: center; gap: 1px 8px; padding: 4px 8px 5px; }
+  .relic-row .card-type { grid-area: type; }
+  .relic-row .card-name { grid-area: name; }
+  .relic-row .card-effect { grid-area: effect; }
+  .relic-row .card-footer { grid-area: gain; margin: 0; padding: 0; border: 0; }
+  .relic-row .card-footer small { display: none; }
+  .relic-row .card-footer .resource-chip { min-height: 22px; padding: 0 5px 0 3px; }
+  .relic-row .card-footer .resource-symbol, .relic-row .card-effect .inline-resource .resource-symbol { width: 15px; height: 15px; }
+  .relic-row .card-art, .relic-row .card-lore { display: none; }
+  .relic-row .card-name { margin: 1px 0 2px; font-size: 14px; }
+  .relic-row .card-effect { font-size: 12px; line-height: 1.3; }
+  .relic-row .button { min-height: 28px; padding: 2px 8px; font-size: 12px; }
+  .chain-status { margin: 6px 0; }
+
+  /* Dialogs fit the window; long reference dialogs keep their own scroll. */
+  dialog { max-height: calc(100dvh - 24px); padding: 16px 18px; }
+  .dialog-heading { margin-bottom: 10px; }
+  .combat-dialog { width: min(820px, calc(100vw - 24px)); }
+  .combat-forces { gap: 10px; }
+  .combat-forces section { padding: 8px 10px; }
+  .combat-options .button { min-height: 40px; }
+  .combat-history { margin-top: 10px; max-height: 22dvh; overflow: auto; }
+  .card-frame-legend .frame-swatch { display: inline-block; width: 14px; height: 18px; border: 2px solid var(--swatch); border-radius: 3px; background: color-mix(in srgb, var(--swatch) 20%, #fbf4e3); }
+}
+@media (min-width: 1024px) and (min-height: 600px) and (max-width: 1365px) {
+  .playtest-changes .new-feature { font-size: 0; }
+  .playtest-changes .new-feature::before { content: 'What’s new'; font-size: 10px; letter-spacing: .03em; }
+  .playtest-changes { margin-left: 250px; }
+  h1 { font-size: 21px; }
+}
+/* Short windows: the standings drop to one line and the comms feed to two, so the market
+   keeps three readable lines per card top. */
+@media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
+  .board-shared .score-card, .board-shared .score-card:nth-child(n) { padding: 3px 8px; }
+  .board-shared .score-meta { display: none; }
+  .board-shared button.score-value { top: 0; min-height: 24px; font-size: 18px; }
+  .board-reference .game-log, .game-log { max-height: 44px; }
+  .has-saved-table :is(.board-reference .game-log, .game-log) { max-height: 24px; }
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { row-gap: 4px; }
+  .market-cards { gap: 4px; }
+  :is(#market-row, #upgrade-market) .card-name { font-size: 13px; line-height: 1.1; }
+  :is(#market-row, #upgrade-market) .card-effect { line-height: 1.2; }
+  :is(#market-row, #upgrade-market) .game-card { padding: 2px 7px 3px; }
+}
+@media (min-width: 1024px) and (min-height: 860px) {
+  .market-cards { --mtop-max: 104px; }
+  :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+}
+@media (min-width: 1024px) and (min-height: 1000px) {
+  .market-cards { --mtop-max: 120px; }
+  :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 3; line-clamp: 3; }
+}
