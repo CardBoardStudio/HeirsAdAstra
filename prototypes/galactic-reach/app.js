@@ -3659,8 +3659,12 @@ function createGalacticReach(options = {}) {
 
 
   // Player mat tracks: slots 0..N-1; a value past the last slot sits there with its number shown.
-  const MAT_PRODUCTION_SLOTS = 10, MAT_CAPACITY_SLOTS = 26, MAT_BOWL_CUBES = 25;
+  // The player mat: for each resource a band of two aligned rows of 20 pip slots. Rate: filled up
+  // to the production per round. Now: filled up to the stock, with one capacity pip (a ring in the
+  // slot equal to the limit) and the slots past it closed. A value past slot 20 shows its number.
+  const MAT_SLOTS = 20;
   const matSeen = {};
+  let matPick = null;
   function renderResources() {
     const player = state.players[viewSeat];
     const production = aiIncome(viewSeat);
@@ -3669,28 +3673,26 @@ function createGalacticReach(options = {}) {
     if (replayMode) $('#command-eyebrow').textContent = `${player.name.toUpperCase()} · COMMAND`;
     $('#capacity-value').textContent = `${stored} stored · four separate limits`;
     const limits = resourceLimits(viewSeat);
-    // The player mat, as on a printed board: per resource a bowl holding the stock as cubes, a
-    // production track and a capacity track, each with a marker cube in the slot for its value.
-    // Markers slide from their last slot and new stock cubes drop into the bowl.
     const before = matSeen[viewSeat] || {};
-    $('#resource-grid').innerHTML = `<div class="mat-head" aria-hidden="true"><span>Stock</span><span>Production</span><span>Capacity</span></div>` + RESOURCES.map(resource => {
+    const mine = !replayMode && viewSeat === ME;
+    const pips = (value, from, extra = () => '') => Array.from({ length: MAT_SLOTS }, (_, i) => `<i class="${i < value ? 'full' : ''}${i < value && i >= from ? ' new' : ''}${extra(i)}"></i>`).join('') + (value > MAT_SLOTS ? `<b class="mat-lap">${value}</b>` : '');
+    $('#resource-grid').innerHTML = `<div class="mat-head" aria-hidden="true"><span class="mat-key rate"><i></i>Rate</span><span class="mat-key now"><i></i>Now</span><span class="mat-key cap"><i></i>Capacity</span>${mine ? '<span class="mat-hint">Drag 4 of one resource onto another to trade with the bank</span>' : ''}</div>` + RESOURCES.map(resource => {
       const have = player.resources[resource], cap = limits[resource], next = production[resource];
       const fill = have > cap ? 'over-cap' : have >= cap ? 'at-cap' : have + next > cap ? 'will-cap' : '';
       const was = before[resource] || { have, cap, next };
-      const cubes = Array.from({ length: Math.min(have, MAT_BOWL_CUBES) }, (_, i) => `<i class="mat-stock${i >= was.have ? ' new' : ''}${i >= cap ? ' over' : ''}" style="--i:${i}"></i>`).join('');
-      const track = (kind, value, from, slots) => `<span class="mat-track ${kind}" aria-hidden="true" style="--slots:${slots};--at:${Math.min(value, slots - 1)};--from:${Math.min(from, slots - 1)}"><i class="mat-marker"></i>${value > slots - 1 ? `<b class="mat-lap">${value}</b>` : ''}</span>`;
+      const capAt = Math.min(cap, MAT_SLOTS) - 1, capFrom = Math.min(was.cap, MAT_SLOTS) - 1;
+      const nowRow = pips(have, was.have, i => `${i >= cap ? (i < have ? ' over' : ' shut') : ''}`) + `<i class="mat-cap-marker${have >= cap ? ' capped' : ''}" style="--at:${capAt};--from:${capFrom}"></i>`;
+      const label = `${RESOURCE_NAMES[resource]}: ${have} of ${cap}, +${next} per round`;
       return `
-      <article class="resource-box ${resource}" style="--resource:var(--${resource})" data-resource="${resource}"${fill?` data-fill="${fill}"`:''} aria-label="${RESOURCE_NAMES[resource]}: ${have} available, limit ${cap}, +${next} per round${fill==='over-cap'?', above the limit':fill==='at-cap'?', full':fill==='will-cap'?', next round would pass the limit':''}">
+      <article class="resource-box ${resource}${matPick === resource ? ' mat-picked' : ''}" style="--resource:var(--${resource})" data-resource="${resource}"${fill?` data-fill="${fill}"`:''} aria-label="${label}${fill==='over-cap'?', above the limit':fill==='at-cap'?', full':fill==='will-cap'?', next round would pass the limit':''}">
         ${resourceDot(resource)}
         <span class="resource-name">${RESOURCE_NAMES[resource]}</span>
-        <span class="mat-bowl" aria-hidden="true">${cubes}</span>
-        <strong class="resource-amount">${have}</strong>
-        ${track('production', next, was.next, MAT_PRODUCTION_SLOTS)}
-        <span class="resource-production" aria-hidden="true" title="Current production per round">+${next}</span>
-        ${track('capacity', cap, was.cap, MAT_CAPACITY_SLOTS)}
-        <span class="resource-limit" title="Limit ${cap}">${cap}</span>
+        <span class="mat-pips rate" aria-hidden="true">${pips(next, was.next)}</span>
+        <span class="resource-production" aria-hidden="true" title="Production per round">+${next}</span>
+        ${mine ? `<button type="button" class="mat-pips now" data-mat-trade="${resource}" aria-label="${label}. Trade 4 ${RESOURCE_NAMES[resource]} with the bank: choose this, then the resource to receive, or Discard">${nowRow}</button>` : `<span class="mat-pips now" aria-hidden="true">${nowRow}</span>`}
+        <strong class="resource-amount">${have}</strong><span class="resource-limit" title="Limit ${cap}">/${cap}</span>
       </article>`;
-    }).join('');
+    }).join('') + (mine ? `<button type="button" class="mat-discard" data-mat-discard aria-label="Discard one of the chosen resource">Discard</button>` : '');
     matSeen[viewSeat] = Object.fromEntries(RESOURCES.map(resource => [resource, { have: player.resources[resource], cap: limits[resource], next: production[resource] }]));
     const upgrade = $('#upgrade-storage-button');
     upgrade.disabled = !canIncreaseStorage(ME);
@@ -4464,6 +4466,105 @@ function createGalacticReach(options = {}) {
     drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()), drawers: followTurnWithDrawer });
   }
 
+  // Bank trades on the mat: drag from one resource's Now row onto another resource (4 for 1, the
+  // same bankTrade the bank form used), or onto Discard to discard one. Tap or Enter on a Now row,
+  // then on the target, does the same without dragging. Legality is exactly bankTrade's.
+  function matTradeCheck(give, get) {
+    const me = state.players[ME];
+    if (!canManageResources(ME)) return { ok: false, text: 'Trade with the bank during Operations or Buy' };
+    if (get === 'discard') return state.activePlayer === ME && me.resources[give] > 0 ? { ok: true, text: `Discard 1 ${RESOURCE_NAMES[give]}` } : { ok: false, text: state.activePlayer === ME ? `No ${RESOURCE_NAMES[give]} to discard` : 'Discard on your own turn' };
+    if (!get || get === give) return { ok: false, text: '' };
+    if (me.resources[give] < 4) return { ok: false, text: `Needs 4 ${RESOURCE_NAMES[give]} (you have ${me.resources[give]})` };
+    const full = me.resources[get] >= resourceLimits(ME)[get];
+    return { ok: canBankTrade(ME, give, get), text: `4 ${RESOURCE_NAMES[give]} → 1 ${RESOURCE_NAMES[get]}${full ? ` · ${RESOURCE_NAMES[get]} is full, so the 1 would be discarded` : ''}`, warn: full };
+  }
+  function matTradeDo(give, get) {
+    const check = matTradeCheck(give, get);
+    if (!check.ok) { if (check.text) toast(check.text); return false; }
+    return get === 'discard' ? discardResources(ME, give, 1) : bankTrade(ME, give, get);
+  }
+  function matTargetAt(x, y) {
+    const hit = document.elementFromPoint(x, y);
+    if (hit?.closest('[data-mat-discard]')) return 'discard';
+    return hit?.closest('#resource-grid .resource-box')?.dataset.resource || null;
+  }
+  function matMarkTargets(give) {
+    $$('#resource-grid .resource-box').forEach(box => {
+      const check = matTradeCheck(give, box.dataset.resource);
+      box.classList.toggle('mat-target', box.dataset.resource !== give && check.ok);
+      box.classList.toggle('mat-blocked', box.dataset.resource !== give && !check.ok);
+    });
+    $('[data-mat-discard]')?.classList.toggle('mat-target', matTradeCheck(give, 'discard').ok);
+  }
+  function matClear() {
+    $$('#resource-grid .mat-target, #resource-grid .mat-blocked, #resource-grid .mat-hover, #resource-grid .mat-picked').forEach(el => el.classList.remove('mat-target', 'mat-blocked', 'mat-hover', 'mat-picked'));
+    document.querySelector('.mat-trade-label')?.remove();
+    document.querySelector('.mat-trade-ghost')?.remove();
+    matPick = null;
+  }
+  function matLabel(text, x, y) {
+    let label = document.querySelector('.mat-trade-label');
+    if (!label) { label = document.createElement('div'); label.className = 'mat-trade-label'; label.setAttribute('role', 'status'); document.body.append(label); }
+    label.textContent = text; label.hidden = !text;
+    if (x != null) { label.style.left = `${Math.max(8, Math.min(innerWidth - label.offsetWidth - 8, x + 14))}px`; label.style.top = `${Math.max(8, y - 40)}px`; }
+    return label;
+  }
+  function setupMatTrades() {
+    const grid = $('#resource-grid');
+    if (!grid?.addEventListener) return;
+    let press = null, dragging = false;
+    grid.addEventListener('pointerdown', event => {
+      const row = event.target.closest?.('[data-mat-trade]');
+      if (!row || event.button > 0) return;
+      press = { give: row.dataset.matTrade, x: event.clientX, y: event.clientY, id: event.pointerId };
+      dragging = false;
+    });
+    document.addEventListener('pointermove', event => {
+      if (!press || event.pointerId !== press.id) return;
+      if (!dragging && Math.hypot(event.clientX - press.x, event.clientY - press.y) < 8) return;
+      if (!dragging) {
+        dragging = true; matClear(); matPick = press.give;
+        $(`#resource-grid .resource-box[data-resource="${press.give}"]`)?.classList.add('mat-picked');
+        matMarkTargets(press.give);
+        const ghost = document.createElement('div'); ghost.className = 'mat-trade-ghost'; ghost.style.setProperty('--resource', `var(--${press.give})`); ghost.innerHTML = '<i></i><i></i><i></i><i></i>'; document.body.append(ghost);
+      }
+      const ghost = document.querySelector('.mat-trade-ghost');
+      if (ghost) ghost.style.transform = `translate(${event.clientX - 14}px, ${event.clientY - 30}px)`;
+      const target = matTargetAt(event.clientX, event.clientY);
+      $$('#resource-grid .mat-hover').forEach(el => el.classList.remove('mat-hover'));
+      (target === 'discard' ? $('[data-mat-discard]') : target ? $(`#resource-grid .resource-box[data-resource="${target}"]`) : null)?.classList.add('mat-hover');
+      matLabel(target && target !== press.give ? matTradeCheck(press.give, target).text : '', event.clientX, event.clientY);
+    });
+    const finish = event => {
+      if (!press || event.pointerId !== press.id) return;
+      const give = press.give; press = null;
+      if (!dragging) return;
+      dragging = false;
+      const target = matTargetAt(event.clientX, event.clientY);
+      matClear();
+      if (target && target !== give) matTradeDo(give, target);
+      grid.dataset.dragged = '1';
+    };
+    document.addEventListener('pointerup', finish);
+    document.addEventListener('pointercancel', () => { press = null; if (dragging) { dragging = false; matClear(); } });
+    // Tap or keyboard: choose a Now row, then the resource to receive (or Discard).
+    grid.addEventListener('click', event => {
+      if (grid.dataset.dragged) { delete grid.dataset.dragged; return; }
+      const row = event.target.closest?.('[data-mat-trade]'), discard = event.target.closest?.('[data-mat-discard]');
+      if (row) {
+        const give = row.dataset.matTrade;
+        if (!matPick) { matPick = give; row.closest('.resource-box').classList.add('mat-picked'); matMarkTargets(give); matLabel(`Trade from ${RESOURCE_NAMES[give]}: choose the resource to receive, or Discard`); return; }
+        if (matPick === give) { matClear(); return; }
+        const from = matPick; matClear(); matTradeDo(from, give); return;
+      }
+      if (discard) {
+        if (!matPick) { toast('Choose a resource on your mat first, then Discard.'); return; }
+        const from = matPick; matClear(); matTradeDo(from, 'discard');
+      }
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && matPick) matClear(); });
+  }
+
   // Phone drawers (Hand, Supply, Mat, Comms, Table). Your Buy turn opens the Supply drawer and
   // your Operations turn the Hand drawer, once each time the phase changes.
   const phoneLayout = () => typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 599px), (max-height: 599px)').matches;
@@ -4590,6 +4691,7 @@ function createGalacticReach(options = {}) {
     $('#discard-resource-type').addEventListener('change',renderResourceTools);
     $('#discard-resource-type').value = 'matter';
     $('#discard-resource-amount').addEventListener('input',renderResourceTools);
+    setupMatTrades();
     $('#bank-trade-form').addEventListener('submit',event => {
       event.preventDefault();
       bankTrade(ME,bankSelection.give,bankSelection.get);
