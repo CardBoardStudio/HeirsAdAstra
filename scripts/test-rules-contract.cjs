@@ -18,3 +18,5 @@ assert.deepEqual(run(['crates/server/src/accounts.rs'], unrelated), []);
 assert(run(['prototypes/galactic-reach/app.js', RULEBOOK], unrelated).some(e => e.includes('not applicable')));
 assert(run([], '<!--' + body + '-->').length, 'Unfilled template comments do not count');
 console.log('Rules contract tests passed: paired edits, unrelated work, invalid anchors, missing declarations, and renamed engine paths.');
+// Release tooling (docs/release.md) runs here too, so CI covers it without a workflow edit.
+require('./test-release.cjs');
