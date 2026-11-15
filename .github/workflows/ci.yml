@@ -1,7 +1,7 @@
 name: Rust and container
 on:
   push:
-    branches: [main]
+    branches: [main, stable]
   pull_request:
   workflow_dispatch: # the Release cut workflow starts it on release/next
 permissions:
