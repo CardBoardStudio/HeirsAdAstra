@@ -1610,7 +1610,8 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   :is(#hand-row, .market-cards) .card-headline { display: block; font-weight: 650; color: #2c3a35; }
   :is(#hand-row, .market-cards) .card-headline ~ .card-effect { display: none; }
   :is(#hand-row, .market-cards) .card-buttons { grid-area: buttons; flex-direction: row; gap: 4px; margin-top: 6px; opacity: 0; }
-  :is(#hand-row, .market-cards) .card-buttons .button { flex: 1 1 0; min-width: 0; min-height: 30px; padding: 2px 4px; font-size: 12.5px; }
+  /* Buttons share the row by their labels, so Probe leaves room for Cancel Excavate on one line. */
+  :is(#hand-row, .market-cards) .card-buttons .button { flex: 1 1 auto; min-width: 0; min-height: 30px; padding: 2px 6px; font-size: 12.5px; white-space: nowrap; }
   :is(#hand-row, .market-cards) .card-buttons .label-detail { display: none; }
   /* Resource icons inside a card top's text keep to the line height. */
   :is(#hand-row, .market-cards) :is(.card-effect, .card-headline) .inline-resource .resource-symbol { width: 1.15em; height: 1.15em; }
@@ -1789,4 +1790,8 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 @media (min-width: 1024px) and (min-height: 1000px) {
   .market-cards { --mtop-max: 120px; }
   :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 3; line-clamp: 3; }
+}
+/* Notices: in the comms column above the menu button, never over the hand, the map or a control. */
+@media (min-width: 1024px) and (min-height: 600px) {
+  .toast { left: 10px; right: auto; bottom: calc(clamp(90px, 11.5dvh, 110px) + 12px); width: calc(clamp(190px, 15vw, 250px) - 12px); max-width: none; align-items: flex-start; line-height: 1.35; }
 }
