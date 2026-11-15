@@ -2731,9 +2731,16 @@ function createGalacticReach(options = {}) {
     });
   }
 
-  function aiPath(source,goal,playerId,moving,cannotAttack,maxStep=Infinity) {
-    const routes=travelSearch(source,coord=>movementEdges(coord,playerId).filter(edge=>edge.cost<=maxStep),Infinity,
-      next=>!hostileAt(next,playerId)||!cannotAttack&&aiCanFight(playerId,moving,next));
+  function aiPath(source,goal,playerId,moving,cannotAttack,maxStep=Infinity,routeCache=null) {
+    // A route tree covers every destination for this exact group and movement rule.
+    // The caller owns the cache for one unchanged decision, never across actions.
+    const cacheKey=routeCache&&JSON.stringify([source,playerId,...Object.keys(SHIP_STATS).map(type=>moving[type]||0),Boolean(cannotAttack),maxStep]);
+    let routes=routeCache?.get(cacheKey);
+    if(!routes){
+      routes=travelSearch(source,coord=>movementEdges(coord,playerId).filter(edge=>edge.cost<=maxStep),Infinity,
+        next=>!hostileAt(next,playerId)||!cannotAttack&&aiCanFight(playerId,moving,next));
+      routeCache?.set(cacheKey,routes);
+    }
     if(!routes.has(goal))return null;
     const path=[];for(let at=goal;at!==source;at=routes.get(at).previous)path.unshift(at);
     return path;
@@ -2889,10 +2896,13 @@ function createGalacticReach(options = {}) {
       const alreadyStaging=urgent&&(group.fleet||0)>=urgent.attackers+1;
       if (canPlaceShip(playerId,'fleet') && (urgent&&!alreadyStaging||fleets<desired)) options.push({kind:'fleet',coord,score:urgent&&!alreadyStaging?85-travelDistance(coord,urgent.coord)*3:military?30:27});
     }
-    const card=aiConstructCard(p);
+    const card=aiConstructCard(p),fundingByCost=new Map();
     for (const build of options) {
       build.discount=!state.pendingConstruct&&card?ALL_CARDS[card.key].buildDiscount||null:null;build.cost=constructionCost(playerId,build.coord,build.kind,build.discount);
-      build.funding=aiFundingPlan(p,state.pendingConstruct?null:card?.id,build.cost);
+      // Player, hand, excluded order, stock and limits stay fixed in this decision.
+      const costKey=RESOURCES.map(r=>build.cost[r]||0).join(',');
+      if(!fundingByCost.has(costKey))fundingByCost.set(costKey,aiFundingPlan(p,state.pendingConstruct?null:card?.id,build.cost));
+      build.funding=fundingByCost.get(costKey);
     }
     const ranked=options.filter(b=>b.score>2).sort((a,b)=>b.score-a.score||aiCompareCoords(a.coord,b.coord,playerId));
     return (!yards.length?ranked[0]:ranked.find(b=>b.funding)||ranked[0])||null;
@@ -2927,13 +2937,13 @@ function createGalacticReach(options = {}) {
     return path;
   }
 
-  function chooseAiMove(playerId, card = {}) {
+  function chooseAiMove(playerId, card = {}, routeCache = new Map()) {
     const p=state.players[playerId],military=p.strategy==='military',expansion=p.strategy==='expansion',economy=p.strategy==='economy';
     const groups=Object.entries(state.fleets).filter(([,g])=>fleetCount(g[playerId]));
     const targets=[],defense=aiColonyDefense(playerId);
     const add=(source,moving,goal,value,moveGroup,cannotAttack)=>{
       if (source===goal) return;
-      const range=movementRange(moving,card),path=aiPath(source,goal,playerId,moving,cannotAttack,range);
+      const range=movementRange(moving,card),path=aiPath(source,goal,playerId,moving,cannotAttack,range,routeCache);
       if (!path?.length) return;
       const segment=[];let spent=0,previous=source;
       for(const at of path){const cost=portalExit(previous)===at?PORTAL_MOVEMENT_COST:1;if(spent+cost>range)break;segment.push(at);spent+=cost;previous=at;if(hostileAt(at,playerId))break;}
@@ -3052,7 +3062,13 @@ function createGalacticReach(options = {}) {
       if (origin && probeRelic(id,origin,probe.id)) return;
     }
     aiRespondToTrades(id);
-    const moveCards=p.hand.filter(c=>ALL_CARDS[c.key].order==='move'),moves=moveCards.map(card=>({card,move:chooseAiMove(id,card)})).filter(x=>x.move).sort((a,b)=>b.move.score-a.move.score),best=moves[0];
+    // These caches end before any card, payment or order changes the position.
+    const moveCards=p.hand.filter(c=>ALL_CARDS[c.key].order==='move'),movePlans=new Map(),routeCache=new Map();
+    const moves=moveCards.map(card=>{
+      const key=JSON.stringify([card.key,Boolean(card.upgraded),card.tag||null]);
+      if(!movePlans.has(key))movePlans.set(key,chooseAiMove(id,card,routeCache));
+      return {card,move:movePlans.get(key)};
+    }).filter(x=>x.move).sort((a,b)=>b.move.score-a.move.score),best=moves[0];
     const construct=aiConstructCard(p),build=construct&&chooseAiBuild(id);
     const moveNow=()=>best&&performMoveOrder(id,best.move.source,best.move.destination,best.card,{tag:ALL_CARDS[best.card.key].tag,moveGroup:best.move.moveGroup,units:best.move.units});
     if (best&&(!build?.funding||best.move.score>=build.score)&&moveNow()) return;
