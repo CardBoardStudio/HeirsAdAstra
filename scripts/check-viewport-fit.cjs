@@ -26,6 +26,11 @@ const LAB_DIR = path.join(ROOT, 'prototypes/lab');
 // The three reference sizes, plus common laptop and desktop sizes for the Buy states.
 const VIEWPORTS = [[1280, 720], [1440, 900], [1920, 1080]];
 const EXTRA_VIEWPORTS = [[1366, 768], [1680, 1050], [2000, 1118], [2560, 1440]];
+// Touch devices (mobile emulation with touch on): iPads in landscape and portrait must fit with no
+// page scroll, like the desktop; phones may scroll vertically (drawers) but never sideways.
+const TABLET_VIEWPORTS = [[1024, 768], [1180, 820], [1366, 1024], [768, 1024], [820, 1180], [1024, 1366]];
+const PHONE_VIEWPORTS = [[390, 844], [844, 390]];
+const isPhone = ([width, height]) => Math.min(width, height) < 600;
 const TABLE_ID = 'a'.repeat(32);
 const SHOTS = process.env.SHOTS;
 
@@ -144,7 +149,7 @@ const chunks = [0, 10, 20, 26].map(start => MARKET.slice(start, start + 10).map(
 
 // Each case: a save to load, then optional page actions before measuring.
 const CASES = [
-  { name: 'operations, 5-card hand', save: operationsState(['move', 'construct', 'move', 'construct', 'move']) },
+  { name: 'operations, 5-card hand', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), devices: true },
   { name: 'operations, 8-card hand', save: operationsState(longHand) },
   { name: 'operations, raised hand card (long text)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), focus: '#hand-row .game-card:nth-child(3) button' },
   { name: 'operations, 8-card hand raised', save: operationsState(longHand), focus: '#hand-row .game-card:nth-child(5) button' },
@@ -153,7 +158,7 @@ const CASES = [
   { name: 'operations, Probe chosen, raised', save: operationsState(['move', 'construct', 'construct', 'move', 'probe']), click: ['#hand-row .game-card:nth-child(5) [data-order-mode="probe"]'], focus: '#hand-row .game-card:nth-child(5) [data-order-mode="excavate"]' },
   { name: 'operations, Excavate chosen, raised', save: operationsState(['move', 'probe', 'construct', 'construct', 'move']), click: ['#hand-row .game-card:nth-child(2) [data-order-mode="excavate"]'], focus: '#hand-row .game-card:nth-child(2) [data-order-mode="excavate"]' },
   { name: 'operations, 8-card hand, Probe raised', save: operationsState([...longHand.slice(0, 7), 'probe']), focus: '#hand-row .game-card:nth-child(8) [data-order-mode="excavate"]' },
-  { name: 'operations, mid-game piles and comms', save: midGameState() },
+  { name: 'operations, mid-game piles and comms', save: midGameState(), devices: true },
   { name: 'standings overview (keyboard focus)', save: midGameState(), focus: '.score-card:nth-child(2) button.score-value' },
   // The bank lies open at the table; choosing both sides fills its preview line.
   { name: 'bank & discards, exchange chosen', save: midGameState(), click: ['#bank-give-biomass', '#bank-get-data'] },
@@ -162,9 +167,9 @@ const CASES = [
   { name: 'operations, last hand card raised', save: midGameState(), focus: '#hand-row .game-card:last-child button' },
   { name: 'operations, inspect view (pointed-at hand card)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), hover: '#hand-row .game-card:nth-child(3)', expect: 'inspect' },
   { name: 'operations, inspect view (last of 8 cards)', save: operationsState(longHand), hover: '#hand-row .game-card:last-child', expect: 'inspect' },
-  { name: 'operations, drag Move onto your units', save: withFleet(operationsState(['move', 'construct', 'move'])), drag: '#hand-row .game-card[data-order="move"]', expect: 'dragged' },
+  { name: 'operations, drag Move onto your units', save: withFleet(operationsState(['move', 'construct', 'move'])), drag: '#hand-row .game-card[data-order="move"]', expect: 'dragged', devices: 'tablet' },
   { name: 'operations, drag Construct onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', expect: 'built' },
-  { name: 'operations, drag a card onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
+  { name: 'operations, drag a card onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted', devices: 'tablet' },
   // A raised card is mostly its name and buttons: picking it up by a button must work too.
   { name: 'operations, drag a card by its Convert button onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-resource-card]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
   { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
@@ -173,21 +178,21 @@ const CASES = [
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'], buyVisible: true, extraSizes: i === 0 })),
   // Buy with an empty hand (everything converted or played): the market and Finish Buy must show.
-  { name: 'buy, empty hand', save: (() => { const state = buyState(chunks[0]); state.players[0].hand = []; return state; })(), buyVisible: true, extraSizes: true },
+  { name: 'buy, empty hand', save: (() => { const state = buyState(chunks[0]); state.players[0].hand = []; return state; })(), buyVisible: true, extraSizes: true, devices: true },
   // The real way there: convert the whole hand during Operations, and the table passes you to Buy.
   { name: 'buy, after converting the whole hand', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), click: ['#convert-all-button'], buyVisible: true, extraSizes: true },
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
   { name: 'buy, trash dialog', save: buyState(chunks[0]), click: ['#market-tab', '#open-trash'] },
   { name: 'buy, raised market card (bottom row)', save: buyState(chunks[2], { matter: 8, energy: 8, biomass: 8, data: 8 }), focus: '#market-row .game-card:not(:disabled)', focusLast: true },
-  { name: 'trade dialog', save: operationsState(['move']), click: ['#open-trade'] },
-  { name: 'game menu', save: operationsState(['move']), click: ['#table-menu-button'] },
+  { name: 'trade dialog', save: operationsState(['move']), click: ['#open-trade'], devices: true },
+  { name: 'game menu', save: operationsState(['move']), click: ['#table-menu-button'], devices: true },
   { name: 'game menu, playtest changes', save: operationsState(['move']), click: ['#table-menu-button', '#playtest-changes summary'] },
-  { name: 'fleet tab', save: operationsState(['move']), click: ['#fleet-tab'] },
+  { name: 'fleet tab', save: operationsState(['move']), click: ['#fleet-tab'], devices: true },
   { name: 'relics tab', save: operationsState(['move']), click: ['#relics-tab'] },
   { name: 'battle: escape choice', save: combatState('escape') },
   { name: 'battle: tactic choice', save: combatState('tactic') },
   { name: 'saved table bar', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), table: true },
-  { name: 'shared table, hand', shared: sharedView(operationsState(['move', 'construct', 'probe', 'construct', 'move'])) },
+  { name: 'shared table, hand', shared: sharedView(operationsState(['move', 'construct', 'probe', 'construct', 'move'])), devices: true },
   { name: 'shared table, market', shared: sharedView(buyState(chunks[1])), click: ['#market-tab'] },
   { name: 'waiting room', lobby: true },
 ];
@@ -255,16 +260,18 @@ const MEASURE = `(() => {
   const label = e => (e.id ? '#' + e.id : '') + (typeof e.className === 'string' && e.className ? '.' + e.className.trim().split(/\\s+/).join('.') : e.tagName.toLowerCase()) + (e.textContent.trim() ? ' "' + e.textContent.trim().replace(/\\s+/g, ' ').slice(0, 40) + '"' : '');
   const shown = e => e.checkVisibility({ visibilityProperty: true, opacityProperty: false });
   const doc = document.scrollingElement;
-  if (doc.scrollHeight > H + 1 || doc.scrollWidth > W + 1) problems.push('page scrolls: ' + doc.scrollWidth + 'x' + doc.scrollHeight);
+  const phone = window.__fitMode === 'phone';
+  if ((!phone && doc.scrollHeight > H + 1) || doc.scrollWidth > W + 1) problems.push('page scrolls: ' + doc.scrollWidth + 'x' + doc.scrollHeight);
   // Containers allowed to scroll their own reference content.
-  const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region';
+  const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region' + (phone ? ', .board-map-region, .console, .resource-panel, .board-shared, .phase-stepper, #hand-panel .hand-tools' : '') + '';
   const modal = document.querySelector('dialog[open], body.menu-open, #fleet-panel.active');
   const scope = modal || document;
   // Hand cards are held as card tops that clip on purpose; a raised (pointed-at or focused)
   // card is checked like any other. Each top must still show its name and gain/cost row.
   const FOLDED = ':is(#hand-row, .market-cards, .relic-row) .game-card:not(:hover):not(:focus):not(:focus-within)';
   const folded = e => e.closest(FOLDED);
-  for (const top of document.querySelectorAll(FOLDED)) {
+  // Card tops exist in the table layout; a phone shows whole cards in its drawers.
+  for (const top of phone ? [] : document.querySelectorAll(FOLDED)) {
     if (!shown(top)) continue;
     const t = top.getBoundingClientRect();
     if (t.top < -1 || t.bottom > H + 1 || t.left < -1 || t.right > W + 1) problems.push('card top outside viewport: ' + label(top));
@@ -296,10 +303,11 @@ const MEASURE = `(() => {
     if (r.width <= 1 && r.height <= 1) continue; // empty or visually hidden (sr-only)
     const clips = /(auto|scroll|hidden|clip)/.test(getComputedStyle(e).overflowY + getComputedStyle(e).overflowX);
     // Visually hidden text (clip-path: inset(50%)) is read by screen readers, not shown.
-    if (clips && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2) && !getComputedStyle(e).clipPath.includes('inset(50%)') && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, input, textarea') && !e.closest('[aria-hidden="true"]'))
+    // A phone truncates its one-line turn strip on purpose (the full text is in the menu).
+    if (clips && !(phone && getComputedStyle(e).textOverflow === 'ellipsis') && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2) && !getComputedStyle(e).clipPath.includes('inset(50%)') && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, input, textarea') && !e.closest('[aria-hidden="true"]'))
       problems.push('clipped content: ' + label(e) + ' ' + e.scrollWidth + 'x' + e.scrollHeight + ' in ' + e.clientWidth + 'x' + e.clientHeight);
     if (e.matches('button, a[href], select, input, textarea, .game-card, .score-card, .resource-box, .hex, dialog[open], .lobby-seat') && !e.closest('.sr-only, .skip-link, .skip')) {
-      if (r.left < -1 || r.top < -1 || r.right > W + 1 || r.bottom > H + 1) problems.push('outside viewport: ' + label(e) + ' [' + [r.left, r.top, r.right, r.bottom].map(Math.round) + ']');
+      if (r.left < -1 || r.right > W + 1 || (!phone && (r.top < -1 || r.bottom > H + 1))) problems.push('outside viewport: ' + label(e) + ' [' + [r.left, r.top, r.right, r.bottom].map(Math.round) + ']');
     }
     // Cards may not clip their own text (buttons hide overflow inside their box).
     if (e.matches('.game-card, .military-card, .trade-offer, .score-card, .resource-box, .combat-options .button') && !e.matches('.score-card:is(:hover, :focus-within)') && e.scrollHeight > e.clientHeight + 2)
@@ -334,7 +342,7 @@ const MEASURE = `(() => {
       .find(e => !toast.contains(e) && shown(e) && (() => { const r = e.getBoundingClientRect(); return r.width > 1 && r.left < t.right - 1 && r.right > t.left + 1 && r.top < t.bottom - 1 && r.bottom > t.top + 1; })());
     if (under) problems.push('toast covers ' + label(under));
   }
-  if (!modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
+  if (!phone && !modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
     // The centre and both side edges of every hex must be clickable.
     const r = hex.getBoundingClientRect(), y = r.top + r.height / 2;
     const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover'); });
@@ -356,7 +364,9 @@ const MEASURE = `(() => {
 })()`;
 
 async function runCase(browser, origin, testCase, [width, height]) {
-  await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: false });
+  const touch = testCase.device || false;
+  await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: touch });
+  await browser.send('Emulation.setTouchEmulationEnabled', { enabled: touch, maxTouchPoints: touch ? 5 : 1 });
   if (testCase.lobby) {
     await browser.navigate(`${origin}/?game=galactic-reach#lobby/${TABLE_ID}`);
   } else {
@@ -377,7 +387,15 @@ async function runCase(browser, origin, testCase, [width, height]) {
     if (!ok) return [`could not focus ${testCase.focus}`];
     await browser.evaluate('new Promise(r => setTimeout(r, 250))');
   }
-  const mouse = (type, x, y) => browser.send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' ? 'none' : 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: type === 'mouseMoved' ? 0 : 1 });
+  // On a touch device every press, move and release is a real touch sequence (there is no hover).
+  let touching = false;
+  const mouse = (type, x, y) => {
+    if (!testCase.device) return browser.send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' ? 'none' : 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: type === 'mouseMoved' ? 0 : 1 });
+    if (type === 'mousePressed') { touching = true; return browser.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] }); }
+    if (type === 'mouseReleased') { touching = false; return browser.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); }
+    // Touch moves are delivered with the next animation frame; wait for it, as a finger would.
+    return touching ? browser.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y }] }).then(() => browser.evaluate('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))')) : Promise.resolve();
+  };
   const centre = selector => browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + Math.min(r.height / 2, 30) }; })()`);
   const steps = [];
   if (testCase.hover) {
@@ -425,6 +443,7 @@ async function runCase(browser, origin, testCase, [width, height]) {
     await mouse('mouseMoved', 4, 4);
     await browser.evaluate('new Promise(r => setTimeout(r, 300))');
   }
+  await browser.evaluate(`window.__fitMode = ${JSON.stringify(isPhone([width, height]) ? 'phone' : 'fit')}; true`);
   const { problems, slack } = await browser.evaluate(MEASURE);
   if (testCase.buyVisible) {
     const seen = await browser.evaluate(`(() => { const shown = e => e && e.checkVisibility() && e.getBoundingClientRect().height > 8;
@@ -487,7 +506,8 @@ async function main() {
   let failures = 0, checks = 0;
   try {
     const runs = [...VIEWPORTS.flatMap(viewport => CASES.map(testCase => [viewport, testCase])),
-      ...EXTRA_VIEWPORTS.flatMap(viewport => CASES.filter(testCase => testCase.extraSizes).map(testCase => [viewport, testCase]))];
+      ...EXTRA_VIEWPORTS.flatMap(viewport => CASES.filter(testCase => testCase.extraSizes).map(testCase => [viewport, testCase])),
+      ...[...TABLET_VIEWPORTS, ...PHONE_VIEWPORTS].flatMap(viewport => CASES.filter(testCase => testCase.devices === true || (testCase.devices === 'tablet' && !isPhone(viewport))).map(testCase => [viewport, { ...testCase, device: true, name: `${testCase.name} (touch)` }]))];
     for (const [viewport, testCase] of runs) {
       if (only && !only.test(`${viewport.join('x')} ${testCase.name}`)) continue;
       if (process.env.CHECK_ORIGIN && (testCase.lobby || testCase.table || testCase.shared)) continue;
