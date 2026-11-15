@@ -66,7 +66,7 @@ git fetch --quiet --prune origin "+refs/heads/$BASE:refs/remotes/origin/$BASE" "
 git fetch --quiet origin "+refs/heads/$CUT_BRANCH:refs/remotes/origin/$CUT_BRANCH" 2>/dev/null ||
   git update-ref -d "refs/remotes/origin/$CUT_BRANCH"
 main=$(git rev-parse "origin/$BASE")
-URL=${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}
+URL=${GITHUB_SERVER_URL:-https://github.com}/${GITHUB_REPOSITORY:-${GH_REPO:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}}
 pr=$(gh pr list --base "$BASE" --head "$CUT_BRANCH" --state open --json number,body --jq '.[0] // {}')
 number=$(jq -r '.number // empty' <<<"$pr")
 
