@@ -15,3 +15,7 @@ Ground these decisions in the canonical rulebook: #setup, #resources, #free-econ
 The combined rules need a fresh 37.42 game. Preserve complete 34.39, 35.40 and 36.41 engines/browser assets and their shared-table routes, along with every earlier supported archive. Keep the 36.41 human Undo contract on its archive and on 37.42, while older revisions keep their original checkpoints. Use a new policy version for combined rival decisions and preserve historical policies. Announce the new-game boundary before stable adoption.
 
 Validate the combined mechanic/dialog/replay/rules suites, Rust workspace, formatting and Clippy, Wasm/package/container CI, own Render preview and final main deployment. Historical merges are ancestry reconciliation, not a return to older scoring or costs.
+
+## Release process reconciliation
+
+PR #55 landed on main while the original integration was being checked. Preserve its self-hosted dev channel, kept engines, release policy and stable branch. Complete this already-versioned batch on `release/workstation-integration` using the release-cut tool. Published preview IDs 35.40 and 36.41 stay reserved; the tool selects the next unused ID, 37.42. Pending entries are consumed into docs/releases.md and the player summary. Merge into main only; the standing main-to-stable Release PR is separate. Human Undo also follows the combined contract on 37.42 dev revisions.

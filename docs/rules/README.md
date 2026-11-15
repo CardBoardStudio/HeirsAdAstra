@@ -7,7 +7,8 @@ The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the p
 1. Read the relevant rulebook sections before implementing a PR. Describe the intended behavior and cite the section anchors in the PR template.
 2. Pair every game-logic change with a meaningful rulebook change. For an implementation fix, add the missing clarification or concrete example. Keep the initial [known discrepancies](implementation-notes.md) explicit until deliberately resolved.
 3. Update affected printed card text, quick help, tests, and (once built) tutorial steps. Clarifications alone must not change gameplay. Apply the [safe/breaking workflow](../playtest-workflow.md).
-4. Run the applicable checks. Verify the rulebook on that PR's successful Render origin before review, then on the stable origin after adoption. Preserve anchors when reorganizing content.
+4. Run the applicable checks. Verify the rulebook on that PR's successful Render origin before review, on dev after merge, and on the stable origin after the release. Preserve anchors when reorganizing content.
+5. Write rulebook prose for "this playtest" rather than a version number; the [release cut](../release.md) updates the masthead and version labels once per release.
 
 The rulebook is authoritative for intended play. The initial version documents existing 6.11 behavior, including exceptions, without approving those exceptions as final design. An inconsistency is a review item, not permission to silently change rules or saves. Developer notes and old READMEs are not competing rules specifications.
 
@@ -37,7 +38,7 @@ The 9.14 experiment removes influence and policy voting. Settlers replace Scouts
 
 ## Preview change summaries
 
-Every player-facing preview has a visible “What’s new in this playtest” summary in the game. Update it for the PR’s changes, link the relevant rulebook sections, and state when testers need a new game. Keep it concise and distinguish a stacked PR’s additions from its parent. Verify it on localhost and the successful Render preview; review the wording again when adopting the change.
+The game's “What’s new in this playtest” panel lists the current release's changes. A change PR does not edit it: it adds a `changes/` entry ([format](../../changes/README.md)) with a short player-facing summary and rulebook link, and the release cut writes the panel and [release notes](../releases.md) from those entries. Review the wording in the cut PR.
 
 The 10.15 iteration removes Research Stations, Dreadnoughts, Gates, and Gate Synchronization. Fleet replaces Frigate at movement 2. Capacity grows by 5 for 2 Matter, 1 Energy, and 1 Data during Operations or Buy without using a card, action, purchase, or map hex. Explorers recover relics for the former station cost using Construct, and three recoveries unlock relic exchanges. The complete 9.14 rules remain archived; new games use v10 saves.
 

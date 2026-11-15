@@ -34,7 +34,9 @@ impl Service {
             );
             let table = t.log.table(&id).map_err(broken)?.unwrap();
             let events = t.log.read(&id).map_err(broken)?;
-            let full = build(table, events, vec![], t.authority.clone()).map_err(broken)?;
+            let source = t.channel.engine(&table.rules).unwrap();
+            let full =
+                build(table, events, vec![], t.authority.clone(), &source).map_err(broken)?;
             assert_eq!(
                 full.engine.private_state(seat).map_err(broken)?,
                 after,
@@ -1270,19 +1272,25 @@ async fn a_shared_move_can_leave_units_behind() {
 }
 
 // 36.41 #shared-tables: human Undo crosses later bot actions, but no later human action.
-#[tokio::test]
-async fn human_undo_rewinds_bots_until_another_human_acts() {
+async fn exercise_human_undo(dev: bool) {
     let store = store_with(&["a", "b"]);
-    let log = Arc::new(SqliteTableLog(store));
-    let service = Service::start(
+    let log = Arc::new(SqliteTableLog(store.clone()));
+    let channel = if dev {
+        let channel = Channel::dev(store, galactic_reach::dev_rules(), "undo-test".into());
+        channel.keep_current(1).unwrap();
+        channel
+    } else {
+        Channel::stable()
+    };
+    let service = Service::start_on(
         log.clone(),
         Arc::new(TrustedAuthority),
         Duration::from_secs(3600),
+        Arc::new(channel),
     );
-    service
-        .open(table("human-undo", &[("a", "Ada"), ("b", "Bo")]))
-        .await
-        .unwrap();
+    let mut dealt = table("human-undo", &[("a", "Ada"), ("b", "Bo")]);
+    dealt.rules = service.channel.rules.clone();
+    service.open(dealt).await.unwrap();
     let mut seq = service.view("human-undo", "a").await.unwrap()["seq"]
         .as_u64()
         .unwrap();
@@ -1348,6 +1356,15 @@ async fn human_undo_rewinds_bots_until_another_human_acts() {
             .iter()
             .any(|e| e.kind == "undo")
     );
+}
+
+#[tokio::test]
+async fn human_undo_rewinds_bots_until_another_human_acts() {
+    exercise_human_undo(false).await;
+}
+#[tokio::test]
+async fn dev_human_undo_rewinds_bots_until_another_human_acts() {
+    exercise_human_undo(true).await;
 }
 
 #[tokio::test]
@@ -1523,4 +1540,153 @@ async fn a_shared_move_uses_the_aligned_corner_portal() {
         json!({"settler":1,"explorer":1,"fleet":1})
     );
     assert_eq!(after["state"]["fleets"]["8,-10"]["0"]["fleet"], 1);
+}
+
+/// docs/release.md#dev-channel: on a dev server (every merge to main deploys),
+/// a table keeps the engine it was dealt with when a rules-changing merge
+/// deploys, a save-compatible merge reaches tables at once, and a kept revision
+/// is pruned only when no unfinished table plays it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_dev_table_keeps_its_build_when_a_rules_change_deploys() {
+    use super::channel::{Channel, KEEP_FOR};
+    use axum::{body::Body, http::Request};
+    use http_body_util::BodyExt;
+    use tower::ServiceExt;
+    let store = store_with(&["a", "b"]);
+    let log = Arc::new(SqliteTableLog(store.clone()));
+    let dev = |n: u32| format!("{}+dev.{n}", galactic_reach::RULES);
+    // Each deploy is a fresh server process over the same database.
+    let deploy = |rules: String, app: &str, now: u64| {
+        let channel = Channel::dev(store.clone(), rules, format!("c{now}"));
+        channel
+            .keep_current_as(app, galactic_reach::ADAPTER_SOURCE, now)
+            .unwrap();
+        Service::start_on(
+            log.clone(),
+            Arc::new(TrustedAuthority),
+            Duration::ZERO,
+            Arc::new(channel),
+        )
+    };
+    let resource = |view: &Value| {
+        let card = view["state"]["players"][0]["hand"][0]["id"].clone();
+        vec![json!({"type":"resource","card":card})]
+    };
+    let limit = |view: &Value| view["state"]["players"][0]["resourceLimits"]["matter"].clone();
+    let current = galactic_reach::APP_SOURCE;
+    let original = "resourceLimits: { matter:4,";
+    assert!(
+        current.contains(original),
+        "the engine still sets the starting limit here"
+    );
+    // Build A's rules differ visibly: a starting Matter limit of 9.
+    let build_a = current.replace(original, "resourceLimits: { matter:9,");
+
+    // A dev revision nothing plays, last current long ago.
+    deploy(dev(0), current, 1);
+
+    // Build A deals table d1.
+    let a = deploy(dev(1), &build_a, 2 * KEEP_FOR);
+    let mut t = table("d1", &[("a", "Ada"), ("b", "Bo")]);
+    t.rules = a.channel.rules.clone();
+    a.open(t).await.unwrap();
+    let view = a.view("d1", "a").await.unwrap();
+    assert_eq!(view["rules_version"], dev(1));
+    assert_eq!(view["client_path"], "/galactic-reach/");
+    assert_eq!(limit(&view), 9);
+    let seq = view["seq"].as_u64().unwrap();
+    a.act("d1", "a", seq, resource(&view)).await.unwrap();
+    drop(a);
+
+    // Build B merges a rules change (a new breaking entry: +dev.2).
+    let b = deploy(dev(2), current, 2 * KEEP_FOR + 1);
+    assert!(
+        b.channel.kept(&dev(0)).is_none(),
+        "an unplayed revision is pruned after KEEP_FOR"
+    );
+    let view = b.view("d1", "a").await.unwrap();
+    assert_eq!(view["rules_version"], dev(1), "d1 keeps its dealt revision");
+    assert_eq!(limit(&view), 9, "d1 still plays build A's rules");
+    assert_eq!(
+        view["client_path"],
+        format!(
+            "/galactic-reach/dev/{}/",
+            dev(1).rsplit('/').next().unwrap()
+        )
+    );
+    let seq = view["seq"].as_u64().unwrap();
+    let after = b.act("d1", "a", seq, resource(&view)).await.unwrap();
+    assert!(
+        after["seq"].as_u64().unwrap() > seq,
+        "d1 keeps playing on build B's server"
+    );
+    let mut t = table("d2", &[("a", "Ada"), ("b", "Bo")]);
+    t.rules = b.channel.rules.clone();
+    b.open(t).await.unwrap();
+    let fresh = b.view("d2", "a").await.unwrap();
+    assert_eq!(fresh["rules_version"], dev(2));
+    assert_eq!(limit(&fresh), 4, "new tables get build B's rules");
+    drop(b);
+
+    // Build B' merges an interface-only change: same revision, new build.
+    let interface = format!("{current}\n// interface-only edit\n");
+    let b2 = deploy(dev(2), &interface, 2 * KEEP_FOR + 2);
+    for (id, rules, matter) in [("d1", dev(1), 9), ("d2", dev(2), 4)] {
+        let view = b2.view(id, "a").await.unwrap();
+        assert_eq!(view["rules_version"], rules);
+        assert_eq!(limit(&view), matter);
+        let seq = view["seq"].as_u64().unwrap();
+        b2.act(id, "a", seq, resource(&view)).await.unwrap();
+    }
+    assert_eq!(
+        b2.channel.kept(&dev(2)).unwrap().app,
+        interface,
+        "the current revision runs the newest build"
+    );
+
+    // d1's browser: build A's engine with the current interface files.
+    let mut app = crate::tests::app(false);
+    app.store = store.clone();
+    app.shared = b2.clone();
+    let get = |path: String| {
+        let app = app.clone();
+        async move {
+            let req = Request::builder().uri(path).body(Body::empty()).unwrap();
+            let res = crate::router(app).oneshot(req).await.unwrap();
+            let status = res.status();
+            let location = res.headers().get("location").cloned();
+            let body = res.into_body().collect().await.unwrap().to_bytes();
+            (
+                status,
+                location,
+                String::from_utf8_lossy(&body).into_owned(),
+            )
+        }
+    };
+    let base = format!("/galactic-reach/dev/{}", dev(1).rsplit('/').next().unwrap());
+    let (status, _, body) = get(format!("{base}/app.js")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert!(
+        body.contains("resourceLimits: { matter:9,"),
+        "build A's engine"
+    );
+    let (_, _, body) = get(format!("{base}/channel.js")).await;
+    assert!(body.contains(&dev(1)), "the page plays build A's revision");
+    let (status, location, _) = get(format!("{base}/styles.css")).await;
+    assert_eq!(status, StatusCode::TEMPORARY_REDIRECT);
+    assert_eq!(
+        location.unwrap(),
+        "/galactic-reach/styles.css",
+        "current interface"
+    );
+    let (_, _, body) = get("/galactic-reach/channel.js".into()).await;
+    assert!(body.contains(&dev(2)) && body.contains("\"dev\""));
+    let (status, _, _) = get(format!("{base}/../../app.js")).await;
+    assert_ne!(status, StatusCode::OK);
+    let (status, _, _) = get("/galactic-reach/dev/33.38/app.js".into()).await;
+    assert_eq!(
+        status,
+        StatusCode::NOT_FOUND,
+        "released revisions are not dev builds"
+    );
 }
