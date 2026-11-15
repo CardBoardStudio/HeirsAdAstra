@@ -1434,7 +1434,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
     --pile-w: max(52px, calc((var(--front-h) - 26px) * .716));
     --tools-w: 206px;
     --bank-h: 234px;
-    --log-h: clamp(84px, 13dvh, 140px);
+    --log-h: clamp(72px, calc(13dvh - var(--bars-h) / 2), 140px);
     flex: 1 1 auto; min-height: 0; width: 100%; height: auto; margin: 0; padding: 8px 16px 8px;
     display: grid; grid-template-columns: var(--left-w) minmax(0, var(--board-w)) minmax(340px, 1fr);
     grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto var(--front-h); gap: 6px 14px;
@@ -1906,7 +1906,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 }
 /* Short windows: the standings drop to one line and the market card tops tighten. */
 @media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
-  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { row-gap: 4px; --log-h: 76px; }
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { row-gap: 4px; --log-h: calc(76px - var(--bars-h) / 3); }
   .board-shared .score-meta { display: none; }
   .market-cards { gap: 4px; }
   :is(#market-row, #upgrade-market) .card-name { font-size: 13px; line-height: 1.1; }
@@ -1931,8 +1931,8 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: nowrap; display: block; }
 }
 /* Short windows with a wide supply: four market cards to a row, so ten cards take three rows. */
-@media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
-  @container (min-width: 420px) {
+@media (min-width: 1024px) and (min-height: 600px) {
+  @container (min-width: 390px) {
     #market-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     #market-row .game-card:nth-child(n+5) { align-self: start; }
     #market-row .game-card:nth-child(n+7) { align-self: start; }

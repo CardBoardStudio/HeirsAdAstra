@@ -4445,12 +4445,31 @@ function createGalacticReach(options = {}) {
 
   function render() {
     if (headless) return;
-    cardFeel?.beforeRender?.();
+    drawEach({ 'card feel (before)': () => cardFeel?.beforeRender?.() });
     const targetText=$('#victory-target-text');
     if (targetText) targetText.textContent=`${victoryTarget()} Prestige`;
     $('#round-goal').textContent=`${victoryTarget()} Prestige`;
-    renderHeader(); renderScoreboard(); renderBoard(); renderResources(); renderInspector(); positionSectorScan(); renderLog(); renderHand(); renderMarket(); renderFleetSummary(); renderTrade(); renderRelicRow(); renderOverflow(); renderCombat(); renderCombatReport(); renderBoardPrimary();
-    cardFeel?.rendered?.(cardFeelView());
+    // Each part of the table draws on its own: one failing part must never blank the market,
+    // the relics or the turn's buttons. Failures are logged, shown once, and fail the checks.
+    drawEach({renderHeader, renderScoreboard, renderBoard, renderResources, renderInspector, positionSectorScan, renderLog, renderHand, renderMarket, renderFleetSummary, renderTrade, renderRelicRow, renderOverflow, renderCombat, renderCombatReport, renderBoardPrimary});
+    drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()) });
+  }
+
+  const renderErrors = [];
+  function drawEach(parts) {
+    const failed = [];
+    for (const [name, draw] of Object.entries(parts)) {
+      try { draw(); } catch (error) { failed.push([name, error]); }
+    }
+    if (!failed.length) return;
+    for (const [name, error] of failed) {
+      console.error(`Galactic Reach could not draw ${name}:`, error);
+      const message = `${name}: ${error?.message || error}`;
+      if (!renderErrors.includes(message)) { renderErrors.push(message); toast(`Part of the table failed to draw (${message}). Please report it with an exported game report.`); }
+    }
+    if (typeof window !== 'undefined') window.galacticReachRenderErrors = renderErrors;
+    // Under Node (the test suites) a drawing failure is still a test failure.
+    if (typeof window === 'undefined' || globalThis.process?.versions?.node) throw failed[0][1];
   }
 
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
