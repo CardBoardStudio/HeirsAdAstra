@@ -68,7 +68,9 @@ A batch with only `safe` entries makes no bump. It writes a save-compatible upda
 
 Then review what the script lists (rulebook prose, the catalog description), run the checks from [AGENTS.md](../AGENTS.md#verification) plus `node scripts/test-release.cjs`, and open `release/cut` as a PR into `main` labelled with the release's compatibility. Merge it, and the workflow closes its own cut PR.
 
-Either way, the Release PR now contains the bump. Once it merges, Render deploys `stable`. Verify the stable deployment's game and rulebook.
+Either way, the Release PR now contains the bump. Merging it creates a new commit on `stable`. Both CI workflows run on that push so Render's **After CI Checks Pass** setting receives results for the exact commit it will deploy. Once those checks pass, Render deploys `stable`. Verify the successful deployment's game and rulebook before reporting it live.
+
+The release-tooling test builds its own `main` and `stable` branches inside disposable scratch clones. It resets those fixture branches before use, so the complete test also runs when the calling checkout is named `stable` or is a detached release tag. It never resets the caller's branches.
 
 The same check fails a Release PR that still has pending entries: cut them first.
 
