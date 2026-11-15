@@ -4579,6 +4579,31 @@ function createGalacticReach(options = {}) {
     document.body.dataset.drawer = name || '';
     $$('.phone-drawers [data-drawer]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.drawer === name)));
   }
+  function setupPhoneCardSheet() {
+    const row = $('#hand-row');
+    if (!row?.addEventListener || typeof document === 'undefined' || !document.createElement || typeof document.body?.append !== 'function') return;
+    const sheet = document.createElement('div');
+    sheet.className = 'phone-card-sheet'; sheet.hidden = true; sheet.setAttribute('role', 'dialog'); sheet.setAttribute('aria-label', 'Card');
+    document.body.append(sheet);
+    const close = () => { sheet.hidden = true; sheet.innerHTML = ''; };
+    row.addEventListener('click', event => {
+      if (!phoneLayout() || event.target.closest('button')) return;
+      const card = event.target.closest('.game-card');
+      if (!card) return;
+      sheet.innerHTML = `<button type="button" class="phone-card-close" aria-label="Close">×</button>${card.outerHTML}`;
+      sheet.hidden = false;
+      sheet.querySelector('.phone-card-close').focus();
+    });
+    sheet.addEventListener('click', event => {
+      const button = event.target.closest('button');
+      if (!button || button.classList.contains('phone-card-close')) { if (button || event.target === sheet) close(); return; }
+      const keys = [...button.attributes].filter(attr => attr.name.startsWith('data-')).map(attr => `[${attr.name}="${CSS.escape(attr.value)}"]`).join('');
+      const original = keys && $(`#hand-row ${keys}`);
+      close();
+      original?.click();
+    });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && !sheet.hidden) close(); });
+  }
   function followTurnWithDrawer() {
     if (!phoneLayout() || replayMode) return;
     const key = `${state.round}:${state.phase}:${state.activePlayer}`;
@@ -4697,6 +4722,7 @@ function createGalacticReach(options = {}) {
     $('#discard-resource-type').value = 'matter';
     $('#discard-resource-amount').addEventListener('input',renderResourceTools);
     setupMatTrades();
+    setupPhoneCardSheet();
     $('#bank-trade-form').addEventListener('submit',event => {
       event.preventDefault();
       bankTrade(ME,bankSelection.give,bankSelection.get);

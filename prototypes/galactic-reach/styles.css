@@ -2358,3 +2358,51 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
   .toast { box-sizing: border-box; width: calc(196px * var(--table-zoom, 1)); }
 }
+
+/* ==== Phones on real devices (iOS WebKit): no text inflation, safe areas for the notch and the
+   home bar, a header that never overlaps, a compact Hand peek of card tops, and no fixed element
+   inside a scrolling sheet (WebKit clips those). ==== */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+.phone-card-sheet { display: none; }
+@media (max-width: 599px), (max-height: 599px) {
+  body { --safe-t: env(safe-area-inset-top, 0px); --safe-b: env(safe-area-inset-bottom, 0px); --safe-l: env(safe-area-inset-left, 0px); --safe-r: env(safe-area-inset-right, 0px); --peek-h: 104px; --top-h: 56px; }
+  /* Header: two stacked lines that cannot overlap. */
+  .table-menu-button { top: calc(var(--safe-t) + 6px) !important; left: calc(var(--safe-l) + 6px) !important; }
+  .board-toolbar { top: var(--safe-t) !important; left: calc(var(--safe-l) + 48px) !important; right: calc(var(--safe-r) + 6px) !important; height: 24px !important; line-height: 24px; }
+  .board-toolbar > div { line-height: 24px; }
+  .board-toolbar strong { font-size: 13px !important; line-height: 24px; }
+  .board-toolbar #turn-instruction { font-size: 11.5px !important; line-height: 24px; }
+  .phase-stepper { top: calc(var(--safe-t) + 29px) !important; left: calc(var(--safe-l) + 48px) !important; right: calc(var(--safe-r) + 6px) !important; height: 20px; line-height: 18px; }
+  .phase-stepper strong, .phase-stepper li { font-size: 10.5px !important; line-height: 16px; }
+  /* Map, buttons, tabs and sheets clear the notch and the home bar. */
+  .board-map-region { top: calc(var(--safe-t) + var(--top-h)) !important; bottom: calc(var(--safe-b) + var(--tabs-h) + var(--actions-h)) !important; }
+  .phone-drawers { height: calc(var(--tabs-h) + var(--safe-b)) !important; padding-bottom: var(--safe-b); padding-left: var(--safe-l); padding-right: var(--safe-r); }
+  #hand-panel .hand-tools { bottom: calc(var(--safe-b) + var(--tabs-h)) !important; }
+  body[data-drawer="hand"] .console, body[data-drawer="supply"] .console, body[data-drawer="mat"] .resource-panel,
+  body[data-drawer="comms"] .board-shared, body[data-drawer="table"] .board-shared { bottom: calc(var(--safe-b) + var(--tabs-h) + var(--actions-h)) !important; }
+  /* The console holds the turn's buttons, so it never scrolls itself: its lists do. */
+  .console, .console-body, #hand-panel { overflow: visible !important; }
+  body[data-drawer="supply"] .console { max-height: none !important; }
+  body[data-drawer="supply"] .tab-panel:not([hidden]), body[data-drawer="supply"] #market-panel { max-height: calc(var(--sheet-h) - 56px); overflow: auto; overscroll-behavior: contain; }
+  #hand-panel .section-intro { display: contents !important; }
+  /* Hand: a compact peek of card tops in one swipeable strip; tap a card to read it whole. */
+  body[data-drawer="hand"] .console { padding: 6px 6px 6px !important; max-height: none !important; }
+  body[data-drawer="hand"] #hand-row { display: flex !important; flex-wrap: nowrap !important; gap: 6px !important; height: var(--peek-h) !important; margin: 0 !important; padding: 2px 2px 4px !important; overflow-x: auto !important; overflow-y: hidden !important; scroll-snap-type: x proximity; }
+  body #hand-row > .game-card { flex: 0 0 136px !important; width: 136px !important; height: calc(var(--peek-h) - 8px) !important; min-height: 0 !important; margin: 0 !important; transform: none !important; rotate: none !important; translate: none !important; scroll-snap-align: start;
+    display: grid !important; grid-template-columns: auto minmax(0, 1fr) !important; grid-template-rows: auto auto 1fr !important; grid-template-areas: "cost name" "cost head" "eff eff" !important; align-content: start; gap: 2px 6px !important; padding: 6px 8px !important; overflow: hidden !important; border-radius: 9px !important; cursor: pointer; }
+  body #hand-row > .game-card :is(.card-type, .card-art, .card-lore, .card-buttons, .card-limit-note, .card-footer small) { display: none !important; }
+  body #hand-row > .game-card .card-name { grid-area: name; margin: 0; font-size: 14px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body #hand-row > .game-card .card-headline { grid-area: head; display: block; margin: 0; font-size: 11.5px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  body #hand-row > .game-card .card-effect { grid-area: eff; margin: 2px 0 0; font-size: 11px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+  body #hand-row > .game-card .card-headline ~ .card-effect { display: none; }
+  body #hand-row > .game-card .card-footer { grid-area: cost; margin: 0; padding: 0; border: 0; }
+  body #hand-row > .game-card .resource-chip { min-height: 22px; padding: 0 5px 0 3px; }
+  /* The tapped card, whole, in a sheet over the map. */
+  .phone-card-sheet:not([hidden]) { display: block; position: fixed; left: calc(var(--safe-l) + 10px); right: calc(var(--safe-r) + 10px); bottom: calc(var(--safe-b) + var(--tabs-h) + var(--actions-h) + var(--peek-h) + 18px); z-index: 85; max-height: calc(100dvh - var(--safe-t) - var(--top-h) - var(--safe-b) - var(--tabs-h) - var(--actions-h) - var(--peek-h) - 30px); overflow: auto; }
+  .phone-card-sheet .game-card { width: 100%; max-width: 360px; margin: 0 auto; transform: none !important; }
+  .phone-card-sheet .card-art { display: none; }
+  .phone-card-close { position: absolute; top: 4px; right: 4px; z-index: 2; width: 34px; height: 34px; border: 0; border-radius: 50%; background: #0d1a1d; color: var(--text); font-size: 20px; line-height: 1; }
+}
+@media (max-height: 599px) and (orientation: landscape) {
+  body { --peek-h: 92px; }
+}
