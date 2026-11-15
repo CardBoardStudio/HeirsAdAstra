@@ -236,6 +236,14 @@ const MEASURE = `(() => {
     }
     // Only level I starters print a gain badge; an empty footer has nothing to show.
     const footer = top.querySelector('.card-footer');
+    // In the hand, a top's text and badges must end before its right-hand neighbour begins.
+    const next = top.closest('#hand-row') && top.nextElementSibling;
+    if (next && !document.querySelector('#hand-row .game-card:is(:hover, :focus, :focus-within)')) {
+      const limit = next.getBoundingClientRect().left;
+      const parts = [top.querySelector('.card-name'), summary, ...top.querySelectorAll('.card-footer .resource-chip, .card-footer .level-badge')].filter(Boolean);
+      const under = parts.find(part => { const t = part.getBoundingClientRect(); return t.width > 0 && t.right > limit + 1; });
+      if (under) problems.push('hand text under the next card: ' + label(under) + ' in ' + label(top));
+    }
     for (const part of [top.querySelector('.card-name'), footer?.textContent.trim() || footer?.querySelector('.resource-chip') ? footer : null, summary].filter(Boolean)) {
       const p = part.getBoundingClientRect();
       if (p.height < 4 || p.top < t.top - 1 || p.bottom > t.bottom + 1) { problems.push('card top hides ' + label(part) + ' in ' + label(top)); break; }
