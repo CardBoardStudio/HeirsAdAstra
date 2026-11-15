@@ -4553,6 +4553,9 @@ function createGalacticReach(options = {}) {
     grid.addEventListener('click', event => {
       if (grid.dataset.dragged) { delete grid.dataset.dragged; return; }
       const row = event.target.closest?.('[data-mat-trade]'), discard = event.target.closest?.('[data-mat-discard]');
+      // Once a resource is chosen, a tap anywhere on another resource's band receives it.
+      const band = event.target.closest?.('#resource-grid .resource-box');
+      if (!row && matPick && band && band.dataset.resource !== matPick) { const from = matPick; matClear(); matTradeDo(from, band.dataset.resource); return; }
       if (row) {
         const give = row.dataset.matTrade;
         if (!matPick) { matPick = give; row.closest('.resource-box').classList.add('mat-picked'); matMarkTargets(give); matLabel(`Trade from ${RESOURCE_NAMES[give]}: choose the resource to receive, or Discard`); return; }

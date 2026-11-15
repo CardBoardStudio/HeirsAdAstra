@@ -123,6 +123,12 @@ function piecesState() {
   });
   return state;
 }
+// Bank trades on the mat: 5 Matter to give, room for Data, Biomass to discard.
+function matTradeState() {
+  const state = operationsState(['move', 'construct']);
+  state.players[0].resources = { matter: 5, energy: 2, biomass: 3, data: 1 };
+  return state;
+}
 function combatState(stage) {
   const { adapter, engine, state } = freshEngine();
   state.activePlayer = 0; state.phase = 'operations'; state.turnStage = 'action';
@@ -175,6 +181,10 @@ const CASES = [
   { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
   { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
   { name: 'map pieces on every terrain', save: piecesState() },
+  // Trading with the bank on the mat: drag (mouse, and touch on iPads), tap then tap, and discard.
+  { name: 'mat: drag Matter onto Data trades 4 for 1', save: matTradeState(), matTrade: { from: 'matter', to: 'data', how: 'drag', expect: { matter: -4, data: 1 } }, devices: 'tablet' },
+  { name: 'mat: tap Matter, then Data', save: matTradeState(), matTrade: { from: 'matter', to: 'data', how: 'tap', expect: { matter: -4, data: 1 } } },
+  { name: 'mat: drag Biomass onto Discard', save: matTradeState(), matTrade: { from: 'biomass', to: 'discard', how: 'drag', expect: { biomass: -1 } } },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'], buyVisible: true, extraSizes: i === 0 })),
   // Buy with an empty hand (everything converted or played): the market and Finish Buy must show.
@@ -442,6 +452,26 @@ async function runCase(browser, origin, testCase, [width, height]) {
     await mouse('mouseReleased', target.x, target.y);
     await mouse('mouseMoved', 4, 4);
     await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+  }
+  if (testCase.matTrade) {
+    const { from, to, how, expect } = testCase.matTrade;
+    const stock = () => browser.evaluate('Object.fromEntries([...document.querySelectorAll("#resource-grid .resource-box")].map(b => [b.dataset.resource, +b.querySelector(".resource-amount").textContent]))');
+    const before = await stock();
+    const a = await centre(`#resource-grid .resource-box[data-resource="${from}"] .mat-pips.now`);
+    const b = await centre(to === 'discard' ? '#resource-grid [data-mat-discard]' : `#resource-grid .resource-box[data-resource="${to}"]`);
+    if (!a || !b) return ['mat trade: could not find the rows'];
+    if (how === 'drag') {
+      await mouse('mouseMoved', a.x, a.y); await mouse('mousePressed', a.x, a.y);
+      for (let i = 1; i <= 8; i++) await mouse('mouseMoved', a.x + (b.x - a.x) * i / 8, a.y + (b.y - a.y) * i / 8);
+      const label = await browser.evaluate('document.querySelector(".mat-trade-label")?.textContent || ""');
+      if (!label) problems0.push('mat trade: no note while dragging over the target');
+      await mouse('mouseReleased', b.x, b.y);
+    } else {
+      for (const at of [a, b]) { await mouse('mouseMoved', at.x, at.y); await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y); await browser.evaluate('new Promise(r => setTimeout(r, 120))'); }
+    }
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+    const after = await stock();
+    for (const [resource, change] of Object.entries(expect)) if (after[resource] - before[resource] !== change) problems0.push(`mat trade: ${resource} changed by ${after[resource] - before[resource]}, expected ${change}`);
   }
   await browser.evaluate(`window.__fitMode = ${JSON.stringify(isPhone([width, height]) ? 'phone' : 'fit')}; true`);
   const { problems, slack } = await browser.evaluate(MEASURE);
