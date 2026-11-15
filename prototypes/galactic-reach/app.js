@@ -4591,6 +4591,9 @@ function createGalacticReach(options = {}) {
       });
     });
     if(tableLayout())$('#fleet-tab').tabIndex=0;
+    // At the table the bank lies open at the foot of the comms feed; its heading is a label.
+    const bankTools=$('#resource-tools'), bankLabel=bankTools?.querySelector('summary');
+    if(bankTools&&bankLabel&&tableLayout()){bankTools.open=true;bankLabel.tabIndex=-1;bankLabel.addEventListener('click',event=>{if(tableLayout())event.preventDefault();});}
   }
 
   // Shared table client. The server's table service owns the game; each human

@@ -1414,6 +1414,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
     --res-w: 238px;
     --pile-w: max(52px, calc((var(--front-h) - 26px) * .716));
     --tools-w: 206px;
+    --bank-h: 214px;
     flex: 1 1 auto; min-height: 0; width: 100%; height: auto; margin: 0; padding: 8px 16px 8px;
     display: grid; grid-template-columns: var(--left-w) minmax(0, var(--board-w)) minmax(340px, 1fr);
     grid-template-rows: auto auto auto auto minmax(0, 1fr) auto var(--front-h); gap: 6px 14px;
@@ -1499,7 +1500,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   /* The comms feed fills the rest of the left side; it scrolls on its own, newest first. */
   .log-panel {
     grid-column: 1; grid-row: 1 / 7; align-self: stretch; height: auto; position: relative; z-index: 4; min-width: 0; min-height: 0; display: flex; flex-direction: column;
-    margin: calc(var(--lanes) * (var(--score-h) + 5px) + 8px) 0 40px; padding: 0;
+    margin: calc(var(--lanes) * (var(--score-h) + 5px) + 8px) 0 calc(var(--bank-h) + 10px); padding: 0;
   }
   .log-panel .panel-heading { display: none; }
   .log-panel::before { content: 'Comms'; flex: none; margin: 0 0 4px 2px; color: #c9b98a; font-size: 9.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
@@ -1616,9 +1617,9 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .resource-box .resource-limit { grid-column: 4; grid-row: 1; font-size: 10px; text-align: right; white-space: nowrap; }
   .resource-box .resource-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   .storage-upgrade-control { display: flex; align-items: center; width: var(--cap-w); margin-left: min(var(--res-w), calc(100% - var(--cap-w))) !important; padding: 5px 10px 5px 2px; border-radius: 0 9px 9px 0; }
-  .resource-tools { grid-column: 1; grid-row: 1 / 7; z-index: 9; align-self: end; height: 30px; }
-  .resource-tools summary { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 15px; background: #ffffff0d; box-shadow: inset 0 0 0 1px #d9bd8040; color: var(--gold); font-weight: 700; cursor: pointer; }
-  .resource-tools[open] summary { background: #d9bd801f; }
+  .resource-tools { grid-column: 1; grid-row: 1 / 7; z-index: 9; align-self: end; display: flex; flex-direction: column; gap: 5px; height: var(--bank-h); overflow: hidden; }
+  .resource-tools summary { flex: none; display: block; padding: 0 0 0 2px; color: #c9b98a; font-size: 9.5px !important; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; list-style: none; cursor: default; }
+  .resource-tools summary::-webkit-details-marker, .resource-tools summary::marker { display: none; content: ''; }
   /* Export game report is a page action: it lives in the game menu. */
   .personal-report { display: none; }
   body.menu-open .personal-report { position: fixed; left: 30px; bottom: calc(var(--front-h) + 58px); z-index: 41; display: block; }
@@ -1632,23 +1633,24 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .personal-report .button { width: auto; min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; color: var(--gold); font-size: 12.5px; text-decoration: underline; }
   /* Opened, the bank and discard forms rise above the button, over the comms feed and the
      board's edge, so the button stays where it was. */
-  .resource-tools[open] { display: flex; flex-direction: column-reverse; height: auto; transform: translateY(calc(30px - 100%)); }
-  .resource-tools[open] > :not(summary) { position: relative; width: 340px; margin: 0; padding: 10px 12px; border: 1px solid #a49c6f99; border-top: 0; border-bottom: 0; border-radius: 0; background: #1b2b2d; }
-  .resource-tools[open] > summary + * { border-top: 1px solid #a49c6f99; border-radius: 10px 10px 0 0; box-shadow: 0 -12px 50px #0008; }
-  .resource-tools[open] > :last-child { margin-bottom: 6px; border-bottom: 1px solid #a49c6f99; border-radius: 0 0 10px 10px; }
-  .resource-tools[open] > summary { flex: none; width: max-content; }
-  .resource-tools[open] > :not(summary) { width: 400px; }
-  .resource-tools .bank-resource-picker { gap: 6px; }
-  .resource-tools .bank-resource-options { grid-template-columns: 1fr 1fr; gap: 4px; }
-  .resource-tools .bank-resource-button { min-height: 30px; padding: 3px 7px; gap: 5px; font-size: 11.5px; }
-  .resource-tools fieldset legend { margin-bottom: 3px; font-size: 10.5px; }
-  .resource-tools .resource-exchange-preview { margin: 6px 0; font-size: 12px; }
-  .resource-tools #bank-exchange-button { min-height: 32px; }
-  .resource-tools .resource-form { grid-template-columns: minmax(0, 1fr) 72px auto; align-items: end; gap: 6px; margin: 0; }
-  .resource-tools .resource-form label { gap: 2px; font-size: 10.5px; }
-  .resource-tools .resource-form :is(input, select) { min-height: 32px; padding: 4px 6px; font-size: 13px; }
-  .resource-tools .resource-form button { grid-column: auto; min-height: 32px; padding: 4px 10px; }
-  .resource-tools[open] > #resource-tools-help { position: relative; width: 340px; height: auto; overflow: visible; clip-path: none; color: var(--muted); font-size: 11.5px; }
+  .resource-tools > form { margin: 0; padding: 0; border: 0; background: none; }
+  .resource-tools .bank-trade-form { display: grid; gap: 5px; }
+  .resource-tools .bank-resource-picker { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 4px; }
+  .resource-tools fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+  .resource-tools fieldset legend { margin: 0 0 2px; padding: 0; color: var(--muted); font-size: 10px; }
+  .resource-tools .bank-resource-options { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+  .resource-tools .bank-resource-button { justify-content: center; min-height: 26px; padding: 0; gap: 0; }
+  .resource-tools .bank-resource-button > span:last-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .resource-tools .bank-resource-button .resource-symbol { width: 16px; height: 16px; }
+  .resource-tools .bank-resource-arrow { color: var(--gold); font-size: 12px; }
+  .resource-tools .resource-exchange-preview { min-height: 0; margin: 0; color: var(--muted); font-size: 10.5px; line-height: 1.3; }
+  .resource-tools .resource-exchange-preview .resource-chip { min-height: 18px; padding: 0 3px; }
+  .resource-tools .resource-exchange-preview .resource-symbol { width: 12px; height: 12px; }
+  .resource-tools #bank-exchange-button { min-height: 28px; padding: 2px 8px; font-size: 12px; }
+  .resource-tools .resource-form { display: grid; grid-template-columns: minmax(0, 1fr) 46px; gap: 4px; padding-top: 5px; border-top: 1px solid #d9bd8026; }
+  .resource-tools .resource-form label { display: block; gap: 0; font-size: 0; }
+  .resource-tools .resource-form :is(input, select) { width: 100%; min-height: 28px; padding: 2px 5px; font-size: 12px; }
+  .resource-tools .resource-form button { grid-column: 1 / -1; min-height: 28px; padding: 2px 8px; font-size: 12px; }
   /* Piles: Deck, In play and Discard as small stacks on the mat. */
   /* Piles: Deck face down, In play and Discard with their top card face up; the stack's edge
      thickens with the count (the same card stock as the hand). */
@@ -1763,8 +1765,8 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #market-panel .section-intro p:not([hidden]) { display: block; font-size: 11.5px; line-height: 1.35; }
   #market-panel .section-intro .hand-tools { flex: 0 0 auto; }
   .market-cards {
-    --mtop-max: 84px;
-    flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, var(--mtop-max)); gap: 5px;
+    --mtop-max: 150px;
+    flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 5px;
     margin: 0; padding: 0; align-content: start; container-type: inline-size;
   }
   .upgrade-market, .market-row { display: contents; }
@@ -1875,14 +1877,12 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   :is(#market-row, #upgrade-market) .game-card { padding: 2px 7px 3px; }
 }
 @media (min-width: 1024px) and (min-height: 860px) {
-  .market-cards { --mtop-max: 104px; }
-  :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
+  :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; }
 }
 @media (min-width: 1024px) and (min-height: 1000px) {
-  .market-cards { --mtop-max: 120px; }
-  :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 3; line-clamp: 3; }
+  :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 4; line-clamp: 4; }
 }
 /* Notices: in the comms column above the menu button, never over the hand, the map or a control. */
 @media (min-width: 1024px) and (min-height: 600px) {
-  .toast { left: 10px; right: auto; bottom: calc(clamp(90px, 11.5dvh, 110px) + 52px); width: calc(clamp(190px, 15vw, 250px) - 12px); max-width: none; align-items: flex-start; line-height: 1.35; }
+  .toast { left: 10px; right: auto; bottom: calc(clamp(90px, 11.5dvh, 110px) + 236px); width: calc(clamp(190px, 15vw, 250px) - 12px); max-width: none; align-items: flex-start; line-height: 1.35; }
 }
