@@ -85,21 +85,29 @@
 .resource-pips i.next { background: color-mix(in srgb, var(--resource) 22%, transparent); box-shadow: inset 0 0 0 1px var(--resource); }
 .resource-pips i.over { background: var(--red); box-shadow: none; }
 .resource-pips.bar { border-radius: 3px; background: linear-gradient(90deg, var(--resource) calc(var(--have) * 100%), color-mix(in srgb, var(--resource) 30%, transparent) 0 calc(var(--next) * 100%), #ffffff10 0); }
-.resource-box.at-cap .resource-pips i.full { background: #e8b44e; }
-.resource-box.at-cap { border-color: #e8b44e99; }
-.resource-box.at-cap .resource-limit, .resource-box.will-cap .resource-limit { color: #f0c76a; }
-.resource-box.over-cap { border-color: var(--red); }
-.resource-box.over-cap .resource-limit { color: var(--red); }
+.resource-box[data-fill="at-cap"] .resource-pips i.full { background: #e8b44e; }
+.resource-box[data-fill="at-cap"] { border-color: #e8b44e99; }
+.resource-box[data-fill="at-cap"] .resource-limit, .resource-box[data-fill="will-cap"] .resource-limit { color: #f0c76a; }
+.resource-box[data-fill="over-cap"] { border-color: var(--red); }
+.resource-box[data-fill="over-cap"] .resource-limit { color: var(--red); }
 .resource-box.cf-gain { animation: cf-gain .5s ease-out; }
 .resource-box.cf-spend { animation: cf-spend .45s ease-out; }
+.resource-box.cf-wasted { animation: cf-wasted .9s ease-out; }
 @keyframes cf-gain { 30% { box-shadow: 0 0 0 2px var(--resource), 0 0 14px var(--resource); } }
 @keyframes cf-spend { 30% { filter: brightness(.7); } }
-@media (prefers-reduced-motion: reduce) { .resource-box.cf-gain, .resource-box.cf-spend { animation: none; } }
+@keyframes cf-wasted { 15%, 55% { box-shadow: 0 0 0 2px #e8b44e, 0 0 16px #e8b44e; translate: -2px 0; } 35%, 75% { translate: 2px 0; } }
+@media (prefers-reduced-motion: reduce) { .resource-box.cf-gain, .resource-box.cf-spend, .resource-box.cf-wasted { animation: none; } }
 
 /* Motion (report #15): copies of cards in flight and production on its way to your reserves. */
 .cf-ghost { position: fixed; z-index: 70; pointer-events: none; }
 .cf-ghost > .game-card { width: 100%; height: 100%; min-height: 0; margin: 0 !important; overflow: hidden; --cf-fan: 0deg; --cf-arc: 0px; }
-.cf-ghost > .game-card > :not(.card-type, .card-name, .card-headline, .card-footer) { display: none; }
+/* In flight a card shows its top: price or gain, name and headline, as in the hand. */
+.cf-ghost > .game-card { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 5px 8px; }
+.cf-ghost > .game-card > :not(.card-name, .card-headline, .card-footer) { display: none; }
+.cf-ghost .card-footer { order: -1; display: flex; margin: 0; padding: 0; border: 0; }
+.cf-ghost .card-footer small { display: none; }
+.cf-ghost .card-name { margin: 0; font-size: 14.5px; line-height: 1.15; }
+.cf-ghost .card-headline { font-size: 12px; font-weight: 650; }
 .cf-floater {
   position: fixed; z-index: 75; display: inline-flex; align-items: center; gap: 2px; padding: 1px 6px 1px 7px; pointer-events: none;
   border: 1px solid var(--resource); border-radius: 999px; background: color-mix(in srgb, var(--resource) 28%, #0f1d22); color: #fff; font-size: 12px; font-weight: 800;

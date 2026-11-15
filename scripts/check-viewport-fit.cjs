@@ -145,6 +145,7 @@ const CASES = [
   { name: 'operations, inspect view (pointed-at hand card)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), hover: '#hand-row .game-card:nth-child(3)', expect: 'inspect' },
   { name: 'operations, inspect view (last of 8 cards)', save: operationsState(longHand), hover: '#hand-row .game-card:last-child', expect: 'inspect' },
   { name: 'operations, drag Move onto your units', save: withFleet(operationsState(['move', 'construct', 'move'])), drag: '#hand-row .game-card[data-order="move"]', expect: 'dragged' },
+  { name: 'operations, drag Construct onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', expect: 'built' },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -241,7 +242,8 @@ const MEASURE = `(() => {
     if (t.top < -1 || t.bottom > H + 1 || t.left < -1 || t.right > W + 1) problems.push('card top outside viewport: ' + label(top));
     const summary = top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
-    if (!document.querySelector(':is(dialog[open], body.menu-open, #fleet-panel.active, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
+    // An open Sector Scan (a popover over the map) may cover card tops while it is open.
+    if (!document.querySelector(':is(dialog[open], body.menu-open, #fleet-panel.active, .sector-popover:popover-open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
       const c = chip.getBoundingClientRect(), hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       if (!hit || !top.contains(hit)) { problems.push('gain badge covered in ' + label(top)); break; }
     }
@@ -374,6 +376,11 @@ async function runCase(browser, origin, testCase, [width, height]) {
     if (card.scrollHeight > card.clientHeight + 2) problems.push('inspect card text cut');
     return problems;
   })()`));
+  if (testCase.expect === 'built') {
+    if (!steps[0]?.arrow || !steps[0]?.hover) problems.push('drag did not mark the hex under the pointer');
+    if (!(await browser.evaluate('document.querySelector("#sector-popover").matches(":popover-open") && !!document.querySelector("#hand-row .game-card.order-selected")')))
+      problems.push('dropping Construct on a hex did not open its build choices');
+  }
   if (testCase.expect === 'dragged') {
     if (!steps[0]?.arrow || !steps[0]?.hover) problems.push('drag did not mark the hex under the pointer');
     if (!(await browser.evaluate('!!document.querySelector(".hex.source") && !!document.querySelector("#hand-row .game-card.order-selected") && !document.querySelector(".cf-drag-arrow, .cf-drop-target")')))

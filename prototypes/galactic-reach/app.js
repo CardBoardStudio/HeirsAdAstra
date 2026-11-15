@@ -3654,7 +3654,7 @@ function createGalacticReach(options = {}) {
       const have = player.resources[resource], cap = limits[resource], next = production[resource];
       const fill = have > cap ? 'over-cap' : have >= cap ? 'at-cap' : have + next > cap ? 'will-cap' : '';
       return `
-      <article class="resource-box ${resource} ${fill}" style="--resource:var(--${resource})" data-resource="${resource}" aria-label="${RESOURCE_NAMES[resource]}: ${have} available, limit ${cap}, +${next} per round${fill==='over-cap'?', above the limit':fill==='at-cap'?', full':fill==='will-cap'?', next production will fill it':''}">
+      <article class="resource-box ${resource}" style="--resource:var(--${resource})" data-resource="${resource}"${fill?` data-fill="${fill}"`:''} aria-label="${RESOURCE_NAMES[resource]}: ${have} available, limit ${cap}, +${next} per round${fill==='over-cap'?', above the limit':fill==='at-cap'?', full':fill==='will-cap'?', next production will fill it':''}">
         ${resourceDot(resource)}
         <span class="resource-name">${RESOURCE_NAMES[resource]}</span>
         <strong class="resource-amount">${have}</strong>
@@ -4415,7 +4415,7 @@ function createGalacticReach(options = {}) {
     const player=state.players[viewSeat];
     const producers=replayMode?[]:Object.entries(state.planets).filter(([coord,planet])=>RESOURCES.includes(planet.type)
       && knownToViewer(state.clusters[planet.cluster]) && (planet.owner===viewSeat || fleetControllersAt(coord).includes(viewSeat))).map(([coord,planet])=>({coord,resource:planet.type}));
-    return { replay: replayMode, round: state.round, phase: state.phase, resources: {...player.resources},
+    return { replay: replayMode, round: state.round, phase: state.phase, resources: {...player.resources}, limits: resourceLimits(viewSeat),
       deck: replayMode?player.deckCount:player.deck.length, discard: replayMode?player.discardCount:player.discard.length,
       inPlay: player.inPlay.length, military: player.military?.length||0, producers };
   }
