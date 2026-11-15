@@ -93,6 +93,7 @@ require('./test-balance-package.cjs');
 require('./test-split-moves.cjs');
 
 require('./test-playtest-feedback.cjs');
+require('./test-starter-conversion.cjs');
 require('./test-probe-discovery.cjs');
 require('./test-unlimited-buys.cjs');
 require('./test-strategic-bots.cjs');

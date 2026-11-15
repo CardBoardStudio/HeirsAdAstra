@@ -7,7 +7,7 @@ function card(g,key,id=key,extra={}){const c={key,id,...extra};g.p.hand.push(c);
 function battle(g){let n=0;while(g.s.pendingCombat&&n++<15){const a=g.a(),seat=a.activeSeat(),acts=a.legalActions(seat);a.applyAction(seat,acts.find(a=>a.type==='combat_stay')||acts.find(a=>a.tactic==='concentratedFire')||acts[0]);}assert(!g.s.pendingCombat);}
 {
  const g=game();assert.equal(g.s.version,37);assert.equal(g.s.rulesRevision,42);assert.equal(Object.values(g.s.planets).filter(p=>p.special==='relic').length,13);assert(g.s.clusters[12].coords.some(k=>g.s.planets[k].special==='relic'));
- assert.equal(Object.keys(g.e.RELIC_CARDS).length,23);assert(!g.e.ALL_CARDS.voidglassAstrolabe);
+ assert.equal(Object.keys(g.e.RELIC_CARDS).length,15);assert(!g.e.ALL_CARDS.voidglassAstrolabe);
  for(const key of ['signalRelay','surveyNetwork','tacticalBriefing']){const d=g.e.ALL_CARDS[key];assert.equal(d.effect.draw,2);assert(Object.values(d.cost).every(n=>n<=4));}
  for(const d of Object.values(g.e.ALL_CARDS)){assert(!/reuse it each time/i.test(d.text));if(d.order==='special'&&d.effect)assert(d.effect.draw||d.effect.limits||d.effect.prestige||d.effect.trashStarters,'No resource-only special orders');}
 }
@@ -22,16 +22,16 @@ function battle(g){let n=0;while(g.s.pendingCombat&&n++<15){const a=g.a(),seat=a
 }
 {
  const g=game(),c=card(g,'cargoExpansion');const limits=plain(g.p.resourceLimits);assert(g.e.resolveHumanSpecial(c,g.e.ALL_CARDS[c.key],0));for(const r of g.e.RESOURCES)assert.equal(g.p.resourceLimits[r],limits[r]+2);assert(!g.p.inPlay.some(x=>x.id===c.id));assert.equal(g.p.storagePurchases,0);
- g.s.activePlayer=0;card(g,'cargoExpansion','convert');assert(g.e.convertCard(0,'convert'));assert(g.p.inPlay.some(c=>c.id==='convert'));
+ g.s.activePlayer=0;card(g,'cargoExpansion','convert');assert(!g.e.convertCard(0,'convert'));assert(g.p.hand.some(c=>c.id==='convert'));
 }
 {
- const g=game();card(g,'move');g.s.activePlayer=1;g.s.pendingConstruct={playerId:1,cardId:'other'};g.p.resources={matter:4,energy:4,biomass:4,data:4};g.p.resourceLimits={matter:4,energy:4,biomass:4,data:4};const acts=g.a().legalActions(0);assert(acts.some(a=>a.type==='resource'));assert(acts.some(a=>a.type==='bank_trade'));assert(acts.some(a=>a.type==='increase_storage'));assert(acts.every(a=>['resource','bank_trade','increase_storage'].includes(a.type)));
+ const g=game();card(g,'move','move',{starter:true});g.s.activePlayer=1;g.s.pendingConstruct={playerId:1,cardId:'other'};g.p.resources={matter:4,energy:4,biomass:4,data:4};g.p.resourceLimits={matter:4,energy:4,biomass:4,data:4};const acts=g.a().legalActions(0);assert(acts.some(a=>a.type==='resource'));assert(acts.some(a=>a.type==='bank_trade'));assert(acts.some(a=>a.type==='increase_storage'));assert(acts.every(a=>['resource','bank_trade','increase_storage'].includes(a.type)));
  g.a().applyAction(0,acts.find(a=>a.type==='resource'));assert.equal(g.p.resources.energy,4,'Full limits allow conversion and lose excess');assert.equal(g.s.activePlayer,1);assert.equal(g.s.pendingConstruct.cardId,'other');assert(g.e.bankTrade(0,'matter','data'));g.p.resources.matter=1;assert(g.e.increaseStorage(0,{matter:1,energy:1,biomass:1,data:1}));assert.equal(g.s.activePlayer,1);assert.equal(g.s.pendingConstruct.cardId,'other');
  assert.throws(()=>g.a().applyAction(0,{type:'pass'}),/Illegal/);
 }
 {
  const g=game(),c=card(g,'move','m',{starter:true});g.s.phase='buy';assert(g.e.upgradeStarter(0,c.id,'energy'));assert.equal(g.p.resources.energy,18);assert(g.e.upgradeStarter(0,c.id,'data'));assert.equal(g.p.resources.data,17);assert.equal(c.level,3);assert(!g.e.upgradeStarter(0,c.id,'matter'));
- g.s.phase='operations';g.p.deck=[];g.p.discard=[{id:'draw',key:'construct'}];assert(g.e.convertCard(0,c.id));assert.deepEqual(plain(g.p.hand.map(x=>x.id)),['draw']);assert(g.p.inPlay.some(x=>x.id===c.id));
+ g.s.phase='operations';g.p.deck=[];g.p.discard=[{id:'draw',key:'construct'}];assert(!g.e.convertCard(0,c.id));assert(g.p.hand.some(x=>x.id===c.id));assert(!g.p.inPlay.some(x=>x.id===c.id));
 }
 {
  const g=game(),c=card(g,'move','m',{starter:true,upgraded:true,level:3});g.p.deck=[{id:'bonus',key:'construct'}];g.s.fleets={'0,0':{0:unit(0,0,1)}};assert.equal(g.e.movementRange(unit(0,0,1),c),3);const a=g.a().legalActions(0).find(a=>a.type==='move'&&a.destination==='0,0');assert(a);g.a().applyAction(0,a);assert.equal(g.s.activePlayer,1);assert(g.p.hand.some(c=>c.id==='bonus'));assert(g.p.inPlay.some(c=>c.id==='m'));
@@ -46,11 +46,11 @@ function battle(g){let n=0;while(g.s.pendingCombat&&n++<15){const a=g.a(),seat=a
  const g=game(),coord=g.s.clusters[4].coords[1];Object.assign(g.s.planets[coord],{owner:1,upgrade:'starbase'});g.s.fleets={[coord]:{0:unit(0,0,2)}};card(g,'move');const a=g.a().legalActions(0).find(a=>a.type==='move'&&a.source===coord&&a.destination===coord&&a.units.fleet===2);assert(a);g.a().applyAction(0,a);assert(g.s.pendingCombat,'Stationary Move starts a new fight');assert.equal(g.p.inPlay.length,1);battle(g);assert.equal(g.s.activePlayer,1);
 }
 {
- const g=game();card(g,'move','ai-iii',{starter:true,upgraded:true,level:3});g.p.resources={matter:0,energy:0,biomass:0,data:0};g.p.discard=[{key:'construct',id:'ai-draw'}];g.e.aiStockpile(0);assert(g.p.hand.some(c=>c.id==='ai-draw'));assert(g.p.inPlay.some(c=>c.id==='ai-iii'));
+ const g=game();card(g,'move','ai-iii',{starter:true,upgraded:true,level:3});g.p.resources={matter:0,energy:0,biomass:0,data:0};g.p.discard=[{key:'construct',id:'ai-draw'}];g.e.aiStockpile(0);assert(!g.p.hand.some(c=>c.id==='ai-draw'));assert(g.p.hand.some(c=>c.id==='ai-iii'));
 }
 
 // Combined balance and feedback: market second builds survive a commissioning battle too.
-for(const key of ['prefabYards','orbitalFoundry']) {
+for(const key of ['prefabYards']) {
  const g=game(),coord=g.s.clusters[0].coords[1];assert(g.e.buildUpgrade(0,coord,'starbase'));
  g.s.fleets={[coord]:{1:unit(0,0,1)}};const c=card(g,key);
  assert(g.e.performConstructOrder(0,coord,'fleet',c));assert(g.s.pendingCombat);battle(g);
@@ -75,4 +75,4 @@ for(const key of ['prefabYards','orbitalFoundry']) {
 {
  const crypto=require('node:crypto');for(const [file,hash] of Object.entries(JSON.parse(fs.readFileSync('scripts/workstation-integration-archive-hashes.json','utf8'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),hash,file);
 }
-console.log('Playtest Feedback and integration: center site, 23 relics, combined card, closest signals, capacity, off-turn authority, III timing, moon Shipyards, spawn/stationary combat, market continuations, portal draw and immutable archives passed.');
+console.log('Playtest Feedback and integration: center site, 15 relics, combined card, closest signals, capacity, off-turn authority, III timing, moon Shipyards, spawn/stationary combat, market continuations, portal draw and immutable archives passed.');

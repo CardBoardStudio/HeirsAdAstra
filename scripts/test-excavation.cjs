@@ -30,7 +30,7 @@ function fixture() {
   assert.equal(s.clusters.filter(c=>c.kind==='world').length,13);
   assert.equal(s.clusters.filter(c=>c.kind==='moon').length,4);
   assert.equal(Object.values(s.planets).filter(p=>p.special==='relic').length,13);
-  assert.equal(s.relicRow.length,3); assert.equal(s.relicDeck.length,20);
+  assert.equal(s.relicRow.length,3); assert.equal(s.relicDeck.length,12);
   assert(!e.STRUCTURES.research && e.BASIC_CARDS.probe.order==='probe');
   assert(s.players.every(p=>p.relicsExcavated===0));
   for (const seat of [0,1,2,3]) {
@@ -56,7 +56,7 @@ for (const index of [0,1,2]) {
   assert(!g.s.planets[g.coord].upgrade && !g.s.planets[g.coord].hasColony,'No station or ownership created');
   assert.equal(g.p.relicsExcavated,1);assert.equal(g.e.calculatePrestige(0),5);
   assert.equal(g.s.activePlayer,1,'Excavation uses exactly one action');
-  assert.equal(g.s.relicRow[index].id,top.id);assert.equal(g.s.relicDeck.length,19);
+  assert.equal(g.s.relicRow[index].id,top.id);assert.equal(g.s.relicDeck.length,11);
   row.forEach((card,i)=>{if(i!==index)assert.equal(g.s.relicRow[i].id,card.id);});
   assert.throws(()=>g.a.applyAction(0,action),/Illegal action/,'Cannot repeat a consumed card');
 }
@@ -83,10 +83,10 @@ for (const bad of ['missingExplorer','missingCost','wrongSeat','buy','alreadyCla
     const choice=g.s.relicRow[Math.min(n%3,g.s.relicRow.length-1)];rewards.add(choice.key);
     const a=g.freshAdapter(), action=a.legalActions(0).find(a=>a.type==='excavate'&&a.coord===coord&&a.relic===choice.id);
     assert(action);a.applyAction(0,action);
-    assert.equal(g.s.relicRow.length,Math.min(3,22-n));
+    assert.equal(g.s.relicRow.length,Math.min(3,14-n));
     assert.equal(g.p.relicsExcavated,n+1);
   }
-  assert.equal(rewards.size,13);assert.equal(g.s.relicRow.length,3);assert.equal(g.s.relicDeck.length,7);
+  assert.equal(rewards.size,13);assert.equal(g.s.relicRow.length,2);assert.equal(g.s.relicDeck.length,0);
   assert.equal(Object.values(g.s.planets).filter(p=>p.special==='relic').length,0);
   assert.equal(g.e.calculatePrestige(0),29,'Relic Prestige persists after its reward leaves the hand');
 }

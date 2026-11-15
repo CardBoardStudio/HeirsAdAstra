@@ -53,7 +53,7 @@ function target(s,coord){const i=s.clusters.length,[q,r]=coord.split(',').map(Nu
 {
  const{e,s}=game(),p=s.players[1];p.strategy='military';p.hand=[{id:'pathfinder',key:'slipstreamCharts'}];s.activePlayer=1;
  s.planets['1,0']={q:1,r:0,cluster:0,type:'matter',owner:0,occupiedBy:null,hasColony:true,upgrade:null};s.fleets={'0,0':{1:{settler:0,explorer:0,fleet:1}}};
- assert.equal(e.chooseAiMove(1,p.hand[0]),null,'Pathfinder cannot choose its forbidden attack');const before=JSON.stringify(s);e.runAiOperation();assert.notEqual(JSON.stringify(s),before);assert(p.inPlay.some(c=>c.id==='pathfinder'));assert.equal(p.resources.data,2,'An unavailable order may be converted normally instead; no illegal Move was spent');
+ assert.equal(e.chooseAiMove(1,p.hand[0]),null,'Pathfinder cannot choose its forbidden attack');const before=JSON.stringify(s);e.runAiOperation();assert.notEqual(JSON.stringify(s),before);assert(p.hand.some(c=>c.id==='pathfinder'));assert.deepEqual(plain(p.resources),JSON.parse(before).players[1].resources,'An unavailable market order stays in hand; it cannot convert for resources');
 }
 // 31.36 #victory: the target is a table setting, 40 by default; a table may choose 20.
 for(const [target,points] of [[undefined,39],[undefined,40],[undefined,41],[20,19],[20,20],[20,21]]){const{e,s}=game();if(target)s.victoryTarget=target;s.players[0].cardPrestige=points-3;assert.equal(e.calculatePrestige(0),points);e.finishRound();assert.equal(s.winner,points>=(target||40)?0:null);}

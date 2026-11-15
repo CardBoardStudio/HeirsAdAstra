@@ -46,7 +46,7 @@ function createGalacticAdapter(e) {
     if(!Number.isInteger(seat)||seat<0||seat>=4||s().winner!==null)return [];
     if(activeSeat()!==seat) {
       if(!e.canManageResources(seat))return [];
-      const p=s().players[seat],free=p.hand.map(card=>{const gain=e.cardResources(card),def=e.ALL_CARDS[card.key];if(def.wildcard)gain.data=(gain.data||0)+def.wildcard;return {type:'resource',card:card.id,key:card.key,gain};});
+      const p=s().players[seat],free=p.hand.filter(e.canConvertCard).map(card=>({type:'resource',card:card.id,key:card.key,gain:e.cardResources(card)}));
       if(e.canIncreaseStorage(seat))for(const allocation of e.storageAllocations())free.push({type:'increase_storage',allocation});
       for(const giveType of e.RESOURCES)for(const getType of e.RESOURCES)if(e.canBankTrade(seat,giveType,getType))free.push({type:'bank_trade',giveType,getType});
       return e.clone(free);
@@ -71,7 +71,7 @@ function createGalacticAdapter(e) {
       actions.push({type:'finish_construct'});
       for(const coord of Object.keys(state.planets))for(const kind of [...Object.keys(e.STRUCTURES),...Object.keys(e.SHIP_STATS)])
         if(e.canSecondConstruct(seat,coord,kind))actions.push({type:'second_build',coord,kind});
-      p.hand.forEach(card=>{const gain=e.cardResources(card),def=e.ALL_CARDS[card.key];if(def.wildcard)gain.data=(gain.data||0)+def.wildcard;actions.push({type:'resource',card:card.id,key:card.key,gain});});
+      p.hand.filter(e.canConvertCard).forEach(card=>actions.push({type:'resource',card:card.id,key:card.key,gain:e.cardResources(card)}));
     } else if (state.phase === 'buy') {
       actions.push({ type: 'finish_buy' });
       // #buy: any number of affordable market purchases, including refilled cards.
@@ -116,8 +116,7 @@ function createGalacticAdapter(e) {
       p.hand.forEach(card => {
         const def = e.ALL_CARDS[card.key], base = { card: card.id, key: card.key };
         const gain = e.cardResources(card);
-        if (def.wildcard) gain.data = (gain.data || 0) + def.wildcard;
-        actions.push({ type: 'resource', ...base, gain });
+        if (e.canConvertCard(card)) actions.push({ type: 'resource', ...base, gain });
         if (state.pendingColonyBuild) return;
         if (def.order === 'colonize') Object.keys(state.planets).forEach(coord => {
           if (e.colonizePlanet(seat, coord, { tag: def.tag }, true)) actions.push({ type: 'colonize', ...base, coord });
@@ -155,7 +154,7 @@ function createGalacticAdapter(e) {
         }
       });
     }
-    if(state.phase==='buy'&&e.canManageResources(seat))p.hand.forEach(card=>actions.push({type:'resource',card:card.id,key:card.key,gain:e.cardResources(card)}));
+    if(state.phase==='buy'&&e.canManageResources(seat))p.hand.filter(e.canConvertCard).forEach(card=>actions.push({type:'resource',card:card.id,key:card.key,gain:e.cardResources(card)}));
     if (e.canIncreaseStorage(seat)) for(const allocation of e.storageAllocations()) actions.push({type:'increase_storage',allocation});
     if (e.canManageResources(seat)) {
       for (const resource of e.RESOURCES) {

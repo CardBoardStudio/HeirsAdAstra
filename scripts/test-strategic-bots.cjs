@@ -62,8 +62,8 @@ for(const strategy of ['military','economy','expansion']) {
   const g=game();g.p.resourceLimits={matter:4,energy:4,biomass:4,data:4};g.p.resources={matter:4,energy:4,biomass:4,data:4};
   g.p.hand=[{id:'cantrip',key:'move',starter:true,upgraded:true,level:3}];
   g.p.deck=[{id:'points',key:'ascendancyCodex'},{id:'draw',key:'signalRelay'}];
-  g.e.runAiOperation();assert(g.p.inPlay.some(c=>c.id==='cantrip'));assert(g.p.inPlay.some(c=>c.id==='draw'));
-  assert(g.p.hand.some(c=>c.id==='points'),'A card drawn by conversion is considered before passing');
+  g.e.runAiOperation();assert(!g.p.inPlay.some(c=>c.id==='cantrip'));assert(g.p.hand.some(c=>c.id==='cantrip'));
+  assert.deepEqual(plain(g.p.deck.map(c=>c.id)),['points','draw'],'A level III card cannot convert to draw without a legal order');
 }
 {
   const g=game();g.s.fleets={'0,-6':{0:{fleet:2}}};g.p.hand=[{id:'build',key:'construct'}];
@@ -78,4 +78,4 @@ for(const strategy of ['military','economy','expansion']) {
   assert.deepEqual(plain(g.a.observe(1).cardStats),plain(stats),'Printed card metadata is independent of private ownership');
   assert(!JSON.stringify(stats).includes('private-hand-identifier'));
 }
-console.log('Strategic rivals: III in every pile/profile, scoring reserves, Colony/portal defense, guards, useful cards/rewards, conversion draws and information privacy passed.');
+console.log('Strategic rivals: III in every pile/profile, scoring reserves, Colony/portal defense, guards, useful cards/rewards, order-only III draws and information privacy passed.');
