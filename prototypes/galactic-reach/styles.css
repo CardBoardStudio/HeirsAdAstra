@@ -1175,7 +1175,6 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 .hex.data { --hex-fill:#8d7d9d; }
 .hex:is(.matter,.energy,.biomass,.data) .hex-buildings { color:#fff9ec; }
 .hex:is(.matter,.energy,.biomass,.data) .hex-buildings .board-icon { filter:drop-shadow(0 1px 1px #07101a); }
-.hex.owned::before { inset:4px; }
 .game-card .resource-symbol, .game-card .inline-resource .resource-symbol { width:24px; height:24px; }
 .game-card .resource-chip { min-height:32px; }
 .game-card .resource-dot { min-width:26px; min-height:26px; }
@@ -1379,6 +1378,26 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 .game-log .log-round::after { content: ''; display: inline-block; width: 50%; height: 1px; vertical-align: middle; background: #d9bd8040; }
 .game-log .log-entry { list-style: none; }
 .game-log .log-latest { color: var(--text); font-weight: 600; }
+
+/* Ownership: a ring in the owner's colour traces the outside of each held planet,
+   and every building sits on a dark token in its owner's colour. Terrain fill is
+   never tinted, so resource colours stay readable under the ring. */
+.hex .territory-edge { position:absolute; inset:0; width:100%; height:100%; z-index:1; display:none; overflow:hidden; fill:none; pointer-events:none; }
+.hex.territory .territory-edge { display:block; }
+.territory-edge line { display:none; stroke-linecap:square; }
+.territory-edge line.outer { display:inline; }
+.territory-edge .territory-casing { stroke:#07101a; stroke-width:24; }
+.territory-edge .territory-line { stroke:var(--territory); stroke-width:15; filter:drop-shadow(0 0 3px var(--territory)); }
+.hex .hex-pieces .hex-buildings.owned .board-icon {
+  border-radius:50%; aspect-ratio:1; width:auto; max-height:100%;
+  background:radial-gradient(circle at 34% 28%,#2a3a46,#0a141c 72%);
+  box-shadow:inset 0 0 0 2px var(--building-owner),inset 0 -2px 3px #0009,0 2px 3px #000a;
+  color:var(--building-owner); filter:none;
+}
+.hex .hex-pieces .hex-buildings.owned .board-glyph { width:66%; height:66%; stroke-width:2.4; }
+.territory-swatch { display:inline-flex; gap:2px; flex:none; }
+.territory-swatch i { width:10px; height:10px; border:2px solid var(--territory); border-radius:2px; box-shadow:0 0 0 1px #07101a; }
+.territory-key .territory-swatch { margin-right:7px; vertical-align:-1px; }
 /* Desktop table: game screens fit the viewport at 1280x720 and larger, so no scrolling is
    needed to view or play (AGENTS.md). The window is one table surface. The board lies in the
    middle, as large as the height allows, with the race to the Prestige goal printed along its
