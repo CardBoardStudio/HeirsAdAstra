@@ -174,11 +174,14 @@
     const market = new Map($$('#market-row > .game-card[data-card-id]').map(card => [card.dataset.cardId, card]));
     const gained = Object.keys(after.resources).filter(r => after.resources[r] > before.resources[r]).sort((a, b) => (after.resources[b] - before.resources[b]) - (after.resources[a] - before.resources[a]));
     // Hand: new cards come off the deck; cards that left go to the pile or reserve they joined.
+    // A new round discards the whole hand and deals a fresh one, even when a reshuffle
+    // brings the same cards straight back.
+    const newRound = after.round !== before.round;
     let drawn = 0;
-    for (const [id, card] of hand) if (!saved.hand.has(id)) arrive(card, $('#deck-button'), 70 * drawn++);
+    for (const [id, card] of hand) if (newRound || !saved.hand.has(id)) arrive(card, $('#deck-button'), 260 + 70 * drawn++);
     let left = 0;
-    for (const [id, card] of saved.hand) if (!hand.has(id)) {
-      const to = gained.length && after.inPlay > before.inPlay ? $(`.resource-box[data-resource="${gained[0]}"]`)
+    for (const [id, card] of saved.hand) if (newRound || !hand.has(id)) {
+      const to = newRound ? $('#discard-button') : gained.length && after.inPlay > before.inPlay ? $(`.resource-box[data-resource="${gained[0]}"]`)
         : after.inPlay > before.inPlay ? $('#in-play-button') : after.discard > before.discard ? $('#discard-button') : null;
       ghost(card, shown(to) ? to : null, { delay: 50 * left++ });
     }
@@ -198,6 +201,9 @@
       after.producers.filter(p => gained.includes(p.resource)).slice(0, 24).forEach((p, i) => floater($(`.hex[data-coord="${p.coord}"]`), p.resource, 60 * i));
     for (const resource of Object.keys(after.resources))
       if (after.resources[resource] !== before.resources[resource]) rollNumber(resource, before.resources[resource], after.resources[resource]);
+    // Production that a full reserve could not hold is lost: that reserve flashes.
+    if (newRound) for (const resource of new Set(after.producers.map(p => p.resource)))
+      if (after.resources[resource] <= before.resources[resource] && after.resources[resource] >= after.limits[resource]) $(`.resource-box[data-resource="${resource}"]`)?.classList.add('cf-wasted');
   }
   function rendered(next) {
     fanHand();
