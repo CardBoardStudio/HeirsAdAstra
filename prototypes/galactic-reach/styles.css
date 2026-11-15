@@ -2001,20 +2001,13 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
       0 1px 0 #3b5560, 0 2px 0 #2a3f47, 0 3px 0 #1d2e35, 0 4px 0 #142227, 0 5px 0 #0e181c, 0 18px 30px -6px #000c, 0 34px 60px -20px #000a !important; }
   /* Standings: faction tiles (thick card in each faction's colour). */
 
-  /* The comms feed: one paper sheet, slightly turned, lying left of the board. */
-  .log-panel { border: 0 !important; border-radius: 3px !important; backdrop-filter: none !important;
-    background: linear-gradient(175deg, #f4ecd8, #e8dcc0) !important; transform: rotate(-1.4deg) !important;
-    box-shadow: 0 1px 1px #0005, 0 10px 18px -4px #000a, 0 24px 40px -18px #0009 !important; }
-  .log-panel::before { color: #7b6331 !important; }
-  .game-log { color: #2c2a22 !important; scrollbar-color: #8a7a5566 transparent !important; }
-  .game-log li { border-bottom-color: #2c2a221a !important; }
-  .game-log .log-latest { color: #15140f !important; background: #2c2a2212 !important; }
-  .game-log .log-round { color: #8a6416 !important; }
-  .game-log .log-round::after { background: #8a641640 !important; }
-  .game-log .log-res b, .game-log .log-text b { color: #15140f !important; }
-  .game-log .log-prestige { color: #8a6416 !important; }
-  .game-log .log-icon { background: color-mix(in srgb, var(--kind) 18%, #f4ecd8) !important; box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--kind) 70%, #3a3020) !important; color: color-mix(in srgb, var(--kind) 70%, #241d10) !important; }
-  .game-log .log-who.log-table { background: #d9cba6 !important; color: #6b5420 !important; }
+  /* The comms log: a small card printed like the player mat. */
+  .log-panel { border: 0 !important; border-radius: 6px !important; backdrop-filter: none !important; transform: none !important;
+    background: linear-gradient(170deg, #3d5047, #2b3a34) !important;
+    box-shadow: inset 0 0 0 2px #c2a76b55, 0 1px 0 #55675f, 0 2px 0 #24312c, 0 3px 0 #18221f, 0 12px 20px -6px #000b !important; }
+  .log-panel::before { content: none !important; }
+  .game-log li { border-bottom-color: #d9bd8018; }
+  .game-log .log-latest { background: #ffffff10; }
   /* The bank: a tray with a compartment of cubes for each resource. */
   .resource-tools { border: 0 !important; border-radius: 12px !important;
     background: linear-gradient(170deg, #4a3a28, #33281b) !important;
@@ -2441,3 +2434,20 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 #resource-grid .mat-pips i.five.full { box-shadow: 0 1px 1px #000a, 0 0 0 1px #f6e7b0b0; }
 /* The fence when the stock has gone past it: ringed in red. */
 #resource-grid .mat-pips.now i.cap.full { box-shadow: 0 0 0 2px var(--red); }
+
+/* ==== The comms log on the table: a small card of the latest three entries, printed like the
+   player mat; selecting it opens the whole log in place. Phones show the whole log in the Comms
+   drawer. ==== */
+.log-toggle { display: none; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .log-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; min-height: 22px; margin: 0 0 3px; padding: 0 2px; border: 0; background: none; color: #c9b98a; font-family: inherit; font-size: 9px; font-weight: 800; line-height: 1; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+  .log-toggle small { color: #9fb0a8; font-size: 9.5px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .log-toggle small::after { content: ' ▾'; }
+  .log-panel.open .log-toggle small::after { content: ' ▴'; }
+  .log-toggle:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; border-radius: 4px; }
+  .log-panel:not(.open) { align-self: start !important; cursor: pointer; }
+  .log-panel:not(.open) .game-log > :not(.log-recent) { display: none; }
+  .log-panel:not(.open) .game-log { overflow: hidden; -webkit-mask-image: none; mask-image: none; }
+  .log-panel.open { z-index: 30 !important; }
+  .log-panel.open .game-log .log-text { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; }
+}

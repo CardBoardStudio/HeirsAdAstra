@@ -3905,16 +3905,19 @@ function createGalacticReach(options = {}) {
       .replace(/(\d+) (?:permanent )?Prestige/g, (_, n) => `<span class="log-prestige">${n}★</span>`)
       .replace(/(\d+) (Matter|Energy|Biomass|Data)\b/g, (_, n, name) => `<span class="log-res ${LOG_RESOURCE[name]}">${resourceDot(LOG_RESOURCE[name])}<b>${n}</b></span>`);
   }
+  // On the table the log is a small card of the latest LOG_RECENT entries until it is opened.
+  const LOG_RECENT = 3;
   function renderLog() {
     const parts = [];
     let lastRound = null;
     state.log.slice(0,18).forEach((item,index) => {
       const match = /^R(\d+) · ([\s\S]*)$/.exec(item), round = match ? match[1] : null, text = match ? match[2] : item;
-      if (round && round !== lastRound) { parts.push(`<li class="log-round" aria-hidden="true"><span>Round ${round}</span></li>`); lastRound = round; }
+      const recent = index < LOG_RECENT ? ' log-recent' : '';
+      if (round && round !== lastRound) { parts.push(`<li class="log-round${recent}" aria-hidden="true"><span>Round ${round}</span></li>`); lastRound = round; }
       const player = state.players.find(candidate => text.startsWith(candidate.name) && !/^[\p{L}\p{N}]/u.test(text.slice(candidate.name.length)));
       const [kind] = LOG_KINDS.find(([,pattern]) => pattern.test(text)) || ['event'];
       const who = player ? `<span class="log-who" style="--player:${player.color}">${esc(player.name.split(/\s+/).filter(Boolean).map(word => word[0]).join('').slice(0,3).toUpperCase())}</span>` : '<span class="log-who log-table">✦</span>';
-      parts.push(`<li class="log-entry log-kind-${kind}${index===0?' log-latest':''}"><span class="sr-only">${esc(item)}</span><span class="log-line" aria-hidden="true">${who}<span class="log-icon">${logIcon(kind)}</span><span class="log-text">${logVisual(player ? text.slice(player.name.length).trimStart() : text)}</span></span></li>`);
+      parts.push(`<li class="log-entry log-kind-${kind}${index===0?' log-latest':''}${recent}"><span class="sr-only">${esc(item)}</span><span class="log-line" aria-hidden="true">${who}<span class="log-icon">${logIcon(kind)}</span><span class="log-text">${logVisual(player ? text.slice(player.name.length).trimStart() : text)}</span></span></li>`);
     });
     $('#game-log').innerHTML = parts.join('');
   }
@@ -4579,6 +4582,19 @@ function createGalacticReach(options = {}) {
     document.body.dataset.drawer = name || '';
     $$('.phone-drawers [data-drawer]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.drawer === name)));
   }
+  function setupLogCard() {
+    const panel = $('.log-panel'), toggle = $('#log-toggle');
+    if (!panel?.addEventListener || !toggle?.addEventListener || typeof document === 'undefined') return;
+    const show = open => {
+      panel.classList.toggle('open', open);
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.querySelector('small').textContent = open ? 'Show less' : 'Show all';
+    };
+    toggle.addEventListener('click', event => { event.stopPropagation(); show(!panel.classList.contains('open')); });
+    panel.addEventListener('click', () => { if (!panel.classList.contains('open')) show(true); });
+    document.addEventListener('click', event => { if (panel.classList.contains('open') && !panel.contains(event.target)) show(false); });
+    document.addEventListener('keydown', event => { if (event.key === 'Escape' && panel.classList.contains('open')) { show(false); toggle.focus(); } });
+  }
   function setupPhoneCardSheet() {
     const row = $('#hand-row');
     if (!row?.addEventListener || typeof document === 'undefined' || !document.createElement || typeof document.body?.append !== 'function') return;
@@ -4723,6 +4739,7 @@ function createGalacticReach(options = {}) {
     $('#discard-resource-amount').addEventListener('input',renderResourceTools);
     setupMatTrades();
     setupPhoneCardSheet();
+    setupLogCard();
     $('#bank-trade-form').addEventListener('submit',event => {
       event.preventDefault();
       bankTrade(ME,bankSelection.give,bankSelection.get);

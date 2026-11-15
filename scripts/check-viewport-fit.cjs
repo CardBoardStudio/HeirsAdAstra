@@ -166,6 +166,8 @@ const CASES = [
   { name: 'operations, 8-card hand, Probe raised', save: operationsState([...longHand.slice(0, 7), 'probe']), focus: '#hand-row .game-card:nth-child(8) [data-order-mode="excavate"]' },
   { name: 'operations, mid-game piles and comms', save: midGameState(), devices: true },
   { name: 'standings overview (keyboard focus)', save: midGameState(), focus: '#prestige-track [data-score-player="1"]' },
+  // The comms log is a small card until it is opened; open, it shows the whole log in place.
+  { name: 'comms log opened', save: midGameState(), click: ['#log-toggle'], devices: 'tablet' },
   // Phones: the Table drawer is the Prestige track (elsewhere the drawer button does nothing).
   { name: 'standings track (Table drawer on phones)', save: midGameState(), click: ['.phone-drawers [data-drawer="table"]'], devices: true },
   // The bank lies open at the table; choosing both sides fills its preview line.
