@@ -19,6 +19,7 @@ impl Store {
         crate::tables::migrate(&db)?;
         crate::lobby::migrate(&db)?;
         crate::shared::log::migrate(&db)?;
+        crate::shared::channel::migrate(&db)?;
         crate::arena::migrate(&db)?;
         db.busy_timeout(std::time::Duration::from_secs(5))?;
         Ok(Self(Mutex::new(db)))

@@ -1,10 +1,10 @@
 # Galactic Reach playtest workflow
 
-## Stable lane
+## Channels
 
-The stable playtest lane is `main`. Keep ongoing games save-compatible. New games use Balance Package 34.39 once its PR merges. The preceding 33.38 release and earlier pinned games retain their archived engines. Shared tables keep their dealt 30.35, 31.36, 32.37 or 33.38 revision; old PR preview URLs are not current deployment links.
+Dev is `main`, deployed on every merge. Stable is the `stable` branch, deployed when the Release PR merges. See [the release process](release.md) for cutting a release and for how dev tables survive merges. The released version and its history are in [releases](releases.md). Shared tables and solo saves keep the revision they were dealt with; old PR preview URLs are not current deployment links.
 
-Create save-compatible work on `codex/<short-name>` from the latest `origin/main` head, open a PR against `main`, and apply `playtest-safe`. This includes accessibility, layout, wording, diagnostics, and fixes that preserve available decisions and saved-state meaning. Keep existing guest saves, pinned tables, and replays playable.
+Create save-compatible work on `codex/<short-name>` from the latest `origin/main` head, open a PR against `main`, apply `playtest-safe`, and add a `compat: safe` entry in `changes/` if players would notice. This includes accessibility, layout, wording, diagnostics, and fixes that preserve available decisions and saved-state meaning. Keep existing guest saves, pinned tables, and replays playable.
 
 ## Rules contract for every PR
 
@@ -18,21 +18,21 @@ A change is breaking if it can invalidate a game or materially change a player's
 
 1. Create `codex/experiment-<short-name>` from the latest `origin/main` head.
 2. Describe one rules hypothesis in the rulebook and PR, then implement it with supporting behavior tests.
-3. Open a PR against `main` and apply `playtest-breaking`.
-4. Keep the game and rulebook version declarations aligned. Label experimental rules as experimental on their preview.
-5. Wait for checks and the Render preview; inspect GitHub deployment statuses for that head commit and use the successful `environment_url`.
-6. Start a new game on that origin. Keep existing play on the stable origin; never redirect stable saves into an experiment.
+3. Open a PR against `main`, apply `playtest-breaking`, and add a `compat: breaking` entry in `changes/`.
+4. Leave version declarations alone: the release cut changes them once per batch.
+5. Wait for checks and try the change locally (`scripts/dev.sh`); Render previews only the Release PR into `stable`.
+6. After merge, the change goes live on the dev host as a new `+dev.<n>` revision; dev tables already in progress keep their engine. Never redirect stable saves into an experiment.
 
 ## Preview verification
 
-Every rules PR ships the edited source document to `/galactic-reach/rulebook.html` beside that PR's game. Open both without signing in. Check the game's Rules dialog link, rulebook navigation and narrow layout, and any changed mechanic. Include both verified URLs in the PR. Each player-facing preview must also show “What’s new in this playtest,” with the current PR’s changes and rulebook links. Verify that panel at the same time. Do not skip Render previews for documentation-only rules changes.
+Every rules PR ships the edited source document to `/galactic-reach/rulebook.html` beside that PR's game. Open both without signing in. Check the game's Rules dialog link, rulebook navigation and narrow layout, and any changed mechanic. Include both verified URLs in the PR. The “What’s new in this playtest” panel is written by the release cut from `changes/` entries; a change PR states what to try in its PR description instead. Do not skip Render previews for documentation-only rules changes.
 
 `scripts/build-web.sh` packages the rulebook and its stylesheet; `scripts/check-rulebook.cjs` verifies source and deployed asset contracts. The container smoke requests the rulebook and checks its version marker so a fallback HTML response cannot masquerade as a successful deployment.
 
 ## Adopt or reject
 
-Rejected experiments remain separate; close their PRs without changing stable play. Adoption requires an explicit decision and a playtest reset announcement before merge.
+Adopting an experiment means merging its PR into `main`; it reaches stable with the next release. Rejected experiments remain separate; close their PRs without changing dev or stable play. Announce a playtest reset before merging a Release PR that changes rules.
 
-Before adopting an incompatible ruleset, increment `SAVE_FORMAT_VERSION` and `RULES_REVISION` in the live engine as needed, keep browser/adapter/Rust/table declarations aligned, and update the rulebook version. Guest save and undo keys derive from the format version. Preserve existing supported engines and archived browser bundles so pinned tables and replays retain their original meaning. Test old and new versions; do not introduce a migration unless the old state means exactly the same thing.
+The release cut ([release process](release.md#cut-a-release)) increments `SAVE_FORMAT_VERSION` and `RULES_REVISION` once, keeps browser/adapter/Rust/table declarations aligned, and archives the released engine and browser bundle so pinned tables and replays retain their original meaning. Guest save and undo keys derive from the format version. Do not introduce a migration unless the old state means exactly the same thing.
 
-Select exactly one compatibility label: `playtest-safe` or `playtest-breaking`. After merge, verify the new successful stable deployment and share its game and rulebook URLs. Start new games for the new ruleset. A PR being ready does not itself authorize a merge.
+Select exactly one compatibility label: `playtest-safe` or `playtest-breaking`. After a Release PR merges, verify the new successful stable deployment and share its game and rulebook URLs. A PR being ready does not itself authorize a merge.

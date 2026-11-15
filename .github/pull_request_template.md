@@ -19,7 +19,7 @@ Select exactly one and apply the matching label:
 - [ ] `playtest-safe` — ongoing games keep their decisions and saved-state meaning.
 - [ ] `playtest-breaking` — experiment branch; start a new game on its own preview.
 
-For a breaking experiment: target the current stable lane (`main`), describe one rules hypothesis, and state the rules/save-version cutover and archived-table plan before adoption.
+Target `main` (the dev channel). If players will notice the change, add one `changes/<branch>.md` entry (`compat: breaking` for breaking work). Do not bump versions or edit the "New in this playtest" panel: the release cut does both ([release process](../docs/release.md)). For a breaking experiment, describe one rules hypothesis.
 
 ## Verification
 
