@@ -348,7 +348,7 @@ async function runCase(browser, origin, testCase, [width, height]) {
     const at = await centre(testCase.hover);
     if (!at) return [`could not point at ${testCase.hover}`];
     await mouse('mouseMoved', at.x, at.y);
-    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+    await browser.evaluate('new Promise(r => setTimeout(r, 450))');
   }
   if (testCase.drag) {
     const from = await centre(testCase.drag);
