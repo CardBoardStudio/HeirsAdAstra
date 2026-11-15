@@ -1408,8 +1408,11 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
     --lane-h: 13px;
     --track-h: calc(var(--lanes) * var(--lane-h) + 16px);
     --board-w: calc((100dvh - var(--bars-h) - var(--front-h) - var(--track-h) - 46px) * 1.0543 + 26px);
-    --mat-w: 560px;
-    --score-h: 52px;
+    --score-h: 26px;
+    --log-h: clamp(170px, 31dvh, 300px);
+    --cap-w: 150px;
+    --res-w: 238px;
+    --piles-w: calc(3 * max(52px, (var(--front-h) - 26px) * .716) + 18px);
     flex: 1 1 auto; min-height: 0; width: 100%; height: auto; margin: 0; padding: 8px 16px 8px;
     display: grid; grid-template-columns: var(--left-w) minmax(0, var(--board-w)) minmax(340px, 1fr);
     grid-template-rows: auto auto auto auto minmax(0, 1fr) var(--front-h); gap: 6px 14px;
@@ -1461,33 +1464,40 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   /* ---- Left of the board: every faction's standings, then the comms feed. ---- */
   .board-shared .score-ribbon { grid-column: 1; grid-row: 1 / 6; z-index: 5; align-self: start; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: var(--score-h); gap: 5px; padding: 0; }
   .board-shared .score-card, .board-shared .score-card:nth-child(n) {
-    grid-row: auto; grid-column: auto; position: relative; display: block; width: auto; max-width: none; height: var(--score-h); margin: 0; padding: 4px 8px 4px 10px; justify-self: stretch; overflow: hidden;
+    grid-row: auto; grid-column: auto; position: relative; display: block; width: auto; max-width: none; height: var(--score-h); margin: 0; padding: 0 8px 0 9px; justify-self: stretch; overflow: hidden;
     border: 0; border-left: 4px solid var(--player); border-radius: 7px;
     background: linear-gradient(160deg, #2d403b, #22322f); box-shadow: inset 0 1px 0 #ffffff14, 0 3px 0 #0a1513, 0 8px 14px #0005;
   }
   .board-shared .score-card.active { box-shadow: inset 0 0 0 1.5px var(--player), 0 3px 0 #0a1513, 0 8px 14px #0005; }
-  .board-shared .score-info { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 4px; }
-  .board-shared .score-meta { display: flex; flex-wrap: wrap; flex: 1 1 100%; min-width: 0; gap: 0 6px; font-size: 10px; line-height: 1.25; color: var(--muted); }
+  .board-shared .score-info { display: flex; flex-wrap: nowrap; align-items: baseline; gap: 0 5px; height: 100%; align-items: center; }
+  .board-shared .score-meta { display: none; }
   .board-shared .score-card .score-top { display: contents; }
   .board-shared .score-card .score-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
   .board-shared .score-card .score-turn, .board-shared .score-meta > * { font-size: 10px; line-height: 1.25; color: var(--muted); white-space: nowrap; }
   .board-shared .score-card.active .score-turn { color: var(--text); }
-  /* The score is on the Prestige lanes: the whole box opens the breakdown and shows the score
-     in a tip when pointed at or focused. */
+  /* The score is on the Prestige lanes. The whole row opens the breakdown; pointing at it or
+     focusing it shows an overview card of that faction's points and stats. */
   .board-shared button.score-value { position: absolute; inset: 0; z-index: 1; width: auto; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: inherit; background: none; box-shadow: none; color: transparent; font-size: 0; cursor: pointer; }
   .board-shared button.score-value:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
-  .board-shared button.score-value::after, .prestige-marker::after {
-    content: attr(data-tip); position: absolute; z-index: 40; padding: 4px 9px; border: 1px solid var(--player); border-radius: 6px; background: #0d1a1d; color: var(--text);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; font-weight: 700; line-height: 1.3; letter-spacing: 0; white-space: nowrap; text-shadow: none; box-shadow: 0 6px 16px #0008; display: none; pointer-events: none;
-  }
-  .board-shared button.score-value::after { left: calc(100% + 8px); top: 50%; transform: translateY(-50%); }
-  .board-shared .score-card:hover button.score-value::after, .board-shared button.score-value:focus-visible::after, .prestige-marker:hover::after { display: block; }
   .board-shared .score-ribbon { z-index: 8; }
   .board-shared .score-card:nth-child(n) { overflow: visible; }
+  .score-overview { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .board-shared .score-card:is(:hover, :focus-within) .score-overview {
+    left: calc(100% + 8px); top: -6px; z-index: 40; width: 240px; height: auto; overflow: visible; clip-path: none; white-space: normal; pointer-events: none;
+    padding: 8px 10px 7px; border: 1px solid color-mix(in srgb, var(--player) 60%, #a49c6f); border-left: 4px solid var(--player); border-radius: 8px;
+    background: linear-gradient(160deg, #1d302d, #142320); box-shadow: 0 14px 30px #000a; color: var(--text); font-size: 11.5px; line-height: 1.3;
+  }
+  .score-overview-title { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 5px; font-size: 13px; }
+  .score-overview-title b { flex: none; color: var(--gold); font-size: 14px; }
+  .score-overview dl { display: grid; grid-template-columns: 1fr 1fr; gap: 2px 14px; margin: 0; }
+  .score-overview dl > div { display: flex; justify-content: space-between; gap: 6px; }
+  .score-overview dt { color: var(--muted); }
+  .score-overview dd { margin: 0; font-weight: 700; }
+  .score-overview p { margin: 6px 0 0; padding-top: 5px; border-top: 1px solid #d9bd8026; color: var(--muted); font-size: 10.5px; }
   .board-shared .score-value small, .faction-counter { display: none; }
   /* The comms feed fills the rest of the left side; it scrolls on its own, newest first. */
   .log-panel {
-    grid-column: 1; grid-row: 1 / 6; align-self: start; height: clamp(170px, 31dvh, 300px); position: relative; z-index: 4; min-width: 0; min-height: 0; display: flex; flex-direction: column;
+    grid-column: 1; grid-row: 1 / 6; align-self: start; height: var(--log-h); position: relative; z-index: 4; min-width: 0; min-height: 0; display: flex; flex-direction: column;
     margin: calc(var(--lanes) * (var(--score-h) + 5px) + 8px) 0 0; padding: 0;
   }
   .log-panel .panel-heading { display: none; }
@@ -1575,7 +1585,11 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .prestige-marker b { flex: none; display: grid; place-items: center; min-width: 14px; height: 14px; padding: 0 2px; border: 1.5px solid #0d1a1d; border-radius: 7px; background: var(--player); color: #0d1a1d; font-size: 9.5px; font-weight: 800; }
   .prestige-name { font-weight: 700; letter-spacing: .02em; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
   .prestige-marker.acting b { box-shadow: 0 0 0 1.5px #fff; }
-  .prestige-marker::after { content: attr(aria-label); left: 0; top: calc(100% + 4px); }
+  .prestige-marker::after {
+    content: attr(aria-label); position: absolute; z-index: 40; left: 0; top: calc(100% + 4px); display: none; padding: 4px 9px; border: 1px solid var(--player); border-radius: 6px; background: #0d1a1d; color: var(--text);
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; font-weight: 700; line-height: 1.3; white-space: nowrap; text-shadow: none; box-shadow: 0 6px 16px #0008; pointer-events: none;
+  }
+  .prestige-marker:hover::after { display: block; }
   .prestige-marker.flip::after { left: auto; right: 0; }
   .prestige-marker.acting .prestige-name { color: #fff; }
   .map-tools { z-index: 5; align-self: start; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-top: calc(var(--track-h) + 4px); padding: 0 12px; pointer-events: none; }
@@ -1584,25 +1598,22 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #development-tools { position: absolute; top: -100%; }
 
   /* ---- In front of you: your player mat (reserves, piles, capacity), then your hand. ---- */
-  .player-tableau .resource-panel {
-    grid-column: 1 / -1; grid-row: 6; z-index: 5; align-self: stretch; justify-self: start; width: var(--mat-w); min-height: 0; margin: 0 0 0 52px;
-    display: grid; grid-template-columns: auto auto max-content; grid-template-rows: minmax(0, 1fr) auto; grid-template-areas: "res piles cap" "res piles bank";
-    align-items: center; gap: 3px 10px; padding: 5px 10px; border: 0; border-radius: 9px;
-    background: linear-gradient(160deg, #2f423d, #23332f); box-shadow: inset 0 1px 0 #ffffff14, 0 3px 0 #0a1513, 0 10px 18px #0006;
-  }
-  .resource-grid { grid-area: res; display: grid; grid-template-columns: repeat(2, 108px); gap: 3px 4px; align-self: center; }
+  .player-tableau .resource-panel { display: contents; }
+  .resource-grid, .storage-upgrade-control { grid-column: 1 / -1; grid-row: 6; z-index: 5; justify-self: end; align-self: stretch; background: linear-gradient(160deg, #2f423d, #23332f); box-shadow: inset 0 1px 0 #ffffff14, 0 3px 0 #0a1513, 0 10px 18px #0006; }
+  .resource-grid { display: grid; grid-template-columns: repeat(2, 108px); align-content: center; gap: 3px 4px; width: var(--res-w); margin: 0 var(--cap-w) 0 0; padding: 5px 8px 5px 10px; border-radius: 9px 0 0 9px; }
   .resource-box { display: grid; grid-template-columns: 16px auto minmax(0,1fr) auto; align-items: center; gap: 0 4px; padding: 2px 6px; border-radius: 6px; }
   .resource-box > .resource-symbol { grid-column: 1; grid-row: 1; width: 16px; height: 16px; padding: 2px; margin: 0; }
   .resource-box .resource-amount { grid-column: 2; grid-row: 1; font-size: 17px; line-height: 1.15; text-align: left; }
   .resource-box .resource-production { grid-column: 3; grid-row: 1; font-size: 10.5px; text-align: left; }
   .resource-box .resource-limit { grid-column: 4; grid-row: 1; font-size: 10px; text-align: right; white-space: nowrap; }
   .resource-box .resource-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
-  .storage-upgrade-control { grid-area: cap; }
-  .resource-tools { grid-area: bank; }
+  .storage-upgrade-control { display: flex; align-items: center; width: var(--cap-w); padding: 5px 10px 5px 2px; border-radius: 0 9px 9px 0; }
+  .resource-tools { grid-column: 1; grid-row: 1 / 6; z-index: 9; align-self: start; height: 30px; margin-top: calc(var(--lanes) * (var(--score-h) + 5px) + 8px + var(--log-h) + 10px) !important; }
+  .resource-tools summary { display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 15px; background: #ffffff0d; box-shadow: inset 0 0 0 1px #d9bd8040; color: var(--gold); font-weight: 700; cursor: pointer; }
+  .resource-tools[open] summary { background: #d9bd801f; }
   /* Export game report is a page action: it lives in the game menu. */
   .personal-report { display: none; }
   body.menu-open .personal-report { position: fixed; left: 30px; bottom: calc(var(--front-h) + 58px); z-index: 41; display: block; }
-  body.menu-open .player-tableau .resource-panel { z-index: 41; }
   .storage-upgrade-control, .resource-tools, .personal-report { margin: 0; padding: 0; border: 0; min-width: 0; }
   .storage-upgrade-button { display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-height: 0; padding: 3px 8px; gap: 2px; font-size: 11.5px; white-space: nowrap; }
   #storage-upgrade-cost { display: flex; flex-wrap: nowrap; gap: 3px; }
@@ -1611,14 +1622,29 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .storage-upgrade-button .resource-symbol { width: 12px; height: 12px; }
   .resource-tools summary { font-size: 11.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .personal-report .button { width: auto; min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; color: var(--gold); font-size: 12.5px; text-decoration: underline; }
-  .resource-tools[open] { position: relative; z-index: 26; }
-  .resource-tools[open] > form { position: absolute; left: 0; bottom: calc(100% + 4px); width: 360px; margin: 0; padding: 12px; border: 1px solid #a49c6f99; background: #1b2b2d; box-shadow: 0 25px 80px #0008; }
-  .resource-tools[open] > #bank-trade-form { border-radius: 10px 10px 0 0; border-bottom: 0; bottom: calc(100% + 4px + var(--discard-form-height, 110px)); }
-  .resource-tools[open] > #discard-resource-form { border-radius: 0 0 10px 10px; border-top: 0; }
+  /* Opened, the bank and discard forms rise above the button, over the comms feed and the
+     board's edge, so the button stays where it was. */
+  .resource-tools[open] { display: flex; flex-direction: column-reverse; height: auto; transform: translateY(calc(30px - 100%)); }
+  .resource-tools[open] > :not(summary) { position: relative; width: 340px; margin: 0; padding: 10px 12px; border: 1px solid #a49c6f99; border-top: 0; border-bottom: 0; border-radius: 0; background: #1b2b2d; }
+  .resource-tools[open] > summary + * { border-top: 1px solid #a49c6f99; border-radius: 10px 10px 0 0; box-shadow: 0 -12px 50px #0008; }
+  .resource-tools[open] > :last-child { margin-bottom: 6px; border-bottom: 1px solid #a49c6f99; border-radius: 0 0 10px 10px; }
+  .resource-tools[open] > summary { flex: none; width: max-content; }
+  .resource-tools[open] > :not(summary) { width: 400px; }
+  .resource-tools .bank-resource-picker { gap: 6px; }
+  .resource-tools .bank-resource-options { grid-template-columns: 1fr 1fr; gap: 4px; }
+  .resource-tools .bank-resource-button { min-height: 30px; padding: 3px 7px; gap: 5px; font-size: 11.5px; }
+  .resource-tools fieldset legend { margin-bottom: 3px; font-size: 10.5px; }
+  .resource-tools .resource-exchange-preview { margin: 6px 0; font-size: 12px; }
+  .resource-tools #bank-exchange-button { min-height: 32px; }
+  .resource-tools .resource-form { grid-template-columns: minmax(0, 1fr) 72px auto; align-items: end; gap: 6px; margin: 0; }
+  .resource-tools .resource-form label { gap: 2px; font-size: 10.5px; }
+  .resource-tools .resource-form :is(input, select) { min-height: 32px; padding: 4px 6px; font-size: 13px; }
+  .resource-tools .resource-form button { grid-column: auto; min-height: 32px; padding: 4px 10px; }
+  .resource-tools[open] > #resource-tools-help { position: relative; width: 340px; height: auto; overflow: visible; clip-path: none; color: var(--muted); font-size: 11.5px; }
   /* Piles: Deck, In play and Discard as small stacks on the mat. */
   /* Piles: Deck face down, In play and Discard with their top card face up; the stack's edge
      thickens with the count (the same card stock as the hand). */
-  .pile-stats { grid-area: piles; display: grid; grid-template-columns: repeat(3, auto); gap: 9px; align-self: stretch; align-items: end; margin: 0; border: 0; background: none; }
+  .pile-stats { grid-column: 1 / -1; grid-row: 6; z-index: 5; justify-self: start; display: grid; grid-template-columns: repeat(3, minmax(52px, auto)); gap: 9px; align-self: stretch; align-items: end; margin: 0 0 0 52px; padding: 0 0 4px; border: 0; background: none; }
   .pile-stats > button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; width: auto; height: auto; min-width: 0; min-height: 0; margin: 0; padding: 0 0 1px; border: 0; background: none; box-shadow: none; color: #c9b98a; }
   .pile-stats > button::before { display: none; }
   .pile-card {
@@ -1698,7 +1724,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #hand-row {
     --n: 5; --top-w: clamp(124px, calc((100cqw + (var(--n) - 1) * 12px) / var(--n)), 210px);
     grid-column: 1 / -1; grid-row: 6; align-self: end; justify-self: stretch; z-index: 6; display: flex; flex-wrap: nowrap; align-items: flex-end; justify-content: flex-start;
-    height: var(--strip-h); margin: 0 0 0 calc(52px + var(--mat-w) + 16px); padding: 0; container-type: inline-size; gap: 0;
+    height: var(--strip-h); margin: 0 calc(var(--res-w) + var(--cap-w) + 14px) 0 calc(52px + var(--piles-w) + 14px); padding: 0; container-type: inline-size; gap: 0;
   }
   #hand-row:not(:has(> :nth-child(5))) { --n: 4; }
   #hand-row:not(:has(> :nth-child(4))) { --n: 3; }
@@ -1817,7 +1843,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 }
 /* Short windows: the standings drop to one line and the market card tops tighten. */
 @media (min-width: 1024px) and (min-height: 600px) and (max-height: 820px) {
-  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { --score-h: 30px; row-gap: 4px; }
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { row-gap: 4px; }
   .board-shared .score-meta { display: none; }
   .market-cards { gap: 4px; }
   :is(#market-row, #upgrade-market) .card-name { font-size: 13px; line-height: 1.1; }
