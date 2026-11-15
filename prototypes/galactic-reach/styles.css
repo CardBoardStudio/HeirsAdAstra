@@ -1426,7 +1426,6 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
     --lane-h: 13px;
     --track-h: calc(var(--lanes) * var(--lane-h) + 16px);
     --board-w: calc((var(--table-h, 100dvh) - 16px - var(--front-h) - var(--track-h) - 46px) * 1.0543 + 26px);
-    --score-h: 26px;
     --cap-w: 150px;
     --res-w: 238px;
     --pile-w: max(52px, calc((var(--front-h) - 26px) * .716));
@@ -1436,9 +1435,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
     display: grid; grid-template-columns: var(--left-w) minmax(0, var(--board-w)) minmax(0, 1fr);
     grid-template-rows: auto auto auto auto minmax(0, 1fr) auto auto var(--front-h); gap: 6px 14px;
   }
-  .game-layout, .board-column, .board-stage, .board-canvas, .board-heading, .board-shared,
-  .faction-mats, .board-reference, .player-tableau, .console, .console-body, #hand-panel,
-  #hand-panel > .section-intro { display: contents; }
+  .game-layout, .board-column, .board-stage, .board-canvas, .board-heading, .board-shared, .board-reference, .player-tableau, .console, .console-body, #hand-panel, #hand-panel > .section-intro { display: contents; }
   .board-heading .board-inscription, .board-key, .prestige-legend, .table-jump, .map-pan-hint,
   .brand-seal, .summary-hint, .round-block { display: none !important; }
   #hand-panel > .section-intro > div:first-child, #market-panel .section-intro h2, #market-help, .resource-panel .panel-heading, #storage-upgrade-help, #history-status, #resource-tools-help {
@@ -1478,28 +1475,10 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .playtest-changes[open] > .button { display: none; }
   .playtest-changes[open] > p { position: fixed; left: 322px; bottom: calc(var(--front-h) + 14px); top: auto; transform: none; width: min(640px, calc(var(--table-w) - 346px)); min-height: 42px; margin: 0; padding: 8px 18px; border: 1px solid #a49c6f99; border-top-color: var(--line); border-radius: 0 0 10px 10px; background: #1b2b2d; box-sizing: border-box; }
 
-  /* ---- Left of the board: every faction's standings, then the comms feed. ---- */
-  .board-shared .score-ribbon { grid-column: 1; grid-row: 1 / 8; z-index: 8; align-self: start; margin: 12px 0 0 12px !important; display: grid; grid-template-columns: minmax(0, 1fr); grid-auto-rows: var(--score-h); gap: 5px; padding: 0; }
-  .board-shared .score-card, .board-shared .score-card:nth-child(n) {
-    grid-row: auto; grid-column: auto; position: relative; display: block; width: auto; max-width: none; height: var(--score-h); margin: 0; padding: 0 8px 0 9px; justify-self: stretch; overflow: hidden;
-    border: 0; border-left: 4px solid var(--player); border-radius: 7px;
-    background: linear-gradient(160deg, #2d403b, #22322f); box-shadow: inset 0 1px 0 #ffffff14, 0 3px 0 #0a1513, 0 8px 14px #0005;
-  }
-  .board-shared .score-card.active { box-shadow: inset 0 0 0 1.5px var(--player), 0 3px 0 #0a1513, 0 8px 14px #0005; }
-  .board-shared .score-info { display: flex; flex-wrap: nowrap; align-items: baseline; gap: 0 5px; height: 100%; align-items: center; }
-  .board-shared .score-meta { display: none; }
-  .board-shared .score-card .score-top { display: contents; }
-  .board-shared .score-card .score-name { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; }
-  .board-shared .score-card .score-turn, .board-shared .score-meta > * { font-size: 10px; line-height: 1.25; color: var(--muted); white-space: nowrap; }
-  .board-shared .score-card.active .score-turn { color: var(--text); }
-  /* The score is on the Prestige lanes. The whole row opens the breakdown; pointing at it or
-     focusing it shows an overview card of that faction's points and stats. */
-  .board-shared button.score-value { position: absolute; inset: 0; z-index: 1; width: auto; min-width: 0; min-height: 0; margin: 0; padding: 0; border: 0; border-radius: inherit; background: none; box-shadow: none; color: transparent; font-size: 0; cursor: pointer; }
-  .board-shared button.score-value:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; }
-  .board-shared .score-ribbon { z-index: 8; }
-  .board-shared .score-card:nth-child(n) { overflow: visible; }
+  /* Each Prestige marker opens its faction's point breakdown; pointing at it or focusing it shows
+     an overview card of that faction's points and stats. */
   .score-overview { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-  .board-shared .score-card:is(:hover, :focus-within) .score-overview {
+  .prestige-marker:is(:hover, :focus-visible) + .score-overview {
     left: calc(100% + 8px); top: -6px; z-index: 40; width: 240px; height: auto; overflow: visible; clip-path: none; white-space: normal; pointer-events: none;
     padding: 8px 10px 7px; border: 1px solid color-mix(in srgb, var(--player) 60%, #a49c6f); border-left: 4px solid var(--player); border-radius: 8px;
     background: linear-gradient(160deg, #1d302d, #142320); box-shadow: 0 14px 30px #000a; color: var(--text); font-size: 11.5px; line-height: 1.3;
@@ -1511,7 +1490,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .score-overview dt { color: var(--muted); }
   .score-overview dd { margin: 0; font-weight: 700; }
   .score-overview p { margin: 6px 0 0; padding-top: 5px; border-top: 1px solid #d9bd8026; color: var(--muted); font-size: 10.5px; }
-  .board-shared .score-value small, .faction-counter { display: none; }
+
   /* The comms feed fills the rest of the left side; it scrolls on its own, newest first. */
   .log-panel {
     grid-column: 3; grid-row: 1; align-self: start; height: var(--log-h); position: relative; z-index: 4; min-width: 0; min-height: 0; display: flex; flex-direction: column;
@@ -1611,12 +1590,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .prestige-marker b { flex: none; display: grid; place-items: center; min-width: 14px; height: 14px; padding: 0 2px; border: 1.5px solid #0d1a1d; border-radius: 7px; background: var(--player); color: #0d1a1d; font-size: 9.5px; font-weight: 800; }
   .prestige-name { font-weight: 700; letter-spacing: .02em; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
   .prestige-marker.acting b { box-shadow: 0 0 0 1.5px #fff; }
-  .prestige-marker::after {
-    content: attr(aria-label); position: absolute; z-index: 40; left: 0; top: calc(100% + 4px); display: none; padding: 4px 9px; border: 1px solid var(--player); border-radius: 6px; background: #0d1a1d; color: var(--text);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12px; font-weight: 700; line-height: 1.3; white-space: nowrap; text-shadow: none; box-shadow: 0 6px 16px #0008; pointer-events: none;
-  }
-  .prestige-marker:hover::after { display: block; }
-  .prestige-marker.flip::after { left: auto; right: 0; }
+
   .prestige-marker.acting .prestige-name { color: #fff; }
   .map-tools { z-index: 5; align-self: start; justify-self: end; display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-top: calc(var(--track-h) + 4px); padding: 0 12px; pointer-events: none; }
   .map-tools > * { pointer-events: auto; }
@@ -1973,12 +1947,10 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .board-map-region { border: 0 !important; border-radius: 14px !important;
     background: radial-gradient(ellipse at 50% 45%, #1f3944 0%, #132833 62%, #0e1f27 100%) !important;
     box-shadow: inset 0 0 0 2px #2c4650, inset 0 0 0 7px #0d1b21, inset 0 0 0 8px #a28e5f55, 0 3px 0 #0b1518, 0 6px 0 #081114, 0 22px 40px #000b !important; }
-  /* Standings: small faction mats at the table's top-left. */
-  .board-shared .score-ribbon { margin: 0 !important; }
-  /* The comms feed: a sheet lying on the table at the left, under the standings. */
+  /* The comms feed: a sheet lying on the table at the left, under the Prestige track. */
   .log-panel {
     grid-column: 1 !important; grid-row: 1 / 8 !important; align-self: stretch !important; height: auto !important;
-    margin: calc(var(--lanes) * (var(--score-h) + 5px) + 12px) 0 calc(var(--bank-h) + 14px) !important;
+    margin: calc(var(--track-h) + 14px) 0 calc(var(--bank-h) + 14px) !important;
     padding: 8px 8px 6px 10px !important; border: 1px solid #d9bd8030; border-radius: 10px;
     background: linear-gradient(170deg, #12242acc, #0c1a1ecc); box-shadow: 0 2px 0 #0a1416, 0 14px 26px #0008; backdrop-filter: blur(2px);
     transform: rotate(-.6deg);
@@ -2028,12 +2000,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
     box-shadow: inset 0 0 0 3px #2d4852, inset 0 0 0 9px #0d1b21, inset 0 0 0 10px #c2a76b66,
       0 1px 0 #3b5560, 0 2px 0 #2a3f47, 0 3px 0 #1d2e35, 0 4px 0 #142227, 0 5px 0 #0e181c, 0 18px 30px -6px #000c, 0 34px 60px -20px #000a !important; }
   /* Standings: faction tiles (thick card in each faction's colour). */
-  .board-shared .score-ribbon { gap: 7px !important; }
-  .board-shared .score-card, .board-shared .score-card:nth-child(n) { border: 0 !important; border-radius: 5px !important;
-    background: linear-gradient(170deg, color-mix(in srgb, var(--player) 42%, #1a2622), color-mix(in srgb, var(--player) 24%, #121a18)) !important;
-    box-shadow: inset 0 1px 0 #ffffff30, 0 1px 0 color-mix(in srgb, var(--player) 40%, #000), 0 2px 0 #0008, 0 6px 10px #0007 !important; }
-  .board-shared .score-card.active { box-shadow: inset 0 0 0 2px #fff8, 0 1px 0 #000, 0 2px 0 #0008, 0 8px 14px #000a !important; }
-  .board-shared .score-card .score-name, .board-shared .score-card .score-turn { color: #f6f1e4 !important; text-shadow: 0 1px 1px #0009; }
+
   /* The comms feed: one paper sheet, slightly turned, lying left of the board. */
   .log-panel { border: 0 !important; border-radius: 3px !important; backdrop-filter: none !important;
     background: linear-gradient(175deg, #f4ecd8, #e8dcc0) !important; transform: rotate(-1.4deg) !important;
@@ -2104,11 +2071,11 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .board-map-region { grid-row: 1 / 9 !important; margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; overflow: visible !important; }
   .galaxy-board, .has-saved-table .galaxy-board, .has-replay .galaxy-board { width: min(100cqw, 100cqh * 1.0543) !important; }
   .map-tools { grid-row: 1 / 9 !important; }
-  /* Left of the map: the Prestige race as a printed track, the faction tiles, the comms sheet, the bank. */
+  /* Left of the map: the Prestige race as a printed track, the comms sheet, the bank. */
   .prestige-track { grid-column: 1 !important; grid-row: 1 !important; margin: 2px 48px 0 4px !important; padding: 0; z-index: 6; }
   .prestige-track::before { content: ''; position: absolute; inset: -4px -46px -6px -6px; z-index: -1; border-radius: 6px; background: linear-gradient(170deg, #1f3944, #142a35); box-shadow: inset 0 0 0 2px #c2a76b55, 0 1px 0 #2a3f47, 0 2px 0 #142227, 0 10px 16px -4px #000a; }
-  .board-shared .score-ribbon { grid-row: 1 / 9 !important; margin-top: calc(var(--track-h) + 14px) !important; }
-  .log-panel { grid-row: 1 / 9 !important; margin-top: calc(var(--track-h) + 14px + var(--lanes) * (var(--score-h) + 7px) + 10px) !important; }
+
+  .log-panel { grid-row: 1 / 9 !important; margin-top: calc(var(--track-h) + 14px) !important; }
   .resource-tools { grid-row: 1 / 9 !important; }
   /* Your seat: Deck and In play bottom-left, the hand under the map. */
   .table-menu-button, .pile-stats > button[id], #hand-row { grid-row: 9 !important; }
@@ -2178,7 +2145,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .prestige-track { grid-column: 1 !important; grid-row: 1 !important; }
   .board-toolbar { grid-column: 2 / 4 !important; grid-row: 1 !important; }
   .console-nav { grid-column: 3 !important; grid-row: 1 !important; }
-  .board-shared .score-ribbon { grid-column: 1 / 3 !important; grid-row: 2 !important; margin: 0 !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+
   .phase-stepper { grid-column: 3 !important; grid-row: 2 !important; }
   .board-map-region, .map-tools { grid-column: 1 / -1 !important; grid-row: 3 !important; }
   #market-panel, #market-panel[hidden] { grid-column: 1 / -1 !important; grid-row: 4 !important; height: 268px; }
@@ -2267,7 +2234,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   body[data-drawer="comms"] .log-panel { display: block !important; }
   body[data-drawer="comms"] .game-log { max-height: none !important; overflow: visible !important; }
   body[data-drawer="table"] .board-shared .board-reference, body[data-drawer="table"] .board-shared .board-key { display: none !important; }
-  body[data-drawer="table"] .score-ribbon { display: grid !important; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+
   .score-overview { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   /* Notices sit above the turn's buttons. */
   .toast { left: 8px; right: 8px; bottom: calc(var(--tabs-h) + var(--actions-h) + 8px); max-width: none; z-index: 70; }
@@ -2338,10 +2305,9 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 
 #resource-grid > .mat-head .mat-hint { display: none !important; }
 
-/* ==== The map's top-left corner holds the Prestige track and the faction tiles: the map sits at
-   the right of a region that also covers a narrow left strip, and the track and tiles reach from
-   that strip into the map's empty corner (the hexagon leaves a triangle there). The comms sheet
-   lies in the strip below them. Sizes are in table units, so this scales with the table. ==== */
+/* ==== The map sits at the right of a region that also covers a narrow left strip; the Prestige
+   track lies at the top of that strip, by the map's empty corner (the hexagon leaves a triangle
+   there), and the comms sheet below it. Sizes are in table units, so this scales with the table. ==== */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
   .app-shell, .has-saved-table .app-shell, .has-replay .app-shell {
     --left-w: 210px;
@@ -2351,8 +2317,8 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .board-map-region { grid-column: 1 / 3 !important; place-items: center end !important; }
   .galaxy-board, .has-saved-table .galaxy-board, .has-replay .galaxy-board { width: min(100cqw, 100cqh * 1.0543, var(--board-w)) !important; }
   .map-tools { grid-column: 1 / 3 !important; }
-  .prestige-track { grid-column: 1 / 3 !important; justify-self: start !important; width: calc(var(--left-w) + var(--board-w) * .15); margin-left: 4px !important; }
-  .board-shared .score-ribbon { grid-column: 1 / 3 !important; justify-self: start !important; width: calc(var(--left-w) + var(--board-w) * .1); }
+  .prestige-track { grid-column: 1 / 3 !important; justify-self: start !important; margin-left: 4px !important; }
+
   .log-panel { grid-column: 1 !important; }
 }
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
@@ -2405,4 +2371,59 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 }
 @media (max-height: 599px) and (orientation: landscape) {
   body { --peek-h: 92px; }
+}
+
+/* ==== The Prestige track carries the players (no faction tiles): one thin lane per faction with
+   its coloured marker and short label. The acting faction's marker glows and has an arrow. Each
+   marker is a button that opens the point breakdown; pointing at it or focusing it shows the
+   faction's overview. ==== */
+.score-overview-title i { display: block; color: var(--muted); font-size: 11px; font-style: normal; font-weight: 600; }
+.prestige-marker { padding: 0; margin: 0; border: 0; background: none; font: inherit; cursor: pointer; }
+.prestige-marker.acting .prestige-name::after { content: '◀'; margin-left: 2px; color: var(--gold); font-size: .85em; }
+.prestige-lane.flip .prestige-marker.acting .prestige-name::after { content: none; }
+.prestige-lane.flip .prestige-marker.acting .prestige-name::before { content: '▶'; margin-right: 2px; color: var(--gold); font-size: .85em; }
+.prestige-marker.acting b { box-shadow: 0 0 0 1.5px #fff, 0 0 7px 2px var(--player); }
+.prestige-marker:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; border-radius: 8px; }
+/* A finger-sized target around the small marker. */
+.prestige-marker::after { content: ''; position: absolute; inset: -5px -4px; }
+#prestige-stats { margin: -8px 0 14px; color: var(--muted); }
+@media (min-width: 600px) and (min-height: 600px) {
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { --lane-h: 12px; --track-h: calc(var(--lanes) * var(--lane-h) + 12px); }
+  .prestige-line { inset: 10px 0 0; }
+  .prestige-tick { top: -10px; }
+  .prestige-tick > span { font-size: 8.5px; }
+  .prestige-track-goal { padding-left: 6px; font-size: 11px; }
+  .prestige-lane::before, .prestige-lane::after { height: 2px; }
+  .prestige-marker { position: absolute; gap: 2px; font-size: 9.5px; color: var(--text); transform: translate(-6px, -50%); }
+  .prestige-lane.flip .prestige-marker { flex-direction: row-reverse; transform: translate(calc(-100% + 6px), -50%); }
+  .prestige-marker b { min-width: 13px; height: 13px; border-radius: 7px; font-size: 9px; }
+  .prestige-track { margin-right: 40px !important; }
+  .prestige-track::before { inset: -4px -38px -5px -6px !important; }
+  #prestige-track:has(.prestige-marker:is(:hover, :focus-visible)) { z-index: 45 !important; }
+  .prestige-lane .prestige-marker:is(:hover, :focus-visible) + .score-overview { left: max(-4px, calc(var(--at) - 10px)); top: calc(50% + 10px); }
+  .prestige-lane.flip .prestige-marker:is(:hover, :focus-visible) + .score-overview { left: auto; right: calc(100% - var(--at) - 10px); }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .prestige-track { width: calc(var(--left-w) - 46px) !important; }
+}
+/* Phones: the Table drawer is the track, as a sheet; tapping a marker opens its breakdown. */
+@media (max-width: 599px), (max-height: 599px) {
+  body[data-drawer="table"] .board-shared { display: none !important; }
+  body[data-drawer="table"] .prestige-track {
+    display: block !important; position: fixed !important; left: 0; right: 0; bottom: calc(var(--safe-b, 0px) + var(--tabs-h) + var(--actions-h)); z-index: 40;
+    margin: 0; padding: 24px calc(var(--safe-r, 0px) + 56px) 14px calc(var(--safe-l, 0px) + 18px);
+    border-top: 1px solid #a49c6f66; border-radius: 14px 14px 0 0; background: #142320f5; box-shadow: 0 -12px 30px #0009;
+  }
+  .prestige-line { position: relative; }
+  .prestige-tick { position: absolute; left: var(--at); top: -16px; bottom: 0; width: 1px; background: #d9bd8040; }
+  .prestige-tick > span { position: absolute; top: 0; left: 50%; transform: translateX(-50%); color: #c9b98a; font-size: 10px; font-weight: 700; line-height: 1; }
+  .prestige-track-goal { position: absolute; right: calc(var(--safe-r, 0px) + 12px); top: 50%; transform: translateY(-20%); color: var(--gold); font-size: 15px; font-weight: 800; white-space: nowrap; }
+  .prestige-lane { position: relative; height: 30px; }
+  .prestige-lane::before, .prestige-lane::after { content: ''; position: absolute; left: 0; top: 50%; height: 3px; transform: translateY(-50%); border-radius: 2px; }
+  .prestige-lane::before { right: 0; background: color-mix(in srgb, var(--player) 22%, #d9bd8020); }
+  .prestige-lane::after { width: var(--at); background: color-mix(in srgb, var(--player) 70%, transparent); }
+  .prestige-marker { position: absolute; z-index: 1; left: var(--at); top: 50%; display: inline-flex; align-items: center; gap: 4px; transform: translate(-11px, -50%); color: var(--text); font-size: 13px; line-height: 1; white-space: nowrap; }
+  .prestige-lane.flip .prestige-marker { flex-direction: row-reverse; transform: translate(calc(-100% + 11px), -50%); }
+  .prestige-marker b { flex: none; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 3px; border: 2px solid #0d1a1d; border-radius: 11px; background: var(--player); color: #0d1a1d; font-size: 12px; font-weight: 800; }
+  .prestige-name { font-weight: 700; letter-spacing: .02em; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
 }

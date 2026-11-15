@@ -80,10 +80,6 @@
       </div>
             </div>
       <aside class="board-shared" aria-label="Shared table information">
-        <section class="faction-mats" aria-labelledby="factions-title">
-          <h2 class="sr-only" id="factions-title">Faction standings</h2>
-          <div class="score-ribbon" id="score-ribbon" role="group" aria-label="Player standings"></div>
-        </section>
 
         <section class="board-key" aria-labelledby="board-key-title">
           <div class="eyebrow">AT A GLANCE</div><h2 id="board-key-title">Galaxy key</h2>
@@ -119,7 +115,7 @@
         </div>
       </aside>
             <nav class="phase-stepper" id="phase-stepper" aria-label="Round phases"><strong id="stepper-round">Round 1</strong><ol id="phase-stepper-steps"></ol></nav>
-            <div class="prestige-track" id="prestige-track" role="group" aria-label="Race to the Prestige goal"></div>
+            <div class="prestige-track" id="prestige-track" role="group" aria-label="Faction standings: the race to the Prestige goal"></div>
             <div class="board-map-region">
               <div class="galaxy-board" id="galaxy-board" role="group" aria-label="Interactive galaxy map" aria-describedby="resource-legend symbol-legend"></div>
             </div>
@@ -246,6 +242,7 @@
 
   <dialog id="prestige-dialog" aria-labelledby="prestige-title">
     <div class="dialog-heading"><div><div class="eyebrow">POINT BREAKDOWN</div><h2 id="prestige-title">Prestige</h2></div><button class="button button-ghost dialog-close" id="close-prestige" type="button" aria-label="Close point breakdown">Close</button></div>
+    <p class="prestige-stats" id="prestige-stats"></p>
     <dl class="prestige-breakdown" id="prestige-breakdown"></dl>
     <p class="muted">Each Colony scores 3, each excavated relic 2, and each decisive combat victory 1. Relic, combat and card points are permanent.</p>
     <p><a href="rulebook.html#victory" target="_blank" rel="noopener">Scoring rules ↗</a></p>

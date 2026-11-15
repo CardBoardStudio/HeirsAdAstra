@@ -165,7 +165,9 @@ const CASES = [
   { name: 'operations, Excavate chosen, raised', save: operationsState(['move', 'probe', 'construct', 'construct', 'move']), click: ['#hand-row .game-card:nth-child(2) [data-order-mode="excavate"]'], focus: '#hand-row .game-card:nth-child(2) [data-order-mode="excavate"]' },
   { name: 'operations, 8-card hand, Probe raised', save: operationsState([...longHand.slice(0, 7), 'probe']), focus: '#hand-row .game-card:nth-child(8) [data-order-mode="excavate"]' },
   { name: 'operations, mid-game piles and comms', save: midGameState(), devices: true },
-  { name: 'standings overview (keyboard focus)', save: midGameState(), focus: '.score-card:nth-child(2) button.score-value' },
+  { name: 'standings overview (keyboard focus)', save: midGameState(), focus: '#prestige-track [data-score-player="1"]' },
+  // Phones: the Table drawer is the Prestige track (elsewhere the drawer button does nothing).
+  { name: 'standings track (Table drawer on phones)', save: midGameState(), click: ['.phone-drawers [data-drawer="table"]'], devices: true },
   // The bank lies open at the table; choosing both sides fills its preview line.
   { name: 'bank & discards, exchange chosen', save: midGameState(), click: ['#bank-give-biomass', '#bank-get-data'] },
   // The first and last hand cards raised: they rise over the map, clear of the bank and the piles.

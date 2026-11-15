@@ -3611,6 +3611,8 @@ function createGalacticReach(options = {}) {
   function showPrestigeBreakdown(playerId) {
     const points = prestigeBreakdown(playerId);
     $('#prestige-title').textContent = `${state.players[playerId].name} · ${points.total} Prestige`;
+    const player = state.players[playerId], colonies = colonyPlanets(playerId).length;
+    $('#prestige-stats').textContent = `${state.activePlayer===playerId && state.winner===null ? 'Acting' : player.passed ? 'Passed' : 'Ready'} · ${colonies} ${colonies===1?'colony':'colonies'} · ${player.cardsPurchased||0} cards bought · ${strongestFleet(playerId)} fleet power`;
     $('#prestige-breakdown').innerHTML = [
       ['Colonies · 3 each',points.colonies],
       ['Excavated relics · 2 each',points.relics],[`Decisive combat victories · ${COMBAT_VICTORY_PRESTIGE} each`,points.combat],['Card Prestige',points.cards]
@@ -3619,17 +3621,26 @@ function createGalacticReach(options = {}) {
     if (!dialog.open) dialog.showModal();
   }
 
+  // The race to the Prestige goal: one lane per faction, in seat order, so every marker sits exactly
+  // at its score. Each marker opens that faction's point breakdown; pointing at it or focusing it
+  // shows an overview of its points and stats. The acting faction's marker glows.
   function renderScoreboard() {
-    $('#score-ribbon').innerHTML = state.players.map((player,id)=>{
+    const target = victoryTarget();
+    const ticks = [1,2,3].map(step => Math.round(target * step / 4)).map(value => `<span class="prestige-tick" style="--at:${value / target * 100}%"><span>${value}</span></span>`).join('');
+    const tag = (player,id) => id===ME && !replayMode ? 'You' : player.name.split(/\s+/).filter(Boolean).map(word => word[0]).join('').slice(0,3).toUpperCase();
+    const lanes = state.players.map((player,id) => {
       const active = state.activePlayer===id && state.winner===null;
+      const status = active ? 'Acting' : player.passed ? 'Passed' : 'Ready';
       const elo = state.replayElo?.[id];
-      const eloText = elo ? `<span class="score-elo">Elo ${Math.round(elo.before)} → ${Math.round(elo.after)} (${elo.after>=elo.before?'+':''}${(elo.after-elo.before).toFixed(1)})</span>` : '';
-      const colonies = colonyPlanets(id).length, breakdown = prestigeBreakdown(id), points = breakdown.total;
-      // Pointing at or focusing a standing opens an overview of its points and stats.
+      const eloText = elo ? ` · Elo ${Math.round(elo.before)} → ${Math.round(elo.after)} (${elo.after>=elo.before?'+':''}${(elo.after-elo.before).toFixed(1)})` : '';
+      const colonies = colonyPlanets(id).length, breakdown = prestigeBreakdown(id), points = breakdown.total, at = Math.min(100, points / target * 100);
       const sources = [['Colonies', breakdown.colonies], ['Relics', breakdown.relics], ['Battles', breakdown.combat], ['Cards', breakdown.cards]];
-      const overview = `<div class="score-overview"><strong class="score-overview-title">${esc(player.name)} <b>${points} of ${victoryTarget()}★</b></strong><dl>${sources.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}★</dd></div>`).join('')}</dl><p>${colonies} ${colonies===1?'colony':'colonies'} · ${player.cardsPurchased||0} cards bought · ${strongestFleet(id)} fleet power</p></div>`;
-      return `<article class="score-card ${active?'active':''} ${replayMode&&id===viewSeat?'viewing':''}" style="--player:${player.color}"><span class="faction-counter" aria-hidden="true">${String(id+1).padStart(2,'0')}</span><div class="score-info"><div class="score-top"><span class="score-name">${esc(player.name)}</span><span class="score-turn">${active?'Acting':player.passed?'Passed':'Ready'}</span></div>${overview}<div class="score-meta"><span>${colonies} ${colonies===1?'colony':'colonies'}</span><span>${player.cardsPurchased||0} cards bought</span><span>${strongestFleet(id)} fleet power</span>${eloText}</div></div><button type="button" class="score-value" data-score-player="${id}" aria-label="${esc(player.name)}: ${points} Prestige. Show point breakdown" aria-haspopup="dialog">${points} <small>Prestige</small></button></article>`;
+      const overview = `<div class="score-overview" id="score-overview-${id}" role="tooltip"><strong class="score-overview-title"><span>${esc(player.name)} <i>${status}</i></span><b>${points} of ${target}★</b></strong><dl>${sources.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}★</dd></div>`).join('')}</dl><p>${colonies} ${colonies===1?'colony':'colonies'} · ${player.cardsPurchased||0} cards bought · ${strongestFleet(id)} fleet power${eloText}</p></div>`;
+      const label = `${esc(player.name)}, ${status}: ${points} of ${target} Prestige. Show point breakdown`;
+      return `<div class="prestige-lane${at>70?' flip':''}" style="--player:${player.color};--at:${at}%"><button type="button" class="prestige-marker${active?' acting':''}${replayMode&&id===viewSeat?' viewing':''}" data-score-player="${id}" aria-label="${label}" aria-describedby="score-overview-${id}" aria-haspopup="dialog"><b>${points}</b><span class="prestige-name">${esc(tag(player,id))}</span></button>${overview}</div>`;
     }).join('');
+    $('#prestige-track').innerHTML = `<span class="prestige-track-goal">${target}★</span><div class="prestige-line">${ticks}${lanes}</div>`;
+    $('.app-shell')?.style.setProperty('--lanes', state.players.length);
     $$('[data-score-player]').forEach(button=>button.addEventListener('click',()=>showPrestigeBreakdown(Number(button.dataset.scorePlayer))));
     renderHistoryStatus();
   }
@@ -4176,23 +4187,12 @@ function createGalacticReach(options = {}) {
     $('#trade-ledger').innerHTML=state.players.filter(player=>player.id!==viewSeat).map(player=>`<div><span>${esc(player.name)}</span><strong>${state.players[viewSeat].tradesWith[player.id]} completed</strong></div>`).join('');
   }
 
-  // Board edges: the round's phases, the race to the Prestige goal and the primary action.
+  // Board edges: the round's phases and the primary action.
   const STEPPER_PHASES = ['production','draw','operations','buy','cleanup'];
   function renderBoardEdges() {
     $('#stepper-round').textContent = `Round ${state.round}`;
     const steps = $('#phase-stepper-steps');
     steps.innerHTML = STEPPER_PHASES.map(phase => `<li class="${phase===state.phase?'current':''}" ${phase===state.phase?'aria-current="step"':''}>${phase[0].toUpperCase()+phase.slice(1)}</li>`).join('');
-    const target = victoryTarget();
-    // One lane per faction, in seat order, so every marker sits exactly at its score.
-    const ticks = [1,2,3].map(step => Math.round(target * step / 4)).map(value => `<span class="prestige-tick" style="--at:${value / target * 100}%"><span>${value}</span></span>`).join('');
-    const tag = (player,id) => id===ME && !replayMode ? 'You' : player.name.split(/\s+/).filter(Boolean).map(word => word[0]).join('').slice(0,3).toUpperCase();
-    const lanes = state.players.map((player,id) => {
-      const points = calculatePrestige(id), at = Math.min(100, points / target * 100);
-      const label = `${esc(player.name)}: ${points} of ${target} Prestige`;
-      return `<div class="prestige-lane" style="--player:${player.color};--at:${at}%"><span class="prestige-marker${id===state.activePlayer?' acting':''}${at>88?' flip':''}" role="img" aria-label="${label}"><b>${points}</b><span class="prestige-name">${esc(tag(player,id))}</span></span></div>`;
-    }).join('');
-    $('#prestige-track').innerHTML = `<span class="prestige-track-goal">${target}★</span><div class="prestige-line">${ticks}${lanes}</div>`;
-    $('.app-shell')?.style.setProperty('--lanes', state.players.length);
   }
   function renderBoardPrimary() {
     const primary = $('#board-primary');
