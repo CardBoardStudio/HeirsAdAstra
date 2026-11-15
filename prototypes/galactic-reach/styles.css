@@ -2337,3 +2337,24 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 }
 
 #resource-grid > .mat-head .mat-hint { display: none !important; }
+
+/* ==== The map's top-left corner holds the Prestige track and the faction tiles: the map sits at
+   the right of a region that also covers a narrow left strip, and the track and tiles reach from
+   that strip into the map's empty corner (the hexagon leaves a triangle there). The comms sheet
+   lies in the strip below them. Sizes are in table units, so this scales with the table. ==== */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell {
+    --left-w: 210px;
+    --board-w: min(calc((var(--table-h, 100dvh) - 16px - var(--front-h) - 12px) * 1.0543), calc(var(--table-w, 100vw) - 32px - 28px - var(--left-w) - 400px));
+    grid-template-columns: var(--left-w) minmax(0, var(--board-w)) minmax(360px, 1fr) !important;
+  }
+  .board-map-region { grid-column: 1 / 3 !important; place-items: center end !important; }
+  .galaxy-board, .has-saved-table .galaxy-board, .has-replay .galaxy-board { width: min(100cqw, 100cqh * 1.0543, var(--board-w)) !important; }
+  .map-tools { grid-column: 1 / 3 !important; }
+  .prestige-track { grid-column: 1 / 3 !important; justify-self: start !important; width: calc(var(--left-w) + var(--board-w) * .15); margin-left: 4px !important; }
+  .board-shared .score-ribbon { grid-column: 1 / 3 !important; justify-self: start !important; width: calc(var(--left-w) + var(--board-w) * .1); }
+  .log-panel { grid-column: 1 !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .toast { box-sizing: border-box; width: calc(196px * var(--table-zoom, 1)); }
+}
