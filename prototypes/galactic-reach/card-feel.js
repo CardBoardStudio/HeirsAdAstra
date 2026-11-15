@@ -60,12 +60,16 @@
   function inspectCard(card) {
     clearTimeout(hideTimer);
     if (!card || drag) return hideInspect();
+    // Re-showing the card already up (a re-render, or the pointer crossing its parts)
+    // must not replay the entrance, or the card flickers while bots act.
+    const steady = !inspect.hidden && inspected !== null && inspected === (card.dataset.cardId || null);
     inspected = card.dataset.cardId || null;
     const copy = card.cloneNode(true);
     copy.querySelector('.card-buttons')?.remove();
     for (const name of ['data-card-id', 'data-order', 'style']) copy.removeAttribute(name);
     copy.setAttribute('style', `--card-accent:${card.style.getPropertyValue('--card-accent')}`);
     copy.classList.add('inspect-card');
+    copy.classList.toggle('cf-steady', steady);
     copy.classList.remove('cf-tilting', 'cf-dragging');
     inspect.replaceChildren(copy);
     if (!inspect.isConnected) document.body.append(inspect);
@@ -86,7 +90,10 @@
     let left;
     if (map && map.width) {
       const leftRoom = map.left - 8, rightRoom = innerWidth - map.right - 8;
-      left = rightRoom >= leftRoom ? map.right + Math.max(4, (Math.min(rightRoom, width + 40) - width) / 2) : map.left - width - Math.max(4, (Math.min(leftRoom, width + 40) - width) / 2);
+      // Use the wider side of the table beside the map, as close above the card as that
+      // side allows, so the card reads as lifted up from the hand without covering a hex.
+      const [lo, hi] = rightRoom >= leftRoom ? [map.right + 8, innerWidth - 8] : [8, map.left - 8];
+      left = Math.min(hi - width, Math.max(lo, from.left + from.width / 2 - width / 2));
       if (Math.max(leftRoom, rightRoom) < width) left = from.left + from.width / 2 < innerWidth / 2 ? innerWidth - width - 8 : 8;
     } else left = from.left;
     left = Math.min(innerWidth - width - 8, Math.max(8, left));

@@ -60,6 +60,7 @@
 .card-inspect .card-footer { display: flex; align-items: center; margin-top: 8px; padding-top: 7px; }
 .card-inspect .resource-chip strong { font-size: 13px; }
 @keyframes cf-inspect-in { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+.card-inspect .game-card.cf-steady { animation: none; }
 @media (prefers-reduced-motion: reduce) { .card-inspect .game-card { animation: none; } }
 
 /* Market (report #8): the price is the card's top-left corner and the gain its top-right.
