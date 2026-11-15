@@ -4468,6 +4468,7 @@ function createGalacticReach(options = {}) {
     // Each part of the table draws on its own: one failing part must never blank the market,
     // the relics or the turn's buttons. Failures are logged, shown once, and fail the checks.
     drawEach({renderHeader, renderScoreboard, renderBoard, renderResources, renderInspector, positionSectorScan, renderLog, renderHand, renderMarket, renderFleetSummary, renderTrade, renderRelicRow, renderOverflow, renderCombat, renderCombatReport, renderBoardPrimary});
+    drawEach({fitMap});
     drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()), drawers: followTurnWithDrawer });
   }
 
@@ -4674,6 +4675,43 @@ function createGalacticReach(options = {}) {
     }
   }
 
+  // The map fills the space the other pieces leave: on a landscape table it may reach into the
+  // left strip, as long as no hex runs under the Prestige track, the notice spot below it, the
+  // comms card or the map tools, which lie in the hexagon's empty corners. Hex positions scale
+  // with the map's width, so they are measured once and the largest width that clears every
+  // corner piece is found by bisection.
+  let fitMapLog = null;
+  function fitMap() {
+    if (typeof document === 'undefined' || !document.documentElement?.style) return;
+    const root = document.documentElement, region = $('.board-map-region'), board = $('#galaxy-board');
+    const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches && !$('.board-stage.map-zoomed');
+    if (!landscape || !region?.getBoundingClientRect || !board) { root.style.removeProperty('--map-w'); return; }
+    const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1;
+    const box = region.getBoundingClientRect(), b = board.getBoundingClientRect();
+    if (!b.width || !box.width) return;
+    const hexes = [...board.querySelectorAll('.hex')].map(hex => { const r = hex.getBoundingClientRect(); return [(r.left - b.left) / b.width, (r.top - b.top) / b.width, (r.right - b.left) / b.width, (r.bottom - b.top) / b.width]; });
+    const ratio = b.height / b.width, gap = 6 * zoom;
+    const rect = (element, [l, t, r, bottom] = [0, 0, 0, 0]) => { const e = element?.getBoundingClientRect?.(); return e && e.width ? [e.left - l * zoom, e.top - t * zoom, e.right + r * zoom, e.bottom + bottom * zoom] : null; };
+    const track = rect($('#prestige-track'), [6, 4, 38, 5]);
+    // The notice spot under the track (see .toast), kept clear so a notice never lies on a hex.
+    const notice = track && [16 * zoom, track[3] + 8 * zoom, (16 + 196) * zoom, track[3] + 170 * zoom];
+    // An open comms log lies over the map on purpose; the map keeps clear of the closed card.
+    if (!$('.log-panel.open')) fitMapLog = rect($('.log-panel'));
+    const log = fitMapLog;
+    const blocks = [track, notice, log, rect($('.map-tools'))].filter(Boolean);
+    const fits = width => {
+      const height = width * ratio, left = box.right - width, top = box.top + (box.height - height) / 2;
+      return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
+    };
+    let high = Math.min(box.width, box.height / ratio), low = high * .4;
+    if (!fits(high)) {
+      if (!fits(low)) { root.style.removeProperty('--map-w'); return; }
+      for (let step = 0; step < 14; step++) { const mid = (low + high) / 2; if (fits(mid)) low = mid; else high = mid; }
+      high = low;
+    }
+    root.style.setProperty('--map-w', `${Math.floor(high / zoom)}px`);
+  }
+
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
   const tableLayout = () => typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 600px) and (min-height: 600px)').matches;
   function switchTab(name) {
@@ -4762,11 +4800,12 @@ function createGalacticReach(options = {}) {
     window.addEventListener('resize',positionSectorScan);
     fitTable();
     window.addEventListener('resize',fitTable);
+    window.addEventListener('resize',fitMap);
     document.addEventListener('scroll',event=>{if(!$('#sector-popover').contains(event.target))positionSectorScan();},true);
     $('#open-map-key').addEventListener('click',()=>$('#map-key-dialog').showModal());
     $('#close-map-key').addEventListener('click',()=>$('#map-key-dialog').close());
     $('#map-zoom').addEventListener('click',()=>{
-      const stage=$('.board-stage'); const zoomed=stage.classList.toggle('map-zoomed');
+      const stage=$('.board-stage'); const zoomed=stage.classList.toggle('map-zoomed'); fitMap();
       $('#map-zoom').textContent=zoomed?'Fit map':'Zoom map';
       $('#map-zoom').setAttribute('aria-pressed',String(zoomed));
       if (zoomed) {

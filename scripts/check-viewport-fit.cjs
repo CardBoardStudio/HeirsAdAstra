@@ -361,7 +361,7 @@ const MEASURE = `(() => {
   if (!phone && !modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
     // The centre and both side edges of every hex must be clickable.
     const r = hex.getBoundingClientRect(), y = r.top + r.height / 2;
-    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover'); });
+    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open'); });
     if (blocked) { const hit = document.elementFromPoint(...blocked); problems.push('hex covered at ' + Math.round(blocked[0]) + ',' + Math.round(y) + ' by ' + (hit ? label(hit) : 'nothing')); break; }
   }
   // Spare height in the tightest card: how far wider fonts can push before text is cut.
