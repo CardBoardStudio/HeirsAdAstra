@@ -2,10 +2,10 @@
 
 Two channels, two branches:
 
-| Channel | Branch | Render service | What it plays |
+| Channel | Branch | Host | What it plays |
 | --- | --- | --- | --- |
-| **Dev** | `main` | `drawing-board-dev` (persistent disk, `GALACTIC_REACH_CHANNEL=dev`) | Every merged PR, live within minutes of the merge |
-| **Stable** | `stable` | `drawing-board` (<https://drawing-board-p0g3.onrender.com/>) | The last release |
+| **Dev** | `main` | Self-hosted [dev host](#dev-host) (`deploy/dev-host/`), tailnet only | Every merged PR, live about a minute after the merge plus a build |
+| **Stable** | `stable` | Render `drawing-board` (<https://drawing-board-p0g3.onrender.com/>) | The last release |
 
 Change PRs merge into `main` and go live on dev. Several merges later, one release cut bumps the version once. Merging the standing **Release PR** (`main` → `stable`) is the release. Nothing commits to `stable` directly, so `stable` is always an earlier `main` commit.
 
@@ -20,7 +20,7 @@ Two PRs never conflict over version numbers or release notes: each one adds its 
 
 ## Dev channel
 
-Every merge to `main` deploys `drawing-board-dev` automatically. The dev site deals rules named `<released>+dev.<n>` (for example `34.39+dev.2`), where `n` counts the `compat: breaking` entries waiting in `changes/`. The page badge shows `dev · 34.39+dev.2 · <commit>`. A `+dev.` revision never equals a released one, and the dev site has its own origin, database, and browser save keys, so dev play never mixes with stable play.
+Every merge to `main` deploys to the dev host automatically. The dev site deals rules named `<released>+dev.<n>` (for example `34.39+dev.2`), where `n` counts the `compat: breaking` entries waiting in `changes/`. The page badge shows `dev · 34.39+dev.2 · <commit>`. A `+dev.` revision never equals a released one, and the dev site has its own origin, database, and browser save keys, so dev play never mixes with stable play.
 
 Games in progress survive merges:
 
@@ -34,7 +34,7 @@ Interface edits inside `app.js` reach only tables on the current dev revision. A
 
 ## Cut a release
 
-The standing Release PR (`main` → `stable`) always shows what is unreleased. Its Render preview, a PR preview of the stable service, runs the batch exactly as it would ship. When the batch is ready:
+The standing Release PR (`main` → `stable`) always shows what is unreleased. Render previews only PRs into a service's own branch, so the Release PR is the one PR with a Render preview; change PRs into `main` are checked locally (`scripts/dev.sh`) and then on the dev host after merge. Its Render preview, a PR preview of the stable service, runs the batch exactly as it would ship. When the batch is ready:
 
 ```sh
 git switch -c release/cut origin/main
@@ -68,6 +68,24 @@ The same check fails a Release PR that still has pending entries: cut them first
 ## One-time setup
 
 1. Create `stable` from the commit the stable site serves now: `git push origin <deployed-commit>:refs/heads/stable`. Use the commit in the latest successful stable deployment; normally this is `origin/main` before any post-release merge.
-2. Merge the PR that adds this process. The Blueprint (`render.yaml`) points `drawing-board` at `stable` and adds `drawing-board-dev` on `main`. Sync the Blueprint in Render and confirm the plan for the dev service's disk.
-3. Open the standing Release PR: `main` → `stable`, titled "Release: next".
-4. Optionally protect `stable` so only PR merges reach it.
+2. Merge the PR that adds this process. The Blueprint (`render.yaml`) points `drawing-board` at `stable`; sync it in Render.
+3. Set up a [dev host](#dev-host), or point an existing one at `main` (`BRANCH=main` in its `dev-host.conf`).
+4. Open the standing Release PR: `main` → `stable`, titled "Release: next".
+5. Optionally protect `stable` so only PR merges reach it.
+
+## Dev host
+
+Any Linux machine with Docker, git and systemd can be the dev host. `deploy/dev-host/dev-host.sh` keeps everything under `/opt/drawing-board-dev` (`DEV_HOST_ROOT`): the checkout, a persistent `data/` directory for the dev SQLite database and kept engines, `dev.env` (the server's environment, mode 600), and `dev-host.conf` (`BRANCH`, `PORT`).
+
+```sh
+git clone https://github.com/CardBoardStudio/drawing_board.git /tmp/drawing-board
+APP_ORIGIN=https://<host>.<tailnet>.ts.net:3200 NIDO_WALLET_HOST=test.nido.fyi \
+  /tmp/drawing-board/deploy/dev-host/dev-host.sh install
+sudo tailscale serve --bg --https=3200 http://127.0.0.1:3200   # tailnet only
+```
+
+`install` creates the directories, generates an `ACCOUNT_REGISTRATION_CODE`, and enables the `drawing-board-dev-update.timer` systemd timer. Every minute the timer runs `dev-host.sh update`, which fetches `origin/<BRANCH>`. On a new commit it builds the repository's Dockerfile and only then replaces the `drawing-board-dev` container. The container is bound to `127.0.0.1:<PORT>`, mounts the same `data/` directory, and runs with `GALACTIC_REACH_CHANNEL=dev` and `GIT_COMMIT`. A failed build leaves the running server alone. The three newest images are kept for a manual rollback.
+
+- Status: `/opt/drawing-board-dev/bin/dev-host.sh status`. Logs: `journalctl -u drawing-board-dev-update` and `docker logs drawing-board-dev`.
+- Accounts: share the registration code from `dev.env` privately with testers, or create an administrator with `docker exec drawing-board-dev drawing-board bootstrap-admin` and use invitations ([local hosting](local-hosting.md#set-up-the-administrator)).
+- Back up `data/` with SQLite-aware tooling; deleting it resets every dev table and account.
