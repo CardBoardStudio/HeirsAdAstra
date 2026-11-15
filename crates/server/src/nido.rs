@@ -248,16 +248,7 @@ async fn complete(
     if deleted != 1 {
         return Err(bad("Login challenge has already been used."));
     }
-    tx.execute(
-        "INSERT OR IGNORE INTO accounts(id,name,kind,created) VALUES(?,?,'human',?)",
-        rusqlite::params![
-            format!("nido:{account}"),
-            format!("Pilot {}", &account[account.len().saturating_sub(6)..]),
-            now()
-        ],
-    )
-    .map_err(internal)?;
-    let id = format!("nido:{account}");
+    let id = ensure_account(&tx, &account)?;
     let name: String = tx
         .query_row("SELECT name FROM accounts WHERE id=?", [&id], |r| r.get(0))
         .map_err(internal)?;
@@ -279,6 +270,23 @@ async fn complete(
         state_cookie(&app, "", 0).parse().unwrap(),
     );
     Ok(response)
+}
+/// The account for a Nido wallet address, created on first use.
+pub fn ensure_account(db: &rusqlite::Connection, address: &str) -> ApiResult<String> {
+    let account = address.trim().to_uppercase();
+    stellar_strkey::Contract::from_string(&account)
+        .map_err(|_| bad("Expected a Nido wallet address (C…)."))?;
+    let id = format!("nido:{account}");
+    db.execute(
+        "INSERT OR IGNORE INTO accounts(id,name,kind,created) VALUES(?,?,'human',?)",
+        rusqlite::params![
+            id,
+            format!("Pilot {}", &account[account.len().saturating_sub(6)..]),
+            now()
+        ],
+    )
+    .map_err(internal)?;
+    Ok(id)
 }
 /// Always bring failures back to the account UI, never leave an opaque JSON page.
 pub async fn callback(

@@ -364,6 +364,9 @@ pub struct GameView {
 pub struct Identity {
     pub name: String,
     pub development: bool,
+    /// Signed in with a Nido wallet, the only accounts an invite-only host admits.
+    #[serde(default)]
+    pub nido: bool,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SessionInfo {
@@ -378,6 +381,13 @@ pub struct SessionInfo {
     /// link to the same wallet the server verifies against.
     #[serde(default)]
     pub nido_wallet: Option<NidoWallet>,
+    /// The host runs `ACCESS=invite-only` (docs/invite-only.md).
+    #[serde(default)]
+    pub invite_only: bool,
+    /// This browser may use the whole site: always on an open host; on an
+    /// invite-only host, a Nido administrator or invitation holder.
+    #[serde(default)]
+    pub member: bool,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct NidoWallet {

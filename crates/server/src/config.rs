@@ -7,6 +7,11 @@ pub struct Config {
     pub dev_auth: bool,
     pub preview_code_hash: Option<[u8; 32]>,
     pub registration_code_hash: Option<[u8; 32]>,
+    /// `ACCESS=invite-only` (docs/invite-only.md); off by default.
+    pub invite_only: bool,
+    /// `TRUSTED_CLIENT_IP_HEADER`: the proxy header naming the client, for
+    /// per-client sign-in limits. Only set it behind a proxy that writes it.
+    pub client_ip_header: Option<axum::http::HeaderName>,
 }
 impl Config {
     pub fn from_env(get: impl Fn(&str) -> Option<String>) -> Result<Self, String> {
@@ -75,12 +80,28 @@ impl Config {
         } else {
             None
         };
+        let invite_only = match get("ACCESS").as_deref() {
+            None | Some("open") => false,
+            Some("invite-only") => true,
+            Some(_) => return Err("ACCESS must be open or invite-only.".into()),
+        };
+        if invite_only && !local_origin && parsed.scheme() != "https" {
+            return Err("ACCESS=invite-only requires an HTTPS origin (or local HTTP).".into());
+        }
+        let client_ip_header = get("TRUSTED_CLIENT_IP_HEADER")
+            .map(|name| {
+                axum::http::HeaderName::try_from(name.as_str())
+                    .map_err(|_| "TRUSTED_CLIENT_IP_HEADER must be a header name.".to_string())
+            })
+            .transpose()?;
         Ok(Self {
             bind,
             origin,
             dev_auth,
             preview_code_hash,
             registration_code_hash,
+            invite_only,
+            client_ip_header,
         })
     }
 }
@@ -128,6 +149,29 @@ mod tests {
             .registration_code_hash
             .is_some()
         );
+    }
+    #[test]
+    fn invite_only_is_opt_in_and_needs_a_secure_origin() {
+        assert!(!config(&[]).unwrap().invite_only);
+        assert!(!config(&[("ACCESS", "open")]).unwrap().invite_only);
+        assert!(config(&[("ACCESS", "closed")]).is_err());
+        assert!(config(&[("ACCESS", "invite-only")]).unwrap().invite_only);
+        assert!(
+            config(&[
+                ("ACCESS", "invite-only"),
+                ("APP_ORIGIN", "http://public.example")
+            ])
+            .is_err()
+        );
+        let c = config(&[
+            ("ACCESS", "invite-only"),
+            ("APP_ORIGIN", "https://bitswell.example.ts.net:3200"),
+            ("TRUSTED_CLIENT_IP_HEADER", "X-Forwarded-For"),
+        ])
+        .unwrap();
+        assert!(c.invite_only);
+        assert_eq!(c.client_ip_header.unwrap(), "x-forwarded-for");
+        assert!(config(&[("TRUSTED_CLIENT_IP_HEADER", "bad header")]).is_err());
     }
     #[test]
     fn production_never_enables_preview_login() {

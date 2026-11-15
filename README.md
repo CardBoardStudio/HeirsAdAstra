@@ -25,6 +25,7 @@ For two human players on one computer, use separate browser profiles or a privat
 - Reusable game/player traits, seven reference AI policies across two adapters, authoritative matches with rotating seats, and persistent per-lab Elo. See [game platform](docs/game-platform.md).
 - The current prototype/platform/experiment dependency graph and follow-up PR plan are tracked in the [playtest roadmap](docs/playtest-roadmap.md).
 - Optional local release deployment through Tailscale Funnel. See [local HTTPS hosting](docs/local-hosting.md).
+- Invite-only mode for a public host: Nido sign-in plus an administrator's invitation. See [invite-only hosting](docs/invite-only.md).
 
 - Yew Rust/WebAssembly UI: lobby, saved tables, private invitations, hand, market, collection, rules, and flight log.
 - Axum HTTP server with SQLite persistence, cookie sessions, membership checks, origin protection, and revision-checked commands.
@@ -73,6 +74,8 @@ Run `./scripts/build-web.sh` again after UI changes, then reload the browser. Ba
 | `NIDO_AUTH` | `1` | Enable current Nido testnet wallets; `0` disables sign-in |
 | `NIDO_RPC_URL` | Stellar testnet RPC | Trusted HTTPS testnet RPC used for live wallet verification |
 | `NIDO_WALLET_HOST` | `test.nido.fyi` | Nido wallet host; e.g. `362.test.nido.fyi` for a Nido PR preview (see `docs/nido-auth.md`) |
+| `ACCESS` | `open` | `invite-only` admits only Nido administrators and invitation holders; see [invite-only hosting](docs/invite-only.md) |
+| `TRUSTED_CLIENT_IP_HEADER` | unset | Proxy header carrying the client address (e.g. `X-Forwarded-For`) for per-client sign-in limits; set only behind a proxy that writes it |
 | `RUST_LOG` | unset | Server diagnostic filter, e.g. `info` |
 
 For a shared deployment, serve through HTTPS, set `APP_ORIGIN` to its exact public origin, leave `DEV_AUTH` unset, and configure an account enrollment code or use Nido sign-in. A loopback bind does not prevent a reverse proxy from exposing development sign-in: do not publish a process started with `scripts/dev.sh`. Back up the SQLite database with SQLite-aware backup tooling. Run a single server process per database for this prototype.
