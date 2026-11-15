@@ -90,3 +90,7 @@ sudo tailscale serve --bg --https=3200 http://127.0.0.1:3200   # tailnet only
 - Accounts: the dev host admits only Nido accounts that hold an invitation. Make yourself administrator once with `docker exec drawing-board-dev drawing-board grant-admin <your Nido wallet address>`, then invite testers from **Invitations** ([invite-only hosting](invite-only.md)). A host installed before invite-only mode needs `ACCESS=invite-only` added to `dev.env`; its old `ACCOUNT_REGISTRATION_CODE` then has no effect.
 - Public access: do it only after the step above. Tailscale Funnel serves only ports 443, 8443 and 10000, so the public origin may differ from the tailnet one on port 3200. Set `APP_ORIGIN` in `dev.env` to the public origin exactly, because Nido sign-in messages name it.
 - Back up `data/` with SQLite-aware tooling; deleting it resets every dev table and account.
+
+## Legacy preview identifiers
+
+A cut skips identifiers already owned by published experiment archives. The workstation migration preserves 35.40 and 36.41, so the batch after stable 34.39 uses 37.42. This is one release cut; the old previews keep their engines and manuals. Later entries join that same cut until stable catches up. The next cut after stable 37.42 is 38.43.

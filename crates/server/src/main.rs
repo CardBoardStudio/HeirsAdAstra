@@ -2,6 +2,7 @@ mod access;
 mod accounts;
 mod arena;
 mod card_feedback;
+mod change_queue;
 mod config;
 mod invites;
 mod lobby;
@@ -527,6 +528,7 @@ async fn command(
 }
 fn router(app: App) -> Router {
     Router::new()
+        .merge(change_queue::routes(Arc::new(change_queue::Config::from_env())))
         .route(
             "/api/health",
             get(|State(app): State<App>| async move {

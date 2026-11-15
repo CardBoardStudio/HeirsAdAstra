@@ -1,0 +1,194 @@
+[
+  {
+    "pr": 21,
+    "branch": "codex/experiment-latest-game",
+    "head": "f6518976f59022624efdf4e472ccf678cb296b78",
+    "format": 11,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 22,
+    "branch": "codex/experiment-streamlined-rules",
+    "head": "6f27649762100506ac3588113accddbc491a49db",
+    "format": 12,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 23,
+    "branch": "codex/experiment-excavation",
+    "head": "9c3d50aa321866de600c74d5a5e0b7820ada1413",
+    "format": 13,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 24,
+    "branch": "codex/experiment-fair-frontier",
+    "head": "5adfcdd325f34b77089cd17fdf39cbcfef1b50b1",
+    "format": 14,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 25,
+    "branch": "codex/experiment-tactical-combat",
+    "head": "cbd8a95f419350dd7d4af57968902d19380628a0",
+    "format": 15,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 26,
+    "branch": "codex/experiment-compact-frontier",
+    "head": "30ac7a94133b8d493c4856f95999eda255405dc8",
+    "format": 16,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 27,
+    "branch": "codex/experiment-central-frontier",
+    "head": "c946eac8b7b90499ded19d6e922762a1071b5e1b",
+    "format": 18,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 28,
+    "branch": "codex/experiment-game-reports",
+    "head": "3089d9aedd80b479e360f1cb521aedbfa1cfdcb4",
+    "format": 19,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 29,
+    "branch": "codex/experiment-open-worlds",
+    "head": "d5b5c4eefe092c56a5446e97b328c0d6ce51b560",
+    "format": 20,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 30,
+    "branch": "codex/experiment-scoring-bots",
+    "head": "d4a3f54876c536fe5fa197172a83c23590523bde",
+    "format": 21,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 31,
+    "branch": "codex/experiment-probe-relics",
+    "head": "5f31976e68fe6e67edeea753e6653ec82055ea30",
+    "format": 22,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 32,
+    "branch": "codex/experiment-twenty-point-strategy",
+    "head": "b4198cee149f9f5769b29c81ee352e40fc8b3287",
+    "format": 23,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 33,
+    "branch": "codex/experiment-nearest-probe",
+    "head": "6d4d579c82de257b9a958cb7e4a52fb5b900b6d0",
+    "format": 24,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 34,
+    "branch": "codex/experiment-storage-reserves",
+    "head": "e7073e2697fbbde7c8339275d460475893bf35a1",
+    "format": 25,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  },
+  {
+    "pr": 35,
+    "branch": "codex/experiment-single-use-probe",
+    "head": "60dbf2f7eab161616cbd9d28b9578b5791c6f796",
+    "format": 26,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": false,
+      "styles.css": false
+    }
+  },
+  {
+    "pr": 36,
+    "branch": "codex/experiment-ship-counts",
+    "head": "80a63af82d6a444d1e04292797a8897037a4e9f1",
+    "format": 26,
+    "archivedExact": {
+      "app.js": true,
+      "adapter.js": true,
+      "rulebook.html": true,
+      "styles.css": true
+    }
+  }
+]

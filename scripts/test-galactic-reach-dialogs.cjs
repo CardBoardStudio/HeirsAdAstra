@@ -141,6 +141,7 @@ function createDom(timers) {
       const button = new FakeElement('button');
       button.dataset[key] = match[1];
       const tag=parent.innerHTML.slice(parent.innerHTML.lastIndexOf('<',match.index),parent.innerHTML.indexOf('>',match.index)+1);
+      for(const [,name,value] of tag.matchAll(/data-([a-z-]+)="([^"]*)"/g))button.dataset[name.replace(/-([a-z])/g,(_,c)=>c.toUpperCase())]=value;
       button.disabled=/\sdisabled(?:\s|>|=)/.test(tag);
       return button;
     }));
@@ -536,7 +537,7 @@ test('Probe resolves from empty space without selecting or reaching a world',()=
  assert.equal(after.fleets['2,2'][0].explorer,1);assert.deepEqual(after.players[0].resources,before.players[0].resources);assert.equal(game.randomCalls(),calls);
  assert.equal(after.clusters.filter(c=>c.scannedBy.includes(0)).length,before.clusters.filter(c=>c.scannedBy.includes(0)).length+1);
  assert.deepEqual(after.clusters.map(c=>c.revealedBy),before.clusters.map(c=>c.revealedBy));
- game.click('export-game-report');const report=game.downloads.at(-1);assert(report.save.gameHistory.events.some(e=>e.text.includes('Probe was replaced by an Excavate card')));const p=report.save.state.players[0];assert(![...p.hand,...p.deck,...p.discard].some(c=>c.id==='remote-probe'));assert(p.discard.some(c=>c.key==='excavate'),'the used Probe became an Excavate in discard');
+ game.click('export-game-report');const report=game.downloads.at(-1);assert(report.save.gameHistory.events.some(e=>e.text.includes('combined card stays in play')));const p=report.save.state.players[0];assert(![...p.hand,...p.deck,...p.discard].some(c=>c.id==='remote-probe'));assert(p.inPlay.some(c=>c.id==='remote-probe'),'Probe keeps the combined card in play');assert(!p.discard.some(c=>c.key==='excavate'));
 });
 test('Multiple Explorers let the player choose the Probe origin',()=>{
  const storage=createStorage(),state=boot(storage).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep',selected:null});
@@ -679,7 +680,7 @@ test('Buildings have no upgrade actions; Shipyard still offers commissions', () 
  yard.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='yard-order').click();
  assert.equal(yard.dom.contextButton('Upgrade Shipyard to II'),undefined);
  assert(yard.dom.contextButton('Commission Fleet'));
- assert(yard.dom.contextButton('Commission Explorer + Probe + Excavate'));
+ assert(yard.dom.contextButton('Commission Explorer + Probe / Excavate'));
  state.planets[coord].upgrade='harvester';writeSave(storage,state);
  const harvester=boot(storage);
  harvester.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='yard-order').click();
@@ -821,7 +822,7 @@ test('stale history never attaches to a different position and storage failure i
 test('a complete browser game exports setup through victory and retains its history after reload', () => {
  const storage=createStorage(),game=boot(storage);
  for(let turn=0;game.saved().winner===null;turn++) {
-   assert(turn<350,'Browser rivals should finish a game');
+   assert(turn<350,'Browser rivals should finish a game: '+JSON.stringify({round:game.saved().round,phase:game.saved().phase,active:game.saved().activePlayer,pendingConstruct:game.saved().pendingConstruct,pendingBuildOrder:game.saved().pendingBuildOrder,players:game.saved().players.map(p=>({id:p.id,prestige:p.prestige,resources:p.resources,hand:p.hand.map(c=>c.key)})),log:game.saved().log.slice(-10)}));
    const state=game.saved();
    if(state.pendingCombatReport)game.click('message-continue');
    else if(state.pendingCombat){game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();}
@@ -910,6 +911,21 @@ test('storage allocations cancel atomically, survive commitment and undo with th
 
 function constructTwoSave(){const storage=createStorage(),state=boot(storage).saved(),coord=state.clusters[0].coords[1];Object.assign(state,{activePlayer:0,phase:'operations',turnStage:'prep',selected:coord});state.players[0].resources={matter:4,energy:3,biomass:3,data:2};state.players[0].hand=[{id:'two-builds',key:'construct',starter:true,upgraded:true},{id:'fund-more',key:'construct'}];writeSave(storage,state);return{storage,coord};}
 function startFirstBuild(game){game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='two-builds').click();const button=game.dom.contextButton('Build Shipyard');assert(button&&!button.disabled);button.click();game.settle();}
+test('a rival resumes its optional second build after commissioning into an enemy rival',()=>{
+ const storage=createStorage(),c=vm.createContext({});vm.runInContext(adapterSource+source,c);
+ let e;const f=c.createGalacticAdapter;c.createGalacticAdapter=x=>(e=x,f(x));
+ c.createGalacticReach({headless:true,random:seededRandom(1729)});
+ const s=e.state,coord=s.clusters[1].coords[1],card={id:'spawn-second',key:'construct',starter:true,upgraded:true};
+ s.phase='operations';s.activePlayer=1;
+ s.players.forEach((p,id)=>{p.passed=id>=2;p.hand=id===1?[card]:id===0?[{id:'wait-human',key:'move',starter:true}]:[];p.resourceLimits={matter:30,energy:30,biomass:30,data:30};p.resources={matter:20,energy:20,biomass:20,data:20};});
+ assert(e.buildUpgrade(1,coord,'starbase'));s.fleets={[coord]:{2:{settler:0,explorer:0,fleet:1}}};
+ assert(e.performConstructOrder(1,coord,'fleet',card));assert(s.pendingCombat);assert(s.pendingConstruct);
+ writeSave(storage,JSON.parse(JSON.stringify(s)));const g=boot(storage),after=g.saved();
+ assert(!after.pendingCombat);assert(!after.pendingConstruct,'The rival resolves or declines its second build after combat');
+ assert(!after.pendingBuildOrder);assert.equal(after.activePlayer,0,'The real browser timers return control to the human');
+ assert.equal(after.players[1].inPlay.filter(c=>c.id===card.id).length,1);
+});
+
 test('Construct II saves its optional second build and commits only once',()=>{
  const {storage,coord}=constructTwoSave(),game=boot(storage);startFirstBuild(game);let state=game.saved();assert(state.pendingConstruct);assert.equal(state.activePlayer,0);assert.equal(state.players[0].resources.matter,2);assert.equal(state.players[0].inPlay.filter(c=>c.id==='two-builds').length,1);assert(!game.dom.element('finish-construct').hidden);assert(game.dom.element('undo-turn-button').disabled);
  game.click('export-game-report');assert(game.downloads.at(-1).save.state.pendingConstruct);assert(game.downloads.at(-1).save.gameHistory.events.some(e=>e.changes.some(c=>c.path.join('.')==='pendingConstruct')));
@@ -981,6 +997,21 @@ test('Buy upgrades and trashes starters in hand, discard and in play (28.33 #buy
   game=boot(storage);game.dom.element('trash-resource').value='matter';fire(game.dom.element('trash-resource'),'change');
   game.dom.lastQuery('[data-trash]').find(b=>b.dataset.trash==='up-play').click();game.settle();
   assert(!game.saved().players[0].inPlay.some(c=>c.id==='up-play'),'the in-play card was trashed');
+});
+test('the last conversion passes into Buy without waiting for a click',()=>{
+ const storage=createStorage(),state=boot(storage).saved();
+ state.players[0].hand=[{id:'last',key:'construct'}];state.players[0].resources={matter:3,energy:3,biomass:3,data:3};
+ writeSave(storage,state);const game=boot(storage);game.click('convert-all-button');
+ const after=game.saved();assert.equal(after.phase,'buy');assert.equal(after.activePlayer,0);assert.equal(after.players[0].hand.length,0);assert(after.players[0].inPlay.some(c=>c.id==='last'));
+});
+test('the combined card selects Excavate and keeps the choice through reload',()=>{
+ const storage=createStorage(),state=boot(storage).saved();state.players[0].hand=[{id:'combined',key:'probe'}];writeSave(storage,state);
+ let game=boot(storage);const buttons=game.dom.lastQuery('[data-order-card]');
+ assert.equal(buttons.filter(b=>b.dataset.orderCard==='combined').length,2);
+ buttons.find(b=>b.dataset.orderMode==='excavate').click();assert.equal(game.saved().actionMode,'excavate');
+ game=boot(storage);assert.equal(game.saved().actionMode,'excavate');
+ game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderMode==='probe').click();
+ assert.equal(game.saved().actionMode,'probe');
 });
 for (const { name, body } of tests) {
   try {
