@@ -22,10 +22,15 @@ function fixture(kind) {
   context.createGalacticAdapter=value=>{engine=value;return factory(value);};
   const adapter=context.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});
   const state=engine.state;
-  if(kind==='feedback') {
+  if(['feedback','probe-last','probe-known','probe-none'].includes(kind)) {
     state.players[0].hand=[{id:'qa-probe',key:'probe'},{id:'qa-iii',key:'move',starter:true,upgraded:true,level:3},{id:'qa-cap',key:'cargoExpansion'},{id:'qa-draw',key:'signalRelay'}];
     state.players[0].resources={matter:4,energy:4,biomass:4,data:4};
     state.fleets={'0,0':{0:{settler:0,explorer:1,fleet:1}}};state.selected='0,0';
+    if(kind.startsWith('probe-')) {
+      const last=state.clusters.find(c=>c.kind==='moon');
+      state.clusters.forEach(c=>{c.scannedBy=kind==='probe-last'&&c===last?[]:[0];});
+      if(kind==='probe-none')Object.values(state.planets).filter(p=>p.special==='relic').forEach(p=>{p.relicClaimed=true;});
+    }
   } else if (kind==='second'  || kind==='second-empty') {
     const coord=state.clusters[0].coords[1];state.selected=coord;state.players[0].resources={matter:4,energy:3,biomass:3,data:2};state.players[0].hand=[{id:'qa-two',key:'construct',starter:true,upgraded:true},{id:'qa-fund',key:'construct'}];
     engine.performConstructOrder(0,coord,'starbase',state.players[0].hand[0]);
@@ -33,9 +38,13 @@ function fixture(kind) {
   } else if (kind==='storage' || kind==='cradle') {
     state.players[0].resources={matter:2,energy:2,biomass:2,data:2};
     if(kind==='cradle')state.players[0].hand=[{id:'qa-cradle',key:'cradleOfLostSuns'}];
-  } else if (kind==='buy') {
+  } else if (kind==='buy' || kind==='buy-many') {
     Object.assign(state,{phase:'buy',turnStage:'buy',activePlayer:0});
     Object.assign(state.players[0],{passed:true,storageUpgrades:2,resources:{matter:4,energy:4,biomass:4,data:4}});
+    if(kind==='buy-many') {
+      Object.assign(state.players[0],{hand:[],deck:[],discard:[],inPlay:[],resources:{matter:0,energy:6,biomass:0,data:3},resourceLimits:{matter:4,energy:8,biomass:4,data:4}});
+      state.market=Array.from({length:3},(_,n)=>({key:'signalRelay',id:`qa-buy-${n}`}));state.advancedDeck=[];state.marketDiscard=[];
+    }
   } else if (kind==='mixed') {
     state.fleets={'-9,0':{0:{settler:8,explorer:5,fleet:10}},'-8,0':{0:{fleet:10}},'-7,0':{0:{fleet:3,explorer:2}},'9,0':{2:{settler:2,explorer:1,fleet:2},1:{explorer:2}}};
   } else if (kind==='split' || kind==='portal') {
