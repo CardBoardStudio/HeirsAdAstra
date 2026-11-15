@@ -2,7 +2,8 @@
 
 ## Interface scope
 
-- Design, adjust, and verify the UI for desktop only. Do not spend work on mobile layouts or mobile UI tests.
+- Design, adjust, and verify the UI for desktop, iPad (landscape and portrait) and phones, with touch working for everything. Phones may scroll inside drawers; desktop and iPad game screens may not scroll.
+- Game screens must fit the viewport at 1280x720 and larger: no scrolling may be required to view or play. Long reference content (rulebook, card gallery, game report) may scroll. `node scripts/check-viewport-fit.cjs` checks key play states.
 - Accessibility work still covers desktop keyboard operation, screen-reader labels, focus visibility, contrast, and desktop window sizes. State the coverage actually tested.
 
 ## GitHub workflow
