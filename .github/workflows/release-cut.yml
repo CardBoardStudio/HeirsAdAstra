@@ -15,7 +15,7 @@ on:
 permissions:
   contents: write # push release/next
   pull-requests: write # open and update the cut PR
-  actions: write # start CI on release/next (GITHUB_TOKEN pushes trigger no workflows)
+  actions: write # without an App token: start CI on release/next
 concurrency:
   group: release-cut
   cancel-in-progress: false
@@ -29,15 +29,27 @@ jobs:
       github.event.changes.body != null)
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      HAS_APP: ${{ secrets.RELEASE_APP_ID != '' && secrets.RELEASE_APP_PRIVATE_KEY != '' }}
     steps:
+      # A GitHub App token can open PRs under any Actions policy, and its push
+      # starts CI on the cut PR. Without one, the workflow's GITHUB_TOKEN is used.
+      - id: app
+        if: env.HAS_APP == 'true'
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v4
         with:
           ref: main
           fetch-depth: 0
+          token: ${{ steps.app.outputs.token || github.token }}
       - uses: actions/setup-node@v4
         with:
           node-version: 24
       - run: scripts/release-cut.sh
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ steps.app.outputs.token || github.token }}
+          DISPATCH_CI: ${{ env.HAS_APP != 'true' }}
           RELEASE_NAME: ${{ inputs.name }}

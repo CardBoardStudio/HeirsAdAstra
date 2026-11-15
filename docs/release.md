@@ -43,10 +43,10 @@ The cut PR appears automatically. After every push to `main` that leaves entries
 
 `release/next` belongs to the workflow: each new `main` commit replaces it, so a fix goes in its own change PR into `main`. Nothing pending is a no-op, and if a cut merges by hand, the workflow closes its stale PR. It never reopens a cut PR someone closed until `main` moves.
 
-The workflow uses the built-in `GITHUB_TOKEN` (contents, pull requests and actions write), so no personal token is stored anywhere. Two consequences:
+The workflow needs no personal token. It runs in one of two setups:
 
-- The repository must allow it: **Settings → Actions → General → Workflow permissions → Allow GitHub Actions to create and approve pull requests**.
-- GitHub starts no workflow for a push or PR made with `GITHUB_TOKEN`, so CI would not run on the cut PR by itself. The workflow therefore starts `ci.yml` and `rules.yml` on `release/next` with `workflow_dispatch` after each push; their results show on the PR's head commit. The `pull_request`-only step of `rules.yml` (the change-PR policy) is skipped there, which is correct for a `release/*` branch. If branch protection ever requires checks that only `pull_request` runs produce, switch the workflow to a GitHub App token (`actions/create-github-app-token`, with contents and pull requests write on this repository): pushes made with it trigger CI normally, and the dispatch step becomes unnecessary.
+- **Built-in `GITHUB_TOKEN`** (the default). The job asks for contents, pull requests and actions write, which applies even though the repository's default workflow permissions are read-only. Opening the PR needs **Allow GitHub Actions to create and approve pull requests**, which the CardBoardStudio organization controls (Organization settings → Actions → General → Workflow permissions; it is enabled). GitHub starts no workflow for a push made with `GITHUB_TOKEN`, so the cut starts `ci.yml` and `rules.yml` on `release/next` itself with `workflow_dispatch`; their results show on the PR's head commit. The `pull_request`-only step of `rules.yml` (the change-PR policy) is skipped there, which is correct for a `release/*` branch. If GitHub refuses to open the PR, the workflow still pushes `release/next` and puts a compare link and the PR description in the job summary and a warning; open the PR from that link.
+- **A GitHub App token** (optional upgrade). Create a GitHub App owned by CardBoardStudio with repository permissions **Contents: read and write** and **Pull requests: read and write**, install it on `drawing_board` only, and add repository secrets `RELEASE_APP_ID` (the App ID) and `RELEASE_APP_PRIVATE_KEY` (a generated private key). When both exist, the workflow uses `actions/create-github-app-token`. The App can open PRs whatever the Actions policy, and its push triggers CI on the cut PR like any other PR, so the `pull_request` checks, including any that branch protection requires, run normally.
 
 To cut by hand (for an edit the cut PR cannot hold):
 
@@ -87,7 +87,7 @@ The same check fails a Release PR that still has pending entries: cut them first
 2. Merge the PR that adds this process. The Blueprint (`render.yaml`) points `drawing-board` at `stable`; sync it in Render.
 3. Set up a [dev host](#dev-host), or point an existing one at `main` (`BRANCH=main` in its `dev-host.conf`).
 4. Open the standing Release PR: `main` → `stable`, titled "Release: next".
-5. Allow the Release cut workflow to open PRs: **Settings → Actions → General → Allow GitHub Actions to create and approve pull requests**.
+5. Let the Release cut workflow open PRs: either allow GitHub Actions to create pull requests (Organization settings → Actions → General → Workflow permissions), or add the GitHub App secrets ([setups](#cut-a-release)).
 6. Optionally protect `stable` so only PR merges reach it.
 
 ## Dev host
