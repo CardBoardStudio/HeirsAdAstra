@@ -201,6 +201,12 @@ pub async fn accept(
     if u.development {
         return Err(bad("Use a persistent account to accept an invitation."));
     }
+    if app.nido.access.invite_only && !u.id.starts_with("nido:") {
+        return Err(ApiError(
+            StatusCode::FORBIDDEN,
+            "This server admits Nido accounts only. Sign in with Nido to accept.".into(),
+        ));
+    }
     let mut db = app.store.0.lock().map_err(internal)?;
     accounts::rate_limit(&db)?;
     let tx = db.transaction().map_err(internal)?;
