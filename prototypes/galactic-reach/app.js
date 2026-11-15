@@ -18,9 +18,16 @@ function createGalacticReach(options = {}) {
 
   const SAVE_FORMAT_VERSION = 34;
   const RULES_REVISION = 39;
-  const SAVE_KEY = `galactic-reach-save-v${SAVE_FORMAT_VERSION}`;
-  const TURN_HISTORY_KEY = `galactic-reach-turn-history-v${SAVE_FORMAT_VERSION}`;
-  const HISTORY_KEY = `galactic-reach-history-v${SAVE_FORMAT_VERSION}`;
+  // A dev build of main names its own rules in channel.js (docs/release.md#dev-channel).
+  // Its saves get their own keys and are stamped with those rules, so a later dev
+  // revision never reads them. Headless engines and released pages have no channel.
+  const CHANNEL = !headless && globalThis.galacticReachChannel?.channel === 'dev' ? globalThis.galacticReachChannel : null;
+  const RULES_ID = CHANNEL?.rules || `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`;
+  const KEY_SUFFIX = CHANNEL ? `-${RULES_ID.split('/').pop()}` : '';
+  const SAVE_KEY = `galactic-reach-save-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
+  const TURN_HISTORY_KEY = `galactic-reach-turn-history-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
+  const HISTORY_KEY = `galactic-reach-history-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
+  if (CHANNEL && typeof document !== 'undefined') document.querySelectorAll('.rules-badge').forEach(badge => { badge.textContent = CHANNEL.label; });
   const RESOURCES = ['matter', 'energy', 'biomass', 'data'];
   const RESOURCE_NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Biomass', data: 'Data' };
   const RESOURCE_DETAILS = {
@@ -541,7 +548,7 @@ function createGalacticReach(options = {}) {
       turnStage: 'waiting', log: [], winner: null,
       lastCombat: null, pendingCombat: null, pendingMove: null, pendingCombatReport: null, relicDeck, relicRow,
       tradeOffers: [], nextTradeOfferId: 1, pendingColonyBuild: null, pendingConstruct: null, pendingConsortium: null,
-      visibilityRevision: 4, rulesRevision: RULES_REVISION,
+      visibilityRevision: 4, rulesRevision: RULES_REVISION, ...(CHANNEL ? {devRules: RULES_ID} : {}),
       victoryTarget: VICTORY_TARGET_CHOICES.includes(target) ? target : DEFAULT_VICTORY_TARGET
     };
     if (!headless) {
@@ -741,6 +748,7 @@ function createGalacticReach(options = {}) {
       if (!raw) return false;
       const parsed = JSON.parse(raw);
       if (!parsed || parsed.version !== SAVE_FORMAT_VERSION || parsed.rulesRevision !== RULES_REVISION) return false;
+      if (CHANNEL && parsed.devRules !== RULES_ID) return false;
       if (!Array.isArray(parsed.players) || parsed.players.length!==4 || parsed.players.some(p=>!p.resourceLimits || RESOURCES.some(r=>!Number.isSafeInteger(p.resourceLimits[r])||p.resourceLimits[r]<4))) return false;
       state = parsed;
       loadGameHistory();
@@ -4405,7 +4413,7 @@ function createGalacticReach(options = {}) {
   }
 
   if (network) {
-    if (network.rules !== `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`)
+    if (network.rules !== RULES_ID)
       throw new Error(`This shared table plays rules ${network.rules}, which this page cannot show.`);
     installNetworkClient();
     wireUi();
