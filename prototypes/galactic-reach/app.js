@@ -3467,7 +3467,7 @@ function createGalacticReach(options = {}) {
   function fleetSymbolsAt(key) {
     return Object.entries(state.fleets[key] || {}).filter(([,fleet]) => fleetCount(fleet)).map(([owner,fleet]) => {
       const symbols = Object.keys(SHIP_STATS).filter(type => fleet[type] > 0).map(type => boardIcon(type,fleet[type])).join('');
-      return `<span class="hex-fleet-group" style="--fleet-owner:${state.players[Number(owner)]?.color||PLAYER_COLORS[Number(owner)]}">${symbols}</span>`;
+      return `<span class="hex-fleet-group" style="--fleet-owner:${playerColor(Number(owner))}">${symbols}</span>`;
     }).join('');
   }
 
@@ -3485,6 +3485,27 @@ function createGalacticReach(options = {}) {
     return '';
   }
 
+  function playerColor(playerId) {
+    return state.players[playerId]?.color||PLAYER_COLORS[playerId];
+  }
+
+  // A planet's territory belongs to whoever holds its center: the Colony on a
+  // world, or the building on a moon. Neutral planets have no territory.
+  function territoryOwner(cluster) {
+    return cluster ? state.planets[cluster.center]?.owner ?? null : null;
+  }
+
+  // Edge i of a pointy-top hex faces DIRECTIONS[i], in the 100×115.47 hex box.
+  const HEX_EDGES = [[100,28.87,100,86.6],[50,0,100,28.87],[0,28.87,50,0],[0,86.6,0,28.87],[50,115.47,0,86.6],[100,86.6,50,115.47]];
+  const TERRITORY_SVG = `<svg class="territory-edge" viewBox="0 0 100 115.47" preserveAspectRatio="none" aria-hidden="true" focusable="false">${HEX_EDGES.map(([x1,y1,x2,y2],i)=>`<line class="territory-casing" data-edge="${i}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"></line>`).join('')}${HEX_EDGES.map(([x1,y1,x2,y2],i)=>`<line class="territory-line" data-edge="${i}" x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"></line>`).join('')}</svg>`;
+
+  const TERRITORY_SWATCH = `<span class="territory-swatch" aria-hidden="true">${PLAYER_COLORS.map(color=>`<i style="--territory:${color}"></i>`).join('')}</span>`;
+
+  function territoryEdges(key, cluster) {
+    const [q,r] = key.split(',').map(Number);
+    return DIRECTIONS.map(([dq,dr]) => state.planets[coordKey(q+dq,r+dr)]?.cluster !== cluster.id);
+  }
+
   function buildingLabel(planet) {
     if (planet.hasColony) return 'Colony';
     if (planet.upgrade === 'starbase') return 'Shipyard';
@@ -3493,7 +3514,7 @@ function createGalacticReach(options = {}) {
   }
 
   function renderSymbolLegend() {
-    $('#resource-legend').innerHTML = `<strong class="legend-heading">Map key</strong>${RESOURCES.map(resource=>`<span>${resourceDot(resource)}${RESOURCE_NAMES[resource]}</span>`).join('')}<span>◈ Located relic</span><span>● Gray moon · no production</span><span>Worlds are public · Moons and relics start hidden</span>`;
+    $('#resource-legend').innerHTML = `<strong class="legend-heading">Map key</strong>${RESOURCES.map(resource=>`<span>${resourceDot(resource)}${RESOURCE_NAMES[resource]}</span>`).join('')}<span>${TERRITORY_SWATCH}Owner’s colour rings each held planet and marks its buildings</span><span>◈ Located relic</span><span>● Gray moon · no production</span><span>Worlds are public · Moons and relics start hidden</span>`;
     const entries = [
       ['settler','Settler'],['explorer','Explorer'],['fleet','Fleet'],
       ['colony','Colony'],['harvester','Harvester'],['starbase','Shipyard']
@@ -3535,7 +3556,7 @@ function createGalacticReach(options = {}) {
           const button = document.createElement('button');
           button.type='button'; button.className='hex'; button.dataset.coord=key;
           button.addEventListener('click',event=>{if(!selectHex(key))showSectorScan(event.detail===0);});
-          button.innerHTML='<svg class="portal-ring" viewBox="0 0 100 116" aria-hidden="true" focusable="false"><polygon class="portal-ring-base" points="50,3 97,30 97,86 50,113 3,86 3,30"></polygon><polygon class="portal-ring-line" points="50,3 97,30 97,86 50,113 3,86 3,30"></polygon></svg><span class="hex-pieces"><span class="hex-fleets"></span><span class="hex-buildings"></span><span class="special"></span></span>';
+          button.innerHTML=TERRITORY_SVG+'<svg class="portal-ring" viewBox="0 0 100 116" aria-hidden="true" focusable="false"><polygon class="portal-ring-base" points="50,3 97,30 97,86 50,113 3,86 3,30"></polygon><polygon class="portal-ring-line" points="50,3 97,30 97,86 50,113 3,86 3,30"></polygon></svg><span class="hex-pieces"><span class="hex-fleets"></span><span class="hex-buildings"></span><span class="special"></span></span>';
           row.appendChild(button);
         }
         board.appendChild(row);
@@ -3555,18 +3576,20 @@ function createGalacticReach(options = {}) {
       if (state.moveSource === key) hex.classList.add('source');
       if (state.reachable.includes(key)) hex.classList.add('target');
       const fleets = hex.querySelector('.hex-fleets'); const buildings = hex.querySelector('.hex-buildings'); const special = hex.querySelector('.special');
-      const owners = new Set();
-      if (known && planet?.owner !== null && planet?.owner !== undefined) owners.add(planet.owner);
-      Object.entries(state.fleets[key]||{}).forEach(([fleetOwner,fleet])=>{if(fleetCount(fleet))owners.add(Number(fleetOwner));});
       const shipMarkers=Object.values(state.fleets[key]||{}).reduce((n,fleet)=>n+Object.keys(SHIP_STATS).filter(type=>fleet[type]>0).length,0);
       const markers=shipMarkers+(planet&&known&&hasBuilding(planet)?1:0)+(relicSignal?1:0);
       const columns=markers<=1?1:markers<=4?2:Math.ceil(Math.sqrt(markers));
       hex.dataset.markers=String(markers);
       hex.style.setProperty('--marker-columns',columns);
       hex.style.setProperty('--marker-rows',Math.ceil(markers/columns)||1);
-      const owner = [...owners][0];
-      if(owner!==undefined)hex.classList.add('owned');
-      hex.style.setProperty('--owner',owner===undefined?'transparent':state.players[owner]?.color||PLAYER_COLORS[owner]);
+      const territory = known ? territoryOwner(cluster) : null;
+      const edges = territory === null ? [] : territoryEdges(key,cluster);
+      hex.classList.toggle('territory',territory !== null);
+      hex.style.setProperty('--territory',territory === null ? '' : playerColor(territory));
+      hex.querySelectorAll('.territory-edge line').forEach(line => line.classList.toggle('outer',Boolean(edges[Number(line.dataset.edge)])));
+      const builder = known && hasBuilding(planet) && planet.owner !== null ? planet.owner : null;
+      buildings.classList.toggle('owned',builder !== null);
+      buildings.style.setProperty('--building-owner',builder === null ? '' : playerColor(builder));
       fleets.innerHTML = fleetSymbolsAt(key);
       if (planet) {
         buildings.innerHTML = known ? buildingSymbols(planet) : '';
