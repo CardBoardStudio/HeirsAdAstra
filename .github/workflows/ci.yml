@@ -38,7 +38,8 @@ jobs:
   javascript:
     name: Galactic Reach JavaScript checks
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    # Full draw engines and the existing 24-match balance smoke need more time.
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
