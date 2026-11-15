@@ -4430,7 +4430,9 @@ function createGalacticReach(options = {}) {
       const allowed=choosing && excavate(ME,state.selected,state.actionCardId,relic.id,true);
       return `<div>${cardMarkup(relic,'relic-row')}${choosing?`<button class="button button-primary" data-excavate-relic="${relic.id}" ${allowed?'':'disabled'}>Choose ${esc(ALL_CARDS[relic.key].name)}</button>`:''}</div>`;
     }).join('') || '<p class="muted">All alien relic cards have been recovered.</p>';
-    $('#relic-deck-count').textContent=`${replayMode?state.relicDeckCount:state.relicDeck.length} in deck`;
+    const relicDeck=replayMode?state.relicDeckCount:state.relicDeck.length;
+    $('#relic-deck-count').textContent=`${relicDeck} in deck`;
+    $('#relic-deck-count').dataset.count=relicDeck;
     $('#relic-cost').innerHTML=resourceDots(EXCAVATION_COST);
     $('#cancel-excavate').hidden=!choosing;
     const site=state.planets[state.selected],atSite=site?.special==='relic' && relicKnown(state.clusters[site.cluster],viewSeat) && !site.relicClaimed && getFleet(state.selected,ME)?.explorer;
