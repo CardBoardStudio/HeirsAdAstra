@@ -125,7 +125,7 @@ function createGalacticReach(options = {}) {
     colonize: { name: 'Colonize', kind: 'Basic', accent: 'var(--biomass)', resource: { biomass: 1 }, order: 'colonize', text: 'Establish a Colony with a Settler on a world’s center hex, then permanently trash Colonize.' },
     construct: { name: 'Construct', kind: 'Basic', accent: 'var(--matter)', resource: { matter: 1 }, order: 'construct', text: 'Build on any empty planet hex adjacent to your Colony, or commission one ship.', cost: { matter: 1, data: 1 } },
     move: { name: 'Move', kind: 'Basic', accent: 'var(--energy)', resource: { energy: 1 }, order: 'move', text: 'Move chosen combat ships or Explorers at the slowest chosen speed. Crossing the corner portal costs 2 movement.', cost: { energy: 1, data: 1 } },
-    probe: { name: 'Probe / Excavate', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'probe', text: 'Choose Probe: locate the closest remaining relic to your Explorer anywhere and keep this card. Or Excavate: at its located relic, pay 1 Matter, 1 Energy and 2 Data; gain a relic into discard and 2 Prestige, consume the Explorer and trash this card.' },
+    probe: { name: 'Probe / Excavate', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'probe', text: 'Probe: from your Explorer, locate the nearest remaining relic you don’t already know. Keep this card; if none remain unknown, keep your action too. Excavate: at a located site, pay 1 Matter, 1 Energy and 2 Data; gain a relic into discard and 2 Prestige. Consume the Explorer and trash this card.' },
     excavate: { name: 'Excavate', kind: 'Basic', accent: 'var(--data)', resource: { data: 1 }, order: 'excavate', text: 'At your Explorer’s located relic, pay 1 Matter, 1 Energy, and 2 Data. Choose a relic card into discard and gain 2 Prestige. Remove the relic and trash this card; consume one Explorer.' }
   };
 
@@ -1807,14 +1807,16 @@ function createGalacticReach(options = {}) {
     state.reachable = [];
     if (definition.order==='probe') {
       const origins=Object.keys(state.fleets).filter(coord=>getFleet(coord,ME)?.explorer);
+      const status=network ? state.probeStatus : probeStatus(ME);
+      if (origins.length && ['all_discovered','none_remaining'].includes(status)) {clearAction();toast(probeUnavailableMessage());render();return;}
       const origin=origins.includes(state.selected)?state.selected:origins.length===1?origins[0]:null;
       if (origin) {
-        if (!probeRelic(ME,origin,cardId)) {clearAction();toast('No relics remain. Your card and action are kept.');render();}
+        if (!probeRelic(ME,origin,cardId)) {clearAction();toast(probeUnavailableMessage());render();}
         return;
       }
     }
     if (definition.order==='excavate') openExcavationRewards();
-    toast(definition.order === 'move' ? 'Select a hex with your units. Untick any you want to leave behind.' : definition.order === 'construct' ? 'Select an empty planet hex adjacent to your Colony, an existing structure, or a Shipyard.' : definition.order === 'probe' ? 'Select one of your Explorers anywhere on the map to locate its closest remaining relic.' : definition.order === 'excavate' ? 'Select your Explorer’s located relic site, then choose a reward in the Relics tab.' : 'Select an eligible planet containing your Settler.');
+    toast(definition.order === 'move' ? 'Select a hex with your units. Untick any you want to leave behind.' : definition.order === 'construct' ? 'Select an empty planet hex adjacent to your Colony, an existing structure, or a Shipyard.' : definition.order === 'probe' ? 'Select one of your Explorers anywhere on the map to locate its closest undiscovered relic.' : definition.order === 'excavate' ? 'Select your Explorer’s located relic site, then choose a reward in the Relics tab.' : 'Select an eligible planet containing your Settler.');
     render();
     saveGame();
   }
@@ -2071,7 +2073,7 @@ function createGalacticReach(options = {}) {
     state.selected = key;
     if (state.phase === 'operations' && state.activePlayer === ME && state.turnStage === 'action' && state.actionMode) {
       if (state.actionMode === 'move') handleHumanMoveSelection(key);
-      else if (state.actionMode === 'probe' && !probeRelic(ME,key,state.actionCardId)) toast('Select your Explorer’s hex. Probe can locate a relic from empty space, a home world or a Shipyard.');
+      else if (state.actionMode === 'probe' && !probeRelic(ME,key,state.actionCardId)) toast(getFleet(key,ME)?.explorer ? probeUnavailableMessage() : 'Select your Explorer’s hex. Probe can locate a relic from empty space, a home world or a Shipyard.');
     }
     const opened=openExcavationRewards();
     render();
@@ -2617,9 +2619,26 @@ function createGalacticReach(options = {}) {
     return true;
   }
 
-  function nearestProbeRelic(playerId, source) {
+  function remainingRelicSites() {
     return state.clusters.map(cluster=>({cluster,coord:relicCoordInCluster(cluster)}))
-      .filter(site=>site.coord&&!state.planets[site.coord].relicClaimed)
+      .filter(site=>site.coord&&!state.planets[site.coord].relicClaimed);
+  }
+
+  function probeStatus(playerId) {
+    const sites=remainingRelicSites();
+    if (!sites.length) return 'none_remaining';
+    return sites.some(site=>!relicKnown(site.cluster,playerId)) ? 'available' : 'all_discovered';
+  }
+
+  function probeUnavailableMessage(playerId = ME) {
+    const status=network ? state.probeStatus : probeStatus(playerId);
+    return status==='all_discovered' ? 'You have already discovered all remaining relics. Your card and action are kept.'
+      : status==='none_remaining' ? 'No relics remain. Your card and action are kept.'
+      : 'No new relic can be located right now. Your card and action are kept.';
+  }
+
+  function nearestProbeRelic(playerId, source) {
+    return remainingRelicSites().filter(site=>!relicKnown(site.cluster,playerId))
       .sort((a,b)=>hexDistance(source,a.coord)-hexDistance(source,b.coord)||a.cluster.id-b.cluster.id)[0]||null;
   }
 
@@ -2629,13 +2648,13 @@ function createGalacticReach(options = {}) {
       || player.passed || state.phase!=='operations' || state.activePlayer!==playerId || state.winner!==null || state.pendingCombat
       || state.pendingConstruct || state.pendingColonyBuild || state.pendingConsortium || overflowPlayer()>=0) return false;
     const site=nearestProbeRelic(playerId,coord);
-    if (!site) { if(!dryRun&&!headless&&playerId===ME)toast('No relics remain. Your card and action are kept.'); return false; }
+    if (!site) { if(!dryRun&&!headless&&playerId===ME)toast(probeUnavailableMessage(playerId)); return false; }
     if (dryRun) return true;
     if(!site.cluster.scannedBy.includes(playerId))site.cluster.scannedBy.push(playerId);
     // 36.41 #orders: Probe keeps the combined card in play; only excavation trashes it.
     removeHandCard(player,cardId);
-    completeAction(playerId,`${player.name} used Probe from an Explorer to privately locate its closest remaining relic. The combined card stays in play until cleanup.`);
-    if (!headless&&playerId===ME) toast(`Relic signal located at ${site.coord}.`);
+    completeAction(playerId,`${player.name} used Probe from an Explorer to privately locate its closest undiscovered relic. The combined card stays in play until cleanup.`);
+    if (!headless&&playerId===ME) toast(`Relic signal located at ${site.coord}.${probeStatus(playerId)==='all_discovered' ? ' You have now discovered all remaining relics.' : ''}`);
     return true;
   }
 
@@ -4543,8 +4562,8 @@ function createGalacticReach(options = {}) {
       }
       return send({type:'special',card:card.id});
     };
-    // Locating the closest remaining relic needs hidden relic sectors, so the
-    // server lists this seat's legal Probe origins with each view.
+    // Locating the closest unknown relic needs hidden relic sectors. The server
+    // sends legal origins and a private availability status, never a target.
     probeRelic = (id, coord, cardId, dryRun = false) => {
       const legal = mine(id) && (serverHints.probe || []).some(p => p.coord === coord && p.card === cardId);
       return dryRun || !legal ? legal : send({type:'probe',card:cardId,coord});
@@ -4621,6 +4640,7 @@ function createGalacticReach(options = {}) {
     if (!keepOrder && $('#consortium-dialog').open && !state.pendingConsortium) $('#consortium-dialog').close();
     render();
     resumePendingChoice();
+    if (previous?.probeStatus==='available' && next.probeStatus==='all_discovered') toast('You have now discovered all remaining relics.');
     // The same interface automation as solo play: an empty hand passes, an empty Buy finishes.
     if (myTurn && autoSentAt !== view.seq && !network.busy()) {
       autoSentAt = view.seq;
@@ -4636,7 +4656,7 @@ function createGalacticReach(options = {}) {
       canAfford, cardResources, resourceGainTotal, remainingResourceCapacity, addResources,
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
       decommission, excavatedRelicCount, useBuyEffect, resolveHumanSpecial,
-      colonizePlanet, buildUpgrade, probeRelic, excavate, buildShip, getFleet, fleetCount,
+      colonizePlanet, buildUpgrade, probeStatus, probeRelic, excavate, buildShip, getFleet, fleetCount,
       PORTAL_MOVEMENT_COST, portalExit, movementRoutes, travelDistance, fleetGroup, moveSelection, fleetMove, fleetPower, reachableFrom, executeMove, performMoveOrder, combatActor, combatView, combatActions, applyCombatAction, nearestUnscannedRelicCluster,
       clusterKnown, clusterRevealed, clusterScanned, relicKnown, relicCoordInCluster, calculatePrestige, colonyPlanets,
       totalResources, playerCapacity, resourceLimits, resourceExcess, totalResourceExcess, storageAllocations, validStorageAllocation, overflowPlayer, discardOverflow,

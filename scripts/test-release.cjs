@@ -47,6 +47,11 @@ try {
     fs.mkdirSync(path.dirname(path.join(repo, rel)), { recursive: true });
     if (fs.existsSync(path.join(root, rel))) fs.copyFileSync(path.join(root, rel), path.join(repo, rel));
   }
+  // The worked example starts at a released baseline. Real pending entries in
+  // the checkout must not change this fixture's dev revision or release notes.
+  for (const name of fs.readdirSync(path.join(repo, 'changes'))) {
+    if (name.endsWith('.md') && name !== 'README.md') fs.unlinkSync(path.join(repo, 'changes', name));
+  }
   git('add', '-A');
   git('-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '--quiet', '--allow-empty', '-m', 'tooling');
   git('branch', 'stable');

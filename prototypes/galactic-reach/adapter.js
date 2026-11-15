@@ -256,6 +256,7 @@ function createGalacticAdapter(e) {
       if (id === seat) p.deck = [...p.deck].sort(byKey);
       else { p.hand = []; p.deck = []; }
     });
+    state.probeStatus = e.probeStatus(seat);
     state.advancedDeck = stub(state.advancedDeck.length);
     state.relicDeckCount = state.relicDeck.length;
     state.relicDeck = stub(state.relicDeck.length);
