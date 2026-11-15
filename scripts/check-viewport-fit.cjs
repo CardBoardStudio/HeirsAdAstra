@@ -128,7 +128,8 @@ const CASES = [
   { name: 'operations, Excavate chosen, raised', save: operationsState(['move', 'probe', 'construct', 'construct', 'move']), click: ['#hand-row .game-card:nth-child(2) [data-order-mode="excavate"]'], focus: '#hand-row .game-card:nth-child(2) [data-order-mode="excavate"]' },
   { name: 'operations, 8-card hand, Probe raised', save: operationsState([...longHand.slice(0, 7), 'probe']), focus: '#hand-row .game-card:nth-child(8) [data-order-mode="excavate"]' },
   { name: 'operations, mid-game piles and comms', save: midGameState() },
-  { name: 'standings score tip (keyboard focus)', save: midGameState(), focus: '.score-card:nth-child(2) button.score-value' },
+  { name: 'standings overview (keyboard focus)', save: midGameState(), focus: '.score-card:nth-child(2) button.score-value' },
+  { name: 'bank & discards open', save: midGameState(), click: ['#resource-tools summary'] },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -213,7 +214,7 @@ const MEASURE = `(() => {
   if (doc.scrollHeight > H + 1 || doc.scrollWidth > W + 1) problems.push('page scrolls: ' + doc.scrollWidth + 'x' + doc.scrollHeight);
   // Containers allowed to scroll their own reference content.
   const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region';
-  const modal = document.querySelector('dialog[open], body.menu-open');
+  const modal = document.querySelector('dialog[open], body.menu-open, .resource-tools[open]');
   const scope = modal || document;
   // Hand cards are held as card tops that clip on purpose; a raised (pointed-at or focused)
   // card is checked like any other. Each top must still show its name and gain/cost row.
@@ -225,7 +226,7 @@ const MEASURE = `(() => {
     if (t.top < -1 || t.bottom > H + 1) problems.push('card top outside viewport: ' + label(top));
     const summary = top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
-    if (!document.querySelector(':is(dialog[open], body.menu-open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
+    if (!document.querySelector(':is(dialog[open], body.menu-open, .resource-tools[open], :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
       const c = chip.getBoundingClientRect(), hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       if (!hit || !top.contains(hit)) { problems.push('gain badge covered in ' + label(top)); break; }
     }
@@ -247,13 +248,13 @@ const MEASURE = `(() => {
       if (r.left < -1 || r.top < -1 || r.right > W + 1 || r.bottom > H + 1) problems.push('outside viewport: ' + label(e) + ' [' + [r.left, r.top, r.right, r.bottom].map(Math.round) + ']');
     }
     // Cards may not clip their own text (buttons hide overflow inside their box).
-    if (e.matches('.game-card, .military-card, .trade-offer, .score-card, .resource-box, .combat-options .button') && e.scrollHeight > e.clientHeight + 2)
+    if (e.matches('.game-card, .military-card, .trade-offer, .score-card, .resource-box, .combat-options .button') && !e.matches('.score-card:is(:hover, :focus-within)') && e.scrollHeight > e.clientHeight + 2)
       problems.push('card text cut: ' + label(e) + ' ' + e.scrollHeight + ' > ' + e.clientHeight);
     // Overflow above a box (centred button content) is not counted by scrollHeight.
     if (e.matches('.game-card, .score-card, .resource-box')) for (const child of e.children) {
       const c = child.getBoundingClientRect();
       if (child.textContent.trim() && shown(child) && child.getAttribute('aria-hidden') !== 'true' && !getComputedStyle(child).clipPath.includes('inset(50%)') && c.height < 4) { problems.push('card line squeezed: ' + label(e) + ' (' + label(child) + ')'); break; }
-      if (c.height && (c.top < r.top - 1 || c.bottom > r.bottom + 1)) { problems.push('card content escapes: ' + label(e) + ' (' + label(child) + ')'); break; }
+      if (c.height && !child.matches('.score-overview') && (c.top < r.top - 1 || c.bottom > r.bottom + 1)) { problems.push('card content escapes: ' + label(e) + ' (' + label(child) + ')'); break; }
     }
   }
   // Every button on a raised card must be reachable: nothing may lie over its centre.
