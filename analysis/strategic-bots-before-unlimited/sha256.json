@@ -3,5 +3,6 @@
   "games.jsonl": "f198f0e88356c842162b98e50cb34efce18d57f8b16ff3de97ab9cda37f0b0b7",
   "outcomes.csv": "15164ed62e4c450811bf0d77b42a5d15156c2dbedbb96289b5f055b59c7c17e4",
   "summary.json": "c1e0d85bbd8fc931bc43e740e42468567cfe660e828bebc13dbe4229665b24be",
-  "uncertainty.json": "9902e1c71b41e437ca37dc3a0821426f0489884af59aa5c1aa63da4e38e3006d"
+  "uncertainty.json": "9902e1c71b41e437ca37dc3a0821426f0489884af59aa5c1aa63da4e38e3006d",
+  "engine-changes.patch": "d25b335fc2c061bc8f0ddd81fc4e8ead66bfc5fbcbe489fb0590d26495c10780"
 }

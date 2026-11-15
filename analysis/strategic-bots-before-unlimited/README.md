@@ -1,6 +1,6 @@
 # Strategic rivals: study before unlimited purchases
 
-This historical study used the earlier one-purchase Buy rule. Main adopted unlimited affordable purchases during the work. See the [current-rules rerun](../strategic-bots-results/README.md) for the final assessment; do not treat these numbers as the current game’s balance.
+This historical candidate study used the earlier one-purchase Buy rule and predates the final post-bank payment correction found by CI. Main adopted unlimited affordable purchases during the work. See the [current-rules rerun](../strategic-bots-results/README.md) for the final assessment; do not treat these numbers as the current game’s balance.
 
 All **384 games completed**. Updated browser rivals won **125 of 192 mixed games (65.1%)** against baseline rivals, with two of each policy per game. The other 67 games went to baseline rivals. A setup-seed cluster bootstrap gives a descriptive 95% interval of **51.6–75.5%**. One seed favored the old policy, so the improvement is not universal.
 
@@ -60,10 +60,10 @@ Gross gains include resource additions from production, cards and conversions, e
 - Cluster intervals resample whole setup seeds 10,000 times; eight independent setups still give limited coverage. The 384 games are not 384 independent map samples.
 - These figures describe **browser bots**, matching the supplied report. Native server policy 29 was updated and has separate behavioral/compatibility tests; it is not being represented as the same measured policy.
 
-Run from the repository root:
+To reproduce this historical run, use an isolated checkout of `45b3a4057e879c65ec77eed2b5e2ce349445e1cc`, apply the bundled `engine-changes.patch`, and copy the current `scripts/strategic-bot-study.cjs` driver into that checkout. The patch reconstructs the exact tested app and adapter source hashes without depending on a rebased branch remaining available. Then run:
 
 ```sh
-node scripts/strategic-bot-study.cjs --seeds 8 --seed-start 910701 --workers 4 --out analysis/strategic-bots-results
+node scripts/strategic-bot-study.cjs --baseline 45b3a4057e879c65ec77eed2b5e2ce349445e1cc --seeds 8 --seed-start 910701 --modes baseline,updated,mixed --workers 4 --out analysis/strategic-bots-before-unlimited
 ```
 
 The protocol records exact engine/adapter source hashes. `games.jsonl` contains all final outcomes and player/resource metrics; `outcomes.csv` is the compact outcome index; `summary.json` and `uncertainty.json` contain aggregated results. The simulation driver is single-study code, not a changed human ruleset.

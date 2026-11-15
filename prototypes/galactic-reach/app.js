@@ -3385,12 +3385,15 @@ function createGalacticReach(options = {}) {
     }
     // 31.36: then raise the limits the target market card needs (cheap starter upgrades come first).
     for (let n=0;n<2&&aiCapacityForTarget(id);n++);
+    const preservesPayment=choice=>{
+      if (!choice.bank) return false;
+      const funds={...p.resources},cost=purchaseCost(p,choice.key);
+      for (const trade of choice.bank) {funds[trade.giveType]-=4;funds[trade.getType]+=1;}
+      return RESOURCES.every(r=>funds[r]-(cost[r]||0)>=Math.min(immediate[r]||0,funds[r]));
+    };
     while (state.market.length) {
-      const choices=state.market.map((card,index)=>({source:'market',index,key:card.key})).map(x=>({...x,score:aiBuyValue(id,x.key),bank:bankPlanForCost(p,purchaseCost(p,x.key))})).filter(x=>x.score>0&&x.bank!==null).sort((a,b)=>b.score-a.score||a.bank.length-b.bank.length);
+      const choices=state.market.map((card,index)=>({source:'market',index,key:card.key})).map(x=>({...x,score:aiBuyValue(id,x.key),bank:bankPlanForCost(p,purchaseCost(p,x.key))})).filter(x=>x.score>0&&preservesPayment(x)).sort((a,b)=>b.score-a.score||a.bank.length-b.bank.length);
       const choice=choices[0];if (!choice) break;
-      const cost=purchaseCost(p,choice.key);
-      // Preserve the payment for the next scoring order when it is already held.
-      if (RESOURCES.some(r=>p.resources[r]-(cost[r]||0)<Math.min(immediate[r]||0,p.resources[r]))) break;
       if (!choice.bank.every(t=>bankTrade(id,t.giveType,t.getType))) break;
       if (!buyCard(id,choice.source,choice.index)) break;
     }
