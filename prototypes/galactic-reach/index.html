@@ -22,7 +22,7 @@
   <a class="skip-link" href="#console">Skip to player controls</a>
   <div class="starfield" aria-hidden="true"></div>
   <main class="app-shell">
-    <header class="topbar">
+    <header class="topbar" id="table-menu">
       <div class="brand-block">
         <div class="brand-seal" aria-hidden="true">✦</div>
         <div><div class="eyebrow">A GAME OF EXPLORATION &amp; EMPIRE</div>
@@ -37,6 +37,7 @@
         <button class="button button-ghost" id="new-game-button" type="button">New game</button>
       </div>
     </header>
+    <button class="table-menu-button" id="table-menu-button" type="button" aria-expanded="false" aria-controls="table-menu" aria-label="Game menu"><span aria-hidden="true"></span></button>
     <details class="playtest-changes" id="playtest-changes">
       <summary><span class="new-feature">New in this playtest</span> <span class="summary-text"><!-- release:summary -->37.42 Integrated Playtest: Commissioning battles and human Undo<!-- /release:summary --></span> <span class="summary-hint">View changes</span></summary>
       <ul><!-- release:items -->

@@ -115,6 +115,8 @@ const CASES = [
   { name: 'buy, trash dialog', save: buyState(chunks[0]), click: ['#market-tab', '#open-trash'] },
   { name: 'buy, raised market card (bottom row)', save: buyState(chunks[2], { matter: 8, energy: 8, biomass: 8, data: 8 }), focus: '#market-row .game-card:not(:disabled)', focusLast: true },
   { name: 'trade dialog', save: operationsState(['move']), click: ['#open-trade'] },
+  { name: 'game menu', save: operationsState(['move']), click: ['#table-menu-button'] },
+  { name: 'game menu, playtest changes', save: operationsState(['move']), click: ['#table-menu-button', '#playtest-changes summary'] },
   { name: 'fleet tab', save: operationsState(['move']), click: ['#fleet-tab'] },
   { name: 'relics tab', save: operationsState(['move']), click: ['#relics-tab'] },
   { name: 'battle: escape choice', save: combatState('escape') },
@@ -191,7 +193,7 @@ const MEASURE = `(() => {
   if (doc.scrollHeight > H + 1 || doc.scrollWidth > W + 1) problems.push('page scrolls: ' + doc.scrollWidth + 'x' + doc.scrollHeight);
   // Containers allowed to scroll their own reference content.
   const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region';
-  const modal = document.querySelector('dialog[open]');
+  const modal = document.querySelector('dialog[open], body.menu-open');
   const scope = modal || document;
   // Hand cards are held as card tops that clip on purpose; a raised (pointed-at or focused)
   // card is checked like any other. Each top must still show its name and gain/cost row.
@@ -203,7 +205,7 @@ const MEASURE = `(() => {
     if (t.top < -1 || t.bottom > H + 1) problems.push('card top outside viewport: ' + label(top));
     const summary = top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
-    if (!document.querySelector(':is(dialog[open], :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
+    if (!document.querySelector(':is(dialog[open], body.menu-open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
       const c = chip.getBoundingClientRect(), hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       if (!hit || !top.contains(hit)) { problems.push('gain badge covered in ' + label(top)); break; }
     }
