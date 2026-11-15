@@ -26,6 +26,8 @@ const LAB_DIR = path.join(ROOT, 'prototypes/lab');
 // The three reference sizes, plus common laptop and desktop sizes for the Buy states.
 const VIEWPORTS = [[1280, 720], [1440, 900], [1920, 1080]];
 const EXTRA_VIEWPORTS = [[1366, 768], [1680, 1050], [2000, 1118], [2560, 1440]];
+// Desktop windows taller than 16:9 (nearly square, and taller than wide): every case runs there.
+const TALL_VIEWPORTS = [[1440, 1200], [1600, 1600], [1800, 2000]];
 // Touch devices (mobile emulation with touch on): iPads in landscape and portrait must fit with no
 // page scroll, like the desktop; phones may scroll vertically (drawers) but never sideways.
 const TABLET_VIEWPORTS = [[1024, 768], [1180, 820], [1366, 1024], [768, 1024], [820, 1180], [1024, 1366]];
@@ -539,7 +541,9 @@ async function main() {
   const browser = await launch(chrome);
   let failures = 0, checks = 0;
   try {
-    const runs = [...VIEWPORTS.flatMap(viewport => CASES.map(testCase => [viewport, testCase])),
+    // CHECK_SIZES=WxH,WxH runs every case at just those desktop sizes (for sweeping window shapes).
+    const sizes = process.env.CHECK_SIZES?.split(',').map(size => size.split('x').map(Number));
+    const runs = sizes ? sizes.flatMap(viewport => CASES.map(testCase => [viewport, testCase])) : [...[...VIEWPORTS, ...TALL_VIEWPORTS].flatMap(viewport => CASES.map(testCase => [viewport, testCase])),
       ...EXTRA_VIEWPORTS.flatMap(viewport => CASES.filter(testCase => testCase.extraSizes).map(testCase => [viewport, testCase])),
       ...[...TABLET_VIEWPORTS, ...PHONE_VIEWPORTS].flatMap(viewport => CASES.filter(testCase => testCase.devices === true || (testCase.devices === 'tablet' && !isPhone(viewport))).map(testCase => [viewport, { ...testCase, device: true, name: `${testCase.name} (touch)` }]))];
     for (const [viewport, testCase] of runs) {

@@ -4657,10 +4657,21 @@ function createGalacticReach(options = {}) {
     if (!tableLayout() || !shell) { ['--table-zoom','--table-w','--table-h'].forEach(name => root.style.removeProperty(name)); return; }
     const width = window.innerWidth, height = Math.max(1, window.innerHeight - Math.max(0, shell.getBoundingClientRect().top));
     const [tableW, tableH] = tableSize(width, height);
-    const zoom = Math.min(width / tableW, height / tableH);
-    root.style.setProperty('--table-zoom', String(zoom));
-    root.style.setProperty('--table-w', `${width / zoom}px`);
-    root.style.setProperty('--table-h', `${height / zoom}px`);
+    let zoom = Math.min(width / tableW, height / tableH), layoutW = width / zoom;
+    const apply = () => {
+      root.style.setProperty('--table-zoom', String(zoom));
+      root.style.setProperty('--table-w', `${layoutW}px`);
+      root.style.setProperty('--table-h', `${height / zoom}px`);
+    };
+    apply();
+    // Whatever the window's shape or the content, the table never runs past the window's width:
+    // if something would, the same layout is scaled down until its widest part fits.
+    for (let pass = 0; pass < 2; pass++) {
+      const wide = shell.scrollWidth;
+      if (!(wide > shell.clientWidth + 1)) break;
+      zoom = Math.min(zoom, width / wide);
+      apply();
+    }
   }
 
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
