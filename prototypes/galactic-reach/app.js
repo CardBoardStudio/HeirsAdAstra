@@ -4461,9 +4461,27 @@ function createGalacticReach(options = {}) {
     // Each part of the table draws on its own: one failing part must never blank the market,
     // the relics or the turn's buttons. Failures are logged, shown once, and fail the checks.
     drawEach({renderHeader, renderScoreboard, renderBoard, renderResources, renderInspector, positionSectorScan, renderLog, renderHand, renderMarket, renderFleetSummary, renderTrade, renderRelicRow, renderOverflow, renderCombat, renderCombatReport, renderBoardPrimary});
-    drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()) });
+    drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()), drawers: followTurnWithDrawer });
   }
 
+  // Phone drawers (Hand, Supply, Mat, Comms, Table). Your Buy turn opens the Supply drawer and
+  // your Operations turn the Hand drawer, once each time the phase changes.
+  const phoneLayout = () => typeof window !== 'undefined' && !!window.matchMedia?.('(max-width: 599px), (max-height: 599px)').matches;
+  let drawerPhase = null;
+  function setDrawer(name) {
+    if (typeof document === 'undefined' || !document.body?.dataset) return;
+    document.body.dataset.drawer = name || '';
+    $$('.phone-drawers [data-drawer]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.drawer === name)));
+  }
+  function followTurnWithDrawer() {
+    if (!phoneLayout() || replayMode) return;
+    const key = `${state.round}:${state.phase}:${state.activePlayer}`;
+    if (key === drawerPhase) return;
+    drawerPhase = key;
+    if (state.activePlayer !== ME) return;
+    if (state.phase === 'buy') setDrawer('supply');
+    else if (state.phase === 'operations') setDrawer('hand');
+  }
   const renderErrors = [];
   function drawEach(parts) {
     const failed = [];
@@ -4483,20 +4501,23 @@ function createGalacticReach(options = {}) {
 
   // The desktop table is laid out at one logical size, 1600 units wide by at least 900 tall, and
   // the whole table is scaled uniformly to the window: every component keeps one physical scale.
-  const TABLE_W = 1600, TABLE_H = 900;
+  // A wide window lays the table out 1600 units wide; a squarer one (an iPad in landscape) 1300;
+  // a portrait window (an iPad held upright) 1000, with the table arranged in a column.
+  const tableSize = (width, height) => height > width ? [1000, 1300] : width / height >= 1.55 ? [1600, 900] : [1300, 900];
   function fitTable() {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
     const root = document.documentElement, shell = document.querySelector('.app-shell');
     if (!tableLayout() || !shell) { ['--table-zoom','--table-w','--table-h'].forEach(name => root.style.removeProperty(name)); return; }
     const width = window.innerWidth, height = Math.max(1, window.innerHeight - Math.max(0, shell.getBoundingClientRect().top));
-    const zoom = Math.min(width / TABLE_W, height / TABLE_H);
+    const [tableW, tableH] = tableSize(width, height);
+    const zoom = Math.min(width / tableW, height / tableH);
     root.style.setProperty('--table-zoom', String(zoom));
     root.style.setProperty('--table-w', `${width / zoom}px`);
     root.style.setProperty('--table-h', `${height / zoom}px`);
   }
 
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
-  const tableLayout = () => typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 1024px) and (min-height: 600px)').matches;
+  const tableLayout = () => typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 600px) and (min-height: 600px)').matches;
   function switchTab(name) {
     // The hand is always on the board and Trade is a dialog, so their old tabs show the market.
     if (name==='hand' || name==='trade') name='market';
@@ -4715,6 +4736,9 @@ function createGalacticReach(options = {}) {
       });
     });
     if(tableLayout())$('#fleet-tab').tabIndex=0;
+    // On a phone the map fills the screen and the rest of the table slides up in drawers.
+    $$('.phone-drawers [data-drawer]').forEach(button=>button.addEventListener('click',()=>setDrawer(document.body.dataset.drawer===button.dataset.drawer?'':button.dataset.drawer)));
+    setDrawer('hand');
     // At the table the bank lies open at the foot of the comms feed; its heading is a label.
     const bankTools=$('#resource-tools'), bankLabel=bankTools?.querySelector('summary');
     if(bankTools&&bankLabel&&tableLayout()){bankTools.open=true;bankLabel.tabIndex=-1;bankLabel.addEventListener('click',event=>{if(tableLayout())event.preventDefault();});}

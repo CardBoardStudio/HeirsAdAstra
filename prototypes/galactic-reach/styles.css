@@ -1404,7 +1404,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
    prompt, phases and supply (Market / Fleet / Relics; Trade opens a dialog) on the right, and
    in front of you your player mat and hand. The page header folds into the menu button in the
    bottom-left corner. Wrapper sections are layout-transparent so their pieces sit in one grid. */
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   html, body { height: 100%; }
   body {
     display: flex; flex-direction: column; height: 100dvh; min-height: 0;
@@ -1900,22 +1900,22 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   }
 }
 /* Short windows: the standings drop to one line and the market card tops tighten. */
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: nowrap; display: block; }
 }
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }
 }
 /* Notices: in the comms column above the menu button, never over the hand, the map or a control. */
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   .toast { right: auto; max-width: none; align-items: flex-start; line-height: 1.35; }
 }
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   #upgrade-market { --utop-h: 84px; }
   #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 2; line-clamp: 2; }
 }
 /* Short windows with a wide supply: four market cards to a row, so ten cards take three rows. */
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   @container (min-width: 390px) {
     #market-row { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     #market-row .game-card:nth-child(n+5) { align-self: start; }
@@ -1923,7 +1923,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
     #market-row .game-card:nth-child(n+9) { align-self: end; }
   }
 }
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   #relics-panel #cancel-excavate { min-height: 24px; padding: 1px 10px; font-size: 12px; }
   .relic-row > div > .button { min-height: 0; padding: 2px 6px; font-size: 11px; line-height: 1.2; }
   .relic-row > div { gap: 3px; }
@@ -1934,7 +1934,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 @property --pos { syntax: '<number>'; inherits: false; initial-value: 0; }
 @keyframes mat-slide { from { --pos: var(--from); } to { --pos: var(--at); } }
 @keyframes mat-drop { from { translate: 0 -14px; opacity: 0; } 60% { opacity: 1; } to { translate: 0 0; opacity: 1; } }
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   .resource-grid {
     --mat-cols: 16px minmax(46px, 1.1fr) 18px minmax(64px, 1fr) 20px minmax(104px, 1.9fr) 18px;
     grid-column: 3; grid-row: 7; justify-self: stretch; align-self: stretch; width: auto !important; margin: 0 !important;
@@ -1968,7 +1968,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .storage-upgrade-button { min-height: 0 !important; padding: 4px 8px !important; gap: 3px !important; font-size: 11.5px !important; }
 }
 @media (prefers-reduced-motion: reduce) { .mat-marker, .mat-stock.new { animation: none; } }
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   /* ---- One table: every piece lies on the felt as an object with its own shadow. ---- */
   .board-map-region { border: 0 !important; border-radius: 14px !important;
     background: radial-gradient(ellipse at 50% 45%, #1f3944 0%, #132833 62%, #0e1f27 100%) !important;
@@ -2011,12 +2011,12 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .storage-upgrade-button .resource-symbol { width: 10px !important; height: 10px !important; }
 }
 /* Notices: over the comms sheet's lower part, above the bank tray (body-level, so scaled here). */
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   .toast { left: calc(16px * var(--table-zoom, 1)); bottom: calc((8px + 130px + 6px + 234px + 22px) * var(--table-zoom, 1)); width: calc(244px * var(--table-zoom, 1)); }
 }
 /* ==== v19: one table. The only surface is the felt; everything else is an object lying on it,
    with felt showing between objects. No panel boxes. ==== */
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   body {
     background:
       url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
@@ -2091,7 +2091,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .storage-upgrade-button { border-radius: 999px !important; }
 }
 /* ==== v20: the map is as large as the window allows; everything else fills in around it. ==== */
-@media (min-width: 1024px) and (min-height: 600px) {
+@media (min-width: 600px) and (min-height: 600px) {
   .app-shell, .has-saved-table .app-shell, .has-replay .app-shell {
     --front-h: 118px;
     --board-w: min(calc((var(--table-h, 100dvh) - 16px - var(--front-h) - 12px) * 1.0543), calc(var(--table-w, 100vw) - 32px - 28px - 640px));
@@ -2163,4 +2163,116 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .phase-stepper li { padding: 2px 6px 2px 15px !important; font-size: 10.5px; }
   .phase-stepper li::before { left: 3px !important; }
   .phase-stepper li.current::before { left: 1px !important; }
+}
+/* ==== Portrait (an iPad held upright): the same table in a column. Prestige track and turn on
+   top, the faction tiles in a row, the map as large as the rest allows, then the supply, then
+   the comms sheet, bank tray and your mat side by side, and your seat along the bottom. ==== */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell {
+    --board-w: 100%;
+    --mat-h: 224px;
+    --bank-h: 224px;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    grid-template-rows: auto auto minmax(0, 1fr) auto auto var(--mat-h) auto var(--front-h) !important;
+  }
+  .prestige-track { grid-column: 1 !important; grid-row: 1 !important; }
+  .board-toolbar { grid-column: 2 / 4 !important; grid-row: 1 !important; }
+  .console-nav { grid-column: 3 !important; grid-row: 1 !important; }
+  .board-shared .score-ribbon { grid-column: 1 / 3 !important; grid-row: 2 !important; margin: 0 !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .phase-stepper { grid-column: 3 !important; grid-row: 2 !important; }
+  .board-map-region, .map-tools { grid-column: 1 / -1 !important; grid-row: 3 !important; }
+  #market-panel, #market-panel[hidden] { grid-column: 1 / -1 !important; grid-row: 4 !important; height: 268px; }
+  #relics-panel, #relics-panel[hidden] { grid-column: 1 / -1 !important; grid-row: 5 !important; }
+  #fleet-panel.active { grid-column: 1 / -1 !important; grid-row: 4 / 6 !important; }
+  .log-panel { grid-column: 1 !important; grid-row: 6 !important; margin: 0 !important; }
+  .resource-tools { grid-column: 2 !important; grid-row: 6 !important; align-self: stretch !important; height: auto !important; }
+  .resource-grid { grid-column: 3 !important; grid-row: 6 !important; margin: 0 !important; align-self: stretch !important; height: auto !important; }
+  .storage-upgrade-control { grid-column: 3 !important; grid-row: 6 !important; }
+  #hand-panel .hand-tools { grid-column: 1 / -1 !important; grid-row: 7 !important; }
+  .table-menu-button { grid-row: 8 !important; }
+  .pile-stats > button[id] { grid-column: 1 / -1 !important; grid-row: 8 !important; }
+  #discard-button { grid-column: 1 / -1 !important; grid-row: 8 !important; justify-self: end !important; }
+  #hand-row { grid-column: 1 / -1 !important; grid-row: 8 !important; margin: 0 calc(var(--pile-w) + 14px) 0 calc(52px + 2 * var(--pile-w) + 23px) !important; }
+  @container (min-width: 600px) { #market-row { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; } }
+}
+/* Portrait notices: in the map's empty top-left corner. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  .toast { top: calc(124px * var(--table-zoom, 1)); bottom: auto; left: calc(16px * var(--table-zoom, 1)); width: calc(210px * var(--table-zoom, 1)); }
+}
+
+/* ==== Phones (under 600 px in either direction): the map fills the screen and can be panned;
+   the turn and phases sit in a strip on top; the turn's buttons are always at hand above a row
+   of drawer tabs; Hand, Supply, Mat, Comms and Table slide up as sheets that scroll inside. ==== */
+.phone-drawers { display: none; }
+@media (max-width: 599px), (max-height: 599px) {
+  html, body { height: 100%; overflow: hidden; }
+  body { --top-h: 50px; --tabs-h: 46px; --actions-h: 44px; --sheet-h: min(52dvh, 420px); background: radial-gradient(ellipse 85% 75% at 48% 42%, #2c6a55 0%, #235946 45%, #183f33 100%); }
+  .starfield, .board-heading, .round-block, .board-key, .table-jump, .map-pan-hint, #hand-help, #hand-title, .section-intro .eyebrow { display: none !important; }
+  /* Menu: the page header opens from the top-left button. */
+  .topbar, .playtest-changes { display: none !important; }
+  .table-menu-button { display: grid !important; position: fixed; top: 6px; left: 6px; z-index: 61; width: 36px; height: 36px; place-items: center; padding: 0; border: 1px solid #a49c6f70; border-radius: 50%; background: #22322f; color: var(--text); }
+  .table-menu-button span, .table-menu-button span::before, .table-menu-button span::after { display: block; width: 16px; height: 2px; border-radius: 1px; background: currentColor; }
+  .table-menu-button span { position: relative; } .table-menu-button span::before, .table-menu-button span::after { content: ''; position: absolute; left: 0; } .table-menu-button span::before { top: -5px; } .table-menu-button span::after { top: 5px; }
+  body.menu-open .topbar { display: block !important; position: fixed; top: var(--top-h); left: 6px; right: 6px; z-index: 60; max-height: calc(100dvh - var(--top-h) - var(--tabs-h) - 12px); overflow: auto; padding: 12px; border: 1px solid #a49c6f99; border-radius: 12px; background: #1b2b2d; box-shadow: 0 20px 50px #000c; }
+  body.menu-open .topbar .header-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  /* Top strip: whose turn and the round's phases. */
+  .board-toolbar { position: fixed !important; top: 0; left: 48px; right: 6px; height: 28px; z-index: 50; display: flex !important; align-items: center; gap: 6px; margin: 0 !important; padding: 0 !important; overflow: hidden; white-space: nowrap; font-size: 12px; }
+  .board-toolbar #turn-instruction { overflow: hidden; text-overflow: ellipsis; font-size: 11.5px; }
+  .phase-stepper { position: fixed !important; top: 26px; left: 48px; right: 6px; z-index: 50; display: flex !important; align-items: center; gap: 4px; margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; font-size: 10.5px; overflow-x: auto; white-space: nowrap; }
+  .phase-stepper ol { display: flex; gap: 2px; margin: 0; padding: 0; list-style: none; }
+  .phase-stepper li { padding: 1px 6px; border-radius: 999px; color: var(--muted); background: #ffffff10; }
+  .phase-stepper li.current { color: #10201c; background: var(--gold); font-weight: 700; }
+  .prestige-track { display: none !important; }
+  .board-toolbar > div { display: flex !important; align-items: baseline; gap: 6px; min-width: 0; flex: 1 1 auto; }
+  .board-toolbar strong { flex: none; font-size: 13px; }
+  .board-toolbar #turn-instruction { display: block !important; min-width: 0; margin: 0 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .board-toolbar .button, .board-toolbar #report-button { display: none !important; }
+  .board-stage, .board-canvas { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
+  .map-tools .button { min-height: 30px; padding: 2px 8px; font-size: 12px; }
+  :is(.console, .resource-panel, .board-shared) :is(.card-art, .card-lore) { display: none !important; }
+  .board-stage, .board-canvas, .board-column, .game-layout { min-width: 0 !important; overflow: visible !important; }
+  /* The map: full screen between the strip and the buttons; pan with a finger, pinch to zoom. */
+  .board-map-region { position: fixed !important; top: var(--top-h); left: 0; right: 0; bottom: calc(var(--tabs-h) + var(--actions-h)); z-index: 1; display: block !important; margin: 0 !important; padding: 6px !important; overflow: auto !important; border: 0 !important; background: none !important; box-shadow: none !important; touch-action: pan-x pan-y pinch-zoom; -webkit-overflow-scrolling: touch; }
+  .galaxy-board, .has-saved-table .galaxy-board, .has-replay .galaxy-board { width: 820px !important; min-width: 820px !important; margin: 0 auto; }
+  .map-tools { position: fixed !important; top: calc(var(--top-h) + 6px); right: 6px; z-index: 20; display: flex; gap: 4px; }
+  /* The turn's buttons, always reachable. */
+  #hand-panel .hand-tools { position: fixed !important; left: 0; right: 0; bottom: var(--tabs-h); height: var(--actions-h); z-index: 52; display: flex !important; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 6px; margin: 0 !important; padding: 4px 8px; overflow-x: auto; background: #10201cf2; border-top: 1px solid #a49c6f40; }
+  #hand-panel .hand-tools .button { flex: none; min-height: 36px; padding: 4px 12px; font-size: 13px; white-space: nowrap; }
+  #hand-panel .hand-tools .button[hidden] { display: none !important; }
+  #pass-button, #hand-finish-buy-button, #finish-buy-button { display: none !important; }
+  .board-primary:not([hidden]) { display: inline-flex !important; }
+  /* Drawer tabs along the bottom edge. */
+  .phone-drawers { display: flex; position: fixed; left: 0; right: 0; bottom: 0; height: var(--tabs-h); z-index: 55; background: #0b1614; border-top: 1px solid #a49c6f55; }
+  .phone-drawers button { flex: 1 1 0; min-width: 0; border: 0; background: none; color: var(--muted); font: 700 12px/1 inherit; letter-spacing: .04em; }
+  .phone-drawers button[aria-pressed="true"] { color: var(--gold); box-shadow: inset 0 3px 0 var(--gold); background: #ffffff08; }
+  /* Sheets: each drawer is one part of the table, sliding up over the map's lower part. */
+  .resource-panel, .board-shared { display: none !important; }
+  .console { display: block !important; }
+  body:not([data-drawer="hand"]):not([data-drawer="supply"]) .console :is(.console-nav, .tab-panel, #hand-row, #hand-panel .section-intro > div:first-child) { display: none !important; }
+  body[data-drawer="hand"] .console, body[data-drawer="supply"] .console, body[data-drawer="mat"] .resource-panel,
+  body[data-drawer="comms"] .board-shared, body[data-drawer="table"] .board-shared {
+    display: block !important; position: fixed !important; left: 0; right: 0; bottom: calc(var(--tabs-h) + var(--actions-h)); z-index: 40;
+    max-height: var(--sheet-h); overflow: auto; margin: 0 !important; padding: 10px 10px 12px !important; border: 0 !important; border-top: 1px solid #a49c6f66 !important; border-radius: 14px 14px 0 0 !important;
+    background: #142320f5 !important; box-shadow: 0 -12px 30px #0009 !important; overscroll-behavior: contain;
+  }
+  body[data-drawer="hand"] .console :is(.console-nav, .tab-panel) { display: none !important; }
+  body[data-drawer="hand"] #hand-panel { display: block !important; }
+  body[data-drawer="hand"] #hand-row { display: flex !important; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+  body[data-drawer="hand"] #hand-row .game-card { flex: 0 0 170px; min-height: 0; }
+  body[data-drawer="supply"] :is(#hand-row, #hand-panel .section-intro > div:first-child) { display: none !important; }
+  body[data-drawer="supply"] .console-nav { display: flex !important; gap: 6px; margin-bottom: 8px; }
+  body[data-drawer="supply"] .market-cards, body[data-drawer="supply"] .relic-row { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  body[data-drawer="supply"] .upgrade-market, body[data-drawer="supply"] .market-row { display: contents !important; }
+  body[data-drawer="comms"] .board-shared > :not(.board-reference), body[data-drawer="comms"] .board-reference > :not(.log-panel) { display: none !important; }
+  body[data-drawer="comms"] .log-panel { display: block !important; }
+  body[data-drawer="comms"] .game-log { max-height: none !important; overflow: visible !important; }
+  body[data-drawer="table"] .board-shared .board-reference, body[data-drawer="table"] .board-shared .board-key { display: none !important; }
+  body[data-drawer="table"] .score-ribbon { display: grid !important; grid-template-columns: minmax(0, 1fr); gap: 6px; }
+  .score-overview { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  /* Notices sit above the turn's buttons. */
+  .toast { left: 8px; right: 8px; bottom: calc(var(--tabs-h) + var(--actions-h) + 8px); max-width: none; z-index: 70; }
+}
+/* Phones held sideways: shorter strips and sheets. */
+@media (max-height: 599px) and (orientation: landscape) {
+  body { --top-h: 44px; --tabs-h: 38px; --actions-h: 40px; --sheet-h: 62dvh; }
 }
