@@ -822,7 +822,7 @@ test('stale history never attaches to a different position and storage failure i
 test('a complete browser game exports setup through victory and retains its history after reload', () => {
  const storage=createStorage(),game=boot(storage);
  for(let turn=0;game.saved().winner===null;turn++) {
-   assert(turn<350,'Browser rivals should finish a game');
+   assert(turn<350,'Browser rivals should finish a game: '+JSON.stringify({round:game.saved().round,phase:game.saved().phase,active:game.saved().activePlayer,pendingConstruct:game.saved().pendingConstruct,pendingBuildOrder:game.saved().pendingBuildOrder,players:game.saved().players.map(p=>({id:p.id,prestige:p.prestige,resources:p.resources,hand:p.hand.map(c=>c.key)})),log:game.saved().log.slice(-10)}));
    const state=game.saved();
    if(state.pendingCombatReport)game.click('message-continue');
    else if(state.pendingCombat){game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();}

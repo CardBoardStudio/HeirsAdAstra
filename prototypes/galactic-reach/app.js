@@ -1076,7 +1076,7 @@ function createGalacticReach(options = {}) {
   }
 
   function addStorageCapacity(playerId, allocation) {
-    RESOURCES.forEach(r=>{state.players[playerId].resourceLimits[r]+=allocation[r];});
+    RESOURCES.forEach(r=>{state.players[playerId].resourceLimits[r]+=allocation[r]||0;});
   }
 
   function totalResources(player) {
