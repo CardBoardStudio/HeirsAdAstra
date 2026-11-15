@@ -1,0 +1,91 @@
+{
+  "method": "Percentile bootstrap resampling whole setup seeds (not individual games). Descriptive intervals with only eight independent setups.",
+  "replicates": 10000,
+  "randomSeed": 63742,
+  "seedClusters": 8,
+  "perSeed": {
+    "910701": {
+      "mixedUpdatedWinShare": 0.8333333333333334,
+      "militarySelfWinShare": 0.4166666666666667,
+      "economySelfWinShare": 0.4166666666666667,
+      "expansionSelfWinShare": 0.16666666666666666,
+      "militaryMinusEconomySelfWinShare": 0.0
+    },
+    "918620": {
+      "mixedUpdatedWinShare": 0.2916666666666667,
+      "militarySelfWinShare": 0.16666666666666666,
+      "economySelfWinShare": 0.5833333333333334,
+      "expansionSelfWinShare": 0.25,
+      "militaryMinusEconomySelfWinShare": -0.41666666666666674
+    },
+    "926539": {
+      "mixedUpdatedWinShare": 0.5416666666666666,
+      "militarySelfWinShare": 0.5,
+      "economySelfWinShare": 0.4166666666666667,
+      "expansionSelfWinShare": 0.08333333333333333,
+      "militaryMinusEconomySelfWinShare": 0.08333333333333331
+    },
+    "934458": {
+      "mixedUpdatedWinShare": 0.9166666666666666,
+      "militarySelfWinShare": 0.5833333333333334,
+      "economySelfWinShare": 0.3333333333333333,
+      "expansionSelfWinShare": 0.08333333333333333,
+      "militaryMinusEconomySelfWinShare": 0.25000000000000006
+    },
+    "942377": {
+      "mixedUpdatedWinShare": 0.9166666666666666,
+      "militarySelfWinShare": 0.6666666666666666,
+      "economySelfWinShare": 0.16666666666666666,
+      "expansionSelfWinShare": 0.16666666666666666,
+      "militaryMinusEconomySelfWinShare": 0.5
+    },
+    "950296": {
+      "mixedUpdatedWinShare": 0.7916666666666666,
+      "militarySelfWinShare": 0.4166666666666667,
+      "economySelfWinShare": 0.4166666666666667,
+      "expansionSelfWinShare": 0.16666666666666666,
+      "militaryMinusEconomySelfWinShare": 0.0
+    },
+    "958215": {
+      "mixedUpdatedWinShare": 0.5416666666666666,
+      "militarySelfWinShare": 0.25,
+      "economySelfWinShare": 0.5,
+      "expansionSelfWinShare": 0.25,
+      "militaryMinusEconomySelfWinShare": -0.25
+    },
+    "966134": {
+      "mixedUpdatedWinShare": 0.625,
+      "militarySelfWinShare": 0.4166666666666667,
+      "economySelfWinShare": 0.4166666666666667,
+      "expansionSelfWinShare": 0.16666666666666666,
+      "militaryMinusEconomySelfWinShare": 0.0
+    }
+  },
+  "estimates": {
+    "mixedUpdatedWinShare": {
+      "mean": 0.6822916666666666,
+      "lower95": 0.5364583333333333,
+      "upper95": 0.8177083333333333
+    },
+    "militarySelfWinShare": {
+      "mean": 0.4270833333333333,
+      "lower95": 0.3229166666666667,
+      "upper95": 0.53125
+    },
+    "economySelfWinShare": {
+      "mean": 0.40625,
+      "lower95": 0.3229166666666667,
+      "upper95": 0.4791666666666667
+    },
+    "expansionSelfWinShare": {
+      "mean": 0.16666666666666666,
+      "lower95": 0.125,
+      "upper95": 0.20833333333333331
+    },
+    "militaryMinusEconomySelfWinShare": {
+      "mean": 0.02083333333333333,
+      "lower95": -0.15651041666666646,
+      "upper95": 0.19791666666666669
+    }
+  }
+}
