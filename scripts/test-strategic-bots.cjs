@@ -71,4 +71,11 @@ for(const strategy of ['military','economy','expansion']) {
   g.s.players[0].hand=[{id:'secret',key:'novaBarrage'}];g.s.players[0].deck.reverse();
   assert.deepEqual(plain({build:g.e.chooseAiBuild(1),defense:g.e.aiColonyDefense(1),value:g.e.aiBuyValue(1,'signalRelay')}),before,'No enemy hand or deck-order access');
 }
+{
+  const g=game(),stats=g.a.observe(1).cardStats;
+  assert.equal(stats.signalRelay.draw,2);assert.equal(stats.ascendancyCodex.prestige,2);
+  g.s.players[0].hand=[{id:'private-hand-identifier',key:'novaBarrage'}];
+  assert.deepEqual(plain(g.a.observe(1).cardStats),plain(stats),'Printed card metadata is independent of private ownership');
+  assert(!JSON.stringify(stats).includes('private-hand-identifier'));
+}
 console.log('Strategic rivals: III in every pile/profile, scoring reserves, Colony/portal defense, guards, useful cards/rewards, conversion draws and information privacy passed.');
