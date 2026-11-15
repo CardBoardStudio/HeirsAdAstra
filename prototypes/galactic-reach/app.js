@@ -4373,7 +4373,7 @@ function createGalacticReach(options = {}) {
       const allowed=choosing && excavate(ME,state.selected,state.actionCardId,relic.id,true);
       return `<div>${cardMarkup(relic,'relic-row')}${choosing?`<button class="button button-primary" data-excavate-relic="${relic.id}" ${allowed?'':'disabled'}>Choose ${esc(ALL_CARDS[relic.key].name)}</button>`:''}</div>`;
     }).join('') || '<p class="muted">All alien relic cards have been recovered.</p>';
-    $('#relic-deck-count').textContent=`${replayMode?state.relicDeckCount:state.relicDeck.length} cards remaining in deck`;
+    $('#relic-deck-count').textContent=`${replayMode?state.relicDeckCount:state.relicDeck.length} in deck`;
     $('#relic-cost').innerHTML=resourceDots(EXCAVATION_COST);
     $('#cancel-excavate').hidden=!choosing;
     const site=state.planets[state.selected],atSite=site?.special==='relic' && relicKnown(state.clusters[site.cluster],viewSeat) && !site.relicClaimed && getFleet(state.selected,ME)?.explorer;
@@ -4389,11 +4389,14 @@ function createGalacticReach(options = {}) {
     renderHeader(); renderScoreboard(); renderBoard(); renderResources(); renderInspector(); positionSectorScan(); renderLog(); renderHand(); renderMarket(); renderFleetSummary(); renderTrade(); renderRelicRow(); renderOverflow(); renderCombat(); renderCombatReport(); renderBoardPrimary();
   }
 
+  // On a desktop window the market and relics lie on the table together; Fleet opens over them.
+  const tableLayout = () => typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 1024px) and (min-height: 600px)').matches;
   function switchTab(name) {
     // The hand is always on the board and Trade is a dialog, so their old tabs show the market.
     if (name==='hand' || name==='trade') name='market';
     $$('.console-tab[data-tab]').forEach(tab=>{const active=tab.dataset.tab===name;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;});
     $$('.tab-panel').forEach(panel=>{const active=panel.dataset.panel===name;panel.classList.toggle('active',active);panel.hidden=!active;});
+    if (tableLayout()) { const fleet=$('#fleet-tab'); if (fleet) { fleet.tabIndex=0; fleet.setAttribute('aria-expanded',String(name==='fleet')); } }
   }
 
   function positionSectorScan() {
@@ -4563,6 +4566,7 @@ function createGalacticReach(options = {}) {
     const setMenu=open=>{document.body.classList.toggle('menu-open',open);menuButton.setAttribute('aria-expanded',String(open));};
     menuButton.addEventListener('click',()=>setMenu(!document.body.classList.contains('menu-open')));
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('menu-open')){setMenu(false);menuButton.focus();}});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&tableLayout()&&$('#fleet-panel')?.classList.contains('active')&&!document.querySelector('dialog[open]')){switchTab('market');$('#fleet-tab').focus();}});
     document.addEventListener('click',event=>{if(document.body.classList.contains('menu-open')&&!event.target.closest('.topbar, .playtest-changes, .personal-report, #table-menu-button'))setMenu(false);});
     $$('.topbar .header-actions').forEach(actions=>actions.addEventListener('click',event=>{if(event.target.closest('button, a'))setMenu(false);}));
     $('#close-trade').addEventListener('click',()=>$('#trade-dialog').close());
@@ -4572,8 +4576,9 @@ function createGalacticReach(options = {}) {
     $('#consortium-finish').addEventListener('click',()=>finishConsortium(ME));
     const consoleTabs=$$('.console-tab[data-tab]');
     consoleTabs.forEach((tab,index)=>{
-      tab.addEventListener('click',()=>switchTab(tab.dataset.tab));
+      tab.addEventListener('click',()=>switchTab(tableLayout()&&tab.dataset.tab==='fleet'&&tab.classList.contains('active')?'market':tab.dataset.tab));
       tab.addEventListener('keydown',event=>{
+        if(tableLayout())return;
         let next=index;
         if(event.key==='ArrowRight')next=(index+1)%consoleTabs.length;
         else if(event.key==='ArrowLeft')next=(index-1+consoleTabs.length)%consoleTabs.length;
@@ -4585,6 +4590,7 @@ function createGalacticReach(options = {}) {
         consoleTabs[next].focus();
       });
     });
+    if(tableLayout())$('#fleet-tab').tabIndex=0;
   }
 
   // Shared table client. The server's table service owns the game; each human

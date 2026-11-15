@@ -214,11 +214,11 @@ const MEASURE = `(() => {
   if (doc.scrollHeight > H + 1 || doc.scrollWidth > W + 1) problems.push('page scrolls: ' + doc.scrollWidth + 'x' + doc.scrollHeight);
   // Containers allowed to scroll their own reference content.
   const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region';
-  const modal = document.querySelector('dialog[open], body.menu-open, .resource-tools[open]');
+  const modal = document.querySelector('dialog[open], body.menu-open, .resource-tools[open], #fleet-panel.active');
   const scope = modal || document;
   // Hand cards are held as card tops that clip on purpose; a raised (pointed-at or focused)
   // card is checked like any other. Each top must still show its name and gain/cost row.
-  const FOLDED = ':is(#hand-row, .market-cards) .game-card:not(:hover):not(:focus):not(:focus-within)';
+  const FOLDED = ':is(#hand-row, .market-cards, .relic-row) .game-card:not(:hover):not(:focus):not(:focus-within)';
   const folded = e => e.closest(FOLDED);
   for (const top of document.querySelectorAll(FOLDED)) {
     if (!shown(top)) continue;
@@ -226,7 +226,7 @@ const MEASURE = `(() => {
     if (t.top < -1 || t.bottom > H + 1) problems.push('card top outside viewport: ' + label(top));
     const summary = top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
-    if (!document.querySelector(':is(dialog[open], body.menu-open, .resource-tools[open], :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
+    if (!document.querySelector(':is(dialog[open], body.menu-open, .resource-tools[open], #fleet-panel.active, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
       const c = chip.getBoundingClientRect(), hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       if (!hit || !top.contains(hit)) { problems.push('gain badge covered in ' + label(top)); break; }
     }
