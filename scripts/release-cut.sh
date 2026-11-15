@@ -44,7 +44,26 @@ release_name() {
 
 declared_save() { git show "$1:prototypes/galactic-reach/app.js" | grep -oE 'const SAVE_FORMAT_VERSION = [0-9]+'; }
 
+entries() { # the pending entries on BASE, one bullet each
+  local f
+  git ls-tree --name-only "origin/$BASE" changes/ | grep -v '^changes/README\.md$' | grep '\.md$' | while read -r f; do
+    git show "origin/$BASE:$f" | awk '
+      NR == 1 && /^---/ { front = 1; next }
+      front && /^---/ { front = 0; next }
+      front && /^compat:/ { sub(/^compat:[ \t]*/, ""); compat = $0; next }
+      front && /^title:/ { sub(/^title:[ \t]*/, ""); title = $0; next }
+      !front && NF { text = text (text ? " " : "") $0 }
+      END { printf "- **%s** (%s): %s\n", title, compat, text }'
+  done
+}
+
 body() { # body MAIN NAME COMPAT REPORT
+  local impact
+  if [ "$3" = breaking ]; then
+    impact='Changed: a rules-changing release. New games deal the new rules; unfinished games and tables keep the archived engine of the release before. The rulebook masthead and version labels name the new release.'
+  else
+    impact='None: a save-compatible release. It writes the release notes and the "New in this playtest" panel; games in progress continue on the same rules.'
+  fi
   cat <<EOF
 The [Release cut workflow]($URL/actions/workflows/release-cut.yml) keeps this PR current: it is \`node scripts/release.cjs cut\` applied to \`$BASE\` at $1, cut again whenever \`$BASE\` moves. Commits pushed to \`$CUT_BRANCH\` are replaced, so fixes go in their own PR into \`$BASE\`.
 
@@ -52,7 +71,21 @@ Release name: $2
 
 Edit the line above to rename a rules-changing release (letters, digits, spaces and \`.,-\`); the cut reruns with the new name. A save-compatible release, or one already named by an earlier cut this cycle, ignores it.
 
-Compatibility: **$3**
+## Rules grounding
+
+The release carries these merged entries; each was grounded in its own PR and links the rulebook sections it follows. The cut relabels the canonical manual ([Start](prototypes/galactic-reach/rulebook.html#start)) for the release.
+
+$(entries)
+
+## Gameplay impact
+
+$impact
+
+## Playtest compatibility
+
+**playtest-$3**
+
+## Cut report
 
 \`\`\`
 $4
