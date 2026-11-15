@@ -19,6 +19,8 @@ function createGalacticAdapter(e) {
       harvesterYield: e.HARVESTER_YIELD, marketCosts: state.market.map(card => e.ALL_CARDS[card.key]?.cost || {}),
       // 34.39: printed Wonder Prestige, military card stats and the capture rule, published for the same reason.
       marketPrestige: state.market.map(card => e.ALL_CARDS[card.key]?.gainPrestige || 0),
+      // Printed effects are public; no deck order or private hand is included here.
+      cardStats: Object.fromEntries(Object.entries(e.ALL_CARDS).map(([key,c])=>[key,{order:c.order,kind:c.kind,tag:c.tag,military:!!c.military,draw:c.effect?.draw||(c.tag==='alienEchoes'?3:0),limits:c.effect?.limits,prestige:c.effect?.prestige||0,gainPrestige:c.gainPrestige||0,victoryPrestige:c.victoryPrestige||0,attack:c.attack||0,shield:c.shield||0,pierce:!!c.pierce}])),
       tacticStats: Object.fromEntries(Object.entries(e.MILITARY_CARDS).map(([key, c]) => [key, { attack: c.attack || 0, shield: c.shield || 0, pierce: !!c.pierce }])),
       combatVictoryPrestige: e.COMBAT_VICTORY_PRESTIGE, captureNeedsFleet: true, phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
