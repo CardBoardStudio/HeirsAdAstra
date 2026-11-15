@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),cryp
 const {execFileSync}=require('node:child_process');
 const {Worker,isMainThread,parentPort,workerData}=require('node:worker_threads');
 const root=path.resolve(__dirname,'..'),profiles=['military','economy','expansion'];
-const baseDefault='45b3a4057e879c65ec77eed2b5e2ce349445e1cc';
+const baseDefault='d3e3ab6a672e330aa3a69eddd9c2d5b537ab76fa';
 const plain=v=>JSON.parse(JSON.stringify(v));
 function factory(app,adapter) {
   const guard="if (state.pendingCombat || state.phase !== 'operations' || state.activePlayer === ME || state.winner !== null) return;";

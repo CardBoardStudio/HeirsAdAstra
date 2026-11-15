@@ -1,4 +1,6 @@
-# Strategic rivals: 37.42 balance study
+# Strategic rivals: study before unlimited purchases
+
+This historical study used the earlier one-purchase Buy rule. Main adopted unlimited affordable purchases during the work. See the [current-rules rerun](../strategic-bots-results/README.md) for the final assessment; do not treat these numbers as the current game’s balance.
 
 All **384 games completed**. Updated browser rivals won **125 of 192 mixed games (65.1%)** against baseline rivals, with two of each policy per game. The other 67 games went to baseline rivals. A setup-seed cluster bootstrap gives a descriptive 95% interval of **51.6–75.5%**. One seed favored the old policy, so the improvement is not universal.
 
