@@ -133,10 +133,10 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
   s.market = [{ key: 'ascendancyCodex', id: 'codex' }, { key: 'ionThrusters', id: 'ion' }];
   assert(e.aiBuyValue(1, 'ascendancyCodex') > e.aiBuyValue(1, 'ionThrusters'), 'Printed Prestige makes a card worth more');
   assert.equal(e.aiTargetCard(1).id, 'codex');
-  s.market = [{ key: 'foldSpaceGate', id: 'gate' }];
+  s.market = [{ key: 'ascendancyCodex', id: 'codex' }];
   Object.assign(bot, { hand: [], deck: [], discard: [], inPlay: [], passed: true, resources: { matter: 4, energy: 4, biomass: 4, data: 4 } });
   s.phase = 'buy'; s.activePlayer = 1; e.runAiBuy();
-  assert(bot.storagePurchases >= 1 && bot.resourceLimits.energy > 4, 'The rival raised its Energy limit toward Fold-Space Gate');
+  assert(bot.storagePurchases >= 1 && bot.resourceLimits.data > 4, 'The rival raised its Data limit toward a useful repeatable Prestige card');
 }
 // A full game of four browser rivals reaches the 40-point target with the new cards.
 {
