@@ -3660,8 +3660,9 @@ function createGalacticReach(options = {}) {
 
   // Player mat tracks: slots 0..N-1; a value past the last slot sits there with its number shown.
   // The player mat: for each resource a band of two aligned rows of 20 pip slots. Rate: filled up
-  // to the production per round. Now: filled up to the stock, with one capacity pip (a ring in the
-  // slot equal to the limit) and the slots past it closed. A value past slot 20 shows its number.
+  // to the production per round. Now: filled up to the stock, with the capacity as one more pip in
+  // its own colour in the slot equal to the limit, and the slots past it closed. A value past slot
+  // 20 shows its number.
   const MAT_SLOTS = 20;
   const matSeen = {};
   let matPick = null;
@@ -3681,7 +3682,8 @@ function createGalacticReach(options = {}) {
       const fill = have > cap ? 'over-cap' : have >= cap ? 'at-cap' : have + next > cap ? 'will-cap' : '';
       const was = before[resource] || { have, cap, next };
       const capAt = Math.min(cap, MAT_SLOTS) - 1, capFrom = Math.min(was.cap, MAT_SLOTS) - 1;
-      const nowRow = pips(have, was.have, i => `${i >= cap ? (i < have ? ' over' : ' shut') : ''}`) + `<i class="mat-cap-marker${have >= cap ? ' capped' : ''}" style="--at:${capAt};--from:${capFrom}"></i>`;
+      // The capacity is just another pip, in its own colour, in the slot equal to the limit.
+      const nowRow = pips(have, was.have, i => `${i === capAt ? ` cap${capAt !== capFrom ? ' moved' : ''}` : i >= cap ? (i < have ? ' over' : ' shut') : ''}`);
       const label = `${RESOURCE_NAMES[resource]}: ${have} of ${cap}, +${next} per round`;
       return `
       <article class="resource-box ${resource}${matPick === resource ? ' mat-picked' : ''}" style="--resource:var(--${resource})" data-resource="${resource}"${fill?` data-fill="${fill}"`:''} aria-label="${label}${fill==='over-cap'?', above the limit':fill==='at-cap'?', full':fill==='will-cap'?', next round would pass the limit':''}">
