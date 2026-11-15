@@ -2427,3 +2427,17 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .prestige-marker b { flex: none; display: grid; place-items: center; min-width: 22px; height: 22px; padding: 0 3px; border: 2px solid #0d1a1d; border-radius: 11px; background: var(--player); color: #0d1a1d; font-size: 12px; font-weight: 800; }
   .prestige-name { font-weight: 700; letter-spacing: .02em; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
 }
+
+/* ==== The mat without numbers: the pips carry every value. Both rows share one column per slot
+   (20 and the capacity fence); the Now pips fill their slot and the Rate pips are smaller, so
+   totals read first. Every fifth slot has a brighter rim. ==== */
+#resource-grid > .resource-box { grid-template-columns: 20px minmax(0, 1fr) !important; grid-template-areas: "icon rate" "icon now" !important; gap: 1px 7px !important; }
+#resource-grid .resource-box :is(.resource-production, .resource-amount, .resource-limit) { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; }
+#resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 16px)); gap: 3px; }
+#resource-grid .mat-pips.rate i { width: 58%; justify-self: center; align-self: center; border-radius: 2px; }
+#resource-grid .mat-pips.rate { align-items: center; }
+#resource-grid .mat-pips i.five:not(.full):not(.cap) { box-shadow: inset 0 1px 2px #000c, 0 0 0 1px #d9bd8075; }
+#resource-grid .mat-pips i.five.shut:not(.full) { box-shadow: inset 0 0 0 1px #d9bd8040; }
+#resource-grid .mat-pips i.five.full { box-shadow: 0 1px 1px #000a, 0 0 0 1px #f6e7b0b0; }
+/* The fence when the stock has gone past it: ringed in red. */
+#resource-grid .mat-pips.now i.cap.full { box-shadow: 0 0 0 2px var(--red); }

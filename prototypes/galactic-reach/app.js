@@ -3669,11 +3669,11 @@ function createGalacticReach(options = {}) {
   }
 
 
-  // Player mat tracks: slots 0..N-1; a value past the last slot sits there with its number shown.
-  // The player mat: for each resource a band of two aligned rows of 20 pip slots. Rate: filled up
-  // to the production per round. Now: filled up to the stock, with the capacity as one more pip in
-  // its own colour in the slot equal to the limit, and the slots past it closed. A value past slot
-  // 20 shows its number.
+  // The player mat: for each resource a band of two aligned rows of pip slots (20, and one more
+  // for the capacity fence). Rate: filled up to the production per round. Now: filled up to the
+  // stock; the capacity is a gold pip in the slot just right of the last usable one, a fence with
+  // every place a resource can go to its left, and the slots past it closed. Every fifth slot is
+  // marked so a row counts at a glance. A value past the row shows its number.
   const MAT_SLOTS = 20;
   const matSeen = {};
   let matPick = null;
@@ -3687,13 +3687,13 @@ function createGalacticReach(options = {}) {
     const limits = resourceLimits(viewSeat);
     const before = matSeen[viewSeat] || {};
     const mine = !replayMode && viewSeat === ME;
-    const pips = (value, from, extra = () => '') => Array.from({ length: MAT_SLOTS }, (_, i) => `<i class="${i < value ? 'full' : ''}${i < value && i >= from ? ' new' : ''}${extra(i)}"></i>`).join('') + (value > MAT_SLOTS ? `<b class="mat-lap">${value}</b>` : '');
+    const pips = (value, from, extra = () => '') => Array.from({ length: MAT_SLOTS + 1 }, (_, i) => `<i class="${i < value ? 'full' : ''}${i < value && i >= from ? ' new' : ''}${i % 5 === 4 ? ' five' : ''}${extra(i)}"></i>`).join('') + (value > MAT_SLOTS + 1 ? `<b class="mat-lap">${value}</b>` : '');
     $('#resource-grid').innerHTML = `<div class="mat-head" aria-hidden="true"><span class="mat-key rate"><i></i>Rate</span><span class="mat-key now"><i></i>Now</span><span class="mat-key cap"><i></i>Capacity</span>${mine ? '<span class="mat-hint">Drag 4 of one resource onto another to trade with the bank</span>' : ''}</div>` + RESOURCES.map(resource => {
       const have = player.resources[resource], cap = limits[resource], next = production[resource];
       const fill = have > cap ? 'over-cap' : have >= cap ? 'at-cap' : have + next > cap ? 'will-cap' : '';
       const was = before[resource] || { have, cap, next };
-      const capAt = Math.min(cap, MAT_SLOTS) - 1, capFrom = Math.min(was.cap, MAT_SLOTS) - 1;
-      // The capacity is just another pip, in its own colour, in the slot equal to the limit.
+      const capAt = Math.min(cap, MAT_SLOTS), capFrom = Math.min(was.cap, MAT_SLOTS);
+      // The capacity is a fence: a gold pip in the slot just right of the last usable slot.
       const nowRow = pips(have, was.have, i => `${i === capAt ? ` cap${capAt !== capFrom ? ' moved' : ''}` : i >= cap ? (i < have ? ' over' : ' shut') : ''}`);
       const label = `${RESOURCE_NAMES[resource]}: ${have} of ${cap}, +${next} per round`;
       return `
@@ -3701,9 +3701,9 @@ function createGalacticReach(options = {}) {
         ${resourceDot(resource)}
         <span class="resource-name">${RESOURCE_NAMES[resource]}</span>
         <span class="mat-pips rate" aria-hidden="true">${pips(next, was.next)}</span>
-        <span class="resource-production" aria-hidden="true" title="Production per round">+${next}</span>
+        <span class="resource-production" aria-hidden="true">+${next}</span>
         ${mine ? `<button type="button" class="mat-pips now" data-mat-trade="${resource}" aria-label="${label}. Trade 4 ${RESOURCE_NAMES[resource]} with the bank: choose this, then the resource to receive, or Discard">${nowRow}</button>` : `<span class="mat-pips now" aria-hidden="true">${nowRow}</span>`}
-        <strong class="resource-amount">${have}</strong><span class="resource-limit" title="Limit ${cap}">/${cap}</span>
+        <strong class="resource-amount" aria-hidden="true">${have}</strong><span class="resource-limit" aria-hidden="true">/${cap}</span>
       </article>`;
     }).join('') + (mine ? `<button type="button" class="mat-discard" data-mat-discard aria-label="Discard one of the chosen resource">Discard</button>` : '');
     matSeen[viewSeat] = Object.fromEntries(RESOURCES.map(resource => [resource, { have: player.resources[resource], cap: limits[resource], next: production[resource] }]));
