@@ -5,6 +5,8 @@
 // map tool covers a hex. Reference content (game log, playtest notes, rulebook) may scroll.
 //
 //   node scripts/check-viewport-fit.cjs              # 1280x720, 1440x900 and 1920x1080
+// Pointer cases move a real mouse: pointing at a hand card must show its inspect view beside
+// the map (never over a hex or the hand), and dragging a card onto a legal hex must play it.
 //   CHROME_PATH=/path/to/chrome node scripts/check-viewport-fit.cjs
 //   SHOTS=dir node scripts/check-viewport-fit.cjs    # also save a screenshot per state
 //   CHECK_ORIGIN=https://preview CHECK_ONLY='1280x720 (operations|buy)' node scripts/check-viewport-fit.cjs
@@ -63,6 +65,12 @@ function operationsState(handKeys) {
   Object.assign(state, { phase: 'operations', activePlayer: 0, turnStage: 'action', actionMode: null, actionCardId: null, pendingCombat: null });
   state.players[0].hand = handKeys.map(key => card(key, { starter: key === 'move' || key === 'construct' }));
   state.players[0].resources = { matter: 3, energy: 2, biomass: 4, data: 1 };
+  return state;
+}
+// Your home world with two Fleets and an Explorer on it, so Move has units to choose.
+function withFleet(state) {
+  const [home] = Object.entries(state.planets).find(([, planet]) => planet.owner === 0 && planet.hasColony);
+  state.fleets[home] = { ...(state.fleets[home] || {}), 0: { fleet: 2, explorer: 1, settler: 0 } };
   return state;
 }
 function buyState(marketKeys, resources = { matter: 4, energy: 4, biomass: 2, data: 1 }) {
@@ -134,6 +142,9 @@ const CASES = [
   // The first and last hand cards raised: they rise over the map, clear of the bank and the piles.
   { name: 'operations, first hand card raised (bank open)', save: midGameState(), focus: '#hand-row .game-card:first-child button' },
   { name: 'operations, last hand card raised', save: midGameState(), focus: '#hand-row .game-card:last-child button' },
+  { name: 'operations, inspect view (pointed-at hand card)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), hover: '#hand-row .game-card:nth-child(3)', expect: 'inspect' },
+  { name: 'operations, inspect view (last of 8 cards)', save: operationsState(longHand), hover: '#hand-row .game-card:last-child', expect: 'inspect' },
+  { name: 'operations, drag Move onto your units', save: withFleet(operationsState(['move', 'construct', 'move'])), drag: '#hand-row .game-card[data-order="move"]', expect: 'dragged' },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -227,7 +238,7 @@ const MEASURE = `(() => {
   for (const top of document.querySelectorAll(FOLDED)) {
     if (!shown(top)) continue;
     const t = top.getBoundingClientRect();
-    if (t.top < -1 || t.bottom > H + 1) problems.push('card top outside viewport: ' + label(top));
+    if (t.top < -1 || t.bottom > H + 1 || t.left < -1 || t.right > W + 1) problems.push('card top outside viewport: ' + label(top));
     const summary = top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
     if (!document.querySelector(':is(dialog[open], body.menu-open, #fleet-panel.active, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
@@ -242,11 +253,12 @@ const MEASURE = `(() => {
     }
   }
   for (const e of scope.querySelectorAll('*')) {
-    if (!shown(e) || e.closest(scrollers) || folded(e)) continue;
+    if (!shown(e) || e.closest(scrollers) || folded(e) || e.closest('.cf-ghost, .cf-floater')) continue;
     const r = e.getBoundingClientRect();
     if (r.width <= 1 && r.height <= 1) continue; // empty or visually hidden (sr-only)
     const clips = /(auto|scroll|hidden|clip)/.test(getComputedStyle(e).overflowY + getComputedStyle(e).overflowX);
-    if (clips && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2) && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, input, textarea') && !e.closest('[aria-hidden="true"]'))
+    // Visually hidden text (clip-path: inset(50%)) is read by screen readers, not shown.
+    if (clips && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2) && !getComputedStyle(e).clipPath.includes('inset(50%)') && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, input, textarea') && !e.closest('[aria-hidden="true"]'))
       problems.push('clipped content: ' + label(e) + ' ' + e.scrollWidth + 'x' + e.scrollHeight + ' in ' + e.clientWidth + 'x' + e.clientHeight);
     if (e.matches('button, a[href], select, input, textarea, .game-card, .score-card, .resource-box, .hex, dialog[open], .lobby-seat') && !e.closest('.sr-only, .skip-link, .skip')) {
       if (r.left < -1 || r.top < -1 || r.right > W + 1 || r.bottom > H + 1) problems.push('outside viewport: ' + label(e) + ' [' + [r.left, r.top, r.right, r.bottom].map(Math.round) + ']');
@@ -284,7 +296,7 @@ const MEASURE = `(() => {
       .find(e => !toast.contains(e) && shown(e) && (() => { const r = e.getBoundingClientRect(); return r.width > 1 && r.left < t.right - 1 && r.right > t.left + 1 && r.top < t.bottom - 1 && r.bottom > t.top + 1; })());
     if (under) problems.push('toast covers ' + label(under));
   }
-  if (!modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
+  if (!modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
     // The centre and both side edges of every hex must be clickable.
     const r = hex.getBoundingClientRect(), y = r.top + r.height / 2;
     const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover'); });
@@ -327,7 +339,46 @@ async function runCase(browser, origin, testCase, [width, height]) {
     if (!ok) return [`could not focus ${testCase.focus}`];
     await browser.evaluate('new Promise(r => setTimeout(r, 250))');
   }
+  const mouse = (type, x, y) => browser.send('Input.dispatchMouseEvent', { type, x, y, button: type === 'mouseMoved' ? 'none' : 'left', buttons: type === 'mousePressed' ? 1 : 0, clickCount: type === 'mouseMoved' ? 0 : 1 });
+  const centre = selector => browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + Math.min(r.height / 2, 30) }; })()`);
+  const steps = [];
+  if (testCase.hover) {
+    const at = await centre(testCase.hover);
+    if (!at) return [`could not point at ${testCase.hover}`];
+    await mouse('mouseMoved', at.x, at.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+  }
+  if (testCase.drag) {
+    const from = await centre(testCase.drag);
+    if (!from) return [`could not find ${testCase.drag}`];
+    await mouse('mouseMoved', from.x, from.y); await mouse('mousePressed', from.x, from.y);
+    for (let i = 1; i <= 3; i++) await mouse('mouseMoved', from.x, from.y - 6 * i);
+    const target = await centre('.hex.cf-drop-target');
+    if (!target) { await mouse('mouseReleased', from.x, from.y - 18); return ['drag showed no legal hex']; }
+    for (let i = 1; i <= 6; i++) await mouse('mouseMoved', from.x + (target.x - from.x) * i / 6, from.y - 18 + (target.y - from.y + 18) * i / 6);
+    steps.push(await browser.evaluate('({ arrow: !!document.querySelector(".cf-drag-arrow.cf-on-target"), hover: !!document.querySelector(".hex.cf-drop-target.cf-drop-hover") })'));
+    await mouse('mouseReleased', target.x, target.y);
+    await mouse('mouseMoved', 4, 4);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+  }
   const { problems, slack } = await browser.evaluate(MEASURE);
+  if (testCase.expect === 'inspect') problems.push(...await browser.evaluate(`(() => {
+    const view = document.querySelector('#card-inspect'), problems = [];
+    if (!view || view.hidden || !view.querySelector('.game-card')) return ['inspect view did not open'];
+    const r = view.getBoundingClientRect(), overlaps = o => r.left < o.right - 1 && r.right > o.left + 1 && r.top < o.bottom - 1 && r.bottom > o.top + 1;
+    if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) problems.push('inspect view outside viewport');
+    const hex = [...document.querySelectorAll('.hex')].find(h => overlaps(h.getBoundingClientRect()));
+    if (hex) problems.push('inspect view covers hex ' + hex.dataset.coord);
+    if ([...document.querySelectorAll('#hand-row > .game-card')].some(c => overlaps(c.getBoundingClientRect()))) problems.push('inspect view covers the hand');
+    const card = view.querySelector('.game-card');
+    if (card.scrollHeight > card.clientHeight + 2) problems.push('inspect card text cut');
+    return problems;
+  })()`));
+  if (testCase.expect === 'dragged') {
+    if (!steps[0]?.arrow || !steps[0]?.hover) problems.push('drag did not mark the hex under the pointer');
+    if (!(await browser.evaluate('!!document.querySelector(".hex.source") && !!document.querySelector("#hand-row .game-card.order-selected") && !document.querySelector(".cf-drag-arrow, .cf-drop-target")')))
+      problems.push('dropping Move on your units did not choose them as the move source');
+  }
   lastSlack = slack;
   if (testCase.lobby && !(await browser.evaluate('!!document.querySelector(".lobby-seats")'))) problems.push('waiting room did not render');
   if (testCase.shared && !(await browser.evaluate('!!document.querySelector("#shared-seats li") && !document.querySelector(".app-shell").inert'))) problems.push('shared table did not open');
