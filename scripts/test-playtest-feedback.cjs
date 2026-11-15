@@ -64,6 +64,13 @@ for(const key of ['prefabYards','orbitalFoundry']) {
  const a=g.a().legalActions(0).find(a=>a.type==='move'&&a.destination==='8,-9');assert(a);g.a().applyAction(0,a);
  assert.equal(g.s.fleets['8,-9'][0].fleet,1);assert(g.p.hand.some(x=>x.id==='portal-draw'));assert(g.p.inPlay.some(x=>x.id===c.id));
 }
+// A named capacity bonus leaves the other limits finite and saveable.
+{
+ const g=game(),before=plain(g.p.resourceLimits),c=card(g,'keepersArchive');
+ assert(g.e.resolveHumanSpecial(c,g.e.ALL_CARDS[c.key],0));
+ assert.deepEqual(plain(g.p.resourceLimits),{...before,data:before.data+2});
+ for(const value of Object.values(g.p.resourceLimits))assert(Number.isSafeInteger(value));
+}
 // All independently published browser engines and manuals remain byte-identical.
 {
  const crypto=require('node:crypto');for(const [file,hash] of Object.entries(JSON.parse(fs.readFileSync('scripts/workstation-integration-archive-hashes.json','utf8'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),hash,file);
