@@ -109,6 +109,11 @@ const CASES = [
   { name: 'operations, 8-card hand', save: operationsState(longHand) },
   { name: 'operations, raised hand card (long text)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), focus: '#hand-row .game-card:nth-child(3) button' },
   { name: 'operations, 8-card hand raised', save: operationsState(longHand), focus: '#hand-row .game-card:nth-child(5) button' },
+  // A chosen order shows a toast; it must not cover the hand or any control.
+  { name: 'operations, order chosen (toast)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), click: ['#hand-row .game-card:nth-child(5) [data-order-card]'] },
+  { name: 'operations, Probe chosen, raised', save: operationsState(['move', 'construct', 'construct', 'move', 'probe']), click: ['#hand-row .game-card:nth-child(5) [data-order-mode="probe"]'], focus: '#hand-row .game-card:nth-child(5) [data-order-mode="excavate"]' },
+  { name: 'operations, Excavate chosen, raised', save: operationsState(['move', 'probe', 'construct', 'construct', 'move']), click: ['#hand-row .game-card:nth-child(2) [data-order-mode="excavate"]'], focus: '#hand-row .game-card:nth-child(2) [data-order-mode="excavate"]' },
+  { name: 'operations, 8-card hand, Probe raised', save: operationsState([...longHand.slice(0, 7), 'probe']), focus: '#hand-row .game-card:nth-child(8) [data-order-mode="excavate"]' },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
@@ -209,7 +214,9 @@ const MEASURE = `(() => {
       const c = chip.getBoundingClientRect(), hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       if (!hit || !top.contains(hit)) { problems.push('gain badge covered in ' + label(top)); break; }
     }
-    for (const part of [top.querySelector('.card-name'), top.querySelector('.card-footer'), summary].filter(Boolean)) {
+    // Only level I starters print a gain badge; an empty footer has nothing to show.
+    const footer = top.querySelector('.card-footer');
+    for (const part of [top.querySelector('.card-name'), footer?.textContent.trim() || footer?.querySelector('.resource-chip') ? footer : null, summary].filter(Boolean)) {
       const p = part.getBoundingClientRect();
       if (p.height < 4 || p.top < t.top - 1 || p.bottom > t.bottom + 1) { problems.push('card top hides ' + label(part) + ' in ' + label(top)); break; }
     }
@@ -233,6 +240,19 @@ const MEASURE = `(() => {
       if (child.textContent.trim() && shown(child) && child.getAttribute('aria-hidden') !== 'true' && !getComputedStyle(child).clipPath.includes('inset(50%)') && c.height < 4) { problems.push('card line squeezed: ' + label(e) + ' (' + label(child) + ')'); break; }
       if (c.height && (c.top < r.top - 1 || c.bottom > r.bottom + 1)) { problems.push('card content escapes: ' + label(e) + ' (' + label(child) + ')'); break; }
     }
+  }
+  // Every button on a raised card must be reachable: nothing may lie over its centre.
+  for (const button of document.querySelectorAll(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-buttons .button')) {
+    if (!shown(button) || modal) continue;
+    const b = button.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+    if (!hit || !button.contains(hit)) problems.push('raised card button covered: ' + label(button) + ' by ' + (hit ? label(hit) : 'nothing'));
+  }
+  // A toast may lie over reference text, never over a card, a control or the map.
+  for (const toast of document.querySelectorAll('.toast')) {
+    const t = toast.getBoundingClientRect();
+    const under = [...document.querySelectorAll('button, a[href], select, .game-card, .resource-box, .score-card, .hex')]
+      .find(e => !toast.contains(e) && shown(e) && (() => { const r = e.getBoundingClientRect(); return r.width > 1 && r.left < t.right - 1 && r.right > t.left + 1 && r.top < t.bottom - 1 && r.bottom > t.top + 1; })());
+    if (under) problems.push('toast covers ' + label(under));
   }
   if (!modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
     // The centre and both side edges of every hex must be clickable.
