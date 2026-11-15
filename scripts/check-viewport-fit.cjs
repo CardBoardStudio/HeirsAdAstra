@@ -23,7 +23,9 @@ const { spawn } = require('node:child_process');
 const ROOT = path.resolve(__dirname, '..');
 const GAME_DIR = path.join(ROOT, 'prototypes/galactic-reach');
 const LAB_DIR = path.join(ROOT, 'prototypes/lab');
+// The three reference sizes, plus common laptop and desktop sizes for the Buy states.
 const VIEWPORTS = [[1280, 720], [1440, 900], [1920, 1080]];
+const EXTRA_VIEWPORTS = [[1366, 768], [1680, 1050], [2000, 1118], [2560, 1440]];
 const TABLE_ID = 'a'.repeat(32);
 const SHOTS = process.env.SHOTS;
 
@@ -154,7 +156,11 @@ const CASES = [
   { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
   { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
-  ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'] })),
+  ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'], buyVisible: true, extraSizes: i === 0 })),
+  // Buy with an empty hand (everything converted or played): the market and Finish Buy must show.
+  { name: 'buy, empty hand', save: (() => { const state = buyState(chunks[0]); state.players[0].hand = []; return state; })(), buyVisible: true, extraSizes: true },
+  // The real way there: convert the whole hand during Operations, and the table passes you to Buy.
+  { name: 'buy, after converting the whole hand', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), click: ['#convert-all-button'], buyVisible: true, extraSizes: true },
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
   { name: 'buy, trash dialog', save: buyState(chunks[0]), click: ['#market-tab', '#open-trash'] },
   { name: 'buy, raised market card (bottom row)', save: buyState(chunks[2], { matter: 8, energy: 8, biomass: 8, data: 8 }), focus: '#market-row .game-card:not(:disabled)', focusLast: true },
@@ -405,6 +411,12 @@ async function runCase(browser, origin, testCase, [width, height]) {
     await browser.evaluate('new Promise(r => setTimeout(r, 300))');
   }
   const { problems, slack } = await browser.evaluate(MEASURE);
+  if (testCase.buyVisible) {
+    const seen = await browser.evaluate(`(() => { const shown = e => e && e.checkVisibility() && e.getBoundingClientRect().height > 8;
+      return { market: [...document.querySelectorAll('#market-row .game-card')].filter(shown).length, finish: shown([...document.querySelectorAll('#board-primary, #hand-finish-buy-button, #finish-buy-button')].find(shown)) }; })()`);
+    if (seen.market < 5) problems.push('market cards not visible in Buy: ' + seen.market);
+    if (!seen.finish) problems.push('Finish Buy not visible in Buy');
+  }
   problems.push(...problems0);
   if (testCase.expect === 'converted') {
     if (!steps[0]?.arrow || !steps[0]?.zone || !/^\+\d/.test(steps[0]?.gain)) problems.push('drag did not light your reserves and the gain');
@@ -459,12 +471,15 @@ async function main() {
   const browser = await launch(chrome);
   let failures = 0, checks = 0;
   try {
-    for (const viewport of VIEWPORTS) for (const testCase of CASES) {
+    const runs = [...VIEWPORTS.flatMap(viewport => CASES.map(testCase => [viewport, testCase])),
+      ...EXTRA_VIEWPORTS.flatMap(viewport => CASES.filter(testCase => testCase.extraSizes).map(testCase => [viewport, testCase]))];
+    for (const [viewport, testCase] of runs) {
       if (only && !only.test(`${viewport.join('x')} ${testCase.name}`)) continue;
       if (process.env.CHECK_ORIGIN && (testCase.lobby || testCase.table || testCase.shared)) continue;
       checks++;
       browser.errors.length = 0;
       const problems = await runCase(browser, origin, testCase, viewport);
+      problems.push(...(await browser.evaluate('window.galacticReachRenderErrors || []')).map(e => `table failed to draw ${e}`));
       problems.push(...browser.errors.filter(e => !/seat\.js|zk\/|Failed to fetch dynamically imported module/.test(e)).map(e => `page error: ${e.split('\n')[0]}`));
       if (problems.length) { failures++; console.log(`not ok - ${viewport.join('x')} ${testCase.name}\n  ${problems.join('\n  ')}`); }
       else console.log(`ok - ${viewport.join('x')} ${testCase.name}${lastSlack.px < 99 ? ` (tightest card: ${lastSlack.card}, ${lastSlack.px}px spare)` : ''}`);
