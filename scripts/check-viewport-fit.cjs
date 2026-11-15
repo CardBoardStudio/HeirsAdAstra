@@ -104,6 +104,20 @@ function midGameState() {
     `R3 · ${a} traded 2 Biomass for 1 Data.`, `R3 · ${b} excavated a relic and gained 2 Prestige.`, `R3 · ${a} trashed a Construct.`, `R3 · ${b} passed.`, `R3 · All factions drew five cards.`, `R2 · Your neighbor this game is ${b}.`];
   return state;
 }
+// Pieces on every terrain: harvesters, shipyards and ship stacks of each faction on all four
+// resource colours and on grey hexes, so bare owner-coloured glyphs can be checked for legibility.
+function piecesState() {
+  const state = midGameState();
+  const byType = {};
+  for (const [coord, planet] of Object.entries(state.planets)) if (['matter', 'energy', 'biomass', 'data'].includes(planet.type) && planet.owner == null && !planet.hasColony) (byType[planet.type] ||= []).push(coord);
+  let seat = 0;
+  for (const coords of Object.values(byType)) coords.slice(0, 4).forEach((coord, i) => {
+    Object.assign(state.planets[coord], { owner: seat % 4, upgrade: i % 2 ? 'starbase' : 'harvester' });
+    state.fleets[coord] = { [seat % 4]: { fleet: 2 + (i % 3), explorer: i % 2, settler: 1 } };
+    seat++;
+  });
+  return state;
+}
 function combatState(stage) {
   const { adapter, engine, state } = freshEngine();
   state.activePlayer = 0; state.phase = 'operations'; state.turnStage = 'action';
@@ -155,6 +169,7 @@ const CASES = [
   { name: 'operations, drag a card by its Convert button onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-resource-card]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
   { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
   { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
+  { name: 'map pieces on every terrain', save: piecesState() },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'], buyVisible: true, extraSizes: i === 0 })),
   // Buy with an empty hand (everything converted or played): the market and Finish Buy must show.
