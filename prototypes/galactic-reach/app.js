@@ -4922,10 +4922,14 @@ function createGalacticReach(options = {}) {
     root.style.setProperty('--map-w', `${Math.floor(width / zoom)}px`);
   }
 
-  // On the table the relics and the market are real cards (63:88), all one size: four rows of
-  // three - the relics, then the market's expensive, medium and cheap rows - filling the supply
-  // column's height. The column's width follows from the card size.
-  const CARD_GAP = 6;
+  // On the table the supply is six rows of three cards, all one size: the relics, the market's
+  // expensive, medium and cheap rows, then the Upgrades (Move II, Construct II, Add capacity /
+  // Move III, Construct III, Trash), filling the supply column's height. A card is at least
+  // CARD_MIN_W wide, so names and effects wrap between words, and has about CARD_TEXT_AREA square
+  // units to show its name, cost and effect whole, so the shorter a card, the wider it is; cards
+  // keep real card proportions (63:88) where that already leaves them that room (tall windows).
+  // The column's width follows from the card size.
+  const CARD_GAP = 6, SUPPLY_ROWS = 6, CARD_MIN_W = 150, CARD_TEXT_AREA = 150 * 127;
   function fitMarket() {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function') return;
     const root = typeof document !== 'undefined' ? document.documentElement : null, shell = $('.app-shell');
@@ -4937,7 +4941,7 @@ function createGalacticReach(options = {}) {
     const pad = parseFloat(getComputedStyle(shell).paddingTop) || 8;
     const height = box.height / zoom - 2 * pad - front - 12;
     if (height < 200) return;
-    const cardH = Math.floor((height - 3 * CARD_GAP) / 4), cardW = Math.floor(cardH * 63 / 88);
+    const cardH = Math.floor((height - (SUPPLY_ROWS - 1) * CARD_GAP) / SUPPLY_ROWS), cardW = Math.max(Math.floor(cardH * 63 / 88), CARD_MIN_W, Math.ceil(CARD_TEXT_AREA / cardH));
     root.style.setProperty('--card-h', `${cardH}px`);
     root.style.setProperty('--card-w', `${cardW}px`);
     root.style.setProperty('--supply-w', `${cardW * 3 + CARD_GAP * 2}px`);
@@ -4954,8 +4958,8 @@ function createGalacticReach(options = {}) {
     row.style.setProperty('--mrow-h', `${Math.floor((height - 2 * gap) / 3)}px`);
   }
   // The left column: each piece lies under the one before it, in order (track, round, comms,
-  // fleets, upgrades).
-  const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel', '#fleet-glance', '#upgrade-group'];
+  // fleets).
+  const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel', '#fleet-glance'];
   function stackLeft(depth = 0) {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function' || !document.documentElement?.style) return;
     const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches;
@@ -4971,8 +4975,8 @@ function createGalacticReach(options = {}) {
       if (el.matches('.log-panel') && !el.matches('.open')) el.dataset.closedH = String(h);
       if (h) top += h + 8;
     }
-    // When the stack would run into the map key at the column's foot, tighten it once (smaller
-    // upgrade cards, the latest comms entry only) and stack again.
+    // When the stack would run into the map key at the column's foot, tighten it once (the latest
+    // comms entry only) and stack again.
     const root = document.documentElement, legend = $('#map-legend-corner'), last = $(LEFT_STACK.at(-1));
     // A second step drops the icon list from the corner key (the Map key button lists them).
     // At most two steps, whatever the page's class list reports.
