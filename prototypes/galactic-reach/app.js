@@ -4171,8 +4171,9 @@ function createGalacticReach(options = {}) {
     $$('[data-trash-hand]').forEach(button=>button.addEventListener('click',()=>$('#open-trash').click()));
     const prep=state.phase==='operations'&&state.activePlayer===ME&&state.turnStage==='prep';
     const convertAll = $('#convert-all-button');
-    convertAll.hidden = !canConvertCards();
-    convertAll.disabled = !canConvertCards() || !player.hand.some(canConvertCard);
+    // Shown only when it can do something: you may convert now and hold a level I starter.
+    convertAll.hidden = !canConvertCards() || !player.hand.some(canConvertCard);
+    convertAll.disabled = convertAll.hidden;
     convertAll.innerHTML = `<span>Convert level I starters</span><span class="conversion-symbols" aria-hidden="true">${['matter','energy'].map(resource => resourceDot(resource)).join('')}</span>`;
     $('#finish-construct').hidden=replayMode || !state.pendingConstruct || state.activePlayer!==ME;
     $('#skip-colony-build').hidden=replayMode || !state.pendingColonyBuild || state.activePlayer!==ME;

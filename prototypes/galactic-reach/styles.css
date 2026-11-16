@@ -2812,7 +2812,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    the turn prompt, a large mat, and the turn buttons stacked above Discard. ==== */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
   .app-shell, .has-saved-table .app-shell, .has-replay .app-shell, .app-shell.app-shell:has(#hand-row > :nth-child(7)) {
-    --left-w: 250px; --band-h: 178px; --mat-w: 470px; --tools-w: 170px;
+    --left-w: 250px; --band-h: 190px; --mat-w: 550px; --tools-w: 96px; --side-w: 110px;
     grid-template-columns: var(--left-w) minmax(0, 1fr) var(--supply-w, 400px) !important;
     grid-template-rows: auto minmax(0, 1fr) 0 0 0 0 0 0 var(--band-h) !important;
   }
@@ -2870,15 +2870,22 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   /* Six rows of smaller cards: effect lines sit a little closer so long effects read whole. */
   .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-icons { line-height: 1.2; }
   /* Bottom band. */
-  #hand-row { grid-column: 1 / -1 !important; grid-row: 9 !important; margin: 0 calc(var(--mat-w) + var(--tools-w) + 32px) 0 calc(52px + 2 * var(--pile-w) + 23px) !important; }
-  /* The turn's buttons: a compact column right of the mat, directly above Discard. */
-  #hand-panel .hand-tools { grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: start !important; width: var(--tools-w) !important; margin: 2px 0 0 0 !important; display: flex !important; flex-direction: column; gap: 3px; }
-  #hand-panel .hand-tools .button { width: 100%; min-height: 0 !important; padding: 2px 8px !important; font-size: 11px !important; line-height: 1.2; border-radius: 999px !important; }
+  #hand-row { grid-column: 1 / -1 !important; grid-row: 9 !important; margin: 0 calc(var(--mat-w) + var(--tools-w) + var(--side-w) + 46px) 0 calc(52px + 2 * var(--pile-w) + 23px) !important; }
+  /* The turn's main button, small, right of the mat directly above Discard. Convert level I
+     starters (only while you hold one) and Trade lie left of the mat, in their own column. */
+  #hand-panel .hand-tools { position: relative; grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: start !important; width: var(--tools-w) !important; margin: 10px 0 0 0 !important; display: flex !important; flex-direction: column; gap: 3px; }
+  #hand-panel .hand-tools .button { width: 100%; min-height: 0 !important; padding: 2px 6px !important; font-size: 10.5px !important; line-height: 1.2; border-radius: 999px !important; }
+  #hand-panel .hand-tools :is(#convert-all-button, #open-trade) { position: absolute !important; right: calc(100% + var(--mat-w) + 28px); width: var(--side-w) !important; padding: 4px 6px !important; font-size: 11px !important; }
+  #hand-panel .hand-tools #convert-all-button { top: calc(var(--band-h) / 2 - 46px); }
+  #hand-panel .hand-tools #open-trade { top: calc(var(--band-h) / 2 - 12px); }
   #convert-all-button .conversion-symbols { display: none !important; }
   #discard-button { margin-right: calc((var(--tools-w) - var(--pile-w)) / 2) !important; }
   #resource-grid.resource-grid { grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: end !important; width: var(--mat-w) !important; height: calc(var(--band-h) - 6px) !important; margin: 0 calc(var(--tools-w) + 14px) 0 0 !important; }
-  #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 18px)) !important; gap: 3px; }
-  #resource-grid { font-size: 11px; }
+  /* A large mat: bigger pips, icons and legend. */
+  #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 21px)) !important; gap: 3px; }
+  #resource-grid { font-size: 12.5px; }
+  #resource-grid > .resource-box { grid-template-columns: 26px minmax(0, 1fr) !important; column-gap: 9px !important; }
+  #resource-grid .resource-box > .resource-symbol { width: 25px !important; height: 25px !important; }
   /* The fleets panel, compact. */
   #fleet-glance { gap: 1px !important; padding: 4px 8px 5px !important; font-size: 10px !important; }
   /* Notices lie in their own spot under the fleets (see stackLeft; the map keeps clear of it), at
@@ -2894,19 +2901,21 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .left-tight #map-legend-corner .resource-chip { min-height: 13px !important; padding: 0 2px 0 1px !important; gap: 0 !important; font-size: 9px !important; }
   .left-tight #map-legend-corner .resource-symbol { width: 9px !important; height: 9px !important; }
   .left-tight #map-legend-corner .legend-piece { column-gap: 3px !important; font-size: 9.5px; }
-  .left-tight #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 15px)) !important; gap: 2px !important; }
-  .left-tight .app-shell { --mat-w: 400px !important; --tools-w: 170px !important; }
   /* A big hand narrows each card so every strip keeps room for its badge. */
   #hand-row:has(> :nth-child(7)) { --top-w: 168px !important; }
   .left-tight .app-shell { --pile-w: 84px !important; }
   /* Squarer tables (1300 units wide): a narrower mat and buttons, and smaller hand cards, so the
      hand keeps its room in the bottom band. */
-  :root:not(.table-wide) .app-shell { --mat-w: 320px !important; --tools-w: 150px !important; }
+  /* Squarer tables (1300 units wide) have no room for a column left of the mat: Convert and Trade
+     stack with the turn's main button above Discard. */
+  :root:not(.table-wide) .app-shell { --mat-w: 340px !important; --tools-w: 150px !important; --side-w: -46px !important; }
+  :root:not(.table-wide) #hand-panel .hand-tools :is(#convert-all-button, #open-trade) { position: static !important; width: 100% !important; }
+  :root:not(.table-wide) #hand-panel .hand-tools { margin-top: 2px !important; }
   /* There a raised card is wider than its resting slot, so the hand leaves room for it. */
-  :root:not(.table-wide) #hand-row { margin-right: calc(var(--mat-w) + var(--tools-w) + 32px + max(0px, 200px - var(--top-w))) !important; }
+  :root:not(.table-wide) #hand-row { margin-right: calc(var(--mat-w) + var(--tools-w) + var(--side-w) + 46px + max(0px, 200px - var(--top-w))) !important; }
   :root:not(.table-wide) #hand-row { --top-w: 150px !important; }
   :root:not(.table-wide) #hand-row:has(> :nth-child(7)) { --top-w: 116px !important; }
-  :root:not(.table-wide) #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 12px)) !important; gap: 2px !important; }
+  :root:not(.table-wide) #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 13px)) !important; gap: 2px !important; }
   /* A tighter column drops the icon list from the corner key (the Map key button lists them). */
   .left-tighter #map-legend-corner .legend-vocab { display: none !important; }
   /* The hand keeps its low height (--front-h) at the foot of the taller band, so pointing at a card
