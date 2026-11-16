@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101d22">
-  <title>Galactic Reach · 37.42 · Integrated Playtest</title>
+  <title>Galactic Reach · 38.43 · Construct III Playtest</title>
   <meta name="description" content="Play Galactic Reach against three computer-controlled rival factions.">
   <script type="importmap">{"imports":{
     "@aztec/bb.js":"/galactic-reach/zk/vendor/bb.js/index.js",
@@ -14,7 +14,7 @@
     "pako":"/galactic-reach/zk/vendor/pako/pako.esm.mjs"
   }}</script>
   <link rel="stylesheet" href="/galactic-reach/zk/seat.css">
-  <link rel="stylesheet" href="styles.css?v=integrated-37-42">
+  <link rel="stylesheet" href="styles.css?v=construct-iii-38-43">
   <link rel="stylesheet" href="card-feel.css?v=2">
   <link rel="stylesheet" href="playtest-notes.css?v=1">
   <link rel="stylesheet" href="change-queue.css?v=1">
@@ -28,7 +28,7 @@
         <div class="brand-seal" aria-hidden="true">✦</div>
         <div><div class="eyebrow">A GAME OF EXPLORATION &amp; EMPIRE</div>
         <h1>Galactic Reach</h1></div>
-        <small class="rules-badge">37.42 · playtest</small>
+        <small class="rules-badge">38.43 · playtest</small>
       </div>
       <div class="header-actions">
         <a class="button button-ghost" href="/" style="text-decoration:none">Game library</a>
@@ -41,21 +41,19 @@
     </header>
     <button class="table-menu-button" id="table-menu-button" type="button" aria-expanded="false" aria-controls="table-menu" aria-label="Game menu"><span aria-hidden="true"></span></button>
     <details class="playtest-changes" id="playtest-changes">
-      <summary><span class="new-feature">New in this playtest</span> <span class="summary-text"><!-- release:summary -->37.42 Integrated Playtest: Commissioning battles and human Undo<!-- /release:summary --></span> <span class="summary-hint">View changes</span></summary>
+      <summary><span class="new-feature">New in this playtest</span> <span class="summary-text"><!-- release:summary -->38.43 Construct III Playtest: Construct III can draw without building<!-- /release:summary --></span> <span class="summary-hint">View changes</span></summary>
       <ul><!-- release:items -->
-        <li><strong>Commissioning battles and human Undo:</strong> Commissioning onto enemy ships starts combat; a stationary Move can fight again. Rival turns continue after the fight. Build Shipyards on surveyed moons with your ship present. Humans may undo their latest turn and later bot turns until another human acts. <a href="rulebook.html#combat">Combat</a>, <a href="rulebook.html#shared-tables">shared tables</a>.</li>
-        <li><strong>Flexible resources and new relic orders:</strong> Convert cards, bank and buy capacity off turn. One Probe / Excavate card locates the closest relic or excavates and is trashed. The center world has a relic; try 23 rewards, three affordable draw-two cards and level III starters. Cargo Expansion raises each limit by 2 once. <a href="rulebook.html#orders">Orders</a>, <a href="rulebook.html#free-economy">resources</a>.</li>
-        <li><strong>Aligned corner portal:</strong> Cross between the nine matching lower-left and upper-right entrances for 2 movement. Ordinary steps still cost 1. <a href="rulebook.html#corner-portals">Movement</a>.</li>
-        <li><strong>Developer change queue:</strong> Host administrators can collect requests, link implementation PRs and approve exact-head merges using a temporary GitHub connection. Open Change queue in the developer view.</li>
-        <li><strong>Clearer board and card symbols:</strong> Muted terrain, distinct gray and green, thicker ownership outlines and larger card resource symbols improve desktop play.</li>
-        <li><strong>Invite-only dev site:</strong> The dev site now admits only Nido accounts with an invitation. Ask a host for an invitation link, sign in with Nido, and accept it; shared-table links bring you back to your table afterwards.</li>
-        <li><strong>Level I starter conversion and resource-card removals:</strong> Only level I Move and Construct starters convert to resources; upgraded starters, unit cards, market cards, and relics cannot. Level III draws only when its order is used. <a href="rulebook.html#resources">Resources</a>, <a href="rulebook.html#orders">orders</a>. Remove cards whose played effects grant resources, plus Galactic Senate Seat. Monument of Accord and Dyson Lattice still award points when bought, then circulate as inert cards until trashed. <a href="rulebook.html#cards">Cards</a>.</li>
-        <li><strong>Rivals build draw engines and defend colonies:</strong> Rivals upgrade starters through level III, respond to public threats at Colony centers, and choose market and relic cards for their useful effects. They reconsider cards drawn by orders before passing. Human rules and costs are unchanged. <a href="rulebook.html#rival-planning">Rival planning</a>.</li>
-        <li><strong>New relic signals and unlimited purchases:</strong> Probe skips relics you have already discovered and locates your Explorer’s nearest remaining unknown site. If you know every remaining relic, it warns you and keeps your card and action. <a href="rulebook.html#orders">Probe</a>. Buy any number of affordable market cards during your Buy turn, including cards revealed by refills. Procurement Hub keeps its next-purchase discount. <a href="rulebook.html#buy">Buying cards</a>.</li>
-        <li><strong>Order-only level III upgrade hint:</strong> The upgrade button now says the bonus card comes from using the order. Buying the upgrade itself draws nothing. <a href="rulebook.html#buy">Upgrading starters</a>.</li>
+        <li><strong>Construct III can draw without building:</strong> Play Construct III to draw one card without building, or build normally and draw once. Rivals use the draw-only choice and prefer Construct III over equivalent Construct II orders. <a href="rulebook.html#construct-three-draw">Construct III</a>.</li>
+        <li><strong>Draw your next hand at cleanup:</strong> You now draw your opening five cards at setup, and each later hand at the end of the round, after everyone finishes Buy and nobody has won. The round reads Production, Operations, Buy, Cleanup &amp; draw, so you can plan your next hand while the round wraps up. <a href="rulebook.html#round">A round of play</a>.</li>
+        <li><strong>A real table that fits your window:</strong> On a desktop window the game no longer scrolls: the whole window is one table, scaled as a whole to fit. The map fills all the space the other pieces leave, in any window shape. In its top-left corner a small printed track races every faction to the Prestige goal (the acting faction's marker glows; point at a marker for that faction's overview, select it for the breakdown), and in its bottom-left corner a small comms card opens into the whole log. The turn and round and the whole supply at once (an Upgrades tray, the market and the alien relics) lie to the right, and your seat runs along the bottom: Deck and In play, your hand, a player mat of pips (no numbers) for production, stock and a gold capacity fence, and Discard with the turn's buttons. Drag 4 of one resource onto another on your mat to trade with the bank (<a href="rulebook.html#player-mat">Player mat</a>). Cards look like printed card stock in a slight fan; point at one to read it whole, drag it onto a lit hex to play it or onto your mat to convert it. Market prices sit in each card's corner with a padlock on any resource above your limit, cards you can't buy yet are shaded with the reason (<a href="rulebook.html#buy">Buy</a>), and held planets are ringed and buildings drawn in their owner's colour (<a href="rulebook.html#ownership-colours">Reading ownership</a>). iPads get the same table, and phones a full-screen map with the hand, supply, mat, comms and track in drawers.</li>
+        <li><strong>The market splits into three rows by price:</strong> The market is now three decks sorted by total price: <strong>Expensive</strong> (8 or more), <strong>Medium</strong> (6–7) and <strong>Cheap</strong> (5 or less), each with three face-up cards below the relics. A bought card is replaced from its own row's deck; when that deck runs out, the slot stays empty. <a href="rulebook.html#market-tiers">Market rows</a>.</li>
+        <li><strong>Trash cards from your hand during Buy:</strong> During your Buy turn you can now also trash cards that were still in your hand when Buy began, for the usual 3 of one resource each, alongside your discard and cards in play. Cards you buy, draw or use during that Buy stay ineligible. <a href="rulebook.html#buy">Buy</a>.</li>
+        <li><strong>The turn lies with your seat:</strong> The table is rearranged around your seat (<a href="rulebook.html#shared-board">Shared board</a>). The left column holds, top to bottom, the Prestige track, the round's phases, the comms log, your fleets at a glance, the Upgrades (Move II, Construct II, Add 4 capacity, Move III, Construct III and the Trash pile, each a card that lights the resources you can pay with now) and the map key with each piece's price. The map fills the middle. The right column shows the relics and the market as real cards (63:88), with the market in three rows of three from its most expensive to its cheapest cards. Along the bottom are the menu and piles, your hand as a low fanned hand, the turn prompt with small turn buttons and Trade, a large player mat and Discard. On your turn your hand glows and gently breathes instead of a "Your turn" banner. Cards read like printed cards: the name and effect start at the top-left, the cost runs down the right edge, and effects use a shared set of icons (★ Prestige, Draw, Move, Hit, Miss, resource limit, Colonize, Build), which are listed in the map key and also appear on the starter cards. Resource icons are filled. The mat no longer offers a Discard; resources above a limit are still discarded automatically (<a href="rulebook.html#resources">Resources</a>). Preview all relics is in the menu. Browser zoom works: zooming in makes the table's pieces larger and leaves the map less room.</li>
+        <li><strong>Faster rival planning:</strong> Solo computer rivals plan movement and construction faster while preserving their decisions, costs and card order. <a href="rulebook.html#clarifications">Computer rivals</a>.</li>
+        <li><strong>Rivals find another bank exchange before skipping a card:</strong> When a bank exchange would spend the funds a rival keeps for its next unit, the rival now tries exchanging a different resource before it passes on the card. <a href="rulebook.html#rival-cards">Rival cards</a>.</li>
         <!-- /release:items -->
       </ul>
-      <p>Start a new game for 37.42. Existing tables keep their archived rules. The adopted Balance Package rules are retained. <a href="rulebook.html#free-economy">Current rules</a> · <a href="rules/33.38/">Continue a 33.38 game</a>.</p>
+      <p>Start a new game for 38.43. Existing tables keep their archived rules. The adopted Balance Package rules are retained. <a href="rulebook.html#free-economy">Current rules</a> · <a href="rules/37.42/">Continue a 37.42 game</a> · <a href="rules/33.38/">Continue a 33.38 game</a>.</p>
     </details>
 
     <section class="game-layout">
@@ -250,7 +248,7 @@
 
   <dialog id="rules-dialog" aria-labelledby="rules-title">
     <div class="dialog-heading"><div><div class="eyebrow">QUICK REFERENCE</div><h2 id="rules-title">How to command your faction</h2></div><button class="button button-ghost dialog-close" id="close-rules" type="button" aria-label="Close rules">Close</button></div>
-    <p><a class="button button-primary" href="rulebook.html" target="_blank" rel="noopener">Read the canonical rulebook · 37.42 ↗</a></p>
+    <p><a class="button button-primary" href="rulebook.html" target="_blank" rel="noopener">Read the canonical rulebook · 38.43 ↗</a></p>
     <div class="rules-grid">
       <section><h3>Your turn</h3><p>Convert level I starters for resources, then use one order, offer a trade, or pass. Passing immediately starts your Buy turn. Finish Buy, then the remaining factions continue Operations.</p></section>
       <section><h3>Your round</h3><p>Produce → Operations (pass → your Buy turn) → everyone finishes → cleanup → victory check → draw five → next round.</p></section>
@@ -399,13 +397,13 @@
   </dialog>
 
   <script src="channel.js"></script>
-  <script src="table.js?v=integrated-37-42"></script>
-  <script src="shared.js?v=integrated-37-42"></script>
-  <script src="replay.js?v=integrated-37-42"></script>
+  <script src="table.js?v=construct-iii-38-43"></script>
+  <script src="shared.js?v=construct-iii-38-43"></script>
+  <script src="replay.js?v=construct-iii-38-43"></script>
   <script src="card-feel.js?v=2"></script>
-  <script src="app.js?v=integrated-37-42"></script>
+  <script src="app.js?v=construct-iii-38-43"></script>
   <script type="module" src="/galactic-reach/zk/seat.js"></script>
-  <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="37.42"></script>
+  <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="38.43"></script>
   <script src="change-queue.js?v=1"></script>
 </body>
 </html>
