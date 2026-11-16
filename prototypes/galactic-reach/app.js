@@ -2542,13 +2542,17 @@ function createGalacticReach(options = {}) {
 
 
 
-  function bankPlanForCost(player, cost) {
+  // `reserve` (rivals only) steers give-types away from funds kept for the next unit; it never blocks a plan.
+  function bankPlanForCost(player, cost, reserve = {}) {
     const resources = {...player.resources}, plan = [];
     if (RESOURCES.some(r=>(cost[r]||0)>player.resourceLimits[r])) return null;
+    const spare = type => resources[type] - (cost[type] || 0);
     for (const getType of RESOURCES) {
       while (resources[getType] < (cost[getType] || 0)) {
-        const giveType = [...RESOURCES].filter(type => type !== getType && resources[type] - (cost[type] || 0) >= 4)
-          .sort((a,b) => (resources[b] - (cost[b] || 0)) - (resources[a] - (cost[a] || 0)))[0];
+        const givers = [...RESOURCES].filter(type => type !== getType && spare(type) >= 4);
+        const keepsReserve = givers.filter(type => spare(type) - (reserve[type] || 0) >= 4);
+        const giveType = (keepsReserve.length ? keepsReserve : givers)
+          .sort((a,b) => spare(b) - (reserve[b] || 0) - (spare(a) - (reserve[a] || 0)) || spare(b) - spare(a))[0];
         if (!giveType) return null;
         resources[giveType] -= 4; resources[getType]++;
         plan.push({giveType,getType});
@@ -3210,7 +3214,7 @@ function createGalacticReach(options = {}) {
       return RESOURCES.every(r=>funds[r]-(cost[r]||0)>=Math.min(immediate[r]||0,funds[r]));
     };
     while (state.market.length) {
-      const choices=state.market.map((card,index)=>({source:'market',index,key:card.key})).map(x=>({...x,score:aiBuyValue(id,x.key),bank:bankPlanForCost(p,purchaseCost(p,x.key))})).filter(x=>x.score>0&&preservesPayment(x)).sort((a,b)=>b.score-a.score||a.bank.length-b.bank.length);
+      const choices=state.market.map((card,index)=>({source:'market',index,key:card.key})).map(x=>({...x,score:aiBuyValue(id,x.key),bank:bankPlanForCost(p,purchaseCost(p,x.key),immediate)})).filter(x=>x.score>0&&preservesPayment(x)).sort((a,b)=>b.score-a.score||a.bank.length-b.bank.length);
       const choice=choices[0];if (!choice) break;
       if (!choice.bank.every(t=>bankTrade(id,t.giveType,t.getType))) break;
       if (!buyCard(id,choice.source,choice.index)) break;
