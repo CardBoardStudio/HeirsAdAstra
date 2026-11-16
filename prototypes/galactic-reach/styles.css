@@ -2554,3 +2554,18 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .log-panel:not(.open) .game-log .log-latest { color: var(--text); }
   .map-legend-corner { opacity: .85; }
 }
+
+/* ==== The +4 capacity token shows its current price at all times: '+4 · 2 each' with a dot in
+   each resource's colour (the price rises by 1 with each purchase). ==== */
+.storage-each { display: none; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .storage-upgrade-button .storage-each { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+  .storage-upgrade-button .storage-each::before { content: '·'; margin: 0 1px;  opacity: .7; }
+  .storage-upgrade-button .storage-each b { font-weight: 800; }
+  .storage-upgrade-button .storage-each i { width: 6px; height: 6px; margin-left: -1px; border-radius: 50%; }
+  .storage-upgrade-button .storage-each i:first-of-type { margin-left: 2px; }
+  .storage-upgrade-button .storage-each i.matter { background: var(--matter); }
+  .storage-upgrade-button .storage-each i.energy { background: var(--energy); }
+  .storage-upgrade-button .storage-each i.biomass { background: var(--biomass); }
+  .storage-upgrade-button .storage-each i.data { background: var(--data); }
+}

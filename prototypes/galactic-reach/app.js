@@ -3710,6 +3710,8 @@ function createGalacticReach(options = {}) {
     upgrade.disabled = !canIncreaseStorage(ME);
     upgrade.title = canManageResources(ME) ? `Pay ${storageUpgradeCost(ME).matter} of each resource for 4 capacity points to distribute (paid upgrade ${(player.storagePurchases || 0)+1}).` : 'Available during Operations or Buy, including off turn.';
     $('#storage-upgrade-cost').innerHTML = resourceDots(storageUpgradeCost(ME));
+    // On the table the +4 token shows its price at all times: the same amount of each resource.
+    $('#storage-upgrade-each').innerHTML = `<b>${storageUpgradeCost(ME).matter}</b><span>each</span>${RESOURCES.map(resource => `<i class="${resource}"></i>`).join('')}`;
 
   }
 
