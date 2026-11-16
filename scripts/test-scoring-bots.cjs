@@ -13,7 +13,7 @@ function funds(p){p.storageUpgrades=100;p.resourceLimits={matter:1000,energy:100
 const record={fixtures:0,matchedSetups:0};
 for(let n=0;n<32;n++){
  const current=game(undefined,20261111+n*7919),old=game('crates/galactic-reach/rules/v20-',20261111+n*7919);
- assert.equal(current.a.rulesVersion,'galactic-reach/37.42');assert.equal(old.a.rulesVersion,'galactic-reach/20.25');
+ assert.equal(current.a.rulesVersion,'galactic-reach/38.43');assert.equal(old.a.rulesVersion,'galactic-reach/20.25');
  // 31.36 replaces the market supply (72 cards, new serials) and adds a Prestige target; the map,
  // factions, decks and opening position still match 20.25. Supply-dependent fields are excluded.
  // 33.38 drops the ships-or-Explorers prompt (moveChoiceSource) for the unit picker.
