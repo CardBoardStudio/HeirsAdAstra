@@ -3,7 +3,7 @@ const read=n=>fs.readFileSync(path.join(__dirname,'../prototypes/galactic-reach'
 const plain=x=>JSON.parse(JSON.stringify(x));
 function game(strategy='economy') {
   const c=vm.createContext({});
-  const source=read('app.js').replace('      clone, deckContents,','      runAiBuy, runAiOperation, chooseAiBuild, chooseAiMove, aiBuyValue, aiCardUtility, aiColonyDefense, clone, deckContents,');
+  const source=read('app.js').replace('      clone, deckContents,','      runAiBuy, runAiOperation, bankPlanForCost, chooseAiBuild, chooseAiMove, aiBuyValue, aiCardUtility, aiColonyDefense, clone, deckContents,');
   vm.runInContext(read('adapter.js')+source,c);
   let e,seed=73;const f=c.createGalacticAdapter;c.createGalacticAdapter=x=>{e=x;return f(x);};
   const a=c.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});
@@ -29,6 +29,13 @@ for(const strategy of ['military','economy','expansion']) {
   const relic=Object.entries(g.s.planets).find(([,p])=>p.special==='relic');g.s.fleets={[relic[0]]:{1:{explorer:1}}};
   g.p.resources={matter:1,energy:1,biomass:0,data:2};const before=plain(g.p.resources);
   g.e.runAiBuy();assert.equal(g.p.hand[0].level,2);assert.deepEqual(plain(g.p.resources),before,'Keep the next excavation payment');
+}
+// A bank plan prefers a give-type that keeps the reserve, so preservesPayment need not reject an affordable card.
+{
+  const g=game();g.p.resources={matter:6,energy:5,biomass:0,data:0};
+  assert.deepEqual(plain(g.e.bankPlanForCost(g.p,{data:1})),[{giveType:'matter',getType:'data'}],'Unreserved plans are unchanged');
+  assert.deepEqual(plain(g.e.bankPlanForCost(g.p,{data:1},{matter:3,energy:1})),[{giveType:'energy',getType:'data'}],'Spare Energy pays instead of reserved Matter');
+  assert.deepEqual(plain(g.e.bankPlanForCost(g.p,{data:1},{matter:3,energy:3})),[{giveType:'matter',getType:'data'}],'A reserve never blocks a plan');
 }
 // A threat at a Colony must prompt defense even though it is not standing on the Shipyard.
 for(const strategy of ['military','economy','expansion']) {
