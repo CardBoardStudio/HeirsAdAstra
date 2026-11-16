@@ -87,8 +87,8 @@ function createGalacticAdapter(e) {
         const effect = e.ALL_CARDS[card.key].buyEffect;
         if (effect) actions.push({ type: 'buy_effect', card: card.id });
       });
-      // Cards in discard or in play when this Buy began may be trashed.
-      [...p.discard.filter(card => p.buyStartDiscardIds.includes(card.id)), ...p.inPlay.filter(card => (p.buyStartInPlayIds || []).includes(card.id))].forEach(card => {
+      // Cards in hand, discard or in play when this Buy began may be trashed (#buy).
+      e.trashEligibleCards(p).forEach(card => {
         for (const resource of e.RESOURCES)
           if (p.resources[resource] >= 3) actions.push({type:'decommission',card:card.id,resource});
       });
