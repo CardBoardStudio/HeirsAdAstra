@@ -2513,28 +2513,35 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   @container (min-height: 142px) { #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 5 !important; line-clamp: 5 !important; } }
 }
 
-/* ==== A short map key in the map's empty bottom-right corner: the four terrain colours and the
-   six pieces with one-word names. The Map key button keeps the full descriptions. ==== */
+/* ==== The map key in the left column: the four terrain colours, then each piece with its price
+   (and the Harvester's yield), and the Excavate cost. The Map key button keeps the full
+   descriptions. ==== */
 .map-legend-corner { display: none; }
 @media (min-width: 600px) and (min-height: 600px) {
   .map-legend-corner {
-    display: grid; grid-template-columns: auto; gap: 3px; z-index: 4; align-self: end; justify-self: end; margin: 0 6px 10px 0; padding: 7px 9px 6px;
-    border-radius: 6px; background: #0d1b1fcc; box-shadow: inset 0 0 0 1px #c2a76b44, 0 6px 12px #0006; color: #c9d3cc; font-size: 10.5px; font-weight: 600; line-height: 1.15; pointer-events: none;
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; z-index: 4; align-self: end; margin: 0; padding: 8px 9px 7px;
+    border-radius: 6px; background: linear-gradient(170deg, #3d5047, #2b3a34); box-shadow: inset 0 0 0 2px #c2a76b55, 0 1px 0 #55675f, 0 2px 0 #24312c, 0 3px 0 #18221f, 0 12px 20px -6px #000b;
+    color: #dfe6e0; font-size: 11px; font-weight: 600; line-height: 1.15; pointer-events: none;
   }
-  .map-legend-corner > span { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-  .map-legend-corner .legend-res i { flex: none; width: 13px; height: 14px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+  .map-legend-corner .legend-terrain { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px; margin-bottom: 3px; }
+  .map-legend-corner .legend-res { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .map-legend-corner .legend-res i { flex: none; width: 12px; height: 13px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
   .map-legend-corner .legend-res.matter i { background: #77828a; }
   .map-legend-corner .legend-res.energy i { background: #5d8798; }
   .map-legend-corner .legend-res.biomass i { background: #658d6b; }
   .map-legend-corner .legend-res.data i { background: #8d7d9d; }
-  .map-legend-corner .legend-res.data { margin-bottom: 3px; }
+  .map-legend-corner .legend-piece { display: grid; grid-template-columns: 14px auto 1fr; align-items: center; column-gap: 5px; row-gap: 1px; white-space: nowrap; }
+  .map-legend-corner .legend-piece b { font-weight: 700; }
+  .map-legend-corner .legend-piece .resource-dots { justify-self: end; display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; }
+  .map-legend-corner .legend-piece em { grid-column: 2 / -1; font-style: normal; font-size: 10px; color: #b7c2bb; }
+  .map-legend-corner .resource-chip { min-height: 16px; padding: 0 3px 0 2px; gap: 1px; font-size: 10.5px; box-shadow: none; }
+  .map-legend-corner .resource-symbol { width: 11px; height: 11px; }
   .map-legend-corner .board-glyph { flex: none; width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .map-legend-corner .legend-icon { font-size: 12px; text-align: center; color: var(--gold); }
 }
-@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
-  .map-legend-corner { grid-column: 1 / 3 !important; grid-row: 1 / 9 !important; }
-}
+/* Upright: in the map's bottom-right corner. */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
-  .map-legend-corner { grid-column: 1 / -1 !important; grid-row: 3 !important; }
+  .map-legend-corner { grid-column: 1 / -1 !important; grid-row: 3 !important; align-self: end; justify-self: end; width: 190px; }
 }
 
 /* ==== A hierarchy of contrast: your hand, the market, your mat and the map read first, crisp and
@@ -2676,4 +2683,38 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
   #hand-panel .hand-tools { grid-column: 2 !important; grid-row: 7 !important; align-self: end !important; justify-self: stretch !important; flex-wrap: wrap; justify-content: flex-start; gap: 6px; margin: 0 0 6px !important; }
   .console-nav { align-self: center !important; margin: 0 !important; }
+}
+
+/* ==== Landscape: the left column holds the Prestige track, the comms log and the fleets at a
+   glance at the top, and the map key at the bottom; the map fills the middle column; the round's
+   phases lie at the top of the supply, over the relics and the market. The Alien relics header
+   row is gone (Preview all is in the menu; the Excavate cost in the map key). ==== */
+.fleet-glance { display: none; }
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .board-map-region { grid-column: 2 !important; place-items: center !important; }
+  .map-tools { grid-column: 2 !important; }
+  .log-panel:not(.open) { align-self: start !important; }
+  .map-legend-corner { grid-column: 1 !important; grid-row: 1 / 9 !important; justify-self: stretch; align-self: end !important; margin: 0 0 0 4px !important; }
+  .fleet-glance {
+    grid-column: 1; grid-row: 1 / 9; align-self: end; z-index: 4; display: grid; gap: 3px; margin: 0 0 calc(var(--legend-h, 262px) + 10px) 4px; padding: 6px 9px 7px;
+    border-radius: 6px; background: linear-gradient(170deg, #3d5047, #2b3a34); box-shadow: inset 0 0 0 2px #c2a76b55, 0 3px 0 #18221f, 0 12px 20px -6px #000b; color: #dfe6e0; font-size: 11px; font-weight: 600;
+  }
+  .fleet-glance-head { display: flex; justify-content: space-between; align-items: center; padding: 0; border: 0; background: none; color: #c9b98a; font: inherit; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+  .fleet-glance-head small { color: #9fb0a8; font-size: 9.5px; letter-spacing: 0; text-transform: none; }
+  .fleet-glance-head:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; border-radius: 4px; }
+  .fleet-glance-row { display: grid; grid-template-columns: 30px repeat(3, 1fr); align-items: center; gap: 4px; }
+  .fleet-glance-row b { justify-self: start; padding: 0 5px; border-radius: 8px; background: var(--player); color: #10201c; font-size: 10px; font-weight: 800; }
+  .fleet-glance-row span { display: inline-flex; align-items: center; gap: 3px; }
+  .fleet-glance-row .board-glyph { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; }
+  #fleet-tab { display: none !important; }
+  #relics-panel > .section-intro:not(:has(#cancel-excavate:not([hidden]))), #relics-panel .relic-payment, #relic-row-help { display: none !important; }
+  /* The round's phases on top of the supply. */
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto auto var(--front-h) !important; }
+  .phase-stepper { grid-row: 1 !important; align-self: start !important; margin: 0 0 6px !important; }
+  #relics-panel, #relics-panel[hidden], #relics-panel.tab-panel { grid-row: 2 !important; }
+  .tab-panel { grid-row: 3 !important; }
+  #relics-panel.tab-panel { grid-row: 2 !important; }
+  #fleet-panel.active { grid-row: 2 / 4 !important; }
+  /* Notices lie over the map key at the bottom of the left column (it has no controls). */
+  .toast { top: auto !important; bottom: calc((var(--front-h-fixed, 96px) + 22px) * var(--table-zoom, 1)) !important; left: calc(20px * var(--table-zoom, 1)) !important; }
 }

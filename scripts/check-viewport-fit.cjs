@@ -376,7 +376,7 @@ const MEASURE = `(() => {
     const box = e => e.getBoundingClientRect();
     outer: for (let i = 0; i < pieces.length; i++) for (let j = i + 1; j < pieces.length; j++) {
       const a = pieces[i], c = pieces[j];
-      if (a.contains(c) || c.contains(a)) continue;
+      if (a.contains(c) || c.contains(a) || a.matches('.log-panel.open') || c.matches('.log-panel.open')) continue;
       const p = box(a), q = box(c);
       if (p.width > 1 && q.width > 1 && p.left < q.right - 2 && p.right > q.left + 2 && p.top < q.bottom - 2 && p.bottom > q.top + 2) { problems.push('pieces overlap: ' + label(a) + ' and ' + label(c)); break outer; }
     }

@@ -3521,10 +3521,13 @@ function createGalacticReach(options = {}) {
       ['settler','Settler'],['explorer','Explorer'],['fleet','Fleet'],
       ['colony','Colony'],['harvester','Harvester'],['starbase','Shipyard']
     ];
-    // A short key in the map's empty corner, so the board teaches itself without opening the
-    // Map key (which keeps the full descriptions).
+    // A short key beside the map, with each piece's price and the Excavate cost, so the board
+    // teaches itself without opening the Map key (which keeps the full descriptions).
     const corner = $('#map-legend-corner');
-    if (corner) corner.innerHTML = RESOURCES.map(resource => `<span class="legend-res ${resource}"><i></i>${RESOURCE_NAMES[resource]}</span>`).join('') + entries.map(([type,label]) => `<span class="legend-piece">${BOARD_ICONS[type]}${label}</span>`).join('');
+    const pieceCost = type => type === 'colony' ? { biomass: 2 } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
+    if (corner) corner.innerHTML = `<span class="legend-terrain">${RESOURCES.map(resource => `<span class="legend-res ${resource}"><i></i>${RESOURCE_NAMES[resource]}</span>`).join('')}</span>`
+      + entries.map(([type,label]) => `<span class="legend-piece">${BOARD_ICONS[type]}<b>${label}</b>${resourceDots(pieceCost(type))}${type === 'harvester' ? `<em>makes ${HARVESTER_YIELD}</em>` : ''}</span>`).join('')
+      + `<span class="legend-piece legend-excavate"><span class="legend-icon">◈</span><b>Excavate</b>${resourceDots(EXCAVATION_COST)}</span>`;
     $('#symbol-legend').innerHTML = `<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) => {
       const cost = type === 'colony' ? { biomass: 2 } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
       return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-cost">${resourceDots(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
@@ -4173,6 +4176,13 @@ function createGalacticReach(options = {}) {
     }));
   }
   function renderFleetSummary() {
+    const glance=$('#fleet-glance');
+    if (glance) glance.innerHTML=`<button type="button" class="fleet-glance-head" data-open-fleet aria-label="Fleets: open the full fleet manifest and your tactics">Fleets <small>Details ▸</small></button>`+state.players.map((player,id)=>{
+      const totals={settler:0,explorer:0,fleet:0};
+      Object.values(state.fleets).forEach(group=>Object.keys(totals).forEach(type=>{totals[type]+=group[id]?.[type]||0;}));
+      return `<span class="fleet-glance-row" style="--player:${player.color}"><b>${esc(player.name.split(/\s+/).filter(Boolean).map(word=>word[0]).join('').slice(0,3).toUpperCase())}</b><span>${BOARD_ICONS.settler}${totals.settler}</span><span>${BOARD_ICONS.explorer}${totals.explorer}</span><span>${BOARD_ICONS.fleet}${totals.fleet}</span></span>`;
+    }).join('');
+    $('[data-open-fleet]')?.addEventListener('click',()=>switchTab('fleet'));
     $('#fleet-summary').innerHTML=state.players.map((player,id)=>{
       const totals={settler:0,explorer:0,fleet:0};
       Object.values(state.fleets).forEach(group=>Object.keys(totals).forEach(type=>{totals[type]+=group[id]?.[type]||0;}));
@@ -4719,12 +4729,11 @@ function createGalacticReach(options = {}) {
     const ratio = b.height / b.width, gap = 6 * zoom;
     const rect = (element, [l, t, r, bottom] = [0, 0, 0, 0]) => { const e = element?.getBoundingClientRect?.(); return e && e.width ? [e.left - l * zoom, e.top - t * zoom, e.right + r * zoom, e.bottom + bottom * zoom] : null; };
     const track = rect($('#prestige-track'), [6, 4, 38, 5]);
-    // The notice spot under the track (see .toast), kept clear so a notice never lies on a hex.
-    const notice = track && [16 * zoom, track[3] + 8 * zoom, (16 + 196) * zoom, track[3] + 170 * zoom];
+
     // An open comms log lies over the map on purpose; the map keeps clear of the closed card.
     if (!$('.log-panel.open')) fitMapLog = rect($('.log-panel'));
     const log = fitMapLog;
-    const blocks = [track, notice, log, rect($('.map-tools')), rect($('#map-legend-corner'))].filter(Boolean);
+    const blocks = [track, log, rect($('.map-tools')), rect($('#map-legend-corner'))].filter(Boolean);
     const fits = width => {
       const height = width * ratio, left = box.right - width, top = box.top + (box.height - height) / 2;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
