@@ -358,3 +358,25 @@
 
   globalThis.galacticReachCardFeel = { attach(next) { api = next; }, beforeRender, rendered };
 })();
+// A browser preference, independent of game saves and shared-table state.
+(() => {
+  const init = () => {
+    const button = document.querySelector('#background-toggle');
+    if (!button) return;
+    const key = 'galactic-reach-background';
+    let stars = false;
+    try { stars = localStorage.getItem(key) === 'stars'; } catch {}
+    const render = () => {
+      document.body.classList.toggle('background-stars', stars);
+      button.setAttribute('aria-pressed', String(stars));
+    };
+    render();
+    button.addEventListener('click', () => {
+      stars = !stars;
+      render();
+      try { localStorage.setItem(key, stars ? 'stars' : 'green'); } catch {}
+    });
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+})();
