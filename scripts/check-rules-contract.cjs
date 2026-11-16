@@ -1,7 +1,8 @@
 // A PR must explain its rules grounding; engine edits must travel with the manual.
 // The rules are .github/rules-contract.json; the shared review-conventions
 // validator runs them in block mode (a draft PR never fails). Then the release
-// policy (docs/release.md), so CI covers it without a workflow edit.
+// policy (docs/release.md) and the large-file guard (docs/history-slim.md), so
+// CI covers them without a workflow edit.
 //   node scripts/check-rules-contract.cjs [<base>] [--body-file <file>]
 // In CI the base and body come from the pull_request event.
 const path = require('node:path');
@@ -20,5 +21,6 @@ if (require.main === module) {
     ...(base ? ['--base', base] : []),
     ...(bodyIndex >= 0 ? ['--body-file', path.resolve(args[bodyIndex + 1])] : [])]);
   run([path.join(__dirname, 'release.cjs'), 'check']);
+  run([path.join(__dirname, 'check-large-files.cjs'), ...(base ? [base] : [])]);
 }
 module.exports = { CONFIG };
