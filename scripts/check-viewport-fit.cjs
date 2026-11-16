@@ -25,7 +25,7 @@ const GAME_DIR = path.join(ROOT, 'prototypes/galactic-reach');
 const LAB_DIR = path.join(ROOT, 'prototypes/lab');
 // The three reference sizes, plus common laptop and desktop sizes for the Buy states.
 const VIEWPORTS = [[1280, 720], [1440, 900], [1920, 1080]];
-const EXTRA_VIEWPORTS = [[1366, 768], [1680, 1050], [2000, 1118], [2560, 1440]];
+const EXTRA_VIEWPORTS = [[1366, 768], [1680, 1050], [2000, 1075], [2000, 1118], [2560, 1440]];
 // Desktop windows taller than 16:9 (nearly square, and taller than wide): every case runs there.
 const TALL_VIEWPORTS = [[1440, 1200], [1600, 1600], [1800, 2000]];
 // A 1440x900 window at browser zoom 67%, 125%, 150% and 200%: the page sees a smaller or larger
@@ -380,14 +380,12 @@ const MEASURE = `(() => {
   const region = document.querySelector('.board-map-region'), board = document.querySelector('#galaxy-board');
   if (!phone && region && board && shown(board) && !document.querySelector('.board-stage.map-zoomed')) {
     const r = region.getBoundingClientRect(), b = board.getBoundingClientRect(), limit = Math.min(r.width, r.height * 1.0543);
-    // The notice spot under the left-hand panels counts as a panel; an open comms log lies over the
-    // map, which keeps the size it has beside the closed card, so that state is not measured.
+    // An open comms log lies over the map, which keeps the size it has beside the closed card, so
+    // that state is not measured.
     if (matchMedia('(orientation: landscape)').matches) {
       if (!document.querySelector('.log-panel.open')) {
         const hexes = [...board.querySelectorAll('.hex')].map(hex => hex.getBoundingClientRect());
-        const panels = [...document.querySelectorAll('#prestige-track, .phase-stepper, .log-panel, #fleet-glance, .map-tools, #map-legend-corner')].filter(shown).map(e => e.getBoundingClientRect());
-        const style = document.documentElement.style, zoom = Number(style.getPropertyValue('--table-zoom')) || 1, noticeTop = parseFloat(style.getPropertyValue('--notice-top'));
-        if (noticeTop) panels.push({ left: 0, top: noticeTop, right: 248 * zoom, bottom: noticeTop + 104 * zoom });
+        const panels = [...document.querySelectorAll('#prestige-track, .phase-stepper, .log-panel, #fleet-glance, .map-tools, #map-legend-corner, #hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].filter(shown).map(e => e.getBoundingClientRect());
         const apart = (h, o) => Math.max(o.left - h.right, h.left - o.right, o.top - h.bottom, h.top - o.bottom, 0);
         const gaps = [Math.min(...hexes.map(h => h.left)) - r.left, Math.min(...hexes.map(h => h.top)) - r.top, r.bottom - Math.max(...hexes.map(h => h.bottom)),
           ...panels.flatMap(o => hexes.map(h => apart(h, o)))];
@@ -395,6 +393,29 @@ const MEASURE = `(() => {
         if (!(snug <= slack)) problems.push('map not snug: ' + Math.round(snug) + 'px from the nearest panel or edge (allowed ' + Math.round(slack) + 'px)');
       }
     } else if (b.width < 0.85 * limit) problems.push('map too small: ' + Math.round(b.width) + 'px of a ' + Math.round(limit) + 'px space');
+  }
+  // No wasted felt on a wide desktop table: the largest rectangle of table not covered by any piece
+  // or hex stays under 4% of the window (measured on an 8px grid).
+  if (!phone && !modal && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, #fleet-panel.active, .board-stage.map-zoomed')) {
+    const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .phase-stepper, .log-panel, #fleet-glance, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
+    const cell = 8, cols = Math.ceil(innerWidth / cell), rows = Math.ceil(innerHeight / cell), heights = new Array(cols).fill(0);
+    const covered = new Uint8Array(cols * rows);
+    for (const r of pieces) for (let y = Math.max(0, Math.floor(r.top / cell)); y < Math.min(rows, Math.ceil(r.bottom / cell)); y++) for (let x = Math.max(0, Math.floor(r.left / cell)); x < Math.min(cols, Math.ceil(r.right / cell)); x++) covered[y * cols + x] = 1;
+    let best = 0, at = null;
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) heights[x] = covered[y * cols + x] ? 0 : heights[x] + 1;
+      const stack = [];
+      for (let x = 0; x <= cols; x++) {
+        const h = x < cols ? heights[x] : 0;
+        while (stack.length && heights[stack.at(-1)] >= h) {
+          const top = stack.pop(), width = stack.length ? x - stack.at(-1) - 1 : x, area = heights[top] * width;
+          if (area > best) { best = area; at = [(stack.length ? stack.at(-1) + 1 : 0) * cell, (y - heights[top] + 1) * cell, width * cell, heights[top] * cell]; }
+        }
+        stack.push(x);
+      }
+    }
+    const share = best * cell * cell / (innerWidth * innerHeight);
+    if (share > 0.04) problems.push('wasted felt: an empty ' + at[2] + 'x' + at[3] + ' rectangle at ' + at[0] + ',' + at[1] + ' (' + (share * 100).toFixed(1) + '% of the window)');
   }
   // Supply pieces never lie on one another (a raised or open piece may).
   if (!phone && !modal && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), #fleet-panel.active')) {

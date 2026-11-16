@@ -2850,7 +2850,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   /* The map fills the middle column and reaches into the left one: right-aligned against the
      supply, it grows until a hex would run under a left-hand panel (see fitMap), so the panels lie
      in the hexagon's empty corners. */
-  .board-map-region { grid-column: 1 / 3 !important; grid-row: 1 / 9 !important; place-items: center end !important; }
+  /* It reaches down into the bottom band too, between the hand, the piles and the mat (fitMap keeps
+     every hex clear of them); only the hexes take the pointer, so the band's pieces stay usable. */
+  .board-map-region { grid-column: 1 / 3 !important; grid-row: 1 / -1 !important; place-items: center end !important; pointer-events: none; }
+  .board-map-region .hex { pointer-events: auto; }
   .board-map-region > .galaxy-board { align-self: start !important; margin-top: var(--map-top, 0px) !important; }
   .map-tools { grid-column: 2 !important; grid-row: 1 / 9 !important; }
   /* Right column: the relics row, then the market rows, all real cards of one size. */
@@ -2888,8 +2891,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #resource-grid .resource-box > .resource-symbol { width: 25px !important; height: 25px !important; }
   /* The fleets panel, compact. */
   #fleet-glance { gap: 1px !important; padding: 4px 8px 5px !important; font-size: 10px !important; }
-  /* Notices lie in their own spot under the fleets (see stackLeft; the map keeps clear of it), at
-     the table's scale so they fit it: 236 x 104 units. */
+  /* Notices lie over the top of the map key (see stackLeft; the map keeps clear of it), at the
+     table's scale so they stay inside it. */
   .toast { top: var(--notice-top, calc(360px * var(--table-zoom, 1))) !important; bottom: auto !important; left: calc(12px * var(--table-zoom, 1)) !important; width: calc(236px * var(--table-zoom, 1)) !important; box-sizing: border-box; padding: calc(8px * var(--table-zoom, 1)) calc(11px * var(--table-zoom, 1)) !important; font-size: calc(12px * var(--table-zoom, 1)) !important; line-height: 1.3 !important; }
   /* Upgrade cards: the effect in smaller type, five lines at most, inside the card. */
   .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { font-size: 10.5px !important; line-height: 1.2 !important; -webkit-line-clamp: 5 !important; line-clamp: 5 !important; }
@@ -3069,4 +3072,25 @@ body.background-stars > .starfield {
   #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { grid-area: buttons; position: static !important; width: auto !important; height: auto !important; clip-path: none !important; }
   /* The conversion box still shares the raised card's top-left corner. */
   #hand-row > .game-card:is(:hover, :focus-within) .card-footer { grid-area: cost !important; grid-row: 1 / 3 !important; }
+}
+
+/* ==== The map key lies in the middle of the left column's free height (see stackLeft). ==== */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  :root[style*="--legend-top"] #map-legend-corner { align-self: start !important; margin: var(--legend-top) 0 0 !important; }
+}
+/* On a wide table the map key has room to read at full size: one column of pieces with what each
+   does, larger price chips and the card icons in two columns. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  :root.table-wide #map-legend-corner { grid-template-columns: minmax(0, 1fr) !important; width: calc(var(--left-w) + 40px) !important; max-width: none; padding: 8px 10px !important; row-gap: 4px !important; font-size: 11px !important; }
+  :root.table-wide #map-legend-corner .legend-piece { font-size: 11px !important; column-gap: 5px !important; }
+  :root.table-wide #map-legend-corner .legend-piece em { display: inline !important; margin-left: 4px; color: #9fb0a8; font-style: normal; font-size: 10px; }
+  :root.table-wide #map-legend-corner .resource-chip { min-height: 16px !important; padding: 0 3px 0 2px !important; font-size: 10.5px !important; }
+  :root.table-wide #map-legend-corner .resource-symbol { width: 11px !important; height: 11px !important; }
+  :root.table-wide #map-legend-corner .legend-vocab { grid-template-columns: repeat(2, auto) !important; gap: 3px 12px !important; font-size: 10.5px !important; }
+}
+/* A wide table also gives the fleets panel and the map key reading room. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  :root.table-wide #fleet-glance { gap: 4px !important; padding: 7px 10px 8px !important; font-size: 11.5px !important; }
+  :root.table-wide #fleet-glance .fleet-glance-row b { font-size: 11px; }
+  :root.table-wide #map-legend-corner { row-gap: 7px !important; padding: 10px 12px !important; }
 }
