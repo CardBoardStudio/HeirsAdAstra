@@ -16,7 +16,7 @@ The rulebook is authoritative for intended play. The initial version documents e
 
 | Rulebook anchor | Implementation starting points | Behavior checks |
 | --- | --- | --- |
-| `#setup`, `#round` | `newState`, `generateGalaxy`, `beginRound`, `cleanupRound` in `app.js` | `test-long-reach.cjs`, `test-pass-and-buy.cjs`, `test-resource-actions.cjs`, `test-galactic-reach-dialogs.cjs` |
+| `#setup`, `#round` | `newState` (opening hand), `generateGalaxy`, `beginRound`, `cleanupRound`/`finishRound` (Cleanup & draw) in `app.js` | `test-cleanup-draw.cjs`, `test-long-reach.cjs`, `test-pass-and-buy.cjs`, `test-resource-actions.cjs`, `test-galactic-reach-dialogs.cjs` |
 | `#resources`, `#orders`, `#movement` | `produceAll`, `cardResources`, `movementRange`, `reachableFrom`, `applyColonizeOrder` | `test-galactic-reach.cjs`, `test-long-reach.cjs` |
 | `#building`, `#combat` | `constructAt`, `excavate`, `resolveCombat`, `colonizePlanet` | `test-galactic-reach.cjs` |
 | `#resources`, `#trade`, `#buy` | `offerTrade`, `respondTrade`, `buyCard`, `upgradeStarter`, `decommission`, `increaseStorage` | `test-galactic-reach.cjs`, `test-long-reach.cjs` |

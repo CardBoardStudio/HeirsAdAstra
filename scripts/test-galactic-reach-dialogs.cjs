@@ -318,6 +318,10 @@ test('a completed first round advances directly into round two', () => {
   assert.equal(game.saved().round, 2);
   assert(!('awards' in game.saved()));
   assert(!game.dialog('directive').open);
+  // Rules #round: the next hand is drawn at cleanup, so the stepper has no separate Draw step.
+  const steps = [...game.dom.element('phase-stepper-steps').innerHTML.matchAll(/<li[^>]*>([^<]*)<\/li>/g)].map(m => m[1].replace(/&amp;/g, '&'));
+  assert.deepEqual(steps, ['Production', 'Operations', 'Buy', 'Cleanup & draw']);
+  assert.equal(game.saved().players[0].hand.length + game.saved().players[0].inPlay.length > 0, true, 'round two opens with the hand drawn at cleanup');
 });
 
 function overflowStorage() {
@@ -851,7 +855,8 @@ test('export downloads a private read-only report without using RNG or changing 
  assert.deepEqual(report.save.state,game.saved());assert.equal(report.factions.length,4);
  assert.equal(report.factions[1].botProfile.strategy,'military');assert.equal(report.factions[0].points.total,3);
  assert(report.logText.includes('Controlled planets produced'));assert(report.logText.includes('+1 Matter'));
- assert(report.save.gameHistory.events.some(event=>event.changes.some(change=>change.path.join('.')==='players.0.hand')));
+ // Rules #setup: the private opening hand is dealt at setup, so the report's initial position holds it.
+ assert.equal(report.save.gameHistory.initialState.players[0].hand.length,5);assert.equal(report.save.gameHistory.initialState.players[0].deck.length,1);
  assert(snapshots.at(-1).gameHistory.complete,'Account payload includes the full private history');
  assert.deepEqual(storage.snapshot(),before);assert.equal(game.randomCalls(),randomBefore);
  const reloaded=boot(storage);reloaded.click('export-game-report');
