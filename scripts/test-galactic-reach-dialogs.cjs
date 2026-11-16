@@ -318,6 +318,10 @@ test('a completed first round advances directly into round two', () => {
   assert.equal(game.saved().round, 2);
   assert(!('awards' in game.saved()));
   assert(!game.dialog('directive').open);
+  // Rules #round: the next hand is drawn at cleanup, so the stepper has no separate Draw step.
+  const steps = [...game.dom.element('phase-stepper-steps').innerHTML.matchAll(/<li[^>]*>([^<]*)<\/li>/g)].map(m => m[1].replace(/&amp;/g, '&'));
+  assert.deepEqual(steps, ['Production', 'Operations', 'Buy', 'Cleanup & draw']);
+  assert.equal(game.saved().players[0].hand.length + game.saved().players[0].inPlay.length > 0, true, 'round two opens with the hand drawn at cleanup');
 });
 
 function overflowStorage() {

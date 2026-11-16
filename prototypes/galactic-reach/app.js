@@ -4203,11 +4203,12 @@ function createGalacticReach(options = {}) {
   }
 
   // Board edges: the round's phases and the primary action.
-  const STEPPER_PHASES = ['production','draw','operations','buy','cleanup'];
+  // Rules #round: the next hand is drawn at cleanup, so there is no separate Draw step.
+  const STEPPER_PHASES = ['production','operations','buy','cleanup'];
   function renderBoardEdges() {
     $('#stepper-round').textContent = `Round ${state.round}`;
     const steps = $('#phase-stepper-steps');
-    steps.innerHTML = STEPPER_PHASES.map(phase => `<li class="${phase===state.phase?'current':''}" ${phase===state.phase?'aria-current="step"':''}>${phase[0].toUpperCase()+phase.slice(1)}</li>`).join('');
+    steps.innerHTML = STEPPER_PHASES.map(phase => `<li class="${phase===state.phase?'current':''}" ${phase===state.phase?'aria-current="step"':''}>${phaseLabel(phase)}</li>`).join('');
   }
   function renderBoardPrimary() {
     const primary = $('#board-primary');
