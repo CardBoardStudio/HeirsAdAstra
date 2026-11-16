@@ -1,0 +1,29 @@
+{
+  "name": "card-evolution",
+  "rules": { "ref": "WORKTREE", "description": null },
+  "seed": 20261116,
+  "generations": 5,
+  "gamesPerGeneration": 200,
+  "baselineGames": 200,
+  "victoryTarget": 40,
+  "maxRound": 50,
+  "maxSteps": 12000,
+  "workers": 0,
+  "out": "card-evolution-runs",
+  "pool": {
+    "market": {
+      "size": 31,
+      "roles": { "Movement": 4, "Industry": 3, "Expansion": 3, "Deckcraft": 5, "Capacity": 2, "Economy": 2, "Buy": 1, "Wonder": 2, "Prestige": 1, "Military": 8 },
+      "tiers": { "expensive": 12, "medium": 10, "cheap": 9 }
+    },
+    "relics": {
+      "size": 15,
+      "affinities": { "Exploration": 5, "Military": 5, "Settlement": 5 }
+    }
+  },
+  "generator": { "markup": 0.15 },
+  "selection": { "keepFraction": 0.5, "maxRoleShare": 0.34, "mutationShare": 0.25 },
+  "scoring": { "pickWeight": 0.5, "winWeight": 0.5, "priorSeats": 8, "priorOffers": 20, "minOffers": 20 },
+  "dominance": { "minBuyerSeats": 20, "buyerWinRate": 0.5, "liftOverPool": 0.2, "autoPickRate": 0.6 },
+  "shortlist": { "market": 15, "relics": 8, "minBuyerSeats": 15 }
+}
