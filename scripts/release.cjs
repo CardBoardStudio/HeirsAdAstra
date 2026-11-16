@@ -130,6 +130,20 @@ function bump(ref, from, to) {
       `(s["version"] == ${from.save} && s["rulesRevision"] == ${from.rev})\n        || (s["version"] == ${to.save} && s["rulesRevision"] == ${to.rev}))`],
     [new RegExp(`"version":${from.save},"rulesRevision":${from.rev}`, 'g'), `"version":${to.save},"rulesRevision":${to.rev}`],
   ]);
+  // Human-turn Undo is a server rule as well as an engine rule. Carry its
+  // admitted revisions forward, keeping the outgoing revision for old tables.
+  replaceIn('crates/server/src/shared/mod.rs', [[
+    /(if matches!\(\n\s*self\.table\.rules\.split\('\+'\)\.next\(\)\.unwrap_or_default\(\),\n)([\s\S]*?)(\n\s*\) \{)/,
+    (whole, before, patterns, after) => {
+      const rules = [...patterns.matchAll(/"(galactic-reach\/\d+\.\d+)"/g)].map(m => m[1]);
+      if (!rules.includes(from.rules) || rules.includes(to.rules)) return whole;
+      rules.push(to.rules);
+      const quoted = rules.map(rule => `"${rule}"`);
+      const line = `            ${quoted.join(' | ')}`;
+      const formatted = line.length <= 100 ? line : `            ${quoted.join('\n                | ')}`;
+      return before + formatted + after;
+    }
+  ]]);
   // 4. The web build serves the archive at /galactic-reach/rules/<from>/.
   let build = read('scripts/build-web.sh');
   if (!build.includes(`dist/galactic-reach/rules/${from.label}\n`)) {
