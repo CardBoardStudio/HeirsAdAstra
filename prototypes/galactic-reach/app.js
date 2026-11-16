@@ -4472,7 +4472,7 @@ function createGalacticReach(options = {}) {
     // Each part of the table draws on its own: one failing part must never blank the market,
     // the relics or the turn's buttons. Failures are logged, shown once, and fail the checks.
     drawEach({renderHeader, renderScoreboard, renderBoard, renderResources, renderInspector, positionSectorScan, renderLog, renderHand, renderMarket, renderFleetSummary, renderTrade, renderRelicRow, renderOverflow, renderCombat, renderCombatReport, renderBoardPrimary});
-    drawEach({fitMap});
+    drawEach({fitMarket, fitMap});
     drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()), drawers: followTurnWithDrawer });
   }
 
@@ -4679,7 +4679,7 @@ function createGalacticReach(options = {}) {
   // left strip, as long as no hex runs under the Prestige track, the notice spot below it, the
   // comms card, the map tools or the short map key, which lie in the hexagon's empty corners.
   // Hex positions scale with the map's width, so they are measured once and the largest width
-  // that clears every corner piece is found by bisection.
+  // that clears every corner piece is found by scanning down from the largest.
   let fitMapLog = null;
   function fitMap() {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
@@ -4703,13 +4703,32 @@ function createGalacticReach(options = {}) {
       const height = width * ratio, left = box.right - width, top = box.top + (box.height - height) / 2;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
     };
-    let high = Math.min(box.width, box.height / ratio), low = high * .4;
-    if (!fits(high)) {
-      if (!fits(low)) { root.style.removeProperty('--map-w'); return; }
-      for (let step = 0; step < 14; step++) { const mid = (low + high) / 2; if (fits(mid)) low = mid; else high = mid; }
-      high = low;
-    }
-    root.style.setProperty('--map-w', `${Math.floor(high / zoom)}px`);
+    // Hexes are discrete, so a corner piece can clear a larger map and touch a smaller one: scan
+    // down from the largest size in 1% steps and take the first that fits.
+    const high = Math.min(box.width, box.height / ratio);
+    const width = Array.from({ length: 61 }, (_, step) => high * (1 - step / 100)).find(fits);
+    if (!width) { root.style.removeProperty('--map-w'); return; }
+    root.style.setProperty('--map-w', `${Math.floor(width / zoom)}px`);
+  }
+
+  // On a wide table the market's cards are real cards (63:88). Choose three, four or five to a
+  // row, whichever lets the cards be tallest in the space the market has.
+  function fitMarket() {
+    const row = $('#market-row'), root = typeof document !== 'undefined' ? document.documentElement : null;
+    if (!row?.getBoundingClientRect || !root?.classList?.contains('table-wide')) { row?.style?.removeProperty?.('--mcols'); row?.style?.removeProperty?.('--mcard-h'); return; }
+    // The row's own height follows its cards, so the space is measured down to the bottom of the
+    // market panel, which the table's grid sizes, or the relics below it.
+    const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1, box = row.getBoundingClientRect();
+    const panel = row.closest('#market-panel')?.getBoundingClientRect() || box, relics = $('#relics-panel')?.getBoundingClientRect();
+    const bottom = Math.min(panel.bottom, relics?.height ? relics.top - 6 * zoom : Infinity);
+    const width = box.width / zoom, height = (bottom - box.top) / zoom - 4, count = row.children.length, gap = 6;
+    if (!width || !height || !count) return;
+    const best = [3, 4, 5].map(cols => {
+      const rows = Math.ceil(count / cols);
+      return { cols, h: Math.min((width - (cols - 1) * gap) / cols * 88 / 63, (height - (rows - 1) * gap) / rows) };
+    }).reduce((a, b) => b.h > a.h ? b : a);
+    row.style.setProperty('--mcols', String(best.cols));
+    row.style.setProperty('--mcard-h', `${Math.floor(best.h)}px`);
   }
 
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
@@ -4792,7 +4811,15 @@ function createGalacticReach(options = {}) {
     window.addEventListener('resize',positionSectorScan);
     fitTable();
     window.addEventListener('resize',fitTable);
+    window.addEventListener('resize',fitMarket);
     window.addEventListener('resize',fitMap);
+    // Late layout (web fonts, panels settling) re-fits the market and the map; their own sizing
+    // does not change the panels' sizes, so this cannot loop.
+    if (typeof ResizeObserver === 'function') {
+      const refit = new ResizeObserver(() => { fitMarket(); fitMap(); });
+      ['#market-panel', '#relics-panel', '.board-map-region'].forEach(sel => { const el = $(sel); if (el) refit.observe(el); });
+    }
+    document.fonts?.ready?.then?.(() => { fitMarket(); fitMap(); });
     document.addEventListener('scroll',event=>{if(!$('#sector-popover').contains(event.target))positionSectorScan();},true);
     $('#open-map-key').addEventListener('click',()=>$('#map-key-dialog').showModal());
     $('#close-map-key').addEventListener('click',()=>$('#map-key-dialog').close());

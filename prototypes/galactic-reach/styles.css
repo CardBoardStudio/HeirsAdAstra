@@ -2570,41 +2570,23 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .storage-upgrade-button .storage-each i.data { background: var(--data); }
 }
 
-/* ==== On wide tables the supply cards are real cards: market, upgrade and relic cards all share
-   one 63:88 card size, with the name on up to two lines and as much of the effect as fits. On
-   squarer tables (iPad landscape, ~1440x1200) they stay wider, with the same readable text, so
-   the map stays big. ==== */
+/* ==== On wide tables the market cards are real cards (63:88): three, four or five to a row,
+   whichever makes them tallest in the market's space (see fitMarket), with the name on up to
+   two lines and the effect filling the rest of the card. Upgrades and relics stay readable
+   tiles (all of them as cards would not fit the table's height). On squarer tables (iPad
+   landscape, ~1440x1200) the market keeps wider cards with the same readable text, so the map
+   stays big. ==== */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
-  /* One card size: at most 127 units tall, and narrow enough for five across the supply. The
-     container units resolve against the supply column wherever the size is used. */
-  .table-wide { --card-w: min(calc(127px * 63 / 88), calc((100cqw - 20px) / 5)); --card-h: calc(var(--card-w) * 88 / 63); }
-  /* The market: two rows of five. */
-  .table-wide #market-row { grid-template-columns: repeat(5, var(--card-w)) !important; grid-auto-rows: var(--card-h) !important; justify-content: space-between; align-content: start; }
-  .table-wide .market-cards #market-row .game-card { align-self: start !important; }
-  .table-wide .market-cards #market-row .game-card:not(:hover):not(:focus):not(:focus-within) { height: 100%; }
-  /* Long names break with a hyphen rather than run past a narrow card. */
-  .table-wide :is(#market-row, #upgrade-market, .relic-row) .card-name { hyphens: auto; overflow-wrap: break-word; }
-  /* Prices wrap onto a second line rather than run past a narrow card. */
-  .table-wide :is(#market-row, #upgrade-market, .relic-row) .card-footer { flex-wrap: wrap; row-gap: 2px; }
-  .table-wide :is(#market-row, #upgrade-market, .relic-row) .card-footer .resource-chip { min-height: 18px !important; padding: 0 3px 0 2px !important; }
-  .table-wide :is(#market-row, #upgrade-market, .relic-row) .card-footer .resource-symbol { width: 12px !important; height: 12px !important; }
-  .table-wide :is(#market-row, #upgrade-market, .relic-row) .card-footer .resource-chip strong { font-size: 11.5px !important; }
-  /* Upgrades: two cards in the tray. */
-  .table-wide #upgrade-market { --utop-h: var(--card-h) !important; grid-template-columns: 18px repeat(2, var(--card-w)) !important; justify-content: start; }
-  .table-wide #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) { container-type: size; align-content: start; row-gap: 2px !important; padding: 4px 6px 5px !important; }
-  .table-wide #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { font-size: 13px !important; line-height: 1.15 !important; white-space: normal !important; }
-  .table-wide #upgrade-market .upgrade-price { white-space: normal !important; flex-wrap: wrap; row-gap: 0; line-height: 1.15; }
-  /* Relics: three face-up cards. */
-  .table-wide #relics-panel { --rtop-h: var(--card-h); }
-  .table-wide .relic-row { grid-template-columns: repeat(3, var(--card-w)) !important; justify-content: start; }
-  .table-wide .relic-row > div:not(:has(> .button)) .game-card:not(:hover):not(:focus):not(:focus-within) { container-type: size; }
-  .table-wide .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "gain" "name" "effect" !important; align-content: start; row-gap: 3px !important; padding: 5px 6px !important; }
-  .table-wide .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-footer { justify-self: start; }
-  .table-wide .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { white-space: normal !important; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden; text-overflow: clip; }
-  /* Effects wrap; the number of lines follows the card's own height (see the market rules). */
-  .table-wide :is(#upgrade-market, .relic-row) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect {
-    display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 1 !important; line-clamp: 1 !important; white-space: normal !important; overflow: hidden !important; font-size: 11px !important; line-height: 1.3 !important;
-  }
-  @container (min-height: 100px) { .table-wide :is(#upgrade-market, .relic-row) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 2 !important; line-clamp: 2 !important; } }
-  @container (min-height: 112px) { .table-wide :is(#upgrade-market, .relic-row) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 3 !important; line-clamp: 3 !important; } }
+  .table-wide #market-row { grid-template-columns: repeat(var(--mcols, 5), minmax(0, 1fr)) !important; grid-auto-rows: auto !important; align-content: start; gap: 6px !important; }
+  .table-wide .market-cards #market-row > .game-card { justify-self: center; align-self: start !important; width: calc(var(--mcard-h, 140px) * 63 / 88); }
+  .table-wide .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) { height: var(--mcard-h, 140px) !important; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto !important; }
+  /* The effect takes exactly the height left under the name and price, so it never runs past
+     the card; a line cut short fades out. */
+  .table-wide .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { align-self: stretch; min-height: 0; max-height: 100%; -webkit-line-clamp: 8 !important; line-clamp: 8 !important; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); }
+  /* Long names break with a hyphen; prices wrap as a group rather than run past the card. */
+  .table-wide #market-row .card-name { hyphens: auto; overflow-wrap: break-word; }
+  .table-wide #market-row :is(.card-footer, .card-footer .resource-dots) { flex-wrap: wrap; row-gap: 2px; min-width: 0; }
+  .table-wide #market-row .card-footer .resource-chip { min-height: 19px !important; padding: 0 3px 0 2px !important; gap: 1px !important; }
+  .table-wide #market-row .card-footer .resource-symbol { width: 12px !important; height: 12px !important; }
+  .table-wide #market-row .card-footer .resource-chip strong { font-size: 12px !important; }
 }
