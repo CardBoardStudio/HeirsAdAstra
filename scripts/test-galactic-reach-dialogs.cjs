@@ -353,6 +353,26 @@ test('Only level I starters show conversion controls; bulk conversion preserves 
  assert.equal(game.dom.lastQuery('[data-resource-card]').length,0);
  const reload=boot(storage);assert.equal(reload.dom.lastQuery('[data-resource-card]').length,0);
 });
+test('Construct III offers a separate draw-only control and keeps its used card in play',()=>{
+ const storage=createStorage(),state=boot(storage).saved();
+ Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ state.players[0].hand=[{id:'iii',key:'construct',starter:true,upgraded:true,level:3},{id:'ii',key:'construct',starter:true,upgraded:true,level:2}];
+ state.players[0].deck=[{id:'new-card',key:'signalRelay'}];state.players[0].discard=[];
+ state.players[0].resources={matter:0,energy:0,biomass:0,data:0};writeSave(storage,state);
+ const game=boot(storage),buttons=game.dom.lastQuery('[data-construct-draw]');assert.equal(buttons.length,1);assert.equal(buttons[0].dataset.constructDraw,'iii');
+ assert(game.dom.element('hand-row').innerHTML.includes('Play Construct III to draw one card without building'));
+ buttons[0].click();game.settle();const after=game.saved();
+ assert(after.players[0].inPlay.some(c=>c.id==='iii'));assert(after.players[0].hand.some(c=>c.id==='new-card'));assert.equal(after.pendingConstruct,null);
+ assert.deepEqual(after.players[0].resources,state.players[0].resources);
+ assert.equal(boot(storage).dom.lastQuery('[data-construct-draw]').length,0);
+});
+test('Shared-table Construct III draw-only control sends the authoritative choice',()=>{
+ const state=boot(createStorage()).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ state.players[0].hand=[{id:'iii',key:'construct',starter:true,upgraded:true,level:3}];
+ const sent=[],network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});const button=game.dom.lastQuery('[data-construct-draw]')[0];assert(button);button.click();game.settle();
+ assert.deepEqual(sent,[[{type:'construct_draw',card:'iii',key:'construct'}]]);
+});
 test('Wonders in hand have no order or conversion and remain until cleanup or later trash',()=>{
  const storage=createStorage(),state=boot(storage).saved();
  state.players[0].hand=[{key:'monumentOfAccord',id:'monument'},{key:'dysonLattice',id:'dyson'}];writeSave(storage,state);

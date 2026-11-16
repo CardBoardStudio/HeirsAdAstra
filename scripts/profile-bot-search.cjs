@@ -28,7 +28,7 @@ function simulate(app,task,{trace=true,counters=false}={}){
     steps++;record();
   }
   assert.notEqual(e.state.winner,null,'Game did not finish');
-  return {...task,steps,round:e.state.round,winner:e.state.winner,points:e.state.players.map((_,id)=>e.calculatePrestige(id)),rngCalls,stateHash:sha(JSON.stringify(e.state)),traceHash:trace?stream.digest('hex'):null,states,counts,milliseconds:performance.now()-start};
+  return {...task,steps,round:e.state.round,winner:e.state.winner,points:Array.from(e.state.players,(_,id)=>e.calculatePrestige(id)),rngCalls,stateHash:sha(JSON.stringify(e.state)),traceHash:trace?stream.digest('hex'):null,states,counts,milliseconds:performance.now()-start};
 }
 const tasks=Array.from({length:4},(_,i)=>({seed:2026112501+i*7919,profiles:['military','military','economy','expansion'].map((_,j)=>['military','military','economy','expansion'][(i+j)%4])}));
 async function main(){
@@ -50,7 +50,7 @@ async function main(){
     fs.writeFileSync(path.join(out,variant+'-profile.json'),JSON.stringify({baselineRef,sourceHash:sha(app),game,counts:counted.counts},null,2));
     console.log(JSON.stringify({variant,milliseconds:game.milliseconds,counts:counted.counts}));
   }else if(mode==='compare'){
-    const results=[],original=baseline(baselineRef),optimized=current(),count=Number(get('--games',8));
+    const optimizedRef=get('--optimized-ref',null),results=[],original=baseline(baselineRef),optimized=optimizedRef?baseline(optimizedRef):current(),count=Number(get('--games',8));
     assert(Number.isInteger(count)&&count>0&&count<=128,'Games must be an integer from 1 to 128');
     for(let i=0;i<count;i++){
       const task=i<4?tasks[i]:{seed:2026112501+i*7919,profiles:tasks[i%4].profiles};
@@ -60,7 +60,7 @@ async function main(){
       assert.deepEqual(b.states,a.states,`Per-decision state differs for seed ${task.seed}`);
       for(const k of ['traceHash','stateHash','rngCalls','winner','round','steps','points'])assert.deepEqual(b[k],a[k],`${k} differs for seed ${task.seed}`);
       delete a.states;delete b.states;results.push(pair);
-      fs.writeFileSync(path.join(out,'comparison.json'),JSON.stringify({baselineRef,baselineSourceHash:sha(original),optimizedSourceHash:sha(optimized),games:results.length,results},null,2));
+      fs.writeFileSync(path.join(out,'comparison.json'),JSON.stringify({baselineRef,optimizedRef,baselineSourceHash:sha(original),optimizedSourceHash:sha(optimized),games:results.length,results},null,2));
       console.log(`${i+1}/${count} seed=${task.seed}: identical ${a.steps} decisions, RNG=${a.rngCalls}; ${a.milliseconds.toFixed(0)} -> ${b.milliseconds.toFixed(0)} ms`);
     }
   }else throw Error('Unknown mode '+mode);
