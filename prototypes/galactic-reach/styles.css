@@ -2929,12 +2929,11 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   /* The empty art row costs no height: the negative margin cancels its row gap, and the picture keeps its own space from the text. */
   :is(#hand-row, #market-row) .card-picture { top: 5px; height: calc(100% - 5px); border-radius: 4px; box-shadow: 0 0 0 1px #4a3f2a40; }
   @container (max-height: 26px) { .card-picture, .card-emblem { display: none; } }
-  #market-row .game-card:not(:hover):not(:focus):not(:focus-within) { grid-template-areas: "type type" "name name" "cost gain" "head head" "effect effect" "note note" "art art"; grid-template-rows: repeat(3, max-content) minmax(0, max-content) max-content max-content minmax(0, 1fr); align-content: stretch; }
+  /* Resting market cards (name, icon line, cost down the right edge): the picture fills the space the icons leave, left of the cost; the cost spans the flexible art row so its height never squeezes the icons. */
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) { grid-template-areas: "name cost" "head cost" "art cost" !important; grid-template-rows: auto minmax(0, max-content) minmax(0, 1fr) !important; }
+  #market-panel .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-art.has-picture { display: block !important; }
   #market-row .game-card:is(:hover, :focus, :focus-within) .card-art { display: none; }
   #hand-row .game-card { grid-template-areas: "type type" "cost name" "gain head" "effect effect" "note note" "buttons buttons" "art art"; grid-template-rows: repeat(6, max-content) minmax(0, 1fr); align-content: stretch; }
-}
-@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
-  .table-wide .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) { grid-template-rows: repeat(3, max-content) minmax(0, max-content) max-content max-content minmax(0, 1fr) !important; }
 }
 
 /* The game's version and the card-art notice: one quiet line at the foot of the game menu. */
