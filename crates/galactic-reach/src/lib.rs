@@ -892,6 +892,16 @@ fn bot_cards(me: &Value, order: &str) -> f64 {
         .map(|c| c["count"].as_f64().unwrap_or(1.0))
         .sum()
 }
+/// Capacity Modules a rival owns but has not played (rules #storage-allocation): in
+/// hand, discard or deck. Rivals hold at most one, like the browser rivals.
+fn bot_unplayed_modules(me: &Value) -> f64 {
+    ["hand", "discard", "deckContents"]
+        .iter()
+        .flat_map(|k| me[k].as_array().into_iter().flatten())
+        .filter(|c| c["key"] == "capacityModule")
+        .map(|c| c["count"].as_f64().unwrap_or(1.0))
+        .sum()
+}
 /// Archive Purge (34.39 #cards, #rival-cards): the level I starters in discard a rival
 /// trashes, in discard order. It keeps at least 3 Move-order and 2 Construct-order
 /// cards, because Move and Construct are not sold; the browser rivals choose the same.
@@ -1069,6 +1079,22 @@ fn bot_income(view: &Value, seat: usize) -> Value {
     income
 }
 fn bot_allocation_value(view: &Value, seat: usize, action: &Value, paid: bool) -> f64 {
+    // Unpaid allocations before the Capacity Module were Cradle of Lost Suns (+2 Biomass).
+    bot_split_value(view, seat, action, paid, if paid { 0.0 } else { 2.0 })
+}
+/// A played Capacity Module's split: first toward the limits the best market card
+/// needs, then by the same storage pressure as other allocations.
+fn bot_module_allocation_value(view: &Value, seat: usize, action: &Value) -> f64 {
+    let need = capacity_need(view, seat).map_or(0.0, |need| {
+        RESOURCE_KEYS
+            .iter()
+            .enumerate()
+            .map(|(i, r)| number(&action["allocation"][*r]).min(need[i]) * 10.0)
+            .sum::<f64>()
+    });
+    need + bot_split_value(view, seat, action, false, 0.0) * 0.1
+}
+fn bot_split_value(view: &Value, seat: usize, action: &Value, paid: bool, biomass: f64) -> f64 {
     let me = &view["players"][seat];
     let income = bot_income(view, seat);
     let protection = bot_cost(view, seat);
@@ -1081,7 +1107,7 @@ fn bot_allocation_value(view: &Value, seat: usize, action: &Value, paid: bool) -
         } else {
             0.0
         };
-        let gain = if !paid && r == "biomass" { 2.0 } else { 0.0 };
+        let gain = if r == "biomass" { biomass } else { 0.0 };
         for point in 0..count {
             let limit = bot_limit(view, seat, r) + point as f64;
             let need =
@@ -1695,6 +1721,10 @@ impl BuiltinAgent {
                         .sum::<f64>()
                         * 2.0
             }
+            // A Capacity Module is played as soon as it is drawn (rules #rival-planning).
+            "special" if action["key"] == "capacityModule" => {
+                95.0 + bot_module_allocation_value(view, seat, action) * 0.01
+            }
             // 31.36: permanent Prestige, capacity and big draws come first.
             "special"
                 if matches!(
@@ -1763,6 +1793,27 @@ impl BuiltinAgent {
                     }
                 } else {
                     -5.0
+                }
+            }
+            // Rules #storage-allocation: buy a Capacity Module from the Upgrades tray when
+            // the best market card needs more room or storage is worthwhile, holding at
+            // most one unplayed module.
+            "buy" if action["source"] == "capacity" => {
+                let worthwhile =
+                    bot_storage_budget(view, seat).is_some_and(|(cost, protection)| {
+                        ["matter", "energy", "biomass", "data"].iter().all(|r| {
+                            let held = number(&me["resources"][*r]);
+                            held - number(&cost[*r]) >= held.min(number(&protection[*r]))
+                        })
+                    });
+                if bot_unplayed_modules(me) > 0.0 {
+                    -20.0
+                } else if capacity_need(view, seat).is_some() {
+                    130.0
+                } else if worthwhile {
+                    125.0
+                } else {
+                    -20.0
                 }
             }
             "buy" if capacity_card(action["key"].as_str().unwrap_or("")).is_some() => {
@@ -2646,7 +2697,7 @@ mod tests {
         .enumerate()
         .map(|(i, s)| BuiltinAgent::new(s, [i as u8; 32]))
         .collect();
-        let (mut bought, mut storage, mut played, mut tactics) = (0, 0, 0, 0);
+        let (mut bought, mut storage, mut played, mut tactics, mut modules) = (0, 0, 0, 0, 0);
         for _ in 0..12000 {
             let Some(seat) = game.active_seat() else {
                 break;
@@ -2658,6 +2709,8 @@ mod tests {
             match action["type"].as_str().unwrap_or("") {
                 "buy" if capacity_card(key).is_some() => bought += 1,
                 "increase_storage" => storage += 1,
+                "buy" if action["source"] == "capacity" => storage += 1,
+                "special" if key == "capacityModule" => modules += 1,
                 "special" | "move" | "build" | "colonize" if capacity_card(key).is_some() => {
                     played += 1
                 }
@@ -2669,11 +2722,12 @@ mod tests {
             game.apply_action(seat, action).unwrap();
         }
         eprintln!(
-            "capacity cards: bought {bought}, capacity {storage}, played {played}, military tactics {tactics}"
+            "capacity cards: bought {bought}, capacity {storage}, modules played {modules}, played {played}, military tactics {tactics}"
         );
         assert!(game.scores().is_some(), "the 40-point match finishes");
         assert!(bought >= 4, "rivals buy new market cards ({bought})");
-        assert!(storage >= 4, "rivals raise their limits ({storage})");
+        assert!(storage >= 4, "rivals buy Capacity Modules ({storage})");
+        assert!(modules >= 4, "rivals play Capacity Modules ({modules})");
         assert!(played >= 2, "rivals play new cards ({played})");
     }
     /// A shared table resumes from its snapshot text exactly: every revision in
