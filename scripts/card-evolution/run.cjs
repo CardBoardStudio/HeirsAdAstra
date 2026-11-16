@@ -119,7 +119,7 @@ function tasksFor(cfg, entries, games) {
   const pool = toEnginePool(entries);
   return Array.from({ length: games }, (_, i) => {
     const base = [PROFILES[i % 3], ...PROFILES], rotation = Math.floor(i / 3) % 4;
-    return { index: i, seed: (cfg.seed + i * 7919) >>> 0, profiles: base.map((_, s) => base[(s + rotation) % 4]), victoryTarget: cfg.victoryTarget, maxRound: cfg.maxRound, maxSteps: cfg.maxSteps, pool };
+    return { studyConfig: cfg, index: i, seed: (cfg.seed + i * 7919) >>> 0, profiles: base.map((_, s) => base[(s + rotation) % 4]), victoryTarget: cfg.victoryTarget, maxRound: cfg.maxRound, maxSteps: cfg.maxSteps, pool };
   });
 }
 // Plays every task on the pool. A worker that dies (crash, OOM) is replaced and its game
@@ -130,7 +130,7 @@ function runGames(pool, tasks, label, logFile) {
     let done = 0, failed = false;
     const started = Date.now();
     const finish = error => { if (failed) return; failed = Boolean(error); pool.slots.forEach(slot => slot.detach()); error ? reject(error) : resolve({ games, seconds: (Date.now() - started) / 1000, restarts: pool.restarts }); };
-    const feed = slot => { if (!queue.length || failed) return; const i = queue.shift(); inflight.set(slot, i); slot.worker.postMessage(tasks[i]); };
+    const feed = slot => { if (!queue.length || failed) return; const i = queue.shift(); inflight.set(slot, i); slot.worker.postMessage({...tasks[i],studyLabel:label,resultsDirectory:path.dirname(logFile)}); };
     const requeue = (slot, why) => {
       const i = inflight.get(slot); inflight.delete(slot);
       if (i === undefined) return;
