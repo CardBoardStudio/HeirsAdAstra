@@ -55,7 +55,8 @@ for path, content_type in [("/", "text/html"), ("/galactic-reach/styles.css", "t
     status, headers, body = request(path)
     assert status == 200 and content_type in headers["Content-Type"] and len(body) > 100, path
 
-assert b"Drawing Board" in request("/")[2]
+home = request("/")[2]
+assert b"<title>Galactic Reach" in home and b"Drawing Board" not in home
 assert b"Galactic Reach" in request("/galactic-reach/")[2]
 status, headers, rulebook = request("/galactic-reach/rulebook.html")
 assert status == 200 and "text/html" in headers["Content-Type"]

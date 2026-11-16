@@ -1,4 +1,14 @@
-# Cards and deck selection
+# Voidwright cards and rules
+
+Voidwright is the platform's example game (see the README). Players are not offered it, but it stays playable at `/voidwright/`.
+
+## Rules
+
+Each player starts with the host's ten-card preset, shuffled, and draws 5. Classic (the default) has 7 Credits and 3 Outposts; Explorer substitutes one Credit for a Survey vessel; Industrial substitutes two Credits for two Reactors. Everyone, including Kepler, uses the same preset. Each turn grants 1 action and 1 buy. Play actions first. Playing any resource, playing all resources, or buying a card moves to the buy phase. Spend credits on supply cards; acquired cards go to discard. End the turn to discard the remaining hand and played cards, then draw 5, shuffling the discard pile if necessary. Unspent resources, actions, and buys expire.
+
+Colonies cannot be played; they score influence across your entire collection: Outpost 1, Colony 3, Metropolis 6. Influence is public in this prototype. The game finishes at the end of the turn when the Metropolis pile is empty, any 3 supply piles are empty, or all players have completed the configured number of turns. Most influence wins; tied players share victory. Salvage Drone automatically scraps a Credit from the remaining hand, otherwise an Outpost, if available.
+
+## Deck selection
 
 Choose the setup in the lobby before **Practice with Kepler** or **Host a table**. The host chooses a shared market of exactly six different fleet and technology cards, plus one ten-card starting deck for everyone. This keeps the starting conditions equal while making combinations quick to playtest. Setup is fixed when the table is created and appears in **Match setup** for everyone who joins.
 
