@@ -14,7 +14,7 @@ function engine() {
   return {port,adapter};
 }
 const {port,adapter}=engine();
-assert.equal(adapter.rulesVersion,'galactic-reach/37.42');
+assert.equal(adapter.rulesVersion,'galactic-reach/38.43');
 const before=JSON.stringify(port.state);
 adapter.legalActions(0);adapter.observe(0);
 assert.equal(JSON.stringify(port.state),before,'Observation and legality must not mutate state');
@@ -96,8 +96,12 @@ require('./test-playtest-feedback.cjs');
 require('./test-starter-conversion.cjs');
 require('./test-probe-discovery.cjs');
 require('./test-unlimited-buys.cjs');
+require('./test-tiered-market.cjs');
 require('./test-strategic-bots.cjs');
 require('./test-strategic-bot-study.cjs');
+require('./test-bot-search-cache.cjs');
 
 require('./test-corner-portals.cjs');
 require('./test-change-queue.cjs');
+
+require('./test-construct-iii-draw.cjs');

@@ -167,7 +167,7 @@ function createDom(timers) {
     addEventListener() {},
     createElement: tag => {const e=new FakeElement(tag);created.push(e);return e;},
     querySelector: selector => (selector.startsWith('#') ? element(selector.slice(1)) : selector.startsWith('.hex[data-coord=') ? created.find(e=>e.dataset.coord===selector.match(/"([^"]+)"/)[1]) : null),
-    querySelectorAll: selector => (selector==='.console-tab'?tabs:selector==='.tab-panel'?panels:selector==='.hex'?created.filter(e=>e.dataset.coord):/^\[data-[a-z-]+\]$/.test(selector) ? byDataAttribute(selector) : [])
+    querySelectorAll: selector => (selector==='.console-tab'||selector==='.console-tab[data-tab]'?tabs:selector==='.tab-panel'?panels:selector==='.hex'?created.filter(e=>e.dataset.coord):/^\[data-[a-z-]+\]$/.test(selector) ? byDataAttribute(selector) : [])
   };
   return { document, element, tabs, panels, toasts:()=>created.filter(e=>e.className==='toast').map(e=>e.textContent), contextButton:label=>created.filter(e=>e.tagName==='BUTTON'&&(e.textContent===label||e.innerHTML===label||e.innerHTML.startsWith(`<span>${label}</span>`))).at(-1), hex:key=>created.find(e=>e.dataset.coord===key), lastQuery: selector => queried.get(selector) || [] };
 }
@@ -318,6 +318,10 @@ test('a completed first round advances directly into round two', () => {
   assert.equal(game.saved().round, 2);
   assert(!('awards' in game.saved()));
   assert(!game.dialog('directive').open);
+  // Rules #round: the next hand is drawn at cleanup, so the stepper has no separate Draw step.
+  const steps = [...game.dom.element('phase-stepper-steps').innerHTML.matchAll(/<li[^>]*>([^<]*)<\/li>/g)].map(m => m[1].replace(/&amp;/g, '&'));
+  assert.deepEqual(steps, ['Production', 'Operations', 'Buy', 'Cleanup & draw']);
+  assert.equal(game.saved().players[0].hand.length + game.saved().players[0].inPlay.length > 0, true, 'round two opens with the hand drawn at cleanup');
 });
 
 function overflowStorage() {
@@ -348,6 +352,26 @@ test('Only level I starters show conversion controls; bulk conversion preserves 
  assert.equal(game.dom.element('convert-all-button').disabled,true);
  assert.equal(game.dom.lastQuery('[data-resource-card]').length,0);
  const reload=boot(storage);assert.equal(reload.dom.lastQuery('[data-resource-card]').length,0);
+});
+test('Construct III offers a separate draw-only control and keeps its used card in play',()=>{
+ const storage=createStorage(),state=boot(storage).saved();
+ Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ state.players[0].hand=[{id:'iii',key:'construct',starter:true,upgraded:true,level:3},{id:'ii',key:'construct',starter:true,upgraded:true,level:2}];
+ state.players[0].deck=[{id:'new-card',key:'signalRelay'}];state.players[0].discard=[];
+ state.players[0].resources={matter:0,energy:0,biomass:0,data:0};writeSave(storage,state);
+ const game=boot(storage),buttons=game.dom.lastQuery('[data-construct-draw]');assert.equal(buttons.length,1);assert.equal(buttons[0].dataset.constructDraw,'iii');
+ assert(game.dom.element('hand-row').innerHTML.includes('Play Construct III to draw one card without building'));
+ buttons[0].click();game.settle();const after=game.saved();
+ assert(after.players[0].inPlay.some(c=>c.id==='iii'));assert(after.players[0].hand.some(c=>c.id==='new-card'));assert.equal(after.pendingConstruct,null);
+ assert.deepEqual(after.players[0].resources,state.players[0].resources);
+ assert.equal(boot(storage).dom.lastQuery('[data-construct-draw]').length,0);
+});
+test('Shared-table Construct III draw-only control sends the authoritative choice',()=>{
+ const state=boot(createStorage()).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ state.players[0].hand=[{id:'iii',key:'construct',starter:true,upgraded:true,level:3}];
+ const sent=[],network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});const button=game.dom.lastQuery('[data-construct-draw]')[0];assert(button);button.click();game.settle();
+ assert.deepEqual(sent,[[{type:'construct_draw',card:'iii',key:'construct'}]]);
 });
 test('Wonders in hand have no order or conversion and remain until cleanup or later trash',()=>{
  const storage=createStorage(),state=boot(storage).saved();
@@ -526,11 +550,11 @@ function assertTab(game,name){
   for(const panel of game.dom.panels)assert.equal(panel.hidden,panel.dataset.panel!==name);
 }
 test('Relics tab browses read-only and participates in keyboard tab navigation',()=>{
-  const {storage}=excavationStorage(),game=boot(storage);assert.deepEqual(game.dom.tabs.map(t=>t.dataset.tab),['hand','market','trade','fleet','relics','chain']);
+  const {storage}=excavationStorage(),game=boot(storage);assert.deepEqual(game.dom.tabs.map(t=>t.dataset.tab),['market','fleet','relics']);
   const before=JSON.stringify(game.saved());game.click('relics-tab');assertTab(game,'relics');assert.equal(JSON.stringify(game.saved()),before);
   const relics=game.dom.element('relics-tab');assert.equal(relics.getAttribute('role'),'tab');assert.equal(relics.getAttribute('aria-controls'),'relics-panel');assert.equal(game.dom.element('relics-panel').getAttribute('aria-labelledby'),'relics-tab');
-  fire(relics,'keydown',{key:'ArrowRight',cancelable:true});assertTab(game,'chain');fire(game.dom.element('chain-tab'),'keydown',{key:'ArrowRight',cancelable:true});assertTab(game,'hand');fire(game.dom.element('hand-tab'),'keydown',{key:'End',cancelable:true});assertTab(game,'chain');fire(relics,'keydown',{key:'Home',cancelable:true});assertTab(game,'hand');
-  game.dom.hex(game.saved().clusters[0].center).click();assertTab(game,'hand');assert.equal(game.saved().actionMode,null,'Ordinary map inspection does not start excavation');
+  fire(relics,'keydown',{key:'ArrowRight',cancelable:true});assertTab(game,'market');fire(game.dom.element('market-tab'),'keydown',{key:'End',cancelable:true});assertTab(game,'relics');fire(relics,'keydown',{key:'Home',cancelable:true});assertTab(game,'market');
+  game.dom.hex(game.saved().clusters[0].center).click();assertTab(game,'market');assert.equal(game.saved().actionMode,null,'Ordinary map inspection does not start excavation');
 });
 function productionNumbers(game) {
  const html=game.dom.element('resource-grid').innerHTML;
@@ -622,7 +646,7 @@ test('Market permits repeated affordable purchases and reloads with no purchase 
  const storage=createStorage(),state=boot(storage).saved();
  Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});
  Object.assign(state.players[0],{passed:true,hand:[],deck:[],discard:[],inPlay:[],buyStartDiscardIds:[],buyStartInPlayIds:[],buyLimit:1,resources:{matter:0,energy:6,biomass:0,data:3},resourceLimits:{matter:4,energy:10,biomass:4,data:10}});
- state.market=[{id:'purchase-1',key:'signalRelay'},{id:'purchase-2',key:'signalRelay'}];state.advancedDeck=[{id:'refill-3',key:'signalRelay'}];state.marketDiscard=[];
+ state.market=[{id:'purchase-1',key:'signalRelay'},{id:'purchase-2',key:'signalRelay'}];state.marketDecks={expensive:[],medium:[],cheap:[{id:'refill-3',key:'signalRelay'}]};
  writeSave(storage,state);let game=boot(storage);
  assert.match(game.dom.element('market-help').textContent,/as many cards as you can afford/);
  for(let n=1;n<=3;n++) {
@@ -665,7 +689,7 @@ test('Probe UI locates a relic privately and unlocated excavation never redirect
   state.players[0].hand.push({id:'ui-probe',key:'probe'});writeSave(storage,state);
   const game=boot(storage),before=game.saved();
   assert(!game.dom.hex(coord).getAttribute('aria-label').includes('relic site'));
-  game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='tab-dig').click();assertTab(game,'hand');
+  game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='tab-dig').click();assertTab(game,'market');
   assert(game.dom.lastQuery('[data-excavate-relic]').every(b=>b.disabled));
   game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='tab-dig').click();
   game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='ui-probe').click();
@@ -680,17 +704,17 @@ test('Probe UI locates a relic privately and unlocated excavation never redirect
 test('Hand Excavate opens Relics with disabled choices, permits conversions, and cancels without spending',()=>{
   const {storage}=excavationStorage(),game=boot(storage),before=game.saved();
   game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='tab-dig').click();assertTab(game,'relics');assert.equal(game.saved().actionMode,'excavate');
-  assert(game.dom.lastQuery('[data-excavate-relic]').every(b=>b.disabled));assert.match(game.dom.element('relic-row-help').textContent,/Switch to Hand/);assert.match(game.dom.element('relic-cost').innerHTML,/Matter|matter/);
-  const resumed=boot(storage);assertTab(resumed,'relics');resumed.click('hand-tab');
-  for(const id of ['tab-matter','tab-energy','tab-extra']){resumed.dom.lastQuery('[data-resource-card]').find(b=>b.dataset.resourceCard===id).click();assertTab(resumed,'hand');}
+  assert(game.dom.lastQuery('[data-excavate-relic]').every(b=>b.disabled));assert.match(game.dom.element('relic-row-help').textContent,/Convert cards from your hand/);assert.match(game.dom.element('relic-cost').innerHTML,/Matter|matter/);
+  const resumed=boot(storage);assertTab(resumed,'relics');resumed.click('market-tab');
+  for(const id of ['tab-matter','tab-energy','tab-extra']){resumed.dom.lastQuery('[data-resource-card]').find(b=>b.dataset.resourceCard===id).click();assertTab(resumed,'market');}
   assert.equal(resumed.saved().actionMode,'excavate');resumed.click('relics-tab');assert(resumed.dom.lastQuery('[data-excavate-relic]').every(b=>!b.disabled));
-  const ready=resumed.saved();resumed.click('cancel-excavate');assertTab(resumed,'hand');assert.equal(resumed.saved().actionMode,null);assert.deepEqual(resumed.saved().players,ready.players);assert.deepEqual(resumed.saved().fleets,before.fleets);assert.deepEqual(resumed.saved().relicRow,before.relicRow);
+  const ready=resumed.saved();resumed.click('cancel-excavate');assertTab(resumed,'market');assert.equal(resumed.saved().actionMode,null);assert.deepEqual(resumed.saved().players,ready.players);assert.deepEqual(resumed.saved().fleets,before.fleets);assert.deepEqual(resumed.saved().relicRow,before.relicRow);
 });
 test('Context Excavate and selecting a valid active site open Relics without redirecting other inspection',()=>{
   for(const path of ['context','site']){
     const {storage,coord}=excavationStorage({selected:path==='context',affordable:true}),game=boot(storage);
     if(path==='context'){game.dom.contextButton('Excavate relic · Excavate').click();}
-    else{game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='tab-dig').click();assertTab(game,'hand');game.dom.hex(game.saved().clusters[0].center).click();assertTab(game,'hand');game.dom.hex(coord).click();}
+    else{game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='tab-dig').click();assertTab(game,'market');game.dom.hex(game.saved().clusters[0].center).click();assertTab(game,'market');game.dom.hex(coord).click();}
     assertTab(game,'relics');assert(game.dom.lastQuery('[data-excavate-relic]').every(b=>!b.disabled));assert.equal(game.saved().activePlayer,0);assert.equal(game.saved().players[0].hand.length,4);
   }
 });
@@ -776,8 +800,14 @@ test('starter upgrade UI pays two of the selected resource and preserves Buy', (
  state.phase='buy';state.activePlayer=0;state.turnStage='buy';
  state.players[0].hand=[{key:'move',id:'ui-upgrade',starter:true}];state.players[0].discard=[];
  state.players[0].resources={matter:3,energy:3,biomass:0,data:0};writeSave(storage,state);
- const game=boot(storage);game.dom.element('upgrade-resource').value='energy';fire(game.dom.element('upgrade-resource'),'change');
+ const game=boot(storage);
+ // The upgrade is offered beside the market like a card; choosing it opens the starter chooser.
+ const offer=game.dom.lastQuery('[data-upgrade-offer]').find(b=>b.dataset.upgradeOffer==='move');
+ assert(offer&&!offer.disabled,'Move II is offered in the market during Buy');
+ offer.click();assert(game.dialog('upgrade').open,'choosing the upgrade card asks which starter to upgrade');
+ game.dom.element('upgrade-resource').value='energy';fire(game.dom.element('upgrade-resource'),'change');
  game.dom.lastQuery('[data-upgrade-card]').find(b=>b.dataset.upgradeCard==='ui-upgrade').click();
+ assert(!game.dialog('upgrade').open,'the chooser closes after the upgrade');
  const after=game.saved();assert(after.players[0].hand[0].upgraded);assert.equal(after.players[0].resources.energy,1);
  assert.equal(after.players[0].resources.matter,3);assert.equal(after.phase,'buy');assert.equal(after.players[0].bought,0);
  assert(boot(storage).saved().players[0].hand[0].upgraded);
@@ -845,7 +875,8 @@ test('export downloads a private read-only report without using RNG or changing 
  assert.deepEqual(report.save.state,game.saved());assert.equal(report.factions.length,4);
  assert.equal(report.factions[1].botProfile.strategy,'military');assert.equal(report.factions[0].points.total,3);
  assert(report.logText.includes('Controlled planets produced'));assert(report.logText.includes('+1 Matter'));
- assert(report.save.gameHistory.events.some(event=>event.changes.some(change=>change.path.join('.')==='players.0.hand')));
+ // Rules #setup: the private opening hand is dealt at setup, so the report's initial position holds it.
+ assert.equal(report.save.gameHistory.initialState.players[0].hand.length,5);assert.equal(report.save.gameHistory.initialState.players[0].deck.length,1);
  assert(snapshots.at(-1).gameHistory.complete,'Account payload includes the full private history');
  assert.deepEqual(storage.snapshot(),before);assert.equal(game.randomCalls(),randomBefore);
  const reloaded=boot(storage);reloaded.click('export-game-report');
@@ -1098,13 +1129,20 @@ test('Buy upgrades and trashes starters in hand, discard and in play (28.33 #buy
   Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});
   Object.assign(state.players[0],{passed:true,resources:{matter:3,energy:2,biomass:0,data:0},
     hand:[{id:'up-hand',key:'move',starter:true}],discard:[{id:'up-discard',key:'construct',starter:true}],
-    inPlay:[{id:'up-play',key:'move',starter:true}],buyStartDiscardIds:['up-discard'],buyStartInPlayIds:['up-play']});
+    inPlay:[{id:'up-play',key:'move',starter:true}],buyStartDiscardIds:['up-discard'],buyStartInPlayIds:['up-play'],buyStartHandIds:['up-hand']});
   writeSave(storage,state);
   let game=boot(storage);
   const html=game.dom.element('decommission-area').innerHTML;
-  assert.deepEqual([...html.matchAll(/data-upgrade-card="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-hand','up-play']);
-  assert.deepEqual([...html.matchAll(/data-trash="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-play']);
-  assert.doesNotMatch(html,/All starter cards upgraded|after cleanup/);
+  assert.deepEqual([...html.matchAll(/data-trash="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-hand','up-play']);
+  assert.match(html,/in hand/,'the Trash dialog says where a hand card is');
+  assert.match(game.dom.element('hand-row').innerHTML,/data-trash-hand="up-hand"/,'an eligible hand card offers Trash…');
+  const choices=key=>{game.dom.lastQuery('[data-upgrade-offer]').find(b=>b.dataset.upgradeOffer===key).click();
+    const ids=[...game.dom.element('upgrade-options').innerHTML.matchAll(/data-upgrade-card="([^"]*)"/g)].map(m=>m[1]).sort();
+    game.dom.element('upgrade-dialog').close();game.settle();return ids;};
+  assert.deepEqual(choices('move'),['up-hand','up-play']);
+  assert.deepEqual(choices('construct'),['up-discard']);
+  assert.doesNotMatch(game.dom.element('upgrade-market').innerHTML,/All upgraded/);
+  game.dom.lastQuery('[data-upgrade-offer]').find(b=>b.dataset.upgradeOffer==='move').click();
   game.dom.element('upgrade-resource').value='energy';fire(game.dom.element('upgrade-resource'),'change');
   game.dom.lastQuery('[data-upgrade-card]').find(b=>b.dataset.upgradeCard==='up-play').click();game.settle();
   assert.equal(game.saved().players[0].inPlay.find(c=>c.id==='up-play').upgraded,true);

@@ -62,6 +62,7 @@ If any pending entry is `breaking`, `cut` makes a single version bump for the wh
 - archives the released engine and browser files byte for byte from `origin/stable` into `crates/galactic-reach/rules/v34-*`, with hashes in `scripts/archive-hashes/v34.json`;
 - adds the archived revision to `SHARED_RULES`, the engine's `include_str!` arms, the saved-table validator, `build-web.sh`, and the saved-table and replay routes;
 - updates `RULES`, `EXPERIMENT`, the version constants, cache-busting queries, the rulebook masthead, and the tests that assert the current version;
+- carries the server's human-turn Undo revision list forward, retaining the outgoing revision for archived tables;
 - writes `docs/releases.md` and the game's "New in this playtest" panel from the entries, then deletes the entries.
 
 A batch with only `safe` entries makes no bump. It writes a save-compatible update section, and games in progress continue. `--name` is needed only when rules change. Rerunning `cut` later in the same cycle adds newly merged entries to the same release without bumping again.

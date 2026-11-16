@@ -78,8 +78,18 @@ jobs:
       - run: node scripts/test-tactical-combat.cjs
       - run: node scripts/test-replay-view.cjs
       - run: node scripts/test-galactic-reach-dialogs.cjs
+      - run: node scripts/test-cleanup-draw.cjs
+      - run: node scripts/test-simulation-archive.cjs
       - name: Balance harness smoke run
         run: node scripts/balance-simulations.cjs 1 > /dev/null
+      - name: Retain full simulation archives
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: galactic-reach-simulation-archives
+          path: output/simulations/
+          if-no-files-found: ignore
+          retention-days: 90
   container:
     name: Preview container smoke
     needs: [check, javascript]

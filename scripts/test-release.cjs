@@ -85,6 +85,14 @@ try {
   assert.equal(shared[2].split('\n').filter(l => l.includes(`"galactic-reach/${from.join('.')}"`)).length, 1, 'shared tables keep the old revision once');
   assert.equal(Number(shared[1]), shared[2].split('\n').length, 'SHARED_RULES length matches');
   assert.match(lib, new RegExp(`"galactic-reach/${from.join('.')}" => include_str!\\("\\.\\./rules/v${from[0]}-app\\.js"\\)`));
+  const undoRules = () => {
+    const service = fs.readFileSync(path.join(repo, 'crates/server/src/shared/mod.rs'), 'utf8');
+    const gate = /if matches!\(\n\s*self\.table\.rules\.split\('\+'\)\.next\(\)\.unwrap_or_default\(\),\n([\s\S]*?)\n\s*\) \{/.exec(service);
+    assert(gate, 'the shared human-turn Undo gate is present');
+    return [...gate[1].matchAll(/"(galactic-reach\/\d+\.\d+)"/g)].map(m => m[1]);
+  };
+  assert(undoRules().includes(`galactic-reach/${from.join('.')}`), 'archived tables keep human-turn Undo');
+  assert(undoRules().includes(`galactic-reach/${to.join('.')}`), 'new stable and dev tables retain human-turn Undo after a cut');
   const notes = fs.readFileSync(path.join(repo, 'docs/releases.md'), 'utf8');
   assert.match(notes, new RegExp(`## ${to.join('.')} · Harbor playtest`));
   assert.match(notes, /- \*\*Harbors refit Fleets\*\* \(rules change\)/);
@@ -101,6 +109,14 @@ try {
   assert.equal((fs.readFileSync(path.join(repo, 'docs/releases.md'), 'utf8').match(new RegExp(`^## ${to.join('.')} `, 'gm')) || []).length, 1, 'one section for the release');
   assert.match(fs.readFileSync(path.join(repo, 'prototypes/galactic-reach/index.html'), 'utf8'), /Harbors refit Fleets[\s\S]*Late fix/);
   assert.throws(() => release('cut', '--released', 'stable'), /nothing new/);
+  if (!reservePreviews) {
+    git('-c', 'user.name=t', '-c', 'user.email=t@e', 'commit', '--quiet', '-am', 'finish release');
+    git('branch', '--force', 'stable');
+    add('next-cycle.md', 'breaking', 'Next cycle');
+    release('cut', '--released', 'stable', '--name', 'Next playtest');
+    assert(undoRules().includes(`galactic-reach/${to.join('.')}`), 'a second release keeps the first archive undoable');
+    assert(undoRules().includes(`galactic-reach/${to[0]+1}.${to[1]+1}`), 'human-turn Undo survives a second release cycle');
+  }
  }
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });

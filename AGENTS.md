@@ -2,7 +2,8 @@
 
 ## Interface scope
 
-- Design, adjust, and verify the UI for desktop only. Do not spend work on mobile layouts or mobile UI tests.
+- Design, adjust, and verify the UI for desktop, iPad (landscape and portrait) and phones, with touch working for everything. Phones may scroll inside drawers; desktop and iPad game screens may not scroll.
+- Game screens must fit the viewport at 1280x720 and larger: no scrolling may be required to view or play. Long reference content (rulebook, card gallery, game report) may scroll. `node scripts/check-viewport-fit.cjs` checks key play states.
 - Accessibility work still covers desktop keyboard operation, screen-reader labels, focus visibility, contrast, and desktop window sizes. State the coverage actually tested.
 
 ## GitHub workflow
@@ -42,3 +43,10 @@
 - Run `node scripts/test-rules-contract.cjs` and `node scripts/check-rulebook.cjs` for rules/tooling edits. Run the check against `dist/galactic-reach` after `./scripts/build-web.sh` to verify packaged assets too.
 - Run the relevant Galactic Reach mechanic, dialog, and replay suites for changes affecting their behavior. Rust changes require workspace tests, formatting, and Clippy; build/package changes require the Wasm build and container smoke. See `.github/workflows/ci.yml` for exact commands.
 - In the PR, state the rule sections, gameplay impact, compatibility label, verification performed, and verified preview game/rulebook URLs. Distinguish tests run from checks still pending.
+
+## Bot simulation retention
+
+- Every bot study must retain complete per-game archives, including failures and interrupted games. Never keep only aggregate summaries or seeds.
+- Use the archival `factory` in `scripts/strategic-bot-study.cjs` or the `SimulationArchive` recorder in `scripts/lib/simulation-archive.cjs`. Include exact rules/policy/harness sources, task configuration, full private state and engine counters, action/event history and the random stream. Do not copy an old summary-only harness.
+- Put study archives in a persistent output directory (`GR_SIMULATION_ARCHIVE_DIR` when using a temporary checkout), and link it with the results. Do not prune or overwrite previous runs without explicit instruction.
+- Use saved checkpoints and round/resource events for reanalysis. See [simulation archives](docs/simulation-archives.md) for the schema, reader, crash recovery and CI retention limits.

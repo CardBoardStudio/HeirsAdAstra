@@ -1,6 +1,6 @@
 # Galactic Reach rules maintenance
 
-The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 37.42 / Integrated Playtest**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
+The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 38.43 / Construct III Playtest**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
 
 ## Read, change, verify
 
@@ -16,10 +16,11 @@ The rulebook is authoritative for intended play. The initial version documents e
 
 | Rulebook anchor | Implementation starting points | Behavior checks |
 | --- | --- | --- |
-| `#setup`, `#round` | `newState`, `generateGalaxy`, `beginRound`, `cleanupRound` in `app.js` | `test-long-reach.cjs`, `test-pass-and-buy.cjs`, `test-resource-actions.cjs`, `test-galactic-reach-dialogs.cjs` |
+| `#setup`, `#round` | `newState` (opening hand), `generateGalaxy`, `beginRound`, `cleanupRound`/`finishRound` (Cleanup & draw) in `app.js` | `test-cleanup-draw.cjs`, `test-long-reach.cjs`, `test-pass-and-buy.cjs`, `test-resource-actions.cjs`, `test-galactic-reach-dialogs.cjs` |
 | `#resources`, `#orders`, `#movement` | `produceAll`, `cardResources`, `movementRange`, `reachableFrom`, `applyColonizeOrder` | `test-galactic-reach.cjs`, `test-long-reach.cjs` |
 | `#building`, `#combat` | `constructAt`, `excavate`, `resolveCombat`, `colonizePlanet` | `test-galactic-reach.cjs` |
-| `#resources`, `#trade`, `#buy` | `offerTrade`, `respondTrade`, `buyCard`, `upgradeStarter`, `decommission`, `increaseStorage` | `test-galactic-reach.cjs`, `test-long-reach.cjs` |
+| `#resources`, `#trade`, `#buy` | `offerTrade`, `respondTrade`, `buyCard`, `upgradeStarter`, `decommission`/`trashEligibleCards`, `increaseStorage` | `test-galactic-reach.cjs`, `test-long-reach.cjs`, `test-trash-hand.cjs` |
+| `#market`, `#market-tiers` | `MARKET_TIERS`, `marketTier`, `fillMarket`, `buyCard`, `renderMarket` in `app.js`; `marketDecks` in `privateState`/`undoMark` (`adapter.js`); see [tiered market](tiered-market.md) | `test-tiered-market.cjs`, `test-unlimited-buys.cjs`, `test-shared-tables.cjs` |
 | `#politics`, `#victory` | `cleanupRound`, `calculatePrestige`, `finishRound` | `test-long-reach.cjs`, `test-pass-and-buy.cjs`, `test-resource-actions.cjs`, `test-galactic-reach-dialogs.cjs` |
 | `#shared-tables` | networked mode in `app.js` (`installNetworkClient`, `adoptServerView`), `privateState` in `adapter.js`, `crates/server/src/shared/`; see [shared tables](../shared-tables.md) | `cargo test -p server shared` |
 | `#cards`, `#clarifications` | card definitions, `resolveHumanSpecial`, `useBuyEffect`, `resolveCombat`; legal actions in `adapter.js` | relevant mechanic regression, added when resolving each discrepancy |

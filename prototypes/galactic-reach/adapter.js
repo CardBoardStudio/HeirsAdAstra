@@ -14,13 +14,13 @@ function createGalacticAdapter(e) {
     if (!Number.isInteger(seat) || seat < 0 || seat >= 4) return null;
     const state = s();
     return e.clone({
-      portalLinks: state.portalLinks, portalMovementCost: e.PORTAL_MOVEMENT_COST, combat: e.combatView(seat), combinedProbe:true, seat, round: state.round, victoryTarget: e.victoryTarget(),
+      portalLinks: state.portalLinks, portalMovementCost: e.PORTAL_MOVEMENT_COST, combat: e.combatView(seat), combinedProbe:true, constructDrawOnly:true, seat, round: state.round, victoryTarget: e.victoryTarget(),
       // 32.37: public card prices and Harvester yield, so server rivals need no rules-specific tables.
       harvesterYield: e.HARVESTER_YIELD, marketCosts: state.market.map(card => e.ALL_CARDS[card.key]?.cost || {}),
       // 34.39: printed Wonder Prestige, military card stats and the capture rule, published for the same reason.
       marketPrestige: state.market.map(card => e.ALL_CARDS[card.key]?.gainPrestige || 0),
       // Printed effects are public; no deck order or private hand is included here.
-      cardStats: Object.fromEntries(Object.entries(e.ALL_CARDS).map(([key,c])=>[key,{order:c.order,kind:c.kind,tag:c.tag,military:!!c.military,draw:c.effect?.draw||(c.tag==='alienEchoes'?3:0),limits:c.effect?.limits,prestige:c.effect?.prestige||0,gainPrestige:c.gainPrestige||0,victoryPrestige:c.victoryPrestige||0,attack:c.attack||0,shield:c.shield||0,pierce:!!c.pierce}])),
+      cardStats: Object.fromEntries(Object.entries(e.ALL_CARDS).map(([key,c])=>[key,{order:c.order,kind:c.kind,tag:c.tag,military:!!c.military,draw:c.effect?.draw||(c.tag==='alienEchoes'?3:0),limits:c.effect?.limits,prestige:c.effect?.prestige||0,gainPrestige:c.gainPrestige||0,buildDiscount:c.buildDiscount||null,victoryPrestige:c.victoryPrestige||0,attack:c.attack||0,shield:c.shield||0,pierce:!!c.pierce}])),
       tacticStats: Object.fromEntries(Object.entries(e.MILITARY_CARDS).map(([key, c]) => [key, { attack: c.attack || 0, shield: c.shield || 0, pierce: !!c.pierce }])),
       combatVictoryPrestige: e.COMBAT_VICTORY_PRESTIGE, captureNeedsFleet: true, phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
@@ -87,8 +87,8 @@ function createGalacticAdapter(e) {
         const effect = e.ALL_CARDS[card.key].buyEffect;
         if (effect) actions.push({ type: 'buy_effect', card: card.id });
       });
-      // Cards in discard or in play when this Buy began may be trashed.
-      [...p.discard.filter(card => p.buyStartDiscardIds.includes(card.id)), ...p.inPlay.filter(card => (p.buyStartInPlayIds || []).includes(card.id))].forEach(card => {
+      // Cards in hand, discard or in play when this Buy began may be trashed (#buy).
+      e.trashEligibleCards(p).forEach(card => {
         for (const resource of e.RESOURCES)
           if (p.resources[resource] >= 3) actions.push({type:'decommission',card:card.id,resource});
       });
@@ -118,6 +118,7 @@ function createGalacticAdapter(e) {
         const gain = e.cardResources(card);
         if (e.canConvertCard(card)) actions.push({ type: 'resource', ...base, gain });
         if (state.pendingColonyBuild) return;
+        if(e.canConstructDraw(seat,card.id))actions.push({type:'construct_draw',...base});
         if (def.order === 'colonize') Object.keys(state.planets).forEach(coord => {
           if (e.colonizePlanet(seat, coord, { tag: def.tag }, true)) actions.push({ type: 'colonize', ...base, coord });
         });
@@ -220,6 +221,7 @@ function createGalacticAdapter(e) {
       case 'finish_colony_build': e.finishColonyBuild(seat); return;
       case 'colony_build': e.finishColonyBuild(seat,action.coord,action.kind); return;
       case 'colonize': e.applyColonizeOrder(seat, action.coord, card); return;
+      case 'construct_draw': e.useConstructDraw(seat,action.card); return;
       case 'build': e.performConstructOrder(seat,action.coord,action.kind,card); return;
       case 'move': e.performMoveOrder(seat, action.source, action.destination, card, { tag: def.tag, moveGroup: action.moveGroup, units: action.units }); return;
       case 'probe': e.probeRelic(seat,action.coord,action.card); return;
@@ -256,7 +258,7 @@ function createGalacticAdapter(e) {
       else { p.hand = []; p.deck = []; }
     });
     state.probeStatus = e.probeStatus(seat);
-    state.advancedDeck = stub(state.advancedDeck.length);
+    state.marketDecks = Object.fromEntries(Object.entries(state.marketDecks).map(([tier, deck]) => [tier, stub(deck.length)]));
     state.relicDeckCount = state.relicDeck.length;
     state.relicDeck = stub(state.relicDeck.length);
     state.planets = Object.fromEntries(Object.entries(state.planets).flatMap(([coord, planet]) => {
@@ -282,7 +284,7 @@ function createGalacticAdapter(e) {
     return {
       turn: e.turnSerial,
       reveal: {
-        decks: state.players.map(p => p.deck.length), market: state.advancedDeck.length, relics: state.relicDeck.length,
+        decks: state.players.map(p => p.deck.length), market: Object.values(state.marketDecks).reduce((n, deck) => n + deck.length, 0), relics: state.relicDeck.length,
         surveys: state.clusters.map(c => c.revealedBy.length), located: state.clusters.map(c => [...c.scannedBy].sort().join('.')),
         combat: state.pendingCombat ? `${state.pendingCombat.stage}:${state.pendingCombat.volley}` : null,
         combats: state.lastCombat ? JSON.stringify(state.lastCombat.summary) : null
@@ -302,6 +304,6 @@ function createGalacticAdapter(e) {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/37.42', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
+  return { rulesVersion: 'galactic-reach/38.43', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;

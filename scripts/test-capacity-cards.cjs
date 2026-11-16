@@ -35,13 +35,13 @@ const prices = Object.values(cards).map(c => Object.values(c.cost).reduce((n, x)
 assert.equal(Math.min(...prices), 3, 'The cheapest cards cost exactly 5 of one resource');
 assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
 assert.equal(prices.reduce((n, p) => n + p, 0), 221, 'The retained designs keep their printed prices');
-assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
+assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
 
-// Setup: ten face-up cards from one 72-card supply that mixes both decks; target defaults to 40.
+// Setup: nine face-up cards (three per price tier) from 62 cards that mix both decks; target defaults to 40.
 {
-  const g = game(), { s } = g;
-  assert.equal(s.market.length, 10); assert.equal(s.market.length + s.advancedDeck.length, 62); assert.equal(s.victoryTarget, 40);
-  const supply = [...s.market, ...s.advancedDeck].map(c => c.key);
+  const g = game(), { s } = g, decks = Object.values(s.marketDecks).flat();
+  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 62); assert.equal(s.victoryTarget, 40);
+  const supply = [...s.market, ...decks].map(c => c.key);
   for (const key of Object.keys(cards)) assert.equal(supply.filter(k => k === key).length, 2, `${key} has two copies`);
   assert.equal(game({ victoryTarget: 30 }).s.victoryTarget, 30); assert.equal(game({ victoryTarget: 35 }).s.victoryTarget, 40, 'Unlisted targets fall back to 40');
   assert.equal(game({ newGameSettings: { victoryTarget: 60 } }).s.victoryTarget, 60, 'Table settings choose the target');
@@ -72,7 +72,7 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
   assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'novaBarrage'))), { matter: 3, energy: 7 }, 'The next purchase is at full price');
   act(g, 0, 'buy', a => a.key === 'novaBarrage');
   assert(p.military.some(c => c.id === 'nova')); assert(!p.discard.some(c => c.id === 'nova'), 'Military cards never enter discard');
-  assert.equal(s.market.length, 10, 'Each bought slot refills from the supply, back to ten cards');
+  assert.equal(s.market.length, 3, 'Each bought slot refills in place from its own tier deck (rules #market)');
   assert(g.adapter().legalActions(0).some(a => a.type === 'buy'), 'Affordable purchases remain legal after two buys');
 }
 // One-step orders: gains, draws, limits, Prestige, production, starter trash.
@@ -150,4 +150,4 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
   assert(sim.prestige(st.winner) >= 40); assert(st.round > 10, 'A 40-point game takes many rounds');
   assert(st.players.some(p => p.cardsPurchased >= 3), 'Rivals buy market cards'); assert(st.players.every(p => (p.storagePurchases || 0) >= 1), 'Every rival raises its limits');
 }
-console.log('Capacity Cards: 31 retained stable ids including three draw-two cards within starting limits, ten-card mixed market, military deck purchases, Buy cards and Wonders, one-step orders, printed Construct discounts, rival capacity targeting and a full 40-point rival game passed.');
+console.log('Capacity Cards: 31 retained stable ids including three draw-two cards within starting limits, nine-card tiered market, military deck purchases, Buy cards and Wonders, one-step orders, printed Construct discounts, rival capacity targeting and a full 40-point rival game passed.');

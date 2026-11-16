@@ -16,11 +16,12 @@ use std::time::{Duration, Instant};
 /// cutover never strands a running shared game. At a cutover, archive the
 /// outgoing engine (rules/vNN-*, with `include_str!` arms in `boot`) and add its
 /// revision here.
-pub const SHARED_RULES: [&str; 8] = [
+pub const SHARED_RULES: [&str; 9] = [
     RULES,
     "galactic-reach/34.39",
     "galactic-reach/35.40",
     "galactic-reach/36.41",
+    "galactic-reach/37.42",
     "galactic-reach/33.38",
     "galactic-reach/32.37",
     "galactic-reach/31.36",
@@ -30,7 +31,7 @@ pub const SHARED_RULES: [&str; 8] = [
 pub fn shared_rules(rules: &str) -> Option<&'static str> {
     SHARED_RULES.iter().find(|r| **r == rules).copied()
 }
-pub const RULES: &str = "galactic-reach/37.42";
+pub const RULES: &str = "galactic-reach/38.43";
 /// How many rules-changing (`compat: breaking`) entries were pending in
 /// `changes/` when this was built (see build.rs). A dev build of `main` names its
 /// rules [`dev_rules`], so each breaking merge starts a new dev revision and a dev
@@ -66,7 +67,7 @@ fn intern(rules: &str) -> &'static str {
     name
 }
 /// Player-facing name of the current rules, as printed on the rulebook masthead.
-pub const EXPERIMENT: &str = "Integrated Playtest";
+pub const EXPERIMENT: &str = "Construct III Playtest";
 mod legacy_v1;
 mod legacy_v10;
 mod legacy_v11;
@@ -137,6 +138,7 @@ impl GalacticReach {
             "galactic-reach/34.39" => "galactic-reach/34.39",
             "galactic-reach/35.40" => "galactic-reach/35.40",
             "galactic-reach/36.41" => "galactic-reach/36.41",
+            "galactic-reach/37.42" => "galactic-reach/37.42",
 
             "galactic-reach/33.38" => "galactic-reach/33.38",
             "galactic-reach/4.9" => "galactic-reach/4.9",
@@ -361,6 +363,7 @@ impl GalacticReach {
                         "galactic-reach/34.39" => include_str!("../rules/v34-adapter.js"),
                         "galactic-reach/35.40" => include_str!("../rules/v35-adapter.js"),
                         "galactic-reach/36.41" => include_str!("../rules/v36-adapter.js"),
+                        "galactic-reach/37.42" => include_str!("../rules/v37-adapter.js"),
                         "galactic-reach/16.21" => include_str!("../rules/v16-adapter.js"),
                         "galactic-reach/15.20" => include_str!("../rules/v15-adapter.js"),
                         "galactic-reach/14.19" => include_str!("../rules/v14-adapter.js"),
@@ -401,6 +404,7 @@ impl GalacticReach {
                         "galactic-reach/34.39" => include_str!("../rules/v34-app.js"),
                         "galactic-reach/35.40" => include_str!("../rules/v35-app.js"),
                         "galactic-reach/36.41" => include_str!("../rules/v36-app.js"),
+                        "galactic-reach/37.42" => include_str!("../rules/v37-app.js"),
                         "galactic-reach/16.21" => include_str!("../rules/v16-app.js"),
                         "galactic-reach/15.20" => include_str!("../rules/v15-app.js"),
                         "galactic-reach/14.19" => include_str!("../rules/v14-app.js"),
@@ -1333,9 +1337,22 @@ impl BuiltinAgent {
                     -20.0
                 }
             }
+            // Current engines expose this choice; archived observations never do.
+            "construct_draw" => {
+                if view["constructDrawOnly"] == true
+                    && (number(&me["deckCount"]) > 0.0
+                        || me["discard"]
+                            .as_array()
+                            .is_some_and(|cards| !cards.is_empty()))
+                {
+                    12.0
+                } else {
+                    -10.0
+                }
+            }
             "colonize" => 160.0,
             "build" | "second_build" | "colony_build" => {
-                match action["kind"].as_str().unwrap_or("") {
+                let value = match action["kind"].as_str().unwrap_or("") {
                     "starbase" => {
                         if bot_yards(view, seat) == 0 {
                             110.0
@@ -1414,6 +1431,24 @@ impl BuiltinAgent {
                             8.0
                         }
                     }
+                };
+                // Keep old policy scores byte-for-byte equivalent on archived engines.
+                if view["constructDrawOnly"] == true && action["type"] == "build" {
+                    let key = action["key"].as_str().unwrap_or("");
+                    let card = me["hand"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .find(|c| c["id"] == action["card"]);
+                    let bonus = match view["cardStats"][key]["buildDiscount"].as_str() {
+                        Some("free") => 0.75,
+                        Some("each") => 0.5,
+                        _ if key == "construct" && card.is_some_and(|c| c["level"] == 3) => 0.25,
+                        _ => 0.0,
+                    };
+                    value + bonus
+                } else {
+                    value
                 }
             }
             "resource" => {
@@ -1838,12 +1873,14 @@ impl BuiltinAgent {
                 number(&me["resources"][resource]) - number(&reserve[resource])
                     + number(&action["amount"]) * 0.01
             }
-            // Policy 26 (30.35 #buy): trash candidates come from discard or from play.
+            // #buy: trash candidates come from discard, from play or from hand, scored
+            // alike. Older rules never offer a hand card, so their games play as before.
             "decommission" => {
                 let card = me["discard"]
                     .as_array()
                     .into_iter()
                     .chain(me["inPlay"].as_array())
+                    .chain(me["hand"].as_array())
                     .flatten()
                     .find(|c| c["id"] == action["card"])
                     .unwrap();
@@ -2036,6 +2073,32 @@ mod tests {
         );
         assert_eq!(Strategy::Economy.version(), "gr-economy/29");
     }
+    #[test]
+    fn construct_iii_draw_choice_and_equivalent_card_preference() {
+        let mut view = strategic_view();
+        view["constructDrawOnly"] = json!(true);
+        view["players"][0]["deckCount"] = json!(1);
+        view["players"][0]["discard"] = json!([]);
+        view["players"][0]["hand"] = json!([
+            {"id":"ii","key":"construct","starter":true,"upgraded":true,"level":2},
+            {"id":"iii","key":"construct","starter":true,"upgraded":true,"level":3}
+        ]);
+        view["fleets"] = json!({});
+        let agent = BuiltinAgent::new(Strategy::Military, [29; 32]);
+        let draw = json!({"type":"construct_draw","card":"iii","key":"construct"});
+        let ii =
+            json!({"type":"build","card":"ii","key":"construct","kind":"settler","coord":"-1,0"});
+        let iii =
+            json!({"type":"build","card":"iii","key":"construct","kind":"settler","coord":"-1,0"});
+        assert!(agent.score(&view, &iii) > agent.score(&view, &ii));
+        assert!(agent.score(&view, &ii) > agent.score(&view, &draw));
+        assert!(agent.score(&view, &draw) > agent.score(&view, &json!({"type":"pass"})));
+        view["players"][0]["deckCount"] = json!(0);
+        assert!(agent.score(&view, &draw) < 0.0);
+        view["constructDrawOnly"] = json!(false);
+        assert_eq!(agent.score(&view, &iii), agent.score(&view, &ii));
+    }
+
     #[test]
     fn strategic_defense_targets_colonies_and_retains_a_guard() {
         let mut view = strategic_view();
@@ -2340,6 +2403,21 @@ mod tests {
             "With no surplus a rival trashes nothing"
         );
     }
+    #[test]
+    fn decommission_scores_hand_cards() {
+        // #buy: a card still in hand when Buy began may be trashed, with the same priority
+        // as the same card in discard.
+        let agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let mut view = strategic_view();
+        let surplus = json!([{"id":"m1","key":"move","starter":true}]);
+        view["players"][0]["deckContents"] = json!([{"key":"move","count":7}]);
+        let trash = json!({"type":"decommission","card":"m1","resource":"matter"});
+        view["players"][0]["hand"] = surplus.clone();
+        let from_hand = agent.score(&view, &trash);
+        view["players"][0]["hand"] = json!([]);
+        view["players"][0]["discard"] = surplus;
+        assert_eq!(from_hand, agent.score(&view, &trash));
+    }
 
     #[test]
     fn current_agents_bootstrap_data_before_explorers() {
@@ -2391,6 +2469,7 @@ mod tests {
             "galactic-reach/34.39",
             "galactic-reach/35.40",
             "galactic-reach/36.41",
+            "galactic-reach/37.42",
         ] {
             let game = GalacticReach::with_rules([19; 32], rules).unwrap();
             assert_eq!(game.rules_version(), rules);
@@ -2431,6 +2510,7 @@ mod tests {
                             | "galactic-reach/34.39"
                             | "galactic-reach/35.40"
                             | "galactic-reach/36.41"
+                            | "galactic-reach/37.42"
                     ) {
                         0
                     } else {
@@ -2485,6 +2565,10 @@ mod tests {
         assert!(me.get("deck").is_none());
         assert!(me.get("militaryDeck").is_none());
         assert!(before.get("advancedDeck").is_none());
+        // Rules #market-tiers: nine public cards, three per price row, and no market deck order.
+        assert_eq!(before["market"].as_array().unwrap().len(), 9);
+        assert_eq!(before["marketCosts"].as_array().unwrap().len(), 9);
+        assert!(before.get("marketDecks").is_none());
         assert_eq!(before["planets"].as_object().unwrap().len(), 91);
         assert!(
             before["planets"]

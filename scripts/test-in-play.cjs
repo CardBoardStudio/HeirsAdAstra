@@ -138,7 +138,7 @@ for(const [file,hash] of Object.entries(JSON.parse(read('scripts/capacity-cards-
  p.hand=[];action(g,'pass');assert(g.adapter().legalActions(0).some(a=>a.type==='buy'&&a.source==='basic'),'30.35 tables still sell basic cards');
 }
 {
- const g=game(),{s}=g;assert.equal(g.adapter().rulesVersion,'galactic-reach/37.42');assert.equal(s.market.length,10,'32.37 shows ten market cards');assert.equal(s.victoryTarget,40);
+ const g=game(),{s}=g;assert.equal(g.adapter().rulesVersion,'galactic-reach/38.43');assert.equal(s.market.length,9,'The tiered market shows three cards in each of three price rows');assert.equal(s.victoryTarget,40);
 }
 
 // 33.38 preserves the exact published 32.37 whole-group engine and client assets.
@@ -147,3 +147,6 @@ for(const [file,hash] of Object.entries(JSON.parse(read('scripts/split-moves-arc
 // 34.39 preserves the exact published 33.38 Split Moves engine and client assets.
 assert.equal(replayRoutes['galactic-reach/33.38'],'/galactic-reach/rules/33.38/');
 for(const [file,hash] of Object.entries(JSON.parse(read('scripts/balance-package-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,`${file} must stay the published 33.38 asset`);
+
+// #buy: hand cards join Decommission (CI runs that suite through this in-play Buy suite).
+require('./test-trash-hand.cjs');
