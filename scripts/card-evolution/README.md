@@ -111,4 +111,4 @@ Promotion is a normal rules change, decided by the captain, never by the study:
 - `scoring.cjs`: per-card stats, scores, dominance, survivor selection.
 - `report.cjs`: `report.md`, shortlist files.
 - `default.config.json`: every setting, with the defaults above.
-- Test: `scripts/test-card-evolution.cjs` (runs in CI).
+- Test: `node scripts/test-card-evolution.cjs` (about 15 s).
