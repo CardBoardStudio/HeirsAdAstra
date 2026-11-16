@@ -5,7 +5,7 @@ function game(prefix='prototypes/galactic-reach/',seed=17){const c=vm.createCont
 function terrain(a,seat){const view=a.observe(seat);return plain({planets:view.planets,clusters:view.clusters});}
 {
  const g=game();assert.equal(g.a.rulesVersion,'galactic-reach/38.43');assert.equal(g.s.version,38);assert.equal(g.s.rulesRevision,43);
- assert.equal(g.s.visibilityRevision,4);assert.equal(g.e.moonLayoutCount(),2225);assert.equal(g.s.clusters.length,17);
+ assert.equal(g.s.visibilityRevision,4);assert.equal(g.e.moonLayoutCount(),2071);assert.equal(g.s.clusters.length,17);
  for(let seat=0;seat<4;seat++){
   const view=g.a.observe(seat);assert.equal(Object.keys(view.planets).length,91);
   for(const world of g.s.clusters.filter(c=>c.kind==='world'))for(const key of world.coords){

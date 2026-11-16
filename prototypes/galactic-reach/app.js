@@ -497,7 +497,7 @@ function createGalacticReach(options = {}) {
   }
 
   function centralTerrainPositions() {
-    const slots=[[9,-9],[-9,9],[6,-3],[3,-6],[-3,-3],[-6,3],[-3,6],[3,3]], edge=BOARD_RADIUS-1;
+    const slots=[[8,-8],[-8,8],[6,-3],[3,-6],[-3,-3],[-6,3],[-3,6],[3,3]], edge=BOARD_RADIUS-1;
     const homes=[[-edge,0],[0,-edge],[edge,0],[0,edge]];
     return {worlds:[...shuffled(slots,'world-positions'),[0,0]],moons:randomizedMoonPositions([...homes,...slots,[0,0]],homes)};
   }
