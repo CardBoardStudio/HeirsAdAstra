@@ -389,7 +389,10 @@ const MEASURE = `(() => {
         const apart = (h, o) => Math.max(o.left - h.right, h.left - o.right, o.top - h.bottom, h.top - o.bottom, 0);
         const gaps = [['region left', Math.min(...hexes.map(h => h.left)) - r.left], ['region top', Math.min(...hexes.map(h => h.top)) - r.top], ['region bottom', r.bottom - Math.max(...hexes.map(h => h.bottom))],
           ...panels.map(e => { const o = e.getBoundingClientRect(); return [label(e).slice(0, 40), Math.min(...hexes.map(h => apart(h, o)))]; })];
-        const [near, snug] = gaps.reduce((a, g) => g[1] < a[1] ? g : a), slack = Math.max(16, 0.03 * b.width);
+        // The fit keeps a 6-unit gap and searches sizes in 1% steps (and a few heights), so "snug"
+        // allows that gap, two steps and a few pixels.
+        const zoomNow = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
+        const [near, snug] = gaps.reduce((a, g) => g[1] < a[1] ? g : a), slack = 6 * zoomNow + 0.02 * b.width + 6;
         if (!(snug <= slack)) problems.push('map not snug: ' + Math.round(snug) + 'px from the nearest panel or edge, ' + near + ' (allowed ' + Math.round(slack) + 'px)' + ' ' + JSON.stringify(gaps.map(g => [g[0].slice(0, 18), Math.round(g[1])])) + ' region ' + [r.left, r.top, r.width, r.height].map(Math.round) + ' board ' + [b.left, b.top, b.width, b.height].map(Math.round));
       }
     } else if (b.width < 0.85 * limit) problems.push('map too small: ' + Math.round(b.width) + 'px of a ' + Math.round(limit) + 'px space');
