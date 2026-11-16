@@ -2578,7 +2578,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
    stays big. ==== */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
   .table-wide #market-row { grid-template-columns: repeat(var(--mcols, 5), minmax(0, 1fr)) !important; grid-auto-rows: auto !important; align-content: start; gap: 6px !important; }
-  .table-wide .market-cards #market-row > .game-card { justify-self: center; align-self: start !important; width: calc(var(--mcard-h, 140px) * 63 / 88); }
+  .table-wide .market-cards #market-row > .game-card { justify-self: stretch; align-self: start !important; width: auto; }
   .table-wide .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) { height: var(--mcard-h, 140px) !important; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto !important; }
   /* The effect takes exactly the height left under the name and price, so it never runs past
      the card; a line cut short fades out. */
@@ -2621,4 +2621,36 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .upgrade-group #upgrade-market { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
   .upgrade-group #upgrade-market .game-card { min-height: 0; padding: 6px 7px; }
   .upgrade-group #upgrade-market :is(.card-art, .card-lore, .card-limit-note) { display: none; }
+}
+
+/* ==== Your hand as a fanned hand of cards: each card shows only a narrow strip along its left
+   edge (cost, name and a one-line summary, left-aligned), the cards overlap heavily, and the
+   hand sits low so the map gets the height. Point at, focus or tap a card to lift it whole. ==== */
+@media (min-width: 600px) and (min-height: 600px) {
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell, .app-shell.app-shell:has(#hand-row > :nth-child(7)) { --front-h: 96px !important; }
+  /* Each card shows a strip of up to 92 units, less when a big hand must fit the row. */
+  #hand-row { --top-w: 210px !important; --strip-w: 92px; --step: min(calc(var(--strip-w) - var(--top-w)), calc((100cqw - var(--top-w)) / (var(--n) - 1) - var(--top-w))) !important; }
+  #hand-row .game-card:not(:hover):not(:focus-within) {
+    grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "type" "cost" "gain" "name" "head" "effect" "buttons" "note" !important; grid-template-rows: none !important; grid-auto-rows: auto;
+    align-content: start; row-gap: 2px !important; padding-top: 6px !important; padding-left: 8px !important;
+  }
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-footer { grid-row: auto !important; justify-self: start; }
+  /* Resting cards keep their buttons focusable but out of the strip (focus lifts the card). */
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-buttons { position: absolute !important; width: 1px; height: 1px; margin: 0 !important; overflow: hidden; clip-path: inset(50%); }
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-limit-note,
+  #hand-row .game-card:not(:hover):not(:focus-within):has(.card-headline) .card-effect { display: none !important; }
+  /* A card without a one-line summary shows its effect as one line instead. */
+  #hand-row .game-card:not(:hover):not(:focus-within):not(:has(.card-headline)) .card-effect { display: block !important; font-size: 11px !important; line-height: 1.15 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 !important; }
+  #hand-row .game-card:not(:hover):not(:focus-within) :is(.card-name, .card-headline) { font-size: 12.5px !important; line-height: 1.15 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-headline { font-size: 11px !important; font-weight: 600; }
+  /* Overlap is the fan; a tilt would push corners past the table's edge. */
+  #hand-row > .game-card { --cf-fan: 0deg !important; }
+  /* The last card shows whole, so its text can use the full width. */
+  #hand-row .game-card:last-child:not(:hover):not(:focus-within) { padding-right: 8px !important; }
+}
+/* Upright, the turn's buttons move up beside the turn prompt (between the comms card and the
+   mat), clear of where a lifted hand card rises. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  #hand-panel .hand-tools { grid-column: 2 !important; grid-row: 6 !important; align-self: end !important; justify-self: stretch !important; flex-wrap: wrap; justify-content: flex-start; gap: 6px; margin: 0 0 6px !important; }
+  .console-nav { align-self: center !important; margin: 0 !important; }
 }

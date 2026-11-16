@@ -457,11 +457,13 @@ async function runCase(browser, origin, testCase, [width, height]) {
   if (testCase.drag) {
     // Point at the card first, as a player does; it lifts. Then press where the case says:
     // anywhere on the card, its buttons included, must pick it up.
-    const card = await centre(testCase.drag);
+    // A held hand fans its cards, so point at the strip each card shows along its left edge.
+    const card = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(testCase.drag)}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 36), y: r.top + Math.min(r.height / 2, 30) }; })()`);
     if (!card) return [`could not find ${testCase.drag}`];
     await mouse('mouseMoved', card.x, card.y);
     await browser.evaluate('new Promise(r => setTimeout(r, 300))');
-    const from = testCase.grab ? await centre(`${testCase.drag} ${testCase.grab}`) : await centre(testCase.drag);
+    // Touch has no hover to lift the card, so press on its visible strip too.
+    const from = testCase.grab ? await centre(`${testCase.drag} ${testCase.grab}`) : testCase.device ? card : await centre(testCase.drag);
     if (!from) return [`could not find ${testCase.grab} on ${testCase.drag}`];
     await mouse('mouseMoved', from.x, from.y); await mouse('mousePressed', from.x, from.y);
     for (let i = 1; i <= 3; i++) await mouse('mouseMoved', from.x, from.y - 6 * i);

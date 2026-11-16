@@ -4733,10 +4733,12 @@ function createGalacticReach(options = {}) {
     if (!width || !height || !count) return;
     const best = [3, 4, 5].map(cols => {
       const rows = Math.ceil(count / cols);
-      return { cols, h: Math.min((width - (cols - 1) * gap) / cols * 88 / 63, (height - (rows - 1) * gap) / rows) };
+      const rowH = (height - (rows - 1) * gap) / rows;
+      return { cols, rowH, h: Math.min((width - (cols - 1) * gap) / cols * 88 / 63, rowH) };
     }).reduce((a, b) => b.h > a.h ? b : a);
+    // The layout closest to real cards wins; its cards then fill their cells, leaving no gaps.
     row.style.setProperty('--mcols', String(best.cols));
-    row.style.setProperty('--mcard-h', `${Math.floor(best.h)}px`);
+    row.style.setProperty('--mcard-h', `${Math.floor(best.rowH)}px`);
   }
 
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
