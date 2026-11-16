@@ -193,12 +193,25 @@ async fn private_views_never_hold_another_seats_hand_or_deck_order() {
             .iter()
             .all(|c| c == &json!({"hidden":true}))
     );
+    // Rules #market-tiers: each of the three market decks keeps its size but hides its order.
+    let decks = bo["state"]["marketDecks"].as_object().unwrap();
+    assert_eq!(
+        decks.keys().collect::<Vec<_>>(),
+        ["cheap", "expensive", "medium"]
+    );
     assert!(
-        bo["state"]["advancedDeck"]
-            .as_array()
-            .unwrap()
-            .iter()
+        decks
+            .values()
+            .flat_map(|deck| deck.as_array().unwrap())
             .all(|c| c == &json!({"hidden":true}))
+    );
+    assert_eq!(
+        decks
+            .values()
+            .map(|deck| deck.as_array().unwrap().len())
+            .sum::<usize>()
+            + bo["state"]["market"].as_array().unwrap().len(),
+        62
     );
     // A seat's own deck is listed without its order.
     let deck: Vec<&str> = bo["state"]["players"][1]["deck"]

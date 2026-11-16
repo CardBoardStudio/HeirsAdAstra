@@ -157,7 +157,11 @@ function sharedView(state) {
 }
 
 const longHand = ['move', 'construct', ...MARKET.filter(c => c.code.startsWith('N')).slice(0, 6).map(c => c.key)];
-const chunks = [0, 10, 20, 26].map(start => MARKET.slice(start, start + 10).map(c => c.key));
+// A real market is three cards from each price row (rulebook #market-tiers). Four pages cycle every
+// design through its row, heaviest text first, so page 1 is each row's worst case.
+const { MARKET_TIERS, marketTier } = vm.runInContext(source + ';createGalacticReach({catalog:true})', vm.createContext({}));
+const byTier = MARKET_TIERS.map(tier => MARKET.filter(c => marketTier(c.key) === tier.id));
+const chunks = [0, 1, 2, 3].map(page => byTier.flatMap(row => [0, 1, 2].map(n => row[(page * 3 + n) % row.length].key)));
 
 // Each case: a save to load, then optional page actions before measuring.
 const CASES = [
