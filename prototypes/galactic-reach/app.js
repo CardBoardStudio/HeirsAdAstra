@@ -3654,8 +3654,7 @@ function createGalacticReach(options = {}) {
     if (replayMode) return;
     const enabled = canManageResources(ME);
     const player = state.players[ME];
-    $('#resource-tools-help').textContent = enabled ? 'Trade with the bank during Operations or Buy, including off turn. Voluntary discards use your own turn.' : 'Available during Operations or Buy, including off turn.';
-    $('#discard-resource-type').disabled = !enabled || state.activePlayer!==ME;
+    $('#resource-tools-help').textContent = enabled ? 'Trade with the bank during Operations or Buy, including off turn.' : 'Available during Operations or Buy, including off turn.';
     for (const side of ['give','get']) for (const resource of RESOURCES) {
       const button = $(`#bank-${side}-${resource}`);
       button.disabled = !enabled;
@@ -3666,10 +3665,6 @@ function createGalacticReach(options = {}) {
       ? `${resourceDots({[give]:4})}<span aria-hidden="true">→</span>${resourceDots({[get]:1})}${give===get?'<span>Choose two different resources.</span>':enabled&&player.resources[give]<4?`<span>You need 4 ${RESOURCE_NAMES[give]}.</span>`:''}`
       : '<span>Choose one resource on each side.</span>';
     $('#bank-exchange-button').disabled = !canBankTrade(ME,give,get);
-    const resource = $('#discard-resource-type').value, amount = Number($('#discard-resource-amount').value);
-    $('#discard-resource-amount').max = player.resources[resource] || 0;
-    $('#discard-resource-amount').disabled = !enabled || state.activePlayer!==ME;
-    $('#discard-resource-button').disabled = !enabled || state.activePlayer!==ME || !Number.isInteger(amount) || amount < 1 || amount > (player.resources[resource] || 0);
   }
 
 
@@ -3709,7 +3704,7 @@ function createGalacticReach(options = {}) {
         ${mine ? `<button type="button" class="mat-pips now" data-mat-trade="${resource}" aria-label="${label}. Trade 4 ${RESOURCE_NAMES[resource]} with the bank: choose this, then the resource to receive, or Discard">${nowRow}</button>` : `<span class="mat-pips now" aria-hidden="true">${nowRow}</span>`}
         <strong class="resource-amount" aria-hidden="true">${have}</strong><span class="resource-limit" aria-hidden="true">/${cap}</span>
       </article>`;
-    }).join('') + (mine ? `<button type="button" class="mat-discard" data-mat-discard aria-label="Discard one of the chosen resource">Discard</button>` : '');
+    }).join('');
     matSeen[viewSeat] = Object.fromEntries(RESOURCES.map(resource => [resource, { have: player.resources[resource], cap: limits[resource], next: production[resource] }]));
     const upgrade = $('#upgrade-storage-button');
     upgrade.disabled = !canIncreaseStorage(ME);
@@ -4480,12 +4475,11 @@ function createGalacticReach(options = {}) {
   }
 
   // Bank trades on the mat: drag from one resource's Now row onto another resource (4 for 1, the
-  // same bankTrade the bank form used), or onto Discard to discard one. Tap or Enter on a Now row,
-  // then on the target, does the same without dragging. Legality is exactly bankTrade's.
+  // same bankTrade the bank form used). Tap or Enter on a Now row, then on the target, does the
+  // same without dragging. Legality is exactly bankTrade's.
   function matTradeCheck(give, get) {
     const me = state.players[ME];
     if (!canManageResources(ME)) return { ok: false, text: 'Trade with the bank during Operations or Buy' };
-    if (get === 'discard') return state.activePlayer === ME && me.resources[give] > 0 ? { ok: true, text: `Discard 1 ${RESOURCE_NAMES[give]}` } : { ok: false, text: state.activePlayer === ME ? `No ${RESOURCE_NAMES[give]} to discard` : 'Discard on your own turn' };
     if (!get || get === give) return { ok: false, text: '' };
     if (me.resources[give] < 4) return { ok: false, text: `Needs 4 ${RESOURCE_NAMES[give]} (you have ${me.resources[give]})` };
     const full = me.resources[get] >= resourceLimits(ME)[get];
@@ -4494,11 +4488,10 @@ function createGalacticReach(options = {}) {
   function matTradeDo(give, get) {
     const check = matTradeCheck(give, get);
     if (!check.ok) { if (check.text) toast(check.text); return false; }
-    return get === 'discard' ? discardResources(ME, give, 1) : bankTrade(ME, give, get);
+    return bankTrade(ME, give, get);
   }
   function matTargetAt(x, y) {
     const hit = document.elementFromPoint(x, y);
-    if (hit?.closest('[data-mat-discard]')) return 'discard';
     return hit?.closest('#resource-grid .resource-box')?.dataset.resource || null;
   }
   function matMarkTargets(give) {
@@ -4507,7 +4500,6 @@ function createGalacticReach(options = {}) {
       box.classList.toggle('mat-target', box.dataset.resource !== give && check.ok);
       box.classList.toggle('mat-blocked', box.dataset.resource !== give && !check.ok);
     });
-    $('[data-mat-discard]')?.classList.toggle('mat-target', matTradeCheck(give, 'discard').ok);
   }
   function matClear() {
     $$('#resource-grid .mat-target, #resource-grid .mat-blocked, #resource-grid .mat-hover, #resource-grid .mat-picked').forEach(el => el.classList.remove('mat-target', 'mat-blocked', 'mat-hover', 'mat-picked'));
@@ -4545,7 +4537,7 @@ function createGalacticReach(options = {}) {
       if (ghost) ghost.style.transform = `translate(${event.clientX - 14}px, ${event.clientY - 30}px)`;
       const target = matTargetAt(event.clientX, event.clientY);
       $$('#resource-grid .mat-hover').forEach(el => el.classList.remove('mat-hover'));
-      (target === 'discard' ? $('[data-mat-discard]') : target ? $(`#resource-grid .resource-box[data-resource="${target}"]`) : null)?.classList.add('mat-hover');
+      (target ? $(`#resource-grid .resource-box[data-resource="${target}"]`) : null)?.classList.add('mat-hover');
       matLabel(target && target !== press.give ? matTradeCheck(press.give, target).text : '', event.clientX, event.clientY);
     });
     const finish = event => {
@@ -4560,22 +4552,18 @@ function createGalacticReach(options = {}) {
     };
     document.addEventListener('pointerup', finish);
     document.addEventListener('pointercancel', () => { press = null; if (dragging) { dragging = false; matClear(); } });
-    // Tap or keyboard: choose a Now row, then the resource to receive (or Discard).
+    // Tap or keyboard: choose a Now row, then the resource to receive.
     grid.addEventListener('click', event => {
       if (grid.dataset.dragged) { delete grid.dataset.dragged; return; }
-      const row = event.target.closest?.('[data-mat-trade]'), discard = event.target.closest?.('[data-mat-discard]');
+      const row = event.target.closest?.('[data-mat-trade]');
       // Once a resource is chosen, a tap anywhere on another resource's band receives it.
       const band = event.target.closest?.('#resource-grid .resource-box');
       if (!row && matPick && band && band.dataset.resource !== matPick) { const from = matPick; matClear(); matTradeDo(from, band.dataset.resource); return; }
       if (row) {
         const give = row.dataset.matTrade;
-        if (!matPick) { matPick = give; row.closest('.resource-box').classList.add('mat-picked'); matMarkTargets(give); matLabel(`Trade from ${RESOURCE_NAMES[give]}: choose the resource to receive, or Discard`); return; }
+        if (!matPick) { matPick = give; row.closest('.resource-box').classList.add('mat-picked'); matMarkTargets(give); matLabel(`Trade from ${RESOURCE_NAMES[give]}: choose the resource to receive`); return; }
         if (matPick === give) { matClear(); return; }
         const from = matPick; matClear(); matTradeDo(from, give); return;
-      }
-      if (discard) {
-        if (!matPick) { toast('Choose a resource on your mat first, then Discard.'); return; }
-        const from = matPick; matClear(); matTradeDo(from, 'discard');
       }
     });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && matPick) matClear(); });
@@ -4789,20 +4777,12 @@ function createGalacticReach(options = {}) {
         renderResourceTools();
       });
     }
-    $('#discard-resource-type').innerHTML = RESOURCES.map(resource => `<option value="${resource}">${RESOURCE_NAMES[resource]}</option>`).join('');
-    $('#discard-resource-type').addEventListener('change',renderResourceTools);
-    $('#discard-resource-type').value = 'matter';
-    $('#discard-resource-amount').addEventListener('input',renderResourceTools);
     setupMatTrades();
     setupPhoneCardSheet();
     setupLogCard();
     $('#bank-trade-form').addEventListener('submit',event => {
       event.preventDefault();
       bankTrade(ME,bankSelection.give,bankSelection.get);
-    });
-    $('#discard-resource-form').addEventListener('submit',event => {
-      event.preventDefault();
-      discardResources(ME,$('#discard-resource-type').value,Number($('#discard-resource-amount').value));
     });
     window.addEventListener('resize',positionSectorScan);
     fitTable();

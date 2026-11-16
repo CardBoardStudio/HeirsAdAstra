@@ -125,7 +125,7 @@ function piecesState() {
   });
   return state;
 }
-// Bank trades on the mat: 5 Matter to give, room for Data, Biomass to discard.
+// Bank trades on the mat: 5 Matter to give and room for Data.
 function matTradeState() {
   const state = operationsState(['move', 'construct']);
   state.players[0].resources = { matter: 5, energy: 2, biomass: 3, data: 1 };
@@ -173,7 +173,7 @@ const CASES = [
   // Phones: the Table drawer is the Prestige track (elsewhere the drawer button does nothing).
   { name: 'standings track (Table drawer on phones)', save: midGameState(), click: ['.phone-drawers [data-drawer="table"]'], devices: true },
   // The bank lies open at the table; choosing both sides fills its preview line.
-  { name: 'bank & discards, exchange chosen', save: midGameState(), click: ['#bank-give-biomass', '#bank-get-data'] },
+  { name: 'bank panel, exchange chosen', save: midGameState(), click: ['#bank-give-biomass', '#bank-get-data'] },
   // The first and last hand cards raised: they rise over the map, clear of the bank and the piles.
   { name: 'operations, first hand card raised (bank open)', save: midGameState(), focus: '#hand-row .game-card:first-child button' },
   { name: 'operations, last hand card raised', save: midGameState(), focus: '#hand-row .game-card:last-child button' },
@@ -187,10 +187,9 @@ const CASES = [
   { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
   { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
   { name: 'map pieces on every terrain', save: piecesState() },
-  // Trading with the bank on the mat: drag (mouse, and touch on iPads), tap then tap, and discard.
+  // Trading with the bank on the mat: drag (mouse, and touch on iPads), and tap then tap.
   { name: 'mat: drag Matter onto Data trades 4 for 1', save: matTradeState(), matTrade: { from: 'matter', to: 'data', how: 'drag', expect: { matter: -4, data: 1 } }, devices: 'tablet' },
   { name: 'mat: tap Matter, then Data', save: matTradeState(), matTrade: { from: 'matter', to: 'data', how: 'tap', expect: { matter: -4, data: 1 } } },
-  { name: 'mat: drag Biomass onto Discard', save: matTradeState(), matTrade: { from: 'biomass', to: 'discard', how: 'drag', expect: { biomass: -1 } } },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'], buyVisible: true, extraSizes: i === 0 })),
   // Buy with an empty hand (everything converted or played): the market and Finish Buy must show.
@@ -467,7 +466,7 @@ async function runCase(browser, origin, testCase, [width, height]) {
     const stock = () => browser.evaluate('Object.fromEntries([...document.querySelectorAll("#resource-grid .resource-box")].map(b => [b.dataset.resource, +b.querySelector(".resource-amount").textContent]))');
     const before = await stock();
     const a = await centre(`#resource-grid .resource-box[data-resource="${from}"] .mat-pips.now`);
-    const b = await centre(to === 'discard' ? '#resource-grid [data-mat-discard]' : `#resource-grid .resource-box[data-resource="${to}"]`);
+    const b = await centre(`#resource-grid .resource-box[data-resource="${to}"]`);
     if (!a || !b) return ['mat trade: could not find the rows'];
     if (how === 'drag') {
       await mouse('mouseMoved', a.x, a.y); await mouse('mousePressed', a.x, a.y);
