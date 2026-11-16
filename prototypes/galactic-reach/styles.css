@@ -2590,3 +2590,35 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .table-wide #market-row .card-footer .resource-symbol { width: 12px !important; height: 12px !important; }
   .table-wide #market-row .card-footer .resource-chip strong { font-size: 12px !important; }
 }
+
+/* ==== Upgrades lie directly above your mat: the starter upgrades and Add 4 capacity as cards of
+   the same kind, each with its current price, and Trash a card during Buy. The +4 token on the
+   mat is gone. ==== */
+.storage-upgrade-control { display: none !important; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .upgrade-group { flex: none; min-height: 0; margin: 0; }
+  .upgrade-group #upgrade-market { grid-template-columns: 18px repeat(3, minmax(0, 1fr)) !important; }
+  .capacity-offer .each-dots { display: inline-flex; gap: 2px; margin-left: 4px; vertical-align: middle; }
+  .capacity-offer .each-dots i { width: 6px; height: 6px; border-radius: 50%; }
+  .capacity-offer .each-dots i.matter { background: var(--matter); }
+  .capacity-offer .each-dots i.energy { background: var(--energy); }
+  .capacity-offer .each-dots i.biomass { background: var(--biomass); }
+  .capacity-offer .each-dots i.data { background: var(--data); }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  #hand-panel .hand-tools { grid-row: 5 !important; }
+  .upgrade-group { grid-column: 3 !important; grid-row: 6 !important; align-self: end; margin-top: 6px; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  #relics-panel, #relics-panel[hidden] { grid-column: 1 / 3 !important; }
+  .upgrade-group { grid-column: 3 !important; grid-row: 5 !important; align-self: end; }
+  .upgrade-group #upgrade-market { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .upgrade-group #upgrade-market::before { display: none; }
+}
+/* Phones: the group sits in the Mat drawer above the mat. */
+@media (max-width: 599px), (max-height: 599px) {
+  .upgrade-group { display: block; margin: 0 0 8px; }
+  .upgrade-group #upgrade-market { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .upgrade-group #upgrade-market .game-card { min-height: 0; padding: 6px 7px; }
+  .upgrade-group #upgrade-market :is(.card-art, .card-lore, .card-limit-note) { display: none; }
+}

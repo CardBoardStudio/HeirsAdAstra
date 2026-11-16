@@ -4117,9 +4117,17 @@ function createGalacticReach(options = {}) {
       const reason=!humanBuy?'Upgrade during your Buy turn.':!ready.length?'No upgradeable starter in hand, discard or in play.':!canPay?`Needs ${price} of one resource.`:'';
       const effect=`${upgradedOrderText({key})}${level===3?' Draws one card when used as an order.':''} No longer converts to resources.`;
       return `<button class="game-card upgrade-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-upgrade-offer="${key}" ${reason?`disabled title="${reason}"`:''} aria-label="Upgrade ${esc(def.name)} to level ${LEVEL_NAMES[level]} for ${price} of one resource; does not use a purchase${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Starter upgrade</span><span class="card-name">${def.name} ${LEVEL_NAMES[level]}</span>${cardIllustration(def)}<span class="card-effect">${effect}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price"><strong>${price}</strong> of one resource</span></span><span class="card-limit-note">${note}</span></button>`;
-    }).join('');
+    }).join('')+capacityOffer();
     $$('[data-upgrade-offer]').forEach(button=>button.addEventListener('click',()=>openUpgradeChoice(button.dataset.upgradeOffer)));
+    $('[data-capacity-offer]')?.addEventListener('click',()=>openStorageAllocation());
     if ($('#upgrade-dialog').open) renderUpgradeChoice();
+  }
+  // Add 4 capacity lies with the starter upgrades as a card of the same kind, showing its current
+  // price (the same amount of each resource). It opens the same split-the-points dialog.
+  function capacityOffer() {
+    const cost=storageUpgradeCost(ME);
+    const reason=!canManageResources(ME)?'Add capacity during Operations or Buy, including off turn.':!canIncreaseStorage(ME)?`Needs ${cost.matter} of each resource.`:'';
+    return `<button class="game-card upgrade-offer capacity-offer ${reason?'unavailable':''}" style="--card-accent:var(--gold)" data-capacity-offer ${reason?`disabled title="${reason}"`:''} aria-label="Add 4 capacity for ${cost.matter} of each resource${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Capacity</span><span class="card-name">Add 4 capacity</span><span class="card-effect">Split 4 points among your resource limits as you choose.</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price"><strong>${cost.matter}</strong> of each<span class="each-dots" aria-hidden="true">${RESOURCES.map(resource => `<i class="${resource}"></i>`).join('')}</span></span></span></button>`;
   }
   function openUpgradeChoice(key) {
     upgradeChoiceKey=key;
