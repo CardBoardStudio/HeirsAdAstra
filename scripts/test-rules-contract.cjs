@@ -40,6 +40,19 @@ const RULEBOOK = 'prototypes/galactic-reach/rulebook.html';
   assert.deepEqual(commit('Galactic Reach: Harbors refit Fleets\n\nFleets were stranded.'), ['body-why']);
   assert.deepEqual(commit('Galactic Reach: Harbors refit Fleets\n\nWhy: x.\n\nBREAKING CHANGE: y'), ['trailer-breaking']);
 
+  // The code rules (scripts/review-conventions-rules.mjs): one compatibility box
+  // ticked, matched by the changes/ entry. Entries are read from the checkout.
+  const template = fs.readFileSync(path.join(ROOT, '.github', 'pull_request_template.md'), 'utf8');
+  const tick = (text, choice) => text.replace(`- [ ] \`${choice}\``, `- [x] \`${choice}\``);
+  const repoRules = (text, files = []) => checkBody({ body: text, files }, advisory).map(f => f.rule).filter(r => ['playtest-compatibility', 'changes-entry'].includes(r));
+  const safeEntry = fs.readdirSync(path.join(ROOT, 'changes')).find(name => name !== 'README.md' && /compat: safe/.test(fs.readFileSync(path.join(ROOT, 'changes', name), 'utf8')));
+  assert.deepEqual(repoRules(template), ['playtest-compatibility'], 'An unticked template is reported');
+  assert.deepEqual(repoRules(tick(tick(template, 'playtest-safe'), 'playtest-breaking'), [`changes/${safeEntry}`]), ['playtest-compatibility'], 'Both boxes ticked is reported');
+  assert.deepEqual(repoRules(tick(template, 'playtest-safe')), []);
+  assert.deepEqual(repoRules(tick(template, 'playtest-breaking'), [`changes/${safeEntry}`]), ['changes-entry'], 'Breaking work needs a compat: breaking entry');
+  assert.deepEqual(repoRules(tick(template, 'playtest-safe') + '\n## Gameplay impact\nChanged: Harbors refit Fleets at the start of a turn.'), ['changes-entry'], 'Changed gameplay needs an entry');
+  assert.deepEqual(repoRules(tick(template, 'playtest-safe') + '\n## Gameplay impact\nChanged: Harbors refit Fleets at the start of a turn.', [`changes/${safeEntry}`]), []);
+
   // One pinned ref of the shared validator, everywhere it is named.
   const workflow = name => fs.readFileSync(path.join(ROOT, '.github', 'workflows', name), 'utf8');
   assert.equal(workflow('review-conventions.yml').match(/uses: (\S+)/)?.[1], `${REPOSITORY}/.github/workflows/review-conventions.yml@${PIN}`, 'The Review conventions workflow calls the pinned ref');
