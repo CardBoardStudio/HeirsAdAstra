@@ -1,0 +1,4 @@
+# Paths removed from every commit by scripts/history-slim/rewrite.sh (git filter-repo
+# --paths-from-file --invert-paths). They live in CardBoardStudio/galactic-reach-studies.
+analysis/
+docs/screenshots/
