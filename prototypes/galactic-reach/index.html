@@ -142,7 +142,7 @@
           </div>
         </div>
         <section class="upgrade-group market-cards" id="upgrade-group" aria-label="Upgrades">
-          <div class="upgrade-market" id="upgrade-market" role="group" aria-label="Upgrades: starter upgrades and Add 4 capacity"></div>
+          <div class="upgrade-market" id="upgrade-market" role="group" aria-label="Upgrades: starter upgrades, Capacity Modules and the Trash pile"></div>
           <button class="button" id="open-trash" type="button" hidden>Trash a card</button>
         </section>
         <div class="resource-grid" id="resource-grid"></div>
@@ -152,9 +152,11 @@
           <button id="in-play-button" type="button" title="Inspect used cards held outside discard until shared cleanup"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">In play</span> <strong id="in-play-count">0</strong></button>
           <button id="discard-button" type="button" title="Browse your discard pile"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Discard</span> <strong id="discard-count">0</strong></button>
         </div>
+        <!-- Rules #storage-pile: played Capacity Modules, on the mat where the +4 token was (its
+             former classes and ids keep that placement; the words are hidden on the desktop table). -->
         <div class="storage-upgrade-control">
-          <button class="button storage-upgrade-button" id="upgrade-storage-button" type="button" aria-describedby="storage-upgrade-help"><span>Add 4 capacity</span><span class="storage-each" id="storage-upgrade-each" aria-hidden="true"></span><span id="storage-upgrade-cost"></span></button>
-          <p class="muted" id="storage-upgrade-help">Choose how to split 4 points among your resource limits. Pay during Operations or Buy, including off turn.</p>
+          <button class="button storage-upgrade-button" id="storage-pile" type="button" aria-label="Storage pile: 0 Capacity Modules" aria-describedby="storage-upgrade-help"><b aria-hidden="true">▤</b><strong id="storage-pile-count">0</strong><span id="storage-upgrade-cost">in Storage</span></button>
+          <p class="muted" id="storage-upgrade-help">Storage pile: played Capacity Modules stay here for good. Your next one costs 1 + this count, of each resource.</p>
         </div>
         <details class="resource-tools" id="resource-tools">
           <summary>Bank &amp; discards</summary>
@@ -255,7 +257,7 @@
     <div class="rules-grid">
       <section><h3>Your turn</h3><p>Convert level I starters for resources, then use one order, offer a trade, or pass. Passing immediately starts your Buy turn. Finish Buy, then the remaining factions continue Operations.</p></section>
       <section><h3>Your round</h3><p>Produce → Operations (pass → your Buy turn) → everyone finishes → cleanup → victory check → draw five → next round.</p></section>
-      <section><h3>Your deck</h3><p>Buy as many cards as you can afford during your Buy turn. Upgrade original starters to II for two of one resource, then III for three of one resource; III draws one card when used as an order. Only level I starters convert to resources. Trash eligible discarded cards, including starters, for three of one chosen resource type each. There is no one-card trash limit. Gained cards go to discard. Played and converted cards stay in play until shared cleanup. Successful Colonize, Excavate and Cargo Expansion are permanently trashed. Probe keeps its combined card. Stored resources carry forward.</p></section>
+      <section><h3>Your deck</h3><p>Buy as many cards as you can afford during your Buy turn. Upgrade original starters to II for two of one resource, then III for three of one resource; III draws one card when used as an order. Only level I starters convert to resources. Trash eligible discarded cards, including starters, for three of one chosen resource type each. There is no one-card trash limit. Gained cards go to discard. Played and converted cards stay in play until shared cleanup. Buy a Capacity Module from the Upgrades tray (1 + the cards in your Storage pile, of each resource); play it during Operations to add 4 capacity points, and it stays in your permanent Storage pile. Successful Colonize, Excavate and Cargo Expansion are permanently trashed. Probe keeps its combined card. Stored resources carry forward.</p></section>
       <section><h3>Your goal</h3><p>Reach the table’s Prestige target (40 unless chosen otherwise when the game was created) at the end of a round. Colonies, excavated relics, and decisive combat victories contribute. Click a point total to see its breakdown. The rulebook includes costs, scoring, and current card clarifications.</p></section>
     </div>
   </dialog>
