@@ -9,7 +9,7 @@ function battle(g){let n=0;while(g.s.pendingCombat&&n++<15){const a=g.a(),seat=a
  const g=game();assert.equal(g.s.version,38);assert.equal(g.s.rulesRevision,43);assert.equal(Object.values(g.s.planets).filter(p=>p.special==='relic').length,13);assert(g.s.clusters[12].coords.some(k=>g.s.planets[k].special==='relic'));
  assert.equal(Object.keys(g.e.RELIC_CARDS).length,15);assert(!g.e.ALL_CARDS.voidglassAstrolabe);
  for(const key of ['signalRelay','surveyNetwork','tacticalBriefing']){const d=g.e.ALL_CARDS[key];assert.equal(d.effect.draw,2);assert(Object.values(d.cost).every(n=>n<=4));}
- for(const d of Object.values(g.e.ALL_CARDS)){assert(!/reuse it each time/i.test(d.text));if(d.order==='special'&&d.effect)assert(d.effect.draw||d.effect.limits||d.effect.prestige||d.effect.trashStarters,'No resource-only special orders');}
+ for(const d of Object.values(g.e.ALL_CARDS)){assert(!/reuse it each time/i.test(d.text));if(d.order==='special'&&d.effect)assert(d.effect.draw||d.effect.limits||d.effect.allocate||d.effect.prestige||d.effect.trashStarters,'No resource-only special orders');}
 }
 {
  const g=game(),c=card(g,'probe');g.s.fleets={'0,0':{0:unit(0,1)}};const a=g.a().legalActions(0).find(a=>a.type==='probe');assert(a);g.a().applyAction(0,a);assert(g.p.inPlay.some(x=>x.id===c.id));assert(!g.p.discard.some(c=>c.key==='excavate'));const first=g.s.clusters.find(c=>c.scannedBy.includes(0)&&c.id>=4);assert(first);
@@ -25,8 +25,8 @@ function battle(g){let n=0;while(g.s.pendingCombat&&n++<15){const a=g.a(),seat=a
  g.s.activePlayer=0;card(g,'cargoExpansion','convert');assert(!g.e.convertCard(0,'convert'));assert(g.p.hand.some(c=>c.id==='convert'));
 }
 {
- const g=game();card(g,'move','move',{starter:true});g.s.activePlayer=1;g.s.pendingConstruct={playerId:1,cardId:'other'};g.p.resources={matter:4,energy:4,biomass:4,data:4};g.p.resourceLimits={matter:4,energy:4,biomass:4,data:4};const acts=g.a().legalActions(0);assert(acts.some(a=>a.type==='resource'));assert(acts.some(a=>a.type==='bank_trade'));assert(acts.some(a=>a.type==='increase_storage'));assert(acts.every(a=>['resource','bank_trade','increase_storage'].includes(a.type)));
- g.a().applyAction(0,acts.find(a=>a.type==='resource'));assert.equal(g.p.resources.energy,4,'Full limits allow conversion and lose excess');assert.equal(g.s.activePlayer,1);assert.equal(g.s.pendingConstruct.cardId,'other');assert(g.e.bankTrade(0,'matter','data'));g.p.resources.matter=1;assert(g.e.increaseStorage(0,{matter:1,energy:1,biomass:1,data:1}));assert.equal(g.s.activePlayer,1);assert.equal(g.s.pendingConstruct.cardId,'other');
+ const g=game();card(g,'move','move',{starter:true});g.s.activePlayer=1;g.s.pendingConstruct={playerId:1,cardId:'other'};g.p.resources={matter:4,energy:4,biomass:4,data:4};g.p.resourceLimits={matter:4,energy:4,biomass:4,data:4};const acts=g.a().legalActions(0);assert(acts.some(a=>a.type==='resource'));assert(acts.some(a=>a.type==='bank_trade'));assert(!acts.some(a=>a.type==='increase_storage'),'Capacity is a card bought on your own Buy turn, never off turn');assert(acts.every(a=>['resource','bank_trade'].includes(a.type)));
+ g.a().applyAction(0,acts.find(a=>a.type==='resource'));assert.equal(g.p.resources.energy,4,'Full limits allow conversion and lose excess');assert.equal(g.s.activePlayer,1);assert.equal(g.s.pendingConstruct.cardId,'other');assert(g.e.bankTrade(0,'matter','data'));g.p.resources.matter=1;assert(!g.e.buyCapacity(0),'No off-turn Capacity Module');assert.equal(g.s.activePlayer,1);assert.equal(g.s.pendingConstruct.cardId,'other');
  assert.throws(()=>g.a().applyAction(0,{type:'pass'}),/Illegal/);
 }
 {

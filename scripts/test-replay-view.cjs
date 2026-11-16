@@ -43,7 +43,7 @@ engine.state.fleets[openingRelic]={0:{settler:0,explorer:1,fleet:0}};
 engine.state.fleets[openingWorld.center]={0:{settler:1,explorer:0,fleet:0}};
 engine.state.fleets['10,-10']={0:{settler:0,explorer:0,fleet:2}};
 engine.state.fleets['9,-10']={1:{settler:0,explorer:0,fleet:2}};
-engine.state.players[0].hand.push({id:'replay-combat-move',key:'move'});
+engine.state.players[0].hand.push({id:'replay-combat-move',key:'move'},{id:'replay-capacity',key:'capacityModule'});
 openingWorld.revealedBy.push(0);
 const weight = { bank_trade: 0, discard_resources: 0, colony_build: 60, colonize: 60, trade_accept: 25, trade_offer: 3, upgrade: 20, build: 8, move: 8, buy: 6, excavate: 20, pass: .3, finish_buy: 1, finish_colony_build: .5 };
 // JSON copies: vm-realm arrays would fail strict deep equality on their prototypes.
@@ -59,7 +59,7 @@ const truths = [truth(engine.state)];
 const frames = [];
 const opening=[
   a=>a.type==='move'&&a.source==='10,-10'&&a.destination==='9,-10',
-  a=>a.type==='increase_storage',
+  a=>a.type==='special'&&a.card==='replay-capacity'&&a.allocation.data===4,
   a=>a.type==='colonize'&&a.card==='replay-colonize-II'&&a.coord===openingWorld.center,
   a=>a.type==='colony_build'&&a.kind==='harvester'&&a.coord===openingWorld.coords[1],
   a=>a.type==='probe'&&a.card==='replay-probe',
@@ -127,7 +127,7 @@ for (let index = 0; index <= frames.length; index++) {
 }
 for (const [kind, count] of Object.entries(seen)) assert(count > 0, `The recorded match should cover ${kind}`);
 assert(frames.some(frame=>frame.action.type==='excavate'));
-assert(frames.some(frame=>frame.action.type==='increase_storage'));
+assert(frames.some(frame=>frame.action.type==='special'&&frame.action.key==='capacityModule'));
 assert(frames.some(frame => frame.action.type === 'colony_build' || frame.action.type === 'finish_colony_build'));
 const rounds = [...analysis.rounds];
 assert.deepEqual(rounds[0], [data.initial.round, 0]);
