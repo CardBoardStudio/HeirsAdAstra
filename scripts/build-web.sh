@@ -19,6 +19,8 @@ cp prototypes/galactic-reach/playtest-notes.js prototypes/galactic-reach/playtes
 cp prototypes/galactic-reach/change-queue.js prototypes/galactic-reach/change-queue.css dist/galactic-reach/
 cp prototypes/galactic-reach/table.js dist/galactic-reach/table.js
 cp prototypes/galactic-reach/cards.html dist/galactic-reach/cards.html
+# Card art (NGA open-access works, CC0) and its credits manifest; the card gallery lists them.
+rm -rf dist/galactic-reach/card-art && cp -R prototypes/galactic-reach/card-art dist/galactic-reach/card-art
 cp prototypes/galactic-reach/shared.js dist/galactic-reach/shared.js
 cp prototypes/galactic-reach/replay.js dist/galactic-reach/replay.js
 cp prototypes/lab/index.html dist/index.html

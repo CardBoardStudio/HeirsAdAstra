@@ -2796,3 +2796,37 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .map-legend-corner .legend-vocab { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 6px; margin-top: 4px; padding-top: 5px; border-top: 1px solid #d9bd8030; font-size: 10.5px; }
   .map-legend-corner .legend-vocab > span { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 }
+
+/* ==== Card art: each design shows one public-domain artwork from the National Gallery of Art
+   (card-art/manifest.json; credits in the card gallery). The picture fills the art window and
+   the card's emblem sits in its corner. On the table's market and hand the picture takes only
+   the height the name, price and effect leave, so the text always comes first; a window too
+   short to read as a picture shows nothing. ==== */
+.card-art.has-picture { background: #1b2a2b; color: #ebe5ce; }
+.card-art.has-picture::before, .card-art.has-picture::after { content: none; }
+.card-picture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; user-select: none; -webkit-user-drag: none; }
+.card-emblem { position: absolute; right: 4px; bottom: 4px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #0f1d1fcc; box-shadow: 0 0 0 1px #ebe5ce55; }
+.card-emblem .board-glyph { width: 14px; height: 14px; stroke-width: 1.5; filter: none; }
+.alien-relic .card-art.has-picture { background: #574b36; }
+@media (min-width: 600px) and (min-height: 600px) {
+  :is(#hand-row, #market-row) .card-art.has-picture {
+    display: block; grid-area: art; align-self: stretch; min-height: 0; height: auto; margin: -2px 0 0; border: 0; border-radius: 4px;
+    container-type: size; background: transparent;
+  }
+  /* The empty art row costs no height: the negative margin cancels its row gap, and the picture keeps its own space from the text. */
+  :is(#hand-row, #market-row) .card-picture { top: 5px; height: calc(100% - 5px); border-radius: 4px; box-shadow: 0 0 0 1px #4a3f2a40; }
+  @container (max-height: 26px) { .card-picture, .card-emblem { display: none; } }
+  #market-row .game-card:not(:hover):not(:focus):not(:focus-within) { grid-template-areas: "type type" "name name" "cost gain" "head head" "effect effect" "note note" "art art"; grid-template-rows: repeat(3, max-content) minmax(0, max-content) max-content max-content minmax(0, 1fr); align-content: stretch; }
+  #market-row .game-card:is(:hover, :focus, :focus-within) .card-art { display: none; }
+  #hand-row .game-card { grid-template-areas: "type type" "cost name" "gain head" "effect effect" "note note" "buttons buttons" "art art"; grid-template-rows: repeat(6, max-content) minmax(0, 1fr); align-content: stretch; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .table-wide .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) { grid-template-rows: repeat(3, max-content) minmax(0, max-content) max-content max-content minmax(0, 1fr) !important; }
+}
+
+/* The game's version and the card-art notice: one quiet line at the foot of the game menu. */
+.site-footer { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 10.5px; line-height: 1.4; opacity: .8; }
+.site-footer a { color: inherit; text-decoration: underline; }
+@media (min-width: 600px) and (min-height: 600px) {
+  body.menu-open .site-footer { padding-top: 8px; border-top: 1px solid #a49c6f40; white-space: normal; }
+}

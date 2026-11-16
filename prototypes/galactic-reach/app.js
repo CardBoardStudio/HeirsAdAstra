@@ -3957,10 +3957,16 @@ function createGalacticReach(options = {}) {
 
   // Printed emblems reuse the board's unit vocabulary. They are decorative;
   // the card text and existing action buttons remain the source of its effect.
+  // Each card design shows one public-domain artwork from the National Gallery of Art
+  // (card-art/<card key>.webp; card-art/manifest.json and the card gallery credit them).
+  // Like the emblem, the picture never changes what a card does (rulebook #card-art).
+  const CARD_ART_KEYS = new Map(Object.entries({ ...ALL_CARDS, ...BASIC_TACTICS }).map(([key, def]) => [def, key]));
   function cardIllustration(definition) {
     const motif = definition.kind === 'Military' || definition.affinity === 'Military' ? 'fleet'
       : {move:'fleet',construct:'starbase',colonize:'colony',probe:'explorer',excavate:'harvester'}[definition.order]
       || (definition.kind === 'Expansion' || definition.affinity === 'Settlement' ? 'colony' : 'starbase');
+    const art = CARD_ART_KEYS.get(definition);
+    if (art) return `<span class="card-art has-picture" aria-hidden="true"><img class="card-picture" src="card-art/${art}.webp" alt="" loading="lazy" decoding="async" draggable="false"><span class="card-emblem">${BOARD_ICONS[motif]}</span></span>`;
     return `<span class="card-art" aria-hidden="true"><span class="card-orbit"></span>${BOARD_ICONS[motif]}<span class="card-registration">GALACTIC REACH</span></span>`;
   }
 

@@ -1,0 +1,1331 @@
+{
+ "source": "National Gallery of Art, Washington, open access images (https://www.nga.gov/open-access-images.html); metadata from https://github.com/NationalGalleryOfArt/opendata",
+ "license": "CC0 1.0 Universal. NGA releases these public-domain images without restriction and asks for a credit line, given here and on the card gallery.",
+ "cards": {
+  "move": {
+   "family": "Starter",
+   "image": "card-art/move.webp",
+   "ngaObjectId": 52279,
+   "title": "Rotterdam Ferry-Boat",
+   "artist": "Joseph Mallord William Turner",
+   "date": "1833",
+   "medium": "oil on canvas",
+   "accession": "1970.17.135",
+   "creditLine": "Ailsa Mellon Bruce Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.52279.html",
+   "iiif": "https://api.nga.gov/iiif/d902b68e-b9cc-448c-856c-9bf49745d31d/0,806,5005,2502/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,806,5005,2502",
+    "imageSize": [
+     5005,
+     3740
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "construct": {
+   "family": "Starter",
+   "image": "card-art/construct.webp",
+   "ngaObjectId": 30776,
+   "title": "The Lackawanna Valley",
+   "artist": "George Inness",
+   "date": "c. 1856",
+   "medium": "oil on canvas",
+   "accession": "1945.4.1",
+   "creditLine": "Gift of Mrs. Huttleston Rogers",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.30776.html",
+   "iiif": "https://api.nga.gov/iiif/41934d82-bfb0-447b-b36e-d06dca991243/0,783,5132,2566/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,783,5132,2566",
+    "imageSize": [
+     5132,
+     3443
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "colonize": {
+   "family": "Starter",
+   "image": "card-art/colonize.webp",
+   "ngaObjectId": 50852,
+   "title": "Landing at Sabbath Day Point",
+   "artist": "John Frederick Kensett",
+   "date": "c. 1853",
+   "medium": "oil on canvas",
+   "accession": "1968.7.1",
+   "creditLine": "Gift of Mrs. Sigourney Thayer",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.50852.html",
+   "iiif": "https://api.nga.gov/iiif/68302937-48bd-43e2-a4b1-9a73b8e88ad3/0,1953,19712,9856/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1953,19712,9856",
+    "imageSize": [
+     19712,
+     12510
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "probe": {
+   "family": "Starter",
+   "image": "card-art/probe.webp",
+   "ngaObjectId": 121618,
+   "title": "The Artist Sketching at Mount Desert, Maine",
+   "artist": "Sanford Robinson Gifford",
+   "date": "1864-1865",
+   "medium": "oil on canvas",
+   "accession": "2004.99.1",
+   "creditLine": "Gift of Jo Ann and Julian Ganz, Jr. in honor of John Wilmerding",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.121618.html",
+   "iiif": "https://api.nga.gov/iiif/d721c70d-c45f-491c-a409-43cf241c4a0b/0,45,4984,2492/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,45,4984,2492",
+    "imageSize": [
+     4984,
+     2869
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "excavate": {
+   "family": "Starter",
+   "image": "card-art/excavate.webp",
+   "ngaObjectId": 221599,
+   "title": "The Forum at Pompeii",
+   "artist": "Achille-Etna Michallon",
+   "date": "1819",
+   "medium": "oil on paper",
+   "accession": "2020.15.1",
+   "creditLine": "Gift of the Matthiesen Gallery and John Lishawa Ltd. in memory of E. A. Carmean Jr. (1945–2019) and Philip Conisbee (1946–2008), both curators at the National Gallery of Art",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.221599.html",
+   "iiif": "https://api.nga.gov/iiif/67a40105-e674-472c-999b-06fed2986008/0,2041,14718,7359/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,2041,14718,7359",
+    "imageSize": [
+     14718,
+     10400
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "concentratedFire": {
+   "family": "Basic tactic",
+   "image": "card-art/concentratedFire.webp",
+   "ngaObjectId": 195475,
+   "title": "The United States Frigate \"President\" Engaging the British Squadron, 1815",
+   "artist": "Fitz Henry Lane",
+   "date": "1850",
+   "medium": "oil on canvas",
+   "accession": "2014.136.82",
+   "creditLine": "Corcoran Collection (Gift of Mr. and Mrs. Lansdell K. Christie, 1961)",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.195475.html",
+   "iiif": "https://api.nga.gov/iiif/322c3c6b-e538-4d63-af1c-33de79a2edf4/0,1526,18424,9212/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1526,18424,9212",
+    "imageSize": [
+     18424,
+     12264
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "defensiveScreen": {
+   "family": "Basic tactic",
+   "image": "card-art/defensiveScreen.webp",
+   "ngaObjectId": 80924,
+   "title": "The Fortress of Königstein",
+   "artist": "Bernardo Bellotto",
+   "date": "1756-1758",
+   "medium": "oil on canvas",
+   "accession": "1993.8.1",
+   "creditLine": "Patrons' Permanent Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.80924.html",
+   "iiif": "https://api.nga.gov/iiif/8b3b5c3e-0b36-4229-bbcf-645cd16126f9/0,8,33518,16759/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,8,33518,16759",
+    "imageSize": [
+     33518,
+     18638
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "ionThrusters": {
+   "family": "Movement",
+   "image": "card-art/ionThrusters.webp",
+   "ngaObjectId": 30228,
+   "title": "Breezing Up (A Fair Wind)",
+   "artist": "Winslow Homer",
+   "date": "1873-1876",
+   "medium": "oil on canvas",
+   "accession": "1943.13.1",
+   "creditLine": "Gift of the W. L. and May T. Mellon Foundation",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.30228.html",
+   "iiif": "https://api.nga.gov/iiif/406b5d56-d196-4bb0-b2e0-5a2f6fd52d0a/0,945,28431,14216/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,945,28431,14216",
+    "imageSize": [
+     28431,
+     17894
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "slipstreamCharts": {
+   "family": "Movement",
+   "image": "card-art/slipstreamCharts.webp",
+   "ngaObjectId": 57611,
+   "title": "Lumber Schooners at Evening on Penobscot Bay",
+   "artist": "Fitz Henry Lane",
+   "date": "1863",
+   "medium": "oil on canvas",
+   "accession": "1980.29.1",
+   "creditLine": "Gift of Mr. and Mrs. Francis W. Hatch, Sr.",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.57611.html",
+   "iiif": "https://api.nga.gov/iiif/bb495b04-4887-4089-973c-c8ee58f8aad4/0,3782,37124,18562/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,3782,37124,18562",
+    "imageSize": [
+     37124,
+     23750
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "strikeVector": {
+   "family": "Movement",
+   "image": "card-art/strikeVector.webp",
+   "ngaObjectId": 1226,
+   "title": "The Junction of the Thames and the Medway",
+   "artist": "Joseph Mallord William Turner",
+   "date": "1807",
+   "medium": "oil on canvas",
+   "accession": "1942.9.87",
+   "creditLine": "Widener Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.1226.html",
+   "iiif": "https://api.nga.gov/iiif/4c91e476-adc9-4dbd-be17-0d81069af41b/0,639,5057,2528/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,639,5057,2528",
+    "imageSize": [
+     5057,
+     3806
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "foldSpaceGate": {
+   "family": "Movement",
+   "image": "card-art/foldSpaceGate.webp",
+   "ngaObjectId": 117,
+   "title": "Approach to Venice",
+   "artist": "Joseph Mallord William Turner",
+   "date": "1844",
+   "medium": "oil on canvas",
+   "accession": "1937.1.110",
+   "creditLine": "Andrew W. Mellon Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.117.html",
+   "iiif": "https://api.nga.gov/iiif/4f117b4f-4efe-4b2e-88e7-a01975003d95/0,410,5039,2520/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,410,5039,2520",
+    "imageSize": [
+     5039,
+     3340
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "prefabYards": {
+   "family": "Industry",
+   "image": "card-art/prefabYards.webp",
+   "ngaObjectId": 50690,
+   "title": "Blacksmith Shop",
+   "artist": "Francis A. Beckett",
+   "date": "c. 1880",
+   "medium": "oil on canvas",
+   "accession": "1966.13.4",
+   "creditLine": "Gift of Edgar William and Bernice Chrysler Garbisch",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.50690.html",
+   "iiif": "https://api.nga.gov/iiif/58d006cd-f833-4c00-af0e-8bd26ac806de/0,809,7347,3674/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,809,7347,3674",
+    "imageSize": [
+     7347,
+     5292
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "worldEngine": {
+   "family": "Industry",
+   "image": "card-art/worldEngine.webp",
+   "ngaObjectId": 1225,
+   "title": "Keelmen Heaving in Coals by Moonlight",
+   "artist": "Joseph Mallord William Turner",
+   "date": "1835",
+   "medium": "oil on canvas",
+   "accession": "1942.9.86",
+   "creditLine": "Widener Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.1225.html",
+   "iiif": "https://api.nga.gov/iiif/c1e33e8d-ffe4-4d20-a267-87ffcf94f7ce/0,624,5144,2572/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,624,5144,2572",
+    "imageSize": [
+     5144,
+     3820
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "seedArk": {
+   "family": "Expansion",
+   "image": "card-art/seedArk.webp",
+   "ngaObjectId": 50299,
+   "title": "El Rio de Luz (The River of Light)",
+   "artist": "Frederic Edwin Church",
+   "date": "1877",
+   "medium": "oil on canvas",
+   "accession": "1965.14.1",
+   "creditLine": "Gift of the Avalon Foundation",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.50299.html",
+   "iiif": "https://api.nga.gov/iiif/9d96691b-10b2-44c9-8670-a642e0cd9ce2/0,2688,36733,18366/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,2688,36733,18366",
+    "imageSize": [
+     36733,
+     23743
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "colonyPods": {
+   "family": "Expansion",
+   "image": "card-art/colonyPods.webp",
+   "ngaObjectId": 166437,
+   "title": "Tamaca Palms",
+   "artist": "Frederic Edwin Church",
+   "date": "1854",
+   "medium": "oil on canvas",
+   "accession": "2014.79.11",
+   "creditLine": "Corcoran Collection (Gift of William Wilson Corcoran, 1869)",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.166437.html",
+   "iiif": "https://api.nga.gov/iiif/10dcd16f-7fc6-4ac4-a93c-f77be29b39ec/0,2112,17899,8950/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,2112,17899,8950",
+    "imageSize": [
+     17899,
+     13173
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "genesisCharter": {
+   "family": "Expansion",
+   "image": "card-art/genesisCharter.webp",
+   "ngaObjectId": 52451,
+   "title": "The Voyage of Life: Youth",
+   "artist": "Thomas Cole",
+   "date": "1842",
+   "medium": "oil on canvas",
+   "accession": "1971.16.2",
+   "creditLine": "Ailsa Mellon Bruce Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.52451.html",
+   "iiif": "https://api.nga.gov/iiif/1c3a0c23-3926-4475-b9b8-59cb1d72b410/0,296,5117,2558/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,296,5117,2558",
+    "imageSize": [
+     5117,
+     3501
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "strategyCore": {
+   "family": "Deckcraft",
+   "image": "card-art/strategyCore.webp",
+   "ngaObjectId": 166428,
+   "title": "Mount Corcoran",
+   "artist": "Albert Bierstadt",
+   "date": "c. 1876-1877",
+   "medium": "oil on canvas",
+   "accession": "2014.79.4",
+   "creditLine": "Corcoran Collection (Museum Purchase, Gallery Fund, 1878)",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.166428.html",
+   "iiif": "https://api.nga.gov/iiif/b5657933-52bc-4bfa-9bb9-12ea235e7198/0,11,8903,4452/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,11,8903,4452",
+    "imageSize": [
+     8903,
+     5591
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "archivePurge": {
+   "family": "Deckcraft",
+   "image": "card-art/archivePurge.webp",
+   "ngaObjectId": 195574,
+   "title": "Tornado in an American Forest",
+   "artist": "Thomas Cole",
+   "date": "1831",
+   "medium": "oil on canvas",
+   "accession": "2014.136.117",
+   "creditLine": "Corcoran Collection (Museum Purchase, Gallery Fund, 1877)",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.195574.html",
+   "iiif": "https://api.nga.gov/iiif/352633bc-33db-4252-bb1b-d8ef9c03e572/0,2203,32063,16032/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,2203,32063,16032",
+    "imageSize": [
+     32063,
+     22708
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "commandNexus": {
+   "family": "Deckcraft",
+   "image": "card-art/commandNexus.webp",
+   "ngaObjectId": 129865,
+   "title": "Joshua Commanding the Sun to Stand Still upon Gibeon",
+   "artist": "John Martin",
+   "date": "1816",
+   "medium": "oil on canvas",
+   "accession": "2004.64.1",
+   "creditLine": "Paul Mellon Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.129865.html",
+   "iiif": "https://api.nga.gov/iiif/3dc78f93-b6c9-4dfd-a665-b7b1759e5f4c/0,65,5103,2552/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,65,5103,2552",
+    "imageSize": [
+     5103,
+     3353
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "signalRelay": {
+   "family": "Deckcraft",
+   "image": "card-art/signalRelay.webp",
+   "ngaObjectId": 42389,
+   "title": "Beacon Rock, Newport Harbor",
+   "artist": "John Frederick Kensett",
+   "date": "1857",
+   "medium": "oil on canvas",
+   "accession": "1953.1.1",
+   "creditLine": "Gift of Frederick Sturges, Jr.",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.42389.html",
+   "iiif": "https://api.nga.gov/iiif/c31769b8-f5f8-41bd-b204-1e838690c219/0,2050,34977,17488/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,2050,34977,17488",
+    "imageSize": [
+     34977,
+     21588
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "surveyNetwork": {
+   "family": "Deckcraft",
+   "image": "card-art/surveyNetwork.webp",
+   "ngaObjectId": 82648,
+   "title": "Green River Cliffs, Wyoming",
+   "artist": "Thomas Moran",
+   "date": "1881",
+   "medium": "oil on canvas",
+   "accession": "2011.2.1",
+   "creditLine": "Gift of the Milligan and Thomson Families",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.82648.html",
+   "iiif": "https://api.nga.gov/iiif/d03eb796-1bff-4221-99a7-58d139d3ec96/1550,0,12074,6037/600,300/0/default.jpg",
+   "crop": {
+    "region": "1550,0,12074,6037",
+    "imageSize": [
+     15175,
+     6037
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "tacticalBriefing": {
+   "family": "Deckcraft",
+   "image": "card-art/tacticalBriefing.webp",
+   "ngaObjectId": 46602,
+   "title": "Christopher Columbus and His Son at La Rábida",
+   "artist": "Eugène Delacroix",
+   "date": "1838",
+   "medium": "oil on canvas",
+   "accession": "1963.10.127",
+   "creditLine": "Chester Dale Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.46602.html",
+   "iiif": "https://api.nga.gov/iiif/d0c57166-ee9c-4723-898c-dc69592a3654/0,459,4931,2466/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,459,4931,2466",
+    "imageSize": [
+     4931,
+     3760
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "cargoExpansion": {
+   "family": "Capacity",
+   "image": "card-art/cargoExpansion.webp",
+   "ngaObjectId": 154215,
+   "title": "Amsterdam Harbor Scene",
+   "artist": "Reinier Nooms, called Zeeman",
+   "date": "c. 1654/1655",
+   "medium": "oil on canvas",
+   "accession": "2011.3.1",
+   "creditLine": "The Lee and Juliet Folger Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.154215.html",
+   "iiif": "https://api.nga.gov/iiif/de1707f6-1d8a-4fbd-b364-061f79fd1b04/0,2141,13719,6860/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,2141,13719,6860",
+    "imageSize": [
+     13719,
+     10129
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "hyperspaceVaults": {
+   "family": "Capacity",
+   "image": "card-art/hyperspaceVaults.webp",
+   "ngaObjectId": 50884,
+   "title": "Interior of Saint Peter's, Rome",
+   "artist": "Giovanni Paolo Pannini",
+   "date": "c. 1754",
+   "medium": "oil on canvas",
+   "accession": "1968.13.2",
+   "creditLine": "Ailsa Mellon Bruce Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.50884.html",
+   "iiif": "https://api.nga.gov/iiif/f71f90d6-c2ce-49d8-b95a-153d3ce250cc/0,144,5839,2920/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,144,5839,2920",
+    "imageSize": [
+     5839,
+     4581
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "procurementHub": {
+   "family": "Buy",
+   "image": "card-art/procurementHub.webp",
+   "ngaObjectId": 71554,
+   "title": "View of an Italian Port",
+   "artist": "Nicolaes Pietersz Berchem",
+   "date": "early 1660s",
+   "medium": "oil on canvas",
+   "accession": "1990.62.1",
+   "creditLine": "Gift of Robert H. and Clarice Smith, in Honor of the 50th Anniversary of the National Gallery of Art",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.71554.html",
+   "iiif": "https://api.nga.gov/iiif/c835e6ed-d7c4-4f86-aea9-5eaf06b09818/0,3497,23541,11770/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,3497,23541,11770",
+    "imageSize": [
+     23541,
+     18765
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "tradeSyndicate": {
+   "family": "Buy",
+   "image": "card-art/tradeSyndicate.webp",
+   "ngaObjectId": 1224,
+   "title": "Venice: The Dogana and San Giorgio Maggiore",
+   "artist": "Joseph Mallord William Turner",
+   "date": "1834",
+   "medium": "oil on canvas",
+   "accession": "1942.9.85",
+   "creditLine": "Widener Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.1224.html",
+   "iiif": "https://api.nga.gov/iiif/e69c25bb-f772-4ac2-966f-2954eb420a84/0,609,5057,2528/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,609,5057,2528",
+    "imageSize": [
+     5057,
+     3747
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "monumentOfAccord": {
+   "family": "Wonder",
+   "image": "card-art/monumentOfAccord.webp",
+   "ngaObjectId": 165,
+   "title": "Interior of the Pantheon, Rome",
+   "artist": "Giovanni Paolo Panini",
+   "date": "c. 1734",
+   "medium": "oil on canvas",
+   "accession": "1939.1.24",
+   "creditLine": "Samuel H. Kress Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.165.html",
+   "iiif": "https://api.nga.gov/iiif/0584680b-b08b-4186-ab2f-56bd80e4524d/0,766,5474,2737/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,766,5474,2737",
+    "imageSize": [
+     5474,
+     7116
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "dysonLattice": {
+   "family": "Wonder",
+   "image": "card-art/dysonLattice.webp",
+   "ngaObjectId": 46089,
+   "title": "The Dogana and Santa Maria della Salute, Venice",
+   "artist": "Joseph Mallord William Turner",
+   "date": "1843",
+   "medium": "oil on canvas",
+   "accession": "1961.2.3",
+   "creditLine": "Given in memory of Governor Alvan T. Fuller by The Fuller Foundation, Inc.",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.46089.html",
+   "iiif": "https://api.nga.gov/iiif/132e789c-27da-4f54-a68d-3e2b691a9448/0,1255,26080,13040/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1255,26080,13040",
+    "imageSize": [
+     26080,
+     17278
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "ascendancyCodex": {
+   "family": "Prestige",
+   "image": "card-art/ascendancyCodex.webp",
+   "ngaObjectId": 52453,
+   "title": "The Voyage of Life: Old Age",
+   "artist": "Thomas Cole",
+   "date": "1842",
+   "medium": "oil on canvas",
+   "accession": "1971.16.4",
+   "creditLine": "Ailsa Mellon Bruce Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.52453.html",
+   "iiif": "https://api.nga.gov/iiif/4db3a919-839b-4813-b159-09bab60be497/0,0,5100,2550/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,0,5100,2550",
+    "imageSize": [
+     5100,
+     3431
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "railBattery": {
+   "family": "Military",
+   "image": "card-art/railBattery.webp",
+   "ngaObjectId": 45885,
+   "title": "The Battle of La Hogue",
+   "artist": "Benjamin West",
+   "date": "1778",
+   "medium": "oil on canvas",
+   "accession": "1959.8.1",
+   "creditLine": "Andrew W. Mellon Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.45885.html",
+   "iiif": "https://api.nga.gov/iiif/2168b8e0-865c-4520-a9e5-c48c8592fcaa/0,1875,26750,13375/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1875,26750,13375",
+    "imageSize": [
+     26750,
+     19027
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "deflectorGrid": {
+   "family": "Military",
+   "image": "card-art/deflectorGrid.webp",
+   "ngaObjectId": 126132,
+   "title": "Fog off Mount Desert",
+   "artist": "Frederic Edwin Church",
+   "date": "1850",
+   "medium": "oil on academy board",
+   "accession": "2025.89.2",
+   "creditLine": "John Wilmerding Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.126132.html",
+   "iiif": "https://api.nga.gov/iiif/d2d14906-88ef-43f6-b1a5-97c207b7797c/0,128,1024,512/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,128,1024,512",
+    "imageSize": [
+     1024,
+     768
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "flakScreen": {
+   "family": "Military",
+   "image": "card-art/flakScreen.webp",
+   "ngaObjectId": 112264,
+   "title": "Ships in a Gale",
+   "artist": "Willem van de Velde the Younger",
+   "date": "1660",
+   "medium": "oil on panel",
+   "accession": "2000.72.1",
+   "creditLine": "Patrons' Permanent Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.112264.html",
+   "iiif": "https://api.nga.gov/iiif/3e51ce09-d263-4840-a6b3-6186848f3cb2/0,2254,25889,12944/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,2254,25889,12944",
+    "imageSize": [
+     25889,
+     17453
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "torpedoSpread": {
+   "family": "Military",
+   "image": "card-art/torpedoSpread.webp",
+   "ngaObjectId": 111194,
+   "title": "The Shipwreck",
+   "artist": "Claude-Joseph Vernet",
+   "date": "1772",
+   "medium": "oil on canvas",
+   "accession": "2000.22.1",
+   "creditLine": "Patrons' Permanent Fund and Chester Dale Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.111194.html",
+   "iiif": "https://api.nga.gov/iiif/e5783ee7-1f28-4a83-95ad-e7907a34202e/0,1504,15463,7732/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1504,15463,7732",
+    "imageSize": [
+     15463,
+     10739
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "hardlightBulwark": {
+   "family": "Military",
+   "image": "card-art/hardlightBulwark.webp",
+   "ngaObjectId": 70987,
+   "title": "Natural Arch at Capri",
+   "artist": "William Stanley Haseltine",
+   "date": "1871",
+   "medium": "oil on canvas",
+   "accession": "1989.13.1",
+   "creditLine": "Gift of Guest Services, Inc., in Honor of the 50th Anniversary of the National Gallery of Art",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.70987.html",
+   "iiif": "https://api.nga.gov/iiif/87b960fb-4699-4e53-9964-f5ce5808f936/0,321,5221,2610/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,321,5221,2610",
+    "imageSize": [
+     5221,
+     3253
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "phaseLance": {
+   "family": "Military",
+   "image": "card-art/phaseLance.webp",
+   "ngaObjectId": 51138,
+   "title": "Storm-Tossed Frigate",
+   "artist": "Thomas Chambers",
+   "date": "mid 19th century",
+   "medium": "oil on canvas",
+   "accession": "1969.11.1",
+   "creditLine": "Gift of Edgar William and Bernice Chrysler Garbisch",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.51138.html",
+   "iiif": "https://api.nga.gov/iiif/309ca665-ff41-4f7e-8433-c8dd6e0038a0/0,1821,18205,9102/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1821,18205,9102",
+    "imageSize": [
+     18205,
+     12745
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "novaBarrage": {
+   "family": "Military",
+   "image": "card-art/novaBarrage.webp",
+   "ngaObjectId": 56598,
+   "title": "The Spirit of War",
+   "artist": "Jasper Francis Cropsey",
+   "date": "1851",
+   "medium": "oil on canvas",
+   "accession": "1978.12.1",
+   "creditLine": "Avalon Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.56598.html",
+   "iiif": "https://api.nga.gov/iiif/fefb9c5d-8791-43ab-8c05-f9371e52de3f/0,1882,44503,22252/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1882,44503,22252",
+    "imageSize": [
+     44503,
+     28906
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "aegisLattice": {
+   "family": "Military",
+   "image": "card-art/aegisLattice.webp",
+   "ngaObjectId": 82649,
+   "title": "Italian Coast Scene with Ruined Tower",
+   "artist": "Thomas Cole",
+   "date": "1838",
+   "medium": "oil on canvas",
+   "accession": "1993.55.1",
+   "creditLine": "Gift of The Circle of the National Gallery of Art",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.82649.html",
+   "iiif": "https://api.nga.gov/iiif/f93ecc14-9d5e-40db-937a-cd477eb0ca2c/0,412,5103,2552/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,412,5103,2552",
+    "imageSize": [
+     5103,
+     3751
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "victoryDoctrine": {
+   "family": "Military",
+   "image": "card-art/victoryDoctrine.webp",
+   "ngaObjectId": 157388,
+   "title": "A Fleet at Sea",
+   "artist": "Hendrick Cornelisz Vroom",
+   "date": "1614",
+   "medium": "oil on canvas",
+   "accession": "2021.97.1",
+   "creditLine": "Gift of Albert and Madzy Beveridge",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.157388.html",
+   "iiif": "https://api.nga.gov/iiif/2c50a33e-f24b-4a36-a27d-ccc2f46e0a92/0,742,18962,9481/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,742,18962,9481",
+    "imageSize": [
+     18962,
+     10964
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "phaseShearDrive": {
+   "family": "Alien Relic",
+   "image": "card-art/phaseShearDrive.webp",
+   "ngaObjectId": 33734,
+   "title": "The Giant Wheel",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1750/1758",
+   "medium": "etching, engraving",
+   "accession": "1946.21.394",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.33734.html",
+   "iiif": "https://api.nga.gov/iiif/ce6d73e7-2150-4eaa-931d-75b6a5338549/0,580,4752,2376/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,580,4752,2376",
+    "imageSize": [
+     4752,
+     3536
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "firstDawnEchoes": {
+   "family": "Alien Relic",
+   "image": "card-art/firstDawnEchoes.webp",
+   "ngaObjectId": 74798,
+   "title": "Moonrise on an Empty Shore",
+   "artist": "Caspar David Friedrich",
+   "date": "1837/1839",
+   "medium": "brush and brown ink over graphite on wove paper",
+   "accession": "1992.11.1",
+   "creditLine": "Patrons' Permanent Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.74798.html",
+   "iiif": "https://api.nga.gov/iiif/96609de4-79c0-4250-99e2-7bc80602fa1b/0,518,5016,2508/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,518,5016,2508",
+    "imageSize": [
+     5016,
+     3221
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "omniscientChorus": {
+   "family": "Alien Relic",
+   "image": "card-art/omniscientChorus.webp",
+   "ngaObjectId": 136358,
+   "title": "Full Moon",
+   "artist": "Warren de la Rue",
+   "date": "1858-1859, printed 1862",
+   "medium": "stereoscopic glass transparency",
+   "accession": "2006.170.1",
+   "creditLine": "Gift of Mary and Dan Solomon",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.136358.html",
+   "iiif": "https://api.nga.gov/iiif/9c568753-8421-4800-b727-058ae0257503/1266,1564,4531,2265/600,300/0/default.jpg",
+   "crop": {
+    "region": "1266,1564,4531,2265",
+    "imageSize": [
+     11212,
+     5394
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "obeliskOfAnnihilation": {
+   "family": "Alien Relic",
+   "image": "card-art/obeliskOfAnnihilation.webp",
+   "ngaObjectId": 54439,
+   "title": "Veduta dell'Arco di Tito (View of the Arch of Titus)",
+   "artist": "Laura Piranesi after Giovanni Battista Piranesi",
+   "date": "c. 1780s",
+   "medium": "etching on laid paper",
+   "accession": "1974.53.23",
+   "creditLine": "Ailsa Mellon Bruce Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.54439.html",
+   "iiif": "https://api.nga.gov/iiif/8cb547d4-1f08-4bf1-b576-8e5428a46804/0,288,4872,2436/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,288,4872,2436",
+    "imageSize": [
+     4872,
+     3346
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "aegisOfSilentArchitects": {
+   "family": "Alien Relic",
+   "image": "card-art/aegisOfSilentArchitects.webp",
+   "ngaObjectId": 33735,
+   "title": "Prisoners on a Projecting Platform",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1750/1758",
+   "medium": "etching, engraving, sulphur tint or open bite, burnishing",
+   "accession": "1946.21.395",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.33735.html",
+   "iiif": "https://api.nga.gov/iiif/58ef4595-e608-4620-9d1b-768a9e948a95/0,614,4670,2335/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,614,4670,2335",
+    "imageSize": [
+     4670,
+     3564
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "warSongOfHollowStars": {
+   "family": "Alien Relic",
+   "image": "card-art/warSongOfHollowStars.webp",
+   "ngaObjectId": 110481,
+   "title": "The Seven Planets",
+   "artist": "Thomas Christian Winck",
+   "date": "1770",
+   "medium": "etching on laid paper",
+   "accession": "1999.98.16",
+   "creditLine": "Gift of The Ahmanson Foundation",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.110481.html",
+   "iiif": "https://api.nga.gov/iiif/83b9693c-1bc8-4543-a48d-96ef6fafa7a9/0,111,4927,2464/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,111,4927,2464",
+    "imageSize": [
+     4927,
+     3357
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "starfarersCompass": {
+   "family": "Alien Relic",
+   "image": "card-art/starfarersCompass.webp",
+   "ngaObjectId": 43181,
+   "title": "The Northern Celestial Hemisphere",
+   "artist": "Albrecht Dürer",
+   "date": "1515",
+   "medium": "woodcut on laid paper",
+   "accession": "1954.12.233",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.43181.html",
+   "iiif": "https://api.nga.gov/iiif/c16d9a94-8017-4408-8590-818d0ef799a9/0,1014,3588,1794/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1014,3588,1794",
+    "imageSize": [
+     3588,
+     3822
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "horizonSail": {
+   "family": "Alien Relic",
+   "image": "card-art/horizonSail.webp",
+   "ngaObjectId": 139124,
+   "title": "New Moon or Solar Eclipse above the Riesengebirge Mountains",
+   "artist": "Caspar David Friedrich",
+   "date": "1810 or 1828/1835",
+   "medium": "pen and gray ink with watercolor over graphite on wove paper",
+   "accession": "2007.111.10",
+   "creditLine": "Wolfgang Ratjen Collection, Purchased as the Gift of Helen Porter and James T. Dyke and Dian Woodner",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.139124.html",
+   "iiif": "https://api.nga.gov/iiif/b933cdd9-3d1e-44c4-8341-e5f7b2c9bc26/0,0,5155,2578/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,0,5155,2578",
+    "imageSize": [
+     5155,
+     3708
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "memoryPrism": {
+   "family": "Alien Relic",
+   "image": "card-art/memoryPrism.webp",
+   "ngaObjectId": 33739,
+   "title": "The Gothic Arch",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1750/1758",
+   "medium": "etching, engraving, sulphur tint or open bite, burnishing",
+   "accession": "1946.21.399",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.33739.html",
+   "iiif": "https://api.nga.gov/iiif/ddff95be-9e26-4fdf-b8d6-c445ca4b44cb/0,609,4558,2279/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,609,4558,2279",
+    "imageSize": [
+     4558,
+     3497
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "archiveOfTides": {
+   "family": "Alien Relic",
+   "image": "card-art/archiveOfTides.webp",
+   "ngaObjectId": 33738,
+   "title": "The Well",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1750/1758",
+   "medium": "etching, engraving, scratching, burnishing, and lavis",
+   "accession": "1946.21.398",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.33738.html",
+   "iiif": "https://api.nga.gov/iiif/88cb4c9c-e335-4e8b-8f60-9fd914a92a95/0,731,4597,2298/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,731,4597,2298",
+    "imageSize": [
+     4597,
+     3418
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "stellarCrucible": {
+   "family": "Alien Relic",
+   "image": "card-art/stellarCrucible.webp",
+   "ngaObjectId": 33740,
+   "title": "The Pier with a Lamp",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1750/1758",
+   "medium": "etching, engraving, sulphur tint or open bite, burnishing",
+   "accession": "1946.21.400",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.33740.html",
+   "iiif": "https://api.nga.gov/iiif/d2a6553f-f165-4673-8f8c-a68c99b1f032/0,586,4602,2301/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,586,4602,2301",
+    "imageSize": [
+     4602,
+     3474
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "evergreenArk": {
+   "family": "Alien Relic",
+   "image": "card-art/evergreenArk.webp",
+   "ngaObjectId": 56673,
+   "title": "The Tomb of Nero",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1750/1759",
+   "medium": "etching, engraving, drypoint, scratching",
+   "accession": "1978.49.3",
+   "creditLine": "Andrew W. Mellon Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.56673.html",
+   "iiif": "https://api.nga.gov/iiif/9889f346-3dde-4360-94c0-651f7e4985af/0,525,4809,2404/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,525,4809,2404",
+    "imageSize": [
+     4809,
+     3454
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "foldedWarehouse": {
+   "family": "Alien Relic",
+   "image": "card-art/foldedWarehouse.webp",
+   "ngaObjectId": 33741,
+   "title": "The Pier with Chains",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1750/1758",
+   "medium": "etching, engraving, sulphur tint or open bite, burnishing",
+   "accession": "1946.21.401",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.33741.html",
+   "iiif": "https://api.nga.gov/iiif/d6525c53-5d25-452e-909e-f754303ac6c6/0,582,4726,2363/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,582,4726,2363",
+    "imageSize": [
+     4726,
+     3526
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "cinderDrive": {
+   "family": "Alien Relic",
+   "image": "card-art/cinderDrive.webp",
+   "ngaObjectId": 33731,
+   "title": "The Smoking Fire",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1750/1758",
+   "medium": "etching, engraving, sulphur tint or open bite, burnishing",
+   "accession": "1946.21.391",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.33731.html",
+   "iiif": "https://api.nga.gov/iiif/4a214062-7235-4118-a7d3-0700beed4744/0,982,3429,1714/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,982,3429,1714",
+    "imageSize": [
+     3429,
+     4597
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "keepersArchive": {
+   "family": "Alien Relic",
+   "image": "card-art/keepersArchive.webp",
+   "ngaObjectId": 43182,
+   "title": "The Southern Celestial Hemisphere",
+   "artist": "Albrecht Dürer",
+   "date": "1515",
+   "medium": "woodcut on laid paper",
+   "accession": "1954.12.234",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.43182.html",
+   "iiif": "https://api.nga.gov/iiif/e1b1d93f-57e5-4820-81d7-3f3ca9ca37b8/0,997,3633,1816/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,997,3633,1816",
+    "imageSize": [
+     3633,
+     3810
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  }
+ }
+}
