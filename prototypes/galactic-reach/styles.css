@@ -2868,7 +2868,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .market-cards #market-row > .game-card { grid-column: auto !important; }
   #market-panel .section-intro { display: none !important; }
   /* Six rows of smaller cards: effect lines sit a little closer so long effects read whole. */
-  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-icons { line-height: 1.2; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-icons { line-height: 1.17; }
   /* Bottom band. */
   #hand-row { grid-column: 1 / -1 !important; grid-row: 9 !important; margin: 0 calc(var(--mat-w) + var(--tools-w) + var(--side-w) + 46px) 0 calc(52px + 2 * var(--pile-w) + 23px) !important; }
   /* The turn's main button, small, right of the mat directly above Discard. Convert level I
@@ -2998,4 +2998,52 @@ body.background-stars > .starfield {
   background-size: 83px 97px, 139px 151px, 233px 211px;
   mask-image: none;
   -webkit-mask-image: none;
+}
+/* ==== Corner boxes: a card's cost is one rectangle sharing the card's top-right corner, its
+   conversion value (what a level I starter converts into) one rectangle sharing its top-left
+   corner. A card that cannot convert has no top-left box. ==== */
+@media (min-width: 600px) and (min-height: 600px) {
+  .game-card { --box-bg: color-mix(in srgb, var(--card-accent) 20%, #fffaf0); --box-line: color-mix(in srgb, var(--card-accent) 60%, #5c5442); }
+  /* Market cards: the cost column. */
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) { padding-top: 0 !important; padding-right: 0 !important; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { padding-top: 3px; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-footer {
+    align-self: start !important; justify-self: end; margin: 0 !important; padding: 3px 4px 4px 5px !important; gap: 1px !important;
+    background: var(--box-bg); border-left: 1.5px solid var(--box-line); border-bottom: 1.5px solid var(--box-line); border-radius: 0 7px 0 7px;
+  }
+  :is(.market-cards #market-row, #upgrade-market) .card-footer .resource-chip { min-height: 0 !important; padding: 0 !important; gap: 1px !important; background: none !important; box-shadow: none !important; border: 0 !important; }
+  .market-cards #market-row .card-footer .resource-chip { position: relative; }
+  .market-cards #market-row .card-footer .resource-chip strong { font-size: 12.5px !important; }
+  .market-cards #market-row .card-footer .resource-symbol { width: 14px !important; height: 14px !important; }
+  /* A padlock (cost above your limit) tucks against the number's corner. */
+  .market-cards #market-row .card-footer .chip-lock { top: -2px; right: -5px; width: 7px; height: 9px; }
+  .market-cards #market-row .card-footer:has(.chip-lock) { padding-right: 6px !important; }
+  .market-cards #market-row .card-footer .resource-chip.short strong { text-decoration: underline dashed; text-underline-offset: 2px; }
+  /* Upgrade cards: the price and the resources it may be paid with, in the same box. */
+  .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) {
+    grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "name cost" "effect cost" !important; grid-template-rows: auto minmax(0, 1fr) !important; align-content: start;
+    column-gap: 5px !important; padding: 0 0 4px 7px !important; position: relative;
+  }
+  .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) .card-name { grid-area: name; padding-top: 5px; }
+  .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) .card-effect { grid-area: effect; align-self: start !important; margin-top: 3px !important; }
+  .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) :is(.card-type, .card-limit-note, .card-art) { display: none !important; }
+  .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) .card-footer {
+    grid-area: cost !important; align-self: start !important; justify-self: end; margin: 0 !important; padding: 3px 4px 4px 5px !important;
+    background: var(--box-bg); border-left: 1.5px solid var(--box-line); border-bottom: 1.5px solid var(--box-line); border-radius: 0 7px 0 7px;
+  }
+  .upgrade-group #upgrade-market > .upgrade-offer .card-footer > small:not(:only-of-type) { display: none; }
+  .upgrade-group #upgrade-market > .upgrade-offer:not(.capacity-offer) .card-footer > small { display: none; }
+  /* The price over a 2 x 2 block of the resources it may be paid with. */
+  .upgrade-group #upgrade-market > .upgrade-offer .pay-options { display: grid !important; grid-template-columns: repeat(2, auto); justify-items: center; gap: 2px !important; }
+  .upgrade-group #upgrade-market > .upgrade-offer .pay-options > strong { grid-column: 1 / -1; margin: 0 !important; line-height: 1; }
+  /* The Capacity Module's "1 + N stored" lies at the card's foot. */
+  .upgrade-group #upgrade-market > .capacity-offer .card-footer > small { display: block !important; position: absolute; left: 7px; bottom: 4px; font-size: 9.5px; color: var(--ink); opacity: .8; }
+  /* Hand cards: the conversion value in the top-left box; upgraded starters show none. */
+  #hand-row .card-footer:not(:has(.resource-dots)) { display: none !important; }
+  #hand-row .card-footer small { display: none !important; }
+  #hand-row .game-card .card-footer {
+    justify-self: start !important; align-self: start !important; margin: -6px 0 0 -8px !important; padding: 3px 6px 3px 7px !important;
+    background: var(--box-bg); border-right: 1.5px solid var(--box-line); border-bottom: 1.5px solid var(--box-line); border-radius: 9px 0 7px 0;
+  }
+  #hand-row .card-footer .resource-chip { min-height: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; border: 0 !important; }
 }

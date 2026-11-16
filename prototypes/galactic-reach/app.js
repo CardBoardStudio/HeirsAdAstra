@@ -987,6 +987,9 @@ function createGalacticReach(options = {}) {
       .replace(/\bgain (\d+) (?:more )?permanent Prestige/gi, (m, n) => `+${n} @prestige@`)
       .replace(/\bgain (\d+) Prestige/gi, (m, n) => `+${n} @prestige@`)
       .replace(/\b(?:then )?draws? (one|two|three|four|five|\d+) cards?/gi, (m, w) => `+${count(w)} @draw@`)
+      .replace(/\bdraw (one|two|three|\d+)\b(?! card)/gi, (m, w) => `+${count(w)} @draw@`)
+      .replace(/\+(\d+) movement\b/gi, (m, n) => `+${n} @move@`)
+      .replace(/\bBuild up to (two|three|\d+)(?: ships or structures)?/g, (m, w) => `@build@ up to ${count(w)}`)
       .replace(/\badd (\d+) hits/gi, (m, n) => `+${n} @hit@`)
       .replace(/\+(\d+) hits?(?: this volley)?/gi, (m, n) => `+${n} @hit@`)
       .replace(/\bprevent (\d+) hits?(?: this volley)?/gi, (m, n) => `${n} @miss@`)
@@ -4299,7 +4302,10 @@ function createGalacticReach(options = {}) {
       const note=[ready.length?`${ready.length} ready`:'',inDeck?`${inDeck} in deck`:''].filter(Boolean).join(' · ')||`No level ${LEVEL_NAMES[level-1]} copy`;
       const canPay=RESOURCES.some(resource=>me.resources[resource]>=price);
       const reason=!humanBuy?'Upgrade during your Buy turn.':!ready.length?`No level ${LEVEL_NAMES[level-1]} ${def.name} in hand, discard or in play.`:!canPay?`Needs ${price} of one resource.`:'';
-      const effect=`${upgradedOrderText({key})}${level===3?' Draws one card when used as an order.':''} No longer converts to resources.`;
+      // The printed text of the copy you get, in the card vocabulary. A card with no conversion box
+      // cannot convert, so it says nothing about conversion.
+      const copy={key,starter:true,upgraded:true,level}, extraDraw=level===3&&key!=='construct';
+      const effect=iconText(`${upgradedOrderText(copy)}${extraDraw?' Draws one card when used as an order.':''}`);
       return `<button class="game-card upgrade-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-upgrade-offer="${key}" data-upgrade-level="${level}" ${reason?`disabled title="${reason}"`:''} aria-label="Upgrade ${esc(def.name)} to level ${LEVEL_NAMES[level]} for ${price} of one resource; does not use a purchase${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Starter upgrade</span><span class="card-name">${def.name} ${LEVEL_NAMES[level]}</span>${cardIllustration(def)}<span class="card-effect">${effect}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${price}</strong>${RESOURCES.map(resource=>`<span class="pay-chip ${me.resources[resource]>=price?'can':'cannot'}" data-pay="${resource}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${price} of one resource</span></span><span class="card-limit-note">${note}</span></button>`;
     })).join('')+capacityOffer(humanBuy)+trashPile(humanBuy);
     $$('[data-upgrade-offer]').forEach(button=>button.addEventListener('click',event=>openUpgradeChoice(button.dataset.upgradeOffer,event.target.closest?.('.pay-chip.can')?.dataset.pay)));
@@ -4938,7 +4944,7 @@ function createGalacticReach(options = {}) {
   // units to show its name, cost and effect whole, so the shorter a card, the wider it is; cards
   // keep real card proportions (63:88) where that already leaves them that room (tall windows).
   // The column's width follows from the card size.
-  const CARD_GAP = 6, SUPPLY_ROWS = 6, CARD_MIN_W = 150, CARD_TEXT_AREA = 166 * 127;
+  const CARD_GAP = 6, SUPPLY_ROWS = 6, CARD_MIN_W = 150, CARD_TEXT_AREA = 170 * 127;
   function fitMarket() {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function') return;
     const root = typeof document !== 'undefined' ? document.documentElement : null, shell = $('.app-shell');
