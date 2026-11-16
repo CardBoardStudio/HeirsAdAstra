@@ -4910,6 +4910,9 @@ function createGalacticReach(options = {}) {
     const box = region.getBoundingClientRect(), b = board.getBoundingClientRect();
     if (!b.width || !box.width) return;
     const hexes = [...board.querySelectorAll('.hex')].map(hex => { const r = hex.getBoundingClientRect(); return [(r.left - b.left) / b.width, (r.top - b.top) / b.width, (r.right - b.left) / b.width, (r.bottom - b.top) / b.width]; });
+    // The outermost hexes are the ones that meet a panel, so they are tried first: most sizes fail
+    // on the first few hexes instead of after hundreds.
+    hexes.sort((a, z) => Math.hypot(z[0] + z[2] - 1, (z[1] + z[3]) / 2 - b.height / b.width / 2) - Math.hypot(a[0] + a[2] - 1, (a[1] + a[3]) / 2 - b.height / b.width / 2));
     const ratio = b.height / b.width, gap = 6 * zoom;
     const rect = (element, [l, t, r, bottom] = [0, 0, 0, 0]) => { const e = element?.getBoundingClientRect?.(); return e && e.width ? [e.left - l * zoom, e.top - t * zoom, e.right + r * zoom, e.bottom + bottom * zoom] : null; };
     const track = rect($('#prestige-track'), [6, 4, 38, 5]);
@@ -4927,7 +4930,7 @@ function createGalacticReach(options = {}) {
     // The map lies against the supply. A map shorter than its space may also slide up or down
     // (centred first) so its empty corners take the panels above and below.
     const fits = width => {
-      const slack = box.height - width * ratio, tops = [slack / 2, ...Array.from({ length: 17 }, (_, i) => slack * i / 16)];
+      const slack = box.height - width * ratio, tops = [slack / 2, ...Array.from({ length: 9 }, (_, i) => slack * i / 8)];
       return tops.find(dy => clear(width, box.top + dy));
     };
     // Hexes are discrete, so a corner piece can clear a larger map and touch a smaller one: scan
