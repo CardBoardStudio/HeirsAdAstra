@@ -25,7 +25,7 @@
     if (event.pointerType === 'touch' || drag) return;
     const card = event.target.closest?.('.game-card');
     if (tilted && tilted !== card) { untilt(tilted); tilted = null; }
-    if (!card || card.closest('.cf-ghost, .card-inspect') || still()) return;
+    if (!card || card.closest('.cf-ghost') || still()) return;
     const rect = card.getBoundingClientRect();
     const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / rect.width));
     const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / rect.height));
@@ -51,70 +51,9 @@
     });
   }
 
-  // ---- Inspect: the full card at reading size, beside the map rather than over it. ----
-  const inspect = document.createElement('aside');
-  inspect.className = 'card-inspect';
-  inspect.id = 'card-inspect';
-  inspect.setAttribute('aria-hidden', 'true');
-  inspect.hidden = true;
-  let inspected = null, hideTimer = 0;
-  function inspectCard(card) {
-    clearTimeout(hideTimer);
-    if (!card || drag) return hideInspect();
-    // Re-showing the card already up (a re-render, or the pointer crossing its parts)
-    // must not replay the entrance, or the card flickers while bots act.
-    const steady = !inspect.hidden && inspected !== null && inspected === (card.dataset.cardId || null);
-    inspected = card.dataset.cardId || null;
-    const copy = card.cloneNode(true);
-    copy.querySelector('.card-buttons')?.remove();
-    for (const name of ['data-card-id', 'data-order', 'style']) copy.removeAttribute(name);
-    copy.setAttribute('style', `--card-accent:${card.style.getPropertyValue('--card-accent')}`);
-    copy.classList.add('inspect-card');
-    copy.classList.toggle('cf-steady', steady);
-    copy.classList.remove('cf-tilting', 'cf-dragging');
-    inspect.replaceChildren(copy);
-    if (!inspect.isConnected) document.body.append(inspect);
-    inspect.hidden = false;
-    placeInspect(card);
-  }
-  // The space beside the galaxy (left or right, whichever is wider) holds the card,
-  // bottom-aligned with the hand, so the hex you are about to choose stays clear.
-  function placeInspect(card) {
-    const map = $('#galaxy-board')?.getBoundingClientRect();
-    const from = card.getBoundingClientRect();
-    const width = Math.min(260, Math.max(200, innerWidth * 0.17));
-    inspect.style.width = `${width}px`;
-    const height = inspect.offsetHeight;
-    // Clear of the hand strip and of the raised card's lift and buttons.
-    const strip = $('#hand-row')?.getBoundingClientRect();
-    const bottom = Math.min(innerHeight - 8, (strip?.height ? strip.top : from.top) - 52);
-    let left;
-    if (map && map.width) {
-      const leftRoom = map.left - 8, rightRoom = innerWidth - map.right - 8;
-      // Use the wider side of the table beside the map, as close above the card as that
-      // side allows, so the card reads as lifted up from the hand without covering a hex.
-      const [lo, hi] = rightRoom >= leftRoom ? [map.right + 8, innerWidth - 8] : [8, map.left - 8];
-      left = Math.min(hi - width, Math.max(lo, from.left + from.width / 2 - width / 2));
-      if (Math.max(leftRoom, rightRoom) < width) left = from.left + from.width / 2 < innerWidth / 2 ? innerWidth - width - 8 : 8;
-    } else left = from.left;
-    left = Math.min(innerWidth - width - 8, Math.max(8, left));
-    inspect.style.left = `${Math.round(left)}px`;
-    inspect.style.top = `${Math.round(Math.max(8, bottom - height))}px`;
-  }
-  function hideInspect() {
-    clearTimeout(hideTimer);
-    inspected = null;
-    inspect.hidden = true;
-    inspect.replaceChildren();
-  }
+  // ---- Inspect: pointing at a hand card (or focusing it) raises that card itself into the whole
+  // card, in place above the hand (CSS); there is no separate copy beside the map. ----
   const handCard = target => target?.closest?.('#hand-row > .game-card');
-  document.addEventListener('pointerover', event => { const card = handCard(event.target); if (card && event.pointerType !== 'touch') inspectCard(card); });
-  document.addEventListener('pointerout', event => {
-    const card = handCard(event.target);
-    if (card && !card.contains(event.relatedTarget) && !handCard(document.activeElement)) { clearTimeout(hideTimer); hideTimer = setTimeout(hideInspect, 90); }
-  });
-  document.addEventListener('focusin', event => { const card = handCard(event.target); if (card) inspectCard(card); });
-  document.addEventListener('focusout', event => { if (handCard(event.target) && !handCard(event.relatedTarget)) hideTimer = setTimeout(() => { if (!handCard(document.activeElement) && !$('#hand-row > .game-card:hover')) hideInspect(); }, 90); });
 
   // ---- Motion between renders. ----
   function snapshotCards(selector) {
@@ -217,7 +156,6 @@
     fanHand();
     const before = view, saved = previous;
     view = next; previous = null;
-    if (inspected) { const card = $(`#hand-row > .game-card[data-card-id="${inspected}"]`); if (card && (card.matches(':hover') || card.contains(document.activeElement))) inspectCard(card); else hideInspect(); }
     if (before && saved && !next.replay && !still() && !drag) animate(before, next, saved);
   }
 
@@ -273,7 +211,6 @@
     const convert = card.querySelector('[data-resource-card]:not(:disabled)');
     // A card with nowhere to go is still picked up, and says so, rather than ignoring the drag.
     const stuck = !targets.length && !special && !convert;
-    hideInspect();
     try { card.setPointerCapture(event.pointerId); } catch { /* the pointer already left */ }
     if (tilted) { untilt(tilted); tilted = null; }
     const hexes = targets.map(target => { const hex = $(`.hex[data-coord="${target.coord}"]`); hex?.classList.add('cf-drop-target'); return hex; }).filter(Boolean);

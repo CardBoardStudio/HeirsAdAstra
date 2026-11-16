@@ -32,7 +32,7 @@
 }
 
 /* Your hand: held in a slight fan (card-feel.js sets each card's angle and arc). Pointing at
-   a card straightens it and lifts it a little; its full text shows beside the map. */
+   a card straightens it and raises it whole (see styles.css). */
 #hand-row > .game-card { transform-origin: 50% 115%; cursor: grab; user-select: none; -webkit-user-select: none; }
 #hand-row > .game-card:is(:hover, :focus, :focus-within) { --cf-fan: 0deg !important; --cf-arc: 0px !important; --cf-lift: -12px; --cf-drop: 0 16px 18px -8px #0009, 0 30px 44px -18px #000c; }
 @media (min-width: 1024px) and (min-height: 600px) {
@@ -40,29 +40,9 @@
      instead of pushing the row, so the hand never shifts under the pointer. */
   #hand-row > .game-card:is(:hover, :focus-within) { margin-right: calc(var(--top-w) - max(var(--top-w), 200px)); }
   #hand-row > .game-card:last-child:not(:first-child):is(:hover, :focus-within) { margin-right: 0; margin-left: calc(min(-10px, calc((100cqw - var(--n) * var(--top-w)) / (var(--n) - 1))) - (max(var(--top-w), 200px) - var(--top-w))); }
-  /* The full text is in the inspect view; screen readers still read it on the card. */
-  #hand-row > .game-card:is(:hover, :focus, :focus-within) .card-effect { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 }
 
-/* Inspect: the card at reading size and in real card proportions (63 x 88 mm). */
-.card-inspect { position: fixed; z-index: 60; pointer-events: none; perspective: 1000px; }
-.card-inspect[hidden] { display: none; }
-.card-inspect .game-card {
-  width: 100%; height: auto; min-height: auto; aspect-ratio: 63 / 88; display: flex; flex-direction: column; margin: 0; padding: 13px 13px 12px;
-  border-radius: 12px; --cf-drop: 0 18px 24px -10px #000a, 0 34px 60px -20px #000d;
-  animation: cf-inspect-in .16s cubic-bezier(.2,.7,.25,1);
-}
-.card-inspect .card-type { display: block; }
-.card-inspect .card-name { margin: 4px 0 6px; font-size: 21px; }
-.card-inspect .card-headline { display: block; margin: -2px 0 8px; color: #2c3a35; font-size: 13px; font-weight: 650; }
-.card-inspect .card-art { min-height: 70px; }
-.card-inspect .card-art.has-picture { min-height: 70px; aspect-ratio: 2.4 / 1; }
-.card-inspect .card-effect { flex: 1 1 auto; font-size: 13px; line-height: 1.45; }
-.card-inspect .card-footer { display: flex; align-items: center; margin-top: 8px; padding-top: 7px; }
-.card-inspect .resource-chip strong { font-size: 13px; }
-@keyframes cf-inspect-in { from { opacity: 0; transform: translateY(8px) scale(.97); } }
-.card-inspect .game-card.cf-steady { animation: none; }
-@media (prefers-reduced-motion: reduce) { .card-inspect .game-card, .hex.cf-drop-target::before { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .hex.cf-drop-target::before { animation: none; } }
 
 /* Market (report #8): the price is the card's top-left corner and the gain its top-right.
    A padlock marks a price above that resource's limit; a dashed chip one you hold too
