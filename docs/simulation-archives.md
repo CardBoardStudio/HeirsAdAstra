@@ -1,6 +1,6 @@
 # Simulation archives
 
-Every normal run of `balance-simulations.cjs`, `strategic-bot-study.cjs`, and `profile-bot-search.cjs` now creates a full archive for each game. Summary output is additional evidence, never the only retained result. The exported study `factory` also archives by default, so a custom study using that factory inherits recording. Custom policy handoffs share one recorder for the entire game.
+Every normal run of `balance-simulations.cjs`, `strategic-bot-study.cjs`, `profile-bot-search.cjs`, and `card-evolution/run.cjs` now creates a full archive for each game. Summary output is additional evidence, never the only retained result. The exported study `factory` also archives by default, so a custom study using that factory inherits recording. Custom policy handoffs share one recorder for the entire game.
 
 Use the canonical factory for new bot studies. Do not copy an older summary-only harness. Pass the complete task as `archiveMetadata` and any external policy/harness text as `archiveSources`. The actual transformed engine and adapter are frozen automatically. A custom runner must call `archive.finish({reason, incomplete, summary})` when its own limits stop a game; winning games close automatically. The archive directory is returned as `archive.directory` (or the `archive` path in study results).
 
@@ -9,7 +9,7 @@ Use the canonical factory for new bot studies. Do not copy an older summary-only
 Each `game-*` directory contains:
 
 - `manifest.json`: schema version, exact configuration supplied by the runner (seed, profiles, policy assignment, target and bounds), runtime version, source hashes, completion status and final state hash.
-- `sources/`: exact executable rules and adapter, runner/policy source and recorder, plus the canonical rulebook. Mixed-policy games retain every source variant.
+- `sources/`: exact executable rules and adapter, runner/policy source and recorder, plus the canonical rulebook. Mixed-policy games retain every source variant. Card-evolution games also freeze their complete generated pool, generator, scoring code and configuration.
 - `trace.jsonl.gz`: initial full private state, lossless state patches at every runner decision and action/event boundary, engine counters (`turnSerial` and `cardSerial`), every random value, commands/arguments/results, all game messages, draws, resource gains/payments, trades, production and round-end records. Full positions include ordered decks, hands, in-play/discard, hidden relics, tactics/commitments, map, pending decisions, ownership and scores. No observer redaction is applied to generated simulation data.
 - `summary.json`: the runner's final per-game metrics when available.
 

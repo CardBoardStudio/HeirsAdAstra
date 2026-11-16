@@ -39,3 +39,4 @@ trusted-signers.local.json
 
 # Full local simulator archives; retained locally, not committed as source.
 /output/simulations/
+/card-evolution-runs/
