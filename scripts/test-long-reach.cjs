@@ -69,7 +69,7 @@ function assertGalaxy(s) {
   assert.equal(Object.values(s.planets).filter(p=>p.special==='gate').length,0);
   assert(Object.values(s.planets).every(p=>!('rich' in p)&&p.special!=='rich'),'Rich is absent, not just visually hidden');
   const homes=s.clusters.slice(0,4), worlds=s.clusters.filter(c=>c.kind==='world'&&c.id>=4), moons=s.clusters.filter(c=>c.kind==='moon');
-  const expected=['9,-9','-9,9','6,-3','3,-6','-3,-3','-6,3','-3,6','3,3','0,0'];
+  const expected=['8,-8','-8,8','6,-3','3,-6','-3,-3','-6,3','-3,6','3,3','0,0'];
   assert.deepEqual(new Set(Array.from(worlds,w=>w.center)),new Set(expected),'The approved world geometry stays fixed');
   const access=homes.map(h=>Math.min(...moons.map(m=>r.hexDistance(h.center,m.center))));
   assert(access.every(d=>d>=4&&d<=7));assert(Math.max(...access)-Math.min(...access)<=1);

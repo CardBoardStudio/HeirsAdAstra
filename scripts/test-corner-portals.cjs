@@ -70,10 +70,11 @@ const distance=(a,b)=>{const [q,r]=a.split(',').map(Number),[x,y]=b.split(',').m
  const g=game(undefined,true);g.p.strategy='military';g.p.hand=[{key:'move',id:'bot'}];g.s.fleets={[from]:{0:units(0,0,3)},[exit]:{1:units(0,0,1)}};
  const choice=g.e.chooseAiMove(0,g.p.hand[0]);assert(choice);assert.equal(choice.source,from);assert.equal(choice.destination,exit);
 }
-// Physical terrain/setup RNG and all earlier engines remain unchanged.
+// The archived portal experiment preserves its original terrain/RNG contract.
+// Current setup intentionally moves the two corner worlds inward.
 {
- const current=game(undefined,true),old=game('crates/galactic-reach/rules/v33-',true);
- const terrain=plain(current.s.planets);Object.values(terrain).filter(p=>p.cluster===12).forEach(p=>p.special=null);assert.deepEqual(terrain,plain(old.s.planets),'Only the feedback center relic differs from old terrain');assert.deepEqual(plain(current.s.clusters),plain(old.s.clusters));
+ const portal=game('crates/galactic-reach/rules/v35-',true),old=game('crates/galactic-reach/rules/v33-',true);
+ assert.deepEqual(plain(portal.s.planets),plain(old.s.planets),'Archived portal setup preserves its original terrain');assert.deepEqual(plain(portal.s.clusters),plain(old.s.clusters));
  assert.equal(old.a().rulesVersion,'galactic-reach/33.38');assert.equal(old.s.portalLinks,undefined);assert(!old.e.reachableFrom(from,0,2).includes(exit));
  for(const [file,hash] of Object.entries(JSON.parse(read('scripts/corner-portal-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,file);
 }
