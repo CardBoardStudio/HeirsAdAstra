@@ -2978,4 +2978,15 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 body.background-stars {
   background: radial-gradient(circle at 15% -10%, rgba(72,160,218,.16), transparent 34rem), radial-gradient(circle at 90% 10%, rgba(133,82,199,.12), transparent 30rem), #060911 !important;
 }
-body.background-stars > .starfield { display: block !important; opacity: .4; }
+body.background-stars > .starfield {
+  display: block !important;
+  opacity: .9;
+  background-image:
+    radial-gradient(circle, rgba(255,255,255,.95) 0 1px, rgba(160,215,255,.35) 1.2px, transparent 2px),
+    radial-gradient(circle, rgba(190,220,255,.8) 0 1.2px, transparent 2px),
+    radial-gradient(circle, rgba(255,248,220,.9) 0 1.6px, rgba(190,220,255,.18) 2px, transparent 3.5px);
+  background-position: 17px 29px, 53px 71px, 113px 37px;
+  background-size: 83px 97px, 139px 151px, 233px 211px;
+  mask-image: none;
+  -webkit-mask-image: none;
+}
