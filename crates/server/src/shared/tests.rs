@@ -250,10 +250,16 @@ async fn account(a: &App, name: &str) -> String {
 }
 
 /// Two accounts play a whole shared game through the HTTP API, with the table
-/// service's AI rivals in the other two seats.
+/// service's AI rivals in the other two seats. The seeded service deals the same
+/// game every run, so the test's coverage and run time do not vary.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
-    let a = app(true);
+async fn heavy_two_accounts_play_a_shared_game_to_the_end_over_http() {
+    let mut a = app(true);
+    a.shared = Service::start_seeded(
+        Arc::new(SqliteTableLog(a.store.clone())),
+        Duration::ZERO,
+        [11; 32],
+    );
     let host = account(&a, "Ada").await;
     let friend = account(&a, "Bo").await;
     let stranger = account(&a, "Cy").await;
@@ -443,6 +449,10 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
     // `undo_takes_back_this_turn_but_not_past_a_reveal_or_the_turn`.
     let _ = refused_after_reveal;
     let end = call(&a, "GET", &endpoint, &friend, json!({})).await.2;
+    eprintln!(
+        "shared game: seats {people:?}, {human_moves} human moves, seq {}, winner {}",
+        end["seq"], end["state"]["winner"]
+    );
     assert_eq!(end["status"], "finished");
     assert!(end["state"]["winner"].is_u64());
     a.shared.refolded(&id, 1).await;
@@ -1701,5 +1711,99 @@ async fn a_dev_table_keeps_its_build_when_a_rules_change_deploys() {
         status,
         StatusCode::NOT_FOUND,
         "released revisions are not dev builds"
+    );
+}
+
+// Fast stand-ins on change PRs for the whole-match tests in the heavy tier
+// (.config/nextest.toml, docs/release.md#heavy-tests). They live here rather than in
+// crates/galactic-reach so that test-only edits there do not count as rule changes.
+
+/// The first 300 decisions of a four-rival match, twice: every pick is legal and
+/// the two runs choose identically.
+#[test]
+fn reference_rivals_open_a_match_legally_and_reproducibly() {
+    let play = || {
+        let mut game = GalacticReach::new([8; 32]).unwrap();
+        let mut agents: Vec<BuiltinAgent> = [
+            Strategy::Military,
+            Strategy::Economy,
+            Strategy::Expansion,
+            Strategy::Wanderer,
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(i, s)| BuiltinAgent::new(s, [i as u8; 32]))
+        .collect();
+        let mut trace = vec![];
+        for _ in 0..300 {
+            let seat = game.active_seat().expect("the match is still running");
+            let legal = game.legal_actions(seat);
+            let pick = agents[seat].select_action(&game.observe(seat).unwrap(), &legal);
+            game.apply_action(seat, legal[pick].clone()).unwrap();
+            trace.push((seat, legal[pick].clone()));
+        }
+        trace
+    };
+    assert_eq!(play(), play());
+}
+
+/// A shared table on the current rules resumes from its snapshot text exactly:
+/// the resumed engine re-snapshots byte for byte and plays on identically. The
+/// galactic-reach heavy test does the same for every revision in SHARED_RULES.
+#[test]
+fn shared_tables_resume_exactly_on_current_rules() {
+    use rand::{SeedableRng, rngs::StdRng, seq::SliceRandom};
+    use std::{cell::RefCell, rc::Rc};
+    let rules = galactic_reach::RULES;
+    assert!(galactic_reach::SHARED_RULES.contains(&rules));
+    let log: Rc<RefCell<Vec<Vec<usize>>>> = Rc::default();
+    let mut rng = StdRng::from_seed([9; 32]);
+    let record = log.clone();
+    let seats: [(String, bool); 4] = std::array::from_fn(|i| (format!("P{i}"), i < 2));
+    let mut game = GalacticReach::shared(rules, &seats, 20, move |n, _| {
+        let mut order: Vec<usize> = (0..n).collect();
+        order.shuffle(&mut rng);
+        record.borrow_mut().push(order.clone());
+        order
+    })
+    .unwrap();
+    assert_eq!(game.rules_version(), rules);
+    let mut agents: Vec<BuiltinAgent> = (0..4)
+        .map(|i| BuiltinAgent::new(Strategy::Economy, [i; 32]))
+        .collect();
+    let mut step = |g: &mut GalacticReach| {
+        let seat = g.active_seat().unwrap();
+        let legal = g.legal_actions(seat);
+        let pick = agents[seat].select_action(&g.observe(seat).unwrap(), &legal);
+        g.apply_action(seat, legal[pick].clone()).unwrap();
+        legal[pick].clone()
+    };
+    for _ in 0..120 {
+        step(&mut game);
+    }
+    let text = game.snapshot().unwrap();
+    let mut next = log.borrow().len();
+    let replay = log.clone();
+    let mut resumed = GalacticReach::shared_on(rules, &seats, 20, Some(&text), move |n, _| {
+        let order = replay.borrow()[next].clone();
+        assert_eq!(order.len(), n);
+        next += 1;
+        order
+    })
+    .unwrap();
+    assert_eq!(
+        resumed.snapshot().unwrap(),
+        text,
+        "resumed snapshot is identical"
+    );
+    for _ in 0..150 {
+        let action = step(&mut game);
+        let seat = resumed.active_seat().unwrap();
+        resumed.apply_action(seat, action).unwrap();
+    }
+    assert_eq!(
+        resumed.snapshot().unwrap(),
+        game.snapshot().unwrap(),
+        "plays on identically"
     );
 }
