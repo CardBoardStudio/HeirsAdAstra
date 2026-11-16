@@ -2657,8 +2657,10 @@ mod tests {
         assert_eq!(g.active_seat(), Some(1));
         assert_eq!(g.observe(1).unwrap()["phase"], "operations");
     }
+    // `heavy_` tests play whole matches. Change PRs skip them; the release PRs and
+    // manual CI runs play them (.config/nextest.toml, docs/release.md#heavy-tests).
     #[test]
-    fn reference_policies_complete_reproducible_four_player_matches() {
+    fn heavy_reference_policies_complete_reproducible_four_player_matches() {
         let play = || {
             let mut game = GalacticReach::new([8; 32]).unwrap();
             let mut agents: Vec<Box<dyn PlayerAgent<GalacticReach>>> = [
@@ -2682,10 +2684,39 @@ mod tests {
         assert_eq!(result.scores.iter().copied().fold(0.0, f64::max), 3.0);
         assert!(result.scores.iter().all(|s| (0.0..=3.0).contains(s)));
     }
+    /// The first 300 decisions of a four-rival match, twice: every pick is legal and
+    /// the two runs choose identically. A seconds-long stand-in on change PRs for
+    /// the whole matches the heavy tests play.
+    #[test]
+    fn reference_policies_open_a_match_legally_and_reproducibly() {
+        let play = || {
+            let mut game = GalacticReach::new([8; 32]).unwrap();
+            let mut agents: Vec<BuiltinAgent> = [
+                Strategy::Military,
+                Strategy::Economy,
+                Strategy::Expansion,
+                Strategy::Wanderer,
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(i, s)| BuiltinAgent::new(s, [i as u8; 32]))
+            .collect();
+            let mut trace = vec![];
+            for _ in 0..300 {
+                let seat = game.active_seat().expect("the match is still running");
+                let legal = game.legal_actions(seat);
+                let pick = agents[seat].select_action(&game.observe(seat).unwrap(), &legal);
+                game.apply_action(seat, legal[pick].clone()).unwrap();
+                trace.push((seat, legal[pick].clone()));
+            }
+            trace
+        };
+        assert_eq!(play(), play());
+    }
     // 31.36 (#rival-cards): the reference rivals that run shared tables buy the new
     // cards, raise their limits toward them, play them and use military tactics.
     #[test]
-    fn reference_policies_buy_and_play_capacity_cards() {
+    fn heavy_reference_policies_buy_and_play_capacity_cards() {
         let mut game = GalacticReach::new([8; 32]).unwrap();
         let mut agents: Vec<BuiltinAgent> = [
             Strategy::Military,
@@ -2734,10 +2765,19 @@ mod tests {
     /// SHARED_RULES boots, and a resumed engine re-snapshots byte for byte (object
     /// key order included, which the rules depend on) and plays on identically.
     #[test]
-    fn shared_tables_resume_exactly_on_every_shared_revision() {
+    fn heavy_shared_tables_resume_exactly_on_every_shared_revision() {
+        resume_exactly(&SHARED_RULES);
+    }
+    /// The revision a change PR edits, on every PR.
+    #[test]
+    fn shared_tables_resume_exactly_on_current_rules() {
+        assert!(SHARED_RULES.contains(&RULES));
+        resume_exactly(&[RULES]);
+    }
+    fn resume_exactly(revisions: &[&str]) {
         use std::cell::RefCell;
         use std::rc::Rc;
-        for rules in SHARED_RULES {
+        for &rules in revisions {
             let log: Rc<RefCell<Vec<Vec<usize>>>> = Rc::default();
             let mut rng = StdRng::from_seed([9; 32]);
             let record = log.clone();

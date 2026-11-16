@@ -437,6 +437,9 @@ struct Tables {
     log: Arc<dyn TableLog>,
     authority: Arc<dyn HiddenInfoAuthority>,
     channel: Arc<Channel>,
+    /// Tests only: rival seeds come from this instead of OS randomness.
+    #[cfg(test)]
+    seed: Option<[u8; 32]>,
 }
 impl Tables {
     fn live(&mut self, id: &str) -> Result<&mut Live, Refusal> {
@@ -697,6 +700,8 @@ impl Tables {
     }
     /// Plays one decision for an AI seat. Returns whether an AI seat acts next.
     fn step_ai(&mut self, id: &str) -> Result<bool, Refusal> {
+        #[cfg(test)]
+        let fixture = self.seed;
         let live = self.live(id)?;
         let Some(seat) = live.engine.active_seat() else {
             return Ok(false);
@@ -709,6 +714,11 @@ impl Tables {
             std::collections::hash_map::Entry::Vacant(slot) => {
                 let mut seed = [0u8; 32];
                 rand::rngs::OsRng.fill_bytes(&mut seed);
+                #[cfg(test)]
+                if let Some(fixture) = fixture {
+                    seed = fixture;
+                    seed[31] ^= seat as u8;
+                }
                 // The exact policy the table was dealt with (archived agents
                 // included), else the current version of the same profile.
                 let agent = galactic_reach::agent(&policy, seed)
@@ -799,6 +809,9 @@ pub struct Service {
     ai_running: Mutex<HashSet<String>>,
     /// The rules this server deals and the engines it keeps (channel.rs).
     pub channel: Arc<Channel>,
+    /// Tests only: see [`Service::start_seeded`].
+    #[cfg(test)]
+    pub seed: Option<[u8; 32]>,
 }
 impl Service {
     /// A table service dealing the released rules (the stable channel).
@@ -809,6 +822,24 @@ impl Service {
         ai_pace: Duration,
     ) -> Arc<Self> {
         Self::start_on(log, authority, ai_pace, Arc::new(Channel::stable()))
+    }
+    /// Tests only: a table service whose shuffles, rival seeds and lobby seat
+    /// dealing all come from `seed`, so a shared game plays the same way on every
+    /// run, as the arena's `arena_seed` does for arena series.
+    #[cfg(test)]
+    pub fn start_seeded(log: Arc<dyn TableLog>, ai_pace: Duration, seed: [u8; 32]) -> Arc<Self> {
+        let mut service = Self::start(log, Arc::new(authority::SeededAuthority(seed)), ai_pace);
+        Arc::get_mut(&mut service)
+            .expect("a new service has one owner")
+            .seed = Some(seed);
+        // Jobs run in order, so every table sees the seed.
+        service
+            .jobs
+            .lock()
+            .unwrap()
+            .send(Box::new(move |t| t.seed = Some(seed)))
+            .expect("the table service is running");
+        service
     }
     pub fn start_on(
         log: Arc<dyn TableLog>,
@@ -828,6 +859,8 @@ impl Service {
                     log,
                     authority,
                     channel: tables_channel,
+                    #[cfg(test)]
+                    seed: None,
                 };
                 for job in rx {
                     job(&mut tables);
@@ -843,6 +876,8 @@ impl Service {
             closing: tokio::sync::watch::channel(false).0,
             ai_running: Mutex::new(HashSet::new()),
             channel,
+            #[cfg(test)]
+            seed: None,
         })
     }
     /// Ends every live stream (server shutdown).

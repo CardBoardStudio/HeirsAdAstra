@@ -250,10 +250,16 @@ async fn account(a: &App, name: &str) -> String {
 }
 
 /// Two accounts play a whole shared game through the HTTP API, with the table
-/// service's AI rivals in the other two seats.
+/// service's AI rivals in the other two seats. The seeded service deals the same
+/// game every run, so the test's coverage and run time do not vary.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
-    let a = app(true);
+async fn heavy_two_accounts_play_a_shared_game_to_the_end_over_http() {
+    let mut a = app(true);
+    a.shared = Service::start_seeded(
+        Arc::new(SqliteTableLog(a.store.clone())),
+        Duration::ZERO,
+        [11; 32],
+    );
     let host = account(&a, "Ada").await;
     let friend = account(&a, "Bo").await;
     let stranger = account(&a, "Cy").await;
@@ -443,6 +449,10 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
     // `undo_takes_back_this_turn_but_not_past_a_reveal_or_the_turn`.
     let _ = refused_after_reveal;
     let end = call(&a, "GET", &endpoint, &friend, json!({})).await.2;
+    eprintln!(
+        "shared game: seats {people:?}, {human_moves} human moves, seq {}, winner {}",
+        end["seq"], end["state"]["winner"]
+    );
     assert_eq!(end["status"], "finished");
     assert!(end["state"]["winner"].is_u64());
     a.shared.refolded(&id, 1).await;

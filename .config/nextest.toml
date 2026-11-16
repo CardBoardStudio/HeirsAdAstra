@@ -1,0 +1,19 @@
+# cargo-nextest runs every test binary in one pool, one process per test.
+# CI uses it (.github/workflows/ci.yml); plain `cargo test` still runs everything.
+#
+# Tests named `heavy_*` play whole Galactic Reach matches and take most of the
+# suite's time. The default profile skips them; the `heavy` profile runs only
+# them. See docs/release.md#heavy-tests.
+
+[profile.default]
+default-filter = "not test(/(^|::)heavy_/)"
+# Stop at the first failure and kill the tests still running, so a red run
+# reports in seconds instead of waiting for the slowest test.
+fail-fast = { max-fail = 1, terminate = "immediate" }
+# A fast test that runs for 5 minutes is stuck: kill it and name it.
+slow-timeout = { period = "60s", terminate-after = 5 }
+
+[profile.heavy]
+default-filter = "test(/(^|::)heavy_/)"
+# On CI's runners a heavy test takes a few minutes; 15 minutes means it is stuck.
+slow-timeout = { period = "60s", terminate-after = 15 }

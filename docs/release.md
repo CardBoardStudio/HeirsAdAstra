@@ -38,7 +38,7 @@ The standing Release PR (`main` → `stable`) always shows what is unreleased. R
 
 The cut PR appears automatically. After every push to `main` that leaves entries in `changes/`, the **Release cut** workflow (`.github/workflows/release-cut.yml`, running `scripts/release-cut.sh`) cuts them on a fresh `release/next` from `main` and opens or updates the single **"Cut: next release"** PR into `main`, labelled `playtest-breaking` or `playtest-safe`. A rules-changing release is named "Playtest <date>" by default. To rename it, edit the `Release name:` line in the PR description; the workflow cuts again with that name. You can also run the workflow from the Actions tab with a name. When the batch is ready:
 
-1. Check that CI passed on the cut PR's head commit, review what the cut lists in the PR (rulebook prose, the catalog description), and merge it.
+1. Check that CI passed on the cut PR's head commit, including the [heavy tests](#heavy-tests), review what the cut lists in the PR (rulebook prose, the catalog description), and merge it.
 2. Verify the Release PR's preview, announce the reset if rules changed, and merge the Release PR with a **merge commit** (squash or rebase would detach `stable` from `main`).
 
 `release/next` belongs to the workflow: each new `main` commit replaces it, so a fix goes in its own change PR into `main`. Nothing pending is a no-op, and if a cut merges by hand, the workflow closes its stale PR. It never reopens a cut PR someone closed until `main` moves.
@@ -74,6 +74,26 @@ Either way, the Release PR now contains the bump. Merging it creates a new commi
 The release-tooling test builds its own `main` and `stable` branches inside disposable scratch clones. It resets those fixture branches before use, so the complete test also runs when the calling checkout is named `stable` or is a detached release tag. It never resets the caller's branches.
 
 The same check fails a Release PR that still has pending entries: cut them first.
+
+## Heavy tests
+
+Five Rust tests play whole Galactic Reach matches, and the JavaScript balance harness plays 24 more. Together they took most of CI's time, so they no longer run on change PRs. CI runs them as two jobs in `.github/workflows/ci.yml`, **Heavy simulations** (the Rust tests whose names start with `heavy_`) and **Balance harness**, on:
+
+- the cut PR (`release/next` → `main`), whose CI the Release cut workflow starts with `workflow_dispatch`;
+- the standing Release PR (`main` → `stable`), which every merge to `main` synchronizes, so the heavy tests still run after each merge and a regression shows up before it can ship;
+- any manual run: Actions → *Rust and container* → *Run workflow*, on any branch.
+
+Change PRs keep fast stand-ins: the first 300 decisions of a four-rival match played twice (`reference_policies_open_a_match_legally_and_reproducibly`), resume on the current rules (`shared_tables_resume_exactly_on_current_rules`), and the archived engine and policy loads.
+
+CI runs Rust tests with [cargo-nextest](https://nexte.st/). `.config/nextest.toml` holds the split: the default profile skips `heavy_` tests and the `heavy` profile runs only them. Both stop at the first failing test. Locally:
+
+```sh
+cargo nextest run --workspace --locked                   # what change PRs run
+cargo nextest run --workspace --locked --profile heavy   # the heavy tier
+cargo test --workspace --locked                          # everything, without nextest
+```
+
+Name a new test `heavy_…` when it plays a whole match or takes more than a few seconds. The dev and test profile builds `galactic-reach` at `opt-level = 1` and dependencies at `opt-level = 2` (`Cargo.toml`), because the rival policy's scoring dominates these tests.
 
 ## Worked example
 
