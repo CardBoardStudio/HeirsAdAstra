@@ -21,6 +21,10 @@ assert.equal(Object.keys(catalog.relics).length, 15, 'relics');
 {
   const injected = short(printedPool), native = short(undefined);
   assert.deepEqual([injected.round, injected.steps, injected.buys, injected.relicPicks], [native.round, native.steps, native.buys, native.relicPicks], 'the pool seam is behavior-neutral');
+  const {readArchive}=require('./lib/simulation-archive.cjs');
+  const archived=readArchive(injected.archive);
+  assert.equal(archived.state.round,injected.round);assert(archived.records.some(r=>r.type==='event'&&r.event.type==='round-end'));
+  assert(archived.manifest.sourceHashes['card-pool.json'],'the full generated/printed pool is frozen');
   assert(Object.values(injected.offers[0]).some(n => n > 0), 'offers are recorded');
 }
 

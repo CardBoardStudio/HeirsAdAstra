@@ -1,0 +1,697 @@
+{
+  "baselineCommit": "9178a09ecc94b8c58959e2839d2d8a33ff9445fd",
+  "nodeVersion": "24.22.3",
+  "baselineAppSha256": "98547b6a23efd9a62a1cab6536e70a614314acfaf7d1f2dc985349f280efc305",
+  "optimizedAppSha256": "b46493357b0624e872e7586bc56eca404a5f415c1df364bf6c4a6efc74f3580e",
+  "standardGames": 8,
+  "builderGames": 4,
+  "decisionStatesCompared": 10882,
+  "allDecisionStatesAndRngEqual": true,
+  "allFinalStatesWinnersScoresRoundsEqual": true,
+  "benchmark": {
+    "standardMeanBaselineSeconds": 11.376070546875003,
+    "standardMeanOptimizedSeconds": 2.1245761718750003,
+    "aggregateSpeedup": 5.354512912961501,
+    "pairedSpeedupRange": [
+      3.511575073556571,
+      6.023795616512394
+    ],
+    "method": "Sequential paired full games, alternating baseline/optimized order, includes VM setup and full-state hashing after each decision. Local wall-clock results; not a controlled hardware benchmark."
+  },
+  "profileInclusiveSamplePercent": {
+    "baseline": {
+      "chooseAiMove": 93.08400016764806,
+      "aiPath": 89.64990734261374,
+      "travelSearch": 89.30369552565361,
+      "chooseAiBuild": 2.615899986259225,
+      "aiFundingPlan": 0.21357885639617147
+    },
+    "optimized": {
+      "chooseAiMove": 67.99168945381278,
+      "aiPath": 49.88356355240635,
+      "travelSearch": 50.141813622069186,
+      "chooseAiBuild": 13.511565561145593,
+      "aiFundingPlan": 0.29667945604811174
+    }
+  },
+  "sameProfileGameSearchCounts": {
+    "baseline": {
+      "chooseAiMove": 680,
+      "chooseAiBuild": 670,
+      "aiFundingPlan": 18604,
+      "aiThreat": 43054,
+      "aiPath": 18017,
+      "travelSearch": 18631,
+      "movementRoutes": 614,
+      "travelDistance": 283694
+    },
+    "optimized": {
+      "chooseAiMove": 502,
+      "chooseAiBuild": 670,
+      "aiFundingPlan": 2003,
+      "aiThreat": 34046,
+      "aiPath": 14236,
+      "travelSearch": 2239,
+      "movementRoutes": 552,
+      "travelDistance": 229461
+    }
+  },
+  "standardComparisons": [
+    {
+      "baseline": {
+        "seed": 2026112501,
+        "profiles": [
+          "military",
+          "military",
+          "economy",
+          "expansion"
+        ],
+        "steps": 1129,
+        "round": 32,
+        "winner": 0,
+        "points": [
+          45,
+          36,
+          37,
+          16
+        ],
+        "rngCalls": 1118,
+        "stateHash": "ed9cd194f2fdd7da3db1ba2b705630d2ab47090089c05e656c4dcb49473a2a49",
+        "traceHash": "a42c705ed340aba866730e94dbfb1d8c13bee1ffe34f57421e07cfa6aad9e9cf",
+        "counts": {},
+        "milliseconds": 14975.057083
+      },
+      "optimized": {
+        "seed": 2026112501,
+        "profiles": [
+          "military",
+          "military",
+          "economy",
+          "expansion"
+        ],
+        "steps": 1129,
+        "round": 32,
+        "winner": 0,
+        "points": [
+          45,
+          36,
+          37,
+          16
+        ],
+        "rngCalls": 1118,
+        "stateHash": "ed9cd194f2fdd7da3db1ba2b705630d2ab47090089c05e656c4dcb49473a2a49",
+        "traceHash": "a42c705ed340aba866730e94dbfb1d8c13bee1ffe34f57421e07cfa6aad9e9cf",
+        "counts": {},
+        "milliseconds": 2615.303333
+      }
+    },
+    {
+      "optimized": {
+        "seed": 2026120420,
+        "profiles": [
+          "military",
+          "economy",
+          "expansion",
+          "military"
+        ],
+        "steps": 550,
+        "round": 18,
+        "winner": 0,
+        "points": [
+          47,
+          11,
+          20,
+          25
+        ],
+        "rngCalls": 532,
+        "stateHash": "05949b7cb3aaa28625e8df03499787080d872bf505cf2e086ec9e9bee2e4b38a",
+        "traceHash": "816cd0618fc562e74581951dd3b2232bfc4304b57c63841da051490e70ac3533",
+        "counts": {},
+        "milliseconds": 959.7814169999983
+      },
+      "baseline": {
+        "seed": 2026120420,
+        "profiles": [
+          "military",
+          "economy",
+          "expansion",
+          "military"
+        ],
+        "steps": 550,
+        "round": 18,
+        "winner": 0,
+        "points": [
+          47,
+          11,
+          20,
+          25
+        ],
+        "rngCalls": 532,
+        "stateHash": "05949b7cb3aaa28625e8df03499787080d872bf505cf2e086ec9e9bee2e4b38a",
+        "traceHash": "816cd0618fc562e74581951dd3b2232bfc4304b57c63841da051490e70ac3533",
+        "counts": {},
+        "milliseconds": 3370.3444999999992
+      }
+    },
+    {
+      "baseline": {
+        "seed": 2026128339,
+        "profiles": [
+          "economy",
+          "expansion",
+          "military",
+          "military"
+        ],
+        "steps": 773,
+        "round": 27,
+        "winner": 0,
+        "points": [
+          43,
+          20,
+          16,
+          26
+        ],
+        "rngCalls": 864,
+        "stateHash": "f6df3a82e951d6b1b1886ae779ff544379f434ee638208b61d5f9a9af384de79",
+        "traceHash": "58283d77a6b7ac6ec8b56b8895e8ef8d5e6a8ccb9dcde3848704588b729d8e94",
+        "counts": {},
+        "milliseconds": 9412.308375
+      },
+      "optimized": {
+        "seed": 2026128339,
+        "profiles": [
+          "economy",
+          "expansion",
+          "military",
+          "military"
+        ],
+        "steps": 773,
+        "round": 27,
+        "winner": 0,
+        "points": [
+          43,
+          20,
+          16,
+          26
+        ],
+        "rngCalls": 864,
+        "stateHash": "f6df3a82e951d6b1b1886ae779ff544379f434ee638208b61d5f9a9af384de79",
+        "traceHash": "58283d77a6b7ac6ec8b56b8895e8ef8d5e6a8ccb9dcde3848704588b729d8e94",
+        "counts": {},
+        "milliseconds": 1784.8374580000018
+      }
+    },
+    {
+      "optimized": {
+        "seed": 2026136258,
+        "profiles": [
+          "expansion",
+          "military",
+          "military",
+          "economy"
+        ],
+        "steps": 1099,
+        "round": 31,
+        "winner": 1,
+        "points": [
+          12,
+          41,
+          35,
+          28
+        ],
+        "rngCalls": 1151,
+        "stateHash": "323f2b25652ce5246ed68761d2a96cf2224ac1a2cf2e5f4d7643608170549bcd",
+        "traceHash": "019bdfa1e0e62c2257b7da18786b6ad7e3ac135f49767b43b71a80b848b94b97",
+        "counts": {},
+        "milliseconds": 2721.699625000001
+      },
+      "baseline": {
+        "seed": 2026136258,
+        "profiles": [
+          "expansion",
+          "military",
+          "military",
+          "economy"
+        ],
+        "steps": 1099,
+        "round": 31,
+        "winner": 1,
+        "points": [
+          12,
+          41,
+          35,
+          28
+        ],
+        "rngCalls": 1151,
+        "stateHash": "323f2b25652ce5246ed68761d2a96cf2224ac1a2cf2e5f4d7643608170549bcd",
+        "traceHash": "019bdfa1e0e62c2257b7da18786b6ad7e3ac135f49767b43b71a80b848b94b97",
+        "counts": {},
+        "milliseconds": 13876.251500000006
+      }
+    },
+    {
+      "baseline": {
+        "seed": 2026144177,
+        "profiles": [
+          "military",
+          "military",
+          "economy",
+          "expansion"
+        ],
+        "steps": 720,
+        "round": 22,
+        "winner": 3,
+        "points": [
+          13,
+          23,
+          25,
+          42
+        ],
+        "rngCalls": 716,
+        "stateHash": "aafb9c8b8cc13c883bf1aecc248ba321d847df92af56ccccb1fed0637c07809a",
+        "traceHash": "dca39b9df7505089a1ef6d8a4122668641dce49263941715eb6bed44fad39969",
+        "counts": {},
+        "milliseconds": 8000.449750000007
+      },
+      "optimized": {
+        "seed": 2026144177,
+        "profiles": [
+          "military",
+          "military",
+          "economy",
+          "expansion"
+        ],
+        "steps": 720,
+        "round": 22,
+        "winner": 3,
+        "points": [
+          13,
+          23,
+          25,
+          42
+        ],
+        "rngCalls": 716,
+        "stateHash": "aafb9c8b8cc13c883bf1aecc248ba321d847df92af56ccccb1fed0637c07809a",
+        "traceHash": "dca39b9df7505089a1ef6d8a4122668641dce49263941715eb6bed44fad39969",
+        "counts": {},
+        "milliseconds": 1630.903041999998
+      }
+    },
+    {
+      "optimized": {
+        "seed": 2026152096,
+        "profiles": [
+          "military",
+          "economy",
+          "expansion",
+          "military"
+        ],
+        "steps": 855,
+        "round": 26,
+        "winner": 3,
+        "points": [
+          29,
+          25,
+          12,
+          40
+        ],
+        "rngCalls": 856,
+        "stateHash": "3e752a7fcb553aee3d0124a841e79f0784d8c765799035e1687f1b8d6fc006a3",
+        "traceHash": "4b2bcbc5e552c5ddec1674f13d2a96cb66918ed8af630d67bbdc3750579a7ba1",
+        "counts": {},
+        "milliseconds": 1960.6840420000008
+      },
+      "baseline": {
+        "seed": 2026152096,
+        "profiles": [
+          "military",
+          "economy",
+          "expansion",
+          "military"
+        ],
+        "steps": 855,
+        "round": 26,
+        "winner": 3,
+        "points": [
+          29,
+          25,
+          12,
+          40
+        ],
+        "rngCalls": 856,
+        "stateHash": "3e752a7fcb553aee3d0124a841e79f0784d8c765799035e1687f1b8d6fc006a3",
+        "traceHash": "4b2bcbc5e552c5ddec1674f13d2a96cb66918ed8af630d67bbdc3750579a7ba1",
+        "counts": {},
+        "milliseconds": 10421.246334000003
+      }
+    },
+    {
+      "baseline": {
+        "seed": 2026160015,
+        "profiles": [
+          "economy",
+          "expansion",
+          "military",
+          "military"
+        ],
+        "steps": 1137,
+        "round": 35,
+        "winner": 1,
+        "points": [
+          26,
+          43,
+          19,
+          36
+        ],
+        "rngCalls": 1235,
+        "stateHash": "8df279f1eb76a385393d04b4c7fee88d13024d04959c788aa23d9fb479f1cf04",
+        "traceHash": "7aabd4153a7dce094f51442739859929f3306dddb5e36d79f41327092f66ee1e",
+        "counts": {},
+        "milliseconds": 18229.230624999997
+      },
+      "optimized": {
+        "seed": 2026160015,
+        "profiles": [
+          "economy",
+          "expansion",
+          "military",
+          "military"
+        ],
+        "steps": 1137,
+        "round": 35,
+        "winner": 1,
+        "points": [
+          26,
+          43,
+          19,
+          36
+        ],
+        "rngCalls": 1235,
+        "stateHash": "8df279f1eb76a385393d04b4c7fee88d13024d04959c788aa23d9fb479f1cf04",
+        "traceHash": "7aabd4153a7dce094f51442739859929f3306dddb5e36d79f41327092f66ee1e",
+        "counts": {},
+        "milliseconds": 3026.2033749999973
+      }
+    },
+    {
+      "optimized": {
+        "seed": 2026167934,
+        "profiles": [
+          "expansion",
+          "military",
+          "military",
+          "economy"
+        ],
+        "steps": 956,
+        "round": 28,
+        "winner": 1,
+        "points": [
+          20,
+          43,
+          38,
+          22
+        ],
+        "rngCalls": 978,
+        "stateHash": "bf587ae6c598d331921e2bab224d27e968fe995a1bc65ee48f2780b4ff2c016b",
+        "traceHash": "0072ddd46ca278d436967ea67e7b534f7de5e01d7a1f16921a82a72cb1b82e7e",
+        "counts": {},
+        "milliseconds": 2297.1970830000064
+      },
+      "baseline": {
+        "seed": 2026167934,
+        "profiles": [
+          "expansion",
+          "military",
+          "military",
+          "economy"
+        ],
+        "steps": 956,
+        "round": 28,
+        "winner": 1,
+        "points": [
+          20,
+          43,
+          38,
+          22
+        ],
+        "rngCalls": 978,
+        "stateHash": "bf587ae6c598d331921e2bab224d27e968fe995a1bc65ee48f2780b4ff2c016b",
+        "traceHash": "0072ddd46ca278d436967ea67e7b534f7de5e01d7a1f16921a82a72cb1b82e7e",
+        "counts": {},
+        "milliseconds": 12723.676208000004
+      }
+    }
+  ],
+  "builderComparisons": [
+    {
+      "baseline": {
+        "seed": 2026111601,
+        "profiles": [
+          "military",
+          "military",
+          "economy",
+          "expansion"
+        ],
+        "studyPolicies": [
+          "growth",
+          "military",
+          "economy",
+          "expansion"
+        ],
+        "steps": 880,
+        "round": 24,
+        "winner": 0,
+        "points": [
+          40,
+          38,
+          31,
+          17
+        ],
+        "rngCalls": 805,
+        "stateHash": "b82571912fe9ab499839433da04301f05c18f42c10a8285f2cf113a2094631bc",
+        "traceHash": "089acf9be7d230c1913f43575bbff9b8054f9c6c80f602eb2e297c0792f20cfb",
+        "counts": {},
+        "milliseconds": 10424.220917
+      },
+      "optimized": {
+        "seed": 2026111601,
+        "profiles": [
+          "military",
+          "military",
+          "economy",
+          "expansion"
+        ],
+        "studyPolicies": [
+          "growth",
+          "military",
+          "economy",
+          "expansion"
+        ],
+        "steps": 880,
+        "round": 24,
+        "winner": 0,
+        "points": [
+          40,
+          38,
+          31,
+          17
+        ],
+        "rngCalls": 805,
+        "stateHash": "b82571912fe9ab499839433da04301f05c18f42c10a8285f2cf113a2094631bc",
+        "traceHash": "089acf9be7d230c1913f43575bbff9b8054f9c6c80f602eb2e297c0792f20cfb",
+        "counts": {},
+        "milliseconds": 2160.716708
+      }
+    },
+    {
+      "baseline": {
+        "seed": 2026119520,
+        "profiles": [
+          "military",
+          "economy",
+          "expansion",
+          "military"
+        ],
+        "studyPolicies": [
+          "military",
+          "economy",
+          "expansion",
+          "growth"
+        ],
+        "steps": 722,
+        "round": 23,
+        "winner": 3,
+        "points": [
+          19,
+          14,
+          18,
+          41
+        ],
+        "rngCalls": 758,
+        "stateHash": "bce5b81a88afbd65d016036e7ec941d53485b65ce9fa5b7c96cec04ff87c6831",
+        "traceHash": "05f2e333ca56149d95afe38e72bb67074b51abf2231052a78f1e66e236ae121c",
+        "counts": {},
+        "milliseconds": 9164.580958
+      },
+      "optimized": {
+        "seed": 2026119520,
+        "profiles": [
+          "military",
+          "economy",
+          "expansion",
+          "military"
+        ],
+        "studyPolicies": [
+          "military",
+          "economy",
+          "expansion",
+          "growth"
+        ],
+        "steps": 722,
+        "round": 23,
+        "winner": 3,
+        "points": [
+          19,
+          14,
+          18,
+          41
+        ],
+        "rngCalls": 758,
+        "stateHash": "bce5b81a88afbd65d016036e7ec941d53485b65ce9fa5b7c96cec04ff87c6831",
+        "traceHash": "05f2e333ca56149d95afe38e72bb67074b51abf2231052a78f1e66e236ae121c",
+        "counts": {},
+        "milliseconds": 1811.6117919999997
+      }
+    },
+    {
+      "baseline": {
+        "seed": 2026127439,
+        "profiles": [
+          "economy",
+          "expansion",
+          "military",
+          "military"
+        ],
+        "studyPolicies": [
+          "economy",
+          "expansion",
+          "growth",
+          "military"
+        ],
+        "steps": 1015,
+        "round": 28,
+        "winner": 2,
+        "points": [
+          34,
+          27,
+          42,
+          23
+        ],
+        "rngCalls": 1007,
+        "stateHash": "4d1f10dbf15d273eb5c34789f97749635d613e2c2b57e6d12ffa9180fe256bfd",
+        "traceHash": "c4340b5cad8ba2340fcf7926074a632b4d68f310e916be4ad129caf2ed0a071b",
+        "counts": {},
+        "milliseconds": 12474.004708
+      },
+      "optimized": {
+        "seed": 2026127439,
+        "profiles": [
+          "economy",
+          "expansion",
+          "military",
+          "military"
+        ],
+        "studyPolicies": [
+          "economy",
+          "expansion",
+          "growth",
+          "military"
+        ],
+        "steps": 1015,
+        "round": 28,
+        "winner": 2,
+        "points": [
+          34,
+          27,
+          42,
+          23
+        ],
+        "rngCalls": 1007,
+        "stateHash": "4d1f10dbf15d273eb5c34789f97749635d613e2c2b57e6d12ffa9180fe256bfd",
+        "traceHash": "c4340b5cad8ba2340fcf7926074a632b4d68f310e916be4ad129caf2ed0a071b",
+        "counts": {},
+        "milliseconds": 2284.779333000006
+      }
+    },
+    {
+      "baseline": {
+        "seed": 2026135358,
+        "profiles": [
+          "expansion",
+          "military",
+          "military",
+          "economy"
+        ],
+        "studyPolicies": [
+          "expansion",
+          "growth",
+          "military",
+          "economy"
+        ],
+        "steps": 1046,
+        "round": 31,
+        "winner": 1,
+        "points": [
+          34,
+          40,
+          17,
+          36
+        ],
+        "rngCalls": 1093,
+        "stateHash": "4a0c5a7db9f25bb80dad05294d304f4251407a1c5d34d7da21dcfbb3b1de4590",
+        "traceHash": "544ef02e660433ca3eac1a9dc4e6b274a68c0aab54ec276da5b16b871a0048ea",
+        "counts": {},
+        "milliseconds": 17240.464208000005
+      },
+      "optimized": {
+        "seed": 2026135358,
+        "profiles": [
+          "expansion",
+          "military",
+          "military",
+          "economy"
+        ],
+        "studyPolicies": [
+          "expansion",
+          "growth",
+          "military",
+          "economy"
+        ],
+        "steps": 1046,
+        "round": 31,
+        "winner": 1,
+        "points": [
+          34,
+          40,
+          17,
+          36
+        ],
+        "rngCalls": 1093,
+        "stateHash": "4a0c5a7db9f25bb80dad05294d304f4251407a1c5d34d7da21dcfbb3b1de4590",
+        "traceHash": "544ef02e660433ca3eac1a9dc4e6b274a68c0aab54ec276da5b16b871a0048ea",
+        "counts": {},
+        "milliseconds": 2947.467457999999
+      }
+    }
+  ],
+  "verification": {
+    "mechanics": "passed",
+    "dialogs": "72/72 passed",
+    "replay": "1800 decisions passed",
+    "rulesContractTests": "passed",
+    "canonicalRulebook": "passed",
+    "cacheRegressions": "passed",
+    "wasmPackage": "not run: build-web.sh exited 127 because cargo is unavailable"
+  },
+  "scope": "Local browser/solo AI optimization. No published engine, native policy, active study source, archived rules or rule numbers changed."
+}
