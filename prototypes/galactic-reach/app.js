@@ -4850,7 +4850,7 @@ function createGalacticReach(options = {}) {
   // The left column: each piece lies under the one before it, in order (track, round, comms,
   // fleets, upgrades).
   const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel', '#fleet-glance', '#upgrade-group'];
-  function stackLeft() {
+  function stackLeft(depth = 0) {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function' || !document.documentElement?.style) return;
     const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches;
     const zoom = Number(document.documentElement?.style?.getPropertyValue('--table-zoom')) || 1;
@@ -4869,10 +4869,10 @@ function createGalacticReach(options = {}) {
     // upgrade cards, the latest comms entry only) and stack again.
     const root = document.documentElement, legend = $('#map-legend-corner'), last = $(LEFT_STACK.at(-1));
     // A second step drops the icon list from the corner key (the Map key button lists them).
+    // At most two steps, whatever the page's class list reports.
     const step = ['left-tight', 'left-tighter'].find(name => !root.classList.contains(name));
-    if (landscape && step && legend?.getBoundingClientRect && last?.getBoundingClientRect) {
-      if (last.getBoundingClientRect().bottom > legend.getBoundingClientRect().top - 4) { root.classList.add(step); stackLeft(); }
-    } else if (!landscape) root.classList.remove('left-tight', 'left-tighter');
+    if (depth < 2 && landscape && step && legend?.getBoundingClientRect && last?.getBoundingClientRect
+      && last.getBoundingClientRect().bottom > legend.getBoundingClientRect().top - 4) { root.classList.add(step); stackLeft(depth + 1); }
   }
 
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
@@ -4959,7 +4959,8 @@ function createGalacticReach(options = {}) {
     fitTable();
     window.addEventListener('resize',fitTable);
     window.addEventListener('resize',fitMarket);
-    window.addEventListener('resize',stackLeft);
+    // A resized window starts the column untightened, so a window that grows gets it back.
+    window.addEventListener('resize',() => { document.documentElement.classList.remove('left-tight', 'left-tighter'); stackLeft(); });
     window.addEventListener('resize',fitMap);
     // Late layout (web fonts, panels settling) re-fits the market and the map; their own sizing
     // does not change the panels' sizes, so this cannot loop.
