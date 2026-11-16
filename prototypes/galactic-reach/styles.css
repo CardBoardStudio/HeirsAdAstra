@@ -2771,3 +2771,28 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .upgrade-group #upgrade-market > .trash-pile { background: linear-gradient(170deg, #4a302a, #2e1d19) !important; border-color: #a77b66 !important; color: #f4e3d6 !important; filter: none !important; }
 .upgrade-group #upgrade-market > .trash-pile :is(.card-name, .card-effect) { color: #f4e3d6 !important; }
 .upgrade-group #upgrade-market > .trash-pile.unavailable { opacity: .7; }
+
+/* ==== Filled resource icons everywhere, a shared icon vocabulary for card effects (Prestige,
+   Draw, Hit, Miss, Colonize, Build), and supply cards laid out like printed cards: name and text
+   from the top-left, the cost stacked down the right edge. ==== */
+.resource-symbol svg > :first-child, .resource-symbol.data svg circle { fill: currentColor; }
+.resource-symbol.matter svg > :not(:first-child) { stroke: #00000070; }
+.vocab-icon { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; vertical-align: -.2em; line-height: 1; }
+.vocab-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.vocab-star { color: #c99a1e; font-size: 1.1em; }
+.vocab-hit svg { fill: #e06a4a; stroke: #8a2f1c; stroke-width: 1.4; }
+.vocab-miss svg { fill: #7ea3c4; stroke: #2e4a63; stroke-width: 1.4; }
+.card-icons { display: none; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) {
+    grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "name cost" "head cost" !important; grid-template-rows: auto minmax(0, 1fr) !important; column-gap: 6px !important;
+  }
+  #market-panel .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) :is(.card-type, .card-effect, .card-headline, .card-limit-note, .card-art, .card-lore) { display: none !important; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-icons { display: block; grid-area: head; align-self: stretch; min-height: 0; max-height: 100%; overflow: hidden; font-size: 12px; line-height: 1.3; color: #2b2619; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-footer { grid-area: cost !important; display: flex !important; flex-direction: column; align-items: flex-end; align-self: start; gap: 2px; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-footer .resource-dots { flex-direction: column; align-items: flex-end; gap: 2px; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { grid-area: name; }
+  /* The vocabulary in the map key. */
+  .map-legend-corner .legend-vocab { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 6px; margin-top: 4px; padding-top: 5px; border-top: 1px solid #d9bd8030; font-size: 10.5px; }
+  .map-legend-corner .legend-vocab > span { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+}

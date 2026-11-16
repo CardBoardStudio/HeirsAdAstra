@@ -938,6 +938,34 @@ function createGalacticReach(options = {}) {
     return `<span class="resource-dots" role="img" aria-label="${label}">${chips}</span>`;
   }
 
+  // The card vocabulary: one glyph per idea that recurs in card text.
+  const VOCAB_ICONS = {
+    prestige: '<span class="vocab-icon vocab-star" aria-hidden="true">★</span>',
+    draw: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="5" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h8a2 2 0 0 0 2-2V7"></path></svg></span>',
+    hit: '<span class="vocab-icon vocab-hit" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m12 2 2.2 6.3L21 8l-5 4.6 2.6 6.9L12 15.6 5.4 19.5 8 12.6 3 8l6.8.3z"></path></svg></span>',
+    miss: '<span class="vocab-icon vocab-miss" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"></path></svg></span>',
+    colonize: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 21V4"></path><path d="M5 4h12l-2.5 4L17 12H5"></path></svg></span>',
+    build: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m14 4 6 6-3 3-6-6z"></path><path d="m11 7-8 8 3 3 8-8"></path></svg></span>',
+  };
+  const VOCAB_LABELS = [['prestige','Prestige'],['draw','Draw a card'],['hit','Hit'],['miss','Miss (a hit prevented)'],['colonize','Colonize'],['build','Build']];
+  const COUNT_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5 };
+  // A card's effect in the vocabulary: the same sentence with its recurring ideas as glyphs.
+  function iconText(text) {
+    const count = word => COUNT_WORDS[String(word).toLowerCase()] || word;
+    return resourceText(String(text)
+      .replace(/This card enters discard and has no effect in hand; trash it later to remove it from your deck\./g, 'No effect in hand.')
+      .replace(/When bought, gain (\d+) permanent Prestige\./g, (m, n) => `On purchase: +${n} @prestige@.`)
+      .replace(/\bgain (\d+) (?:more )?permanent Prestige/gi, (m, n) => `+${n} @prestige@`)
+      .replace(/\bgain (\d+) Prestige/gi, (m, n) => `+${n} @prestige@`)
+      .replace(/\b(?:then )?draws? (one|two|three|four|five|\d+) cards?/gi, (m, w) => `+${count(w)} @draw@`)
+      .replace(/\badd (\d+) hits/gi, (m, n) => `+${n} @hit@`)
+      .replace(/\+(\d+) hits?(?: this volley)?/gi, (m, n) => `+${n} @hit@`)
+      .replace(/\bprevent (\d+) hits?(?: this volley)?/gi, (m, n) => `${n} @miss@`)
+      .replace(/\bBuild or commission\b/g, '@build@')
+      .replace(/\bColonize\b/g, '@colonize@'))
+      .replace(/@(prestige|draw|hit|miss|build|colonize)@/g, (m, key) => VOCAB_ICONS[key]);
+  }
+
   function resourceText(text) {
     return String(text).replace(/\b(Matter|Energy|Biomass|Data)\b/g, match => {
       const resource = match.toLowerCase();
@@ -3527,7 +3555,8 @@ function createGalacticReach(options = {}) {
     const pieceCost = type => type === 'colony' ? { biomass: 2 } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
     if (corner) corner.innerHTML = `<span class="legend-terrain">${RESOURCES.map(resource => `<span class="legend-res ${resource}"><i></i>${RESOURCE_NAMES[resource]}</span>`).join('')}</span>`
       + entries.map(([type,label]) => `<span class="legend-piece">${BOARD_ICONS[type]}<b>${label}</b>${resourceDots(pieceCost(type))}${type === 'harvester' ? `<em>makes ${HARVESTER_YIELD}</em>` : ''}</span>`).join('')
-      + `<span class="legend-piece legend-excavate"><span class="legend-icon">◈</span><b>Excavate</b>${resourceDots(EXCAVATION_COST)}</span>`;
+      + `<span class="legend-piece legend-excavate"><span class="legend-icon">◈</span><b>Excavate</b>${resourceDots(EXCAVATION_COST)}</span>`
+      + `<span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
     $('#symbol-legend').innerHTML = `<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) => {
       const cost = type === 'colony' ? { biomass: 2 } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
       return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-cost">${resourceDots(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
@@ -4035,7 +4064,7 @@ function createGalacticReach(options = {}) {
       const reason=marketBlockReason(me0,cost,humanBuy);
       const note=reason.note?`<span class="card-limit-note">${reason.note}</span>`:'';
       const why=disabled?[reason.turn,reason.card].filter(Boolean).join(' ')||'You cannot buy this card now.':'';
-      return `<button class="game-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}" style="--card-accent:${def.accent}" data-buy-market="${index}" data-card-id="${card.id}" ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${esc(def.code)} ${esc(def.name)}${def.military?', military deck':''}${disabled?`. Unavailable: ${esc(why)}`:''}"><span class="card-type">${def.code} · ${def.military?'Military deck':def.kind}</span><span class="card-name">${def.name}</span>${def.resource?`<span class="card-gain" title="Converts for">${eachResourceGain(def.resource)?`<span class="gain-each">${eachResourceGain(def.resource)} each</span>`:resourceDots(def.resource)}</span>`:''}${cardIllustration(def)}<span class="card-effect">${resourceText(def.text)}</span><span class="card-footer"><small>Buy</small>${marketCostDots(me0,cost)}</span>${note}</button>`;
+      return `<button class="game-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}" style="--card-accent:${def.accent}" data-buy-market="${index}" data-card-id="${card.id}" ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${esc(def.code)} ${esc(def.name)}${def.military?', military deck':''}${disabled?`. Unavailable: ${esc(why)}`:''}"><span class="card-type">${def.code} · ${def.military?'Military deck':def.kind}</span><span class="card-name">${def.name}</span>${def.resource?`<span class="card-gain" title="Converts for">${eachResourceGain(def.resource)?`<span class="gain-each">${eachResourceGain(def.resource)} each</span>`:resourceDots(def.resource)}</span>`:''}${cardIllustration(def)}<span class="card-effect">${resourceText(def.text)}</span><span class="card-icons" aria-hidden="true">${iconText(def.text)}</span><span class="card-footer"><small>Buy</small>${marketCostDots(me0,cost)}</span>${note}</button>`;
     }).join('');
     $$('[data-buy-market]').forEach(button=>button.addEventListener('click',()=>{if(buyCard(ME,'market',Number(button.dataset.buyMarket))){render();saveGame();}}));
     $('#finish-buy-button').hidden=!humanBuy;
