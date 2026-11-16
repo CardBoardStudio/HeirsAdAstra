@@ -56,6 +56,7 @@
 .card-inspect .card-name { margin: 4px 0 6px; font-size: 21px; }
 .card-inspect .card-headline { display: block; margin: -2px 0 8px; color: #2c3a35; font-size: 13px; font-weight: 650; }
 .card-inspect .card-art { min-height: 70px; }
+.card-inspect .card-art.has-picture { min-height: 70px; aspect-ratio: 2.4 / 1; }
 .card-inspect .card-effect { flex: 1 1 auto; font-size: 13px; line-height: 1.45; }
 .card-inspect .card-footer { display: flex; align-items: center; margin-top: 8px; padding-top: 7px; }
 .card-inspect .resource-chip strong { font-size: 13px; }
