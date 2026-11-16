@@ -2502,6 +2502,10 @@ mod tests {
         assert!(me.get("deck").is_none());
         assert!(me.get("militaryDeck").is_none());
         assert!(before.get("advancedDeck").is_none());
+        // Rules #market-tiers: nine public cards, three per price row, and no market deck order.
+        assert_eq!(before["market"].as_array().unwrap().len(), 9);
+        assert_eq!(before["marketCosts"].as_array().unwrap().len(), 9);
+        assert!(before.get("marketDecks").is_none());
         assert_eq!(before["planets"].as_object().unwrap().len(), 91);
         assert!(
             before["planets"]
