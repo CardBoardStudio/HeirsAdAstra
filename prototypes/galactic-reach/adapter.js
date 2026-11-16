@@ -24,7 +24,7 @@ function createGalacticAdapter(e) {
       tacticStats: Object.fromEntries(Object.entries(e.MILITARY_CARDS).map(([key, c]) => [key, { attack: c.attack || 0, shield: c.shield || 0, pierce: !!c.pierce }])),
       combatVictoryPrestige: e.COMBAT_VICTORY_PRESTIGE, captureNeedsFleet: true, phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
-        id, resources: p.resources, relicsExcavated: e.excavatedRelicCount(id), combatVictories: p.combatVictories || 0, cardPrestige: p.cardPrestige || 0, military: p.military, storageUpgrades: p.storageUpgrades, storagePurchases: p.storagePurchases || 0, storageUpgradeCost: e.storageUpgradeCost(id),
+        id, resources: p.resources, relicsExcavated: e.excavatedRelicCount(id), combatVictories: p.combatVictories || 0, cardPrestige: p.cardPrestige || 0, military: p.military, storageUpgrades: p.storageUpgrades, storagePurchases: p.storagePurchases || 0, storageUpgradeCost: e.storageUpgradeCost(id), storage: p.storage || [],
         prestige: e.calculatePrestige(id), capacity: e.playerCapacity(id), resourceLimits: e.resourceLimits(id),
         hand: id === seat ? p.hand : undefined, discard: p.discard, inPlay: p.inPlay,
         handCount: p.hand.length, deckCount: p.deck.length, deckContents: id === seat ? e.deckContents(p) : undefined,
@@ -38,6 +38,8 @@ function createGalacticAdapter(e) {
       clusters: state.clusters.map(c=>e.clusterKnown(c,seat)
         ? {kind:c.kind,center:c.center,coords:c.coords,surveyed:e.clusterRevealed(c,seat),located:e.relicKnown(c,seat)}
         : {kind:'unknown',center:null,coords:[],surveyed:false,located:e.relicKnown(c,seat)}),
+      // Rules #storage-allocation: Capacity Modules left in the shared pile; each seat's price is storageUpgradeCost.
+      capacitySupply: state.capacitySupply,
       fleets: state.fleets, market: state.market, relicRow: state.relicRow, relicDeckCount: state.relicDeck.length,
       pendingConsortium: state.pendingConsortium, tradeOffers: state.tradeOffers, pendingConstruct: state.pendingConstruct, pendingColonyBuild: state.pendingColonyBuild
     });
@@ -47,7 +49,6 @@ function createGalacticAdapter(e) {
     if(activeSeat()!==seat) {
       if(!e.canManageResources(seat))return [];
       const p=s().players[seat],free=p.hand.filter(e.canConvertCard).map(card=>({type:'resource',card:card.id,key:card.key,gain:e.cardResources(card)}));
-      if(e.canIncreaseStorage(seat))for(const allocation of e.storageAllocations())free.push({type:'increase_storage',allocation});
       for(const giveType of e.RESOURCES)for(const getType of e.RESOURCES)if(e.canBankTrade(seat,giveType,getType))free.push({type:'bank_trade',giveType,getType});
       return e.clone(free);
     }
@@ -79,6 +80,8 @@ function createGalacticAdapter(e) {
         if (e.canAfford(p, e.purchaseCost(p, card.key)))
           actions.push({ type: 'buy', source: 'market', index, key: card.key });
       });
+      // Rules #storage-allocation: the Upgrades tray's Capacity Module pile.
+      if (e.canBuyCapacity(seat)) actions.push({ type: 'buy', source: 'capacity', key: 'capacityModule' });
       [...p.hand, ...p.discard, ...p.inPlay].forEach(card => {
         if (card.starter && e.starterLevel(card)<3) for (const resource of e.RESOURCES)
           if (p.resources[resource] >= e.upgradePrice(card)) actions.push({type:'upgrade',card:card.id,resource});
@@ -148,6 +151,8 @@ function createGalacticAdapter(e) {
         });
         if (def.order === 'special') {
           if(def.tag==='alienCradle') for(const allocation of e.storageAllocations(e.RELIC_STORAGE_POINTS)) actions.push({type:'special',...base,allocation});
+          // Capacity Module: every split of its points.
+          else if(def.effect?.allocate) for(const allocation of e.storageAllocations(def.effect.allocate)) actions.push({type:'special',...base,allocation});
           // Archive Purge: each choice of up to two level I starters in discard, in discard order.
           else if(def.effect?.trashStarters) for(const trash of e.archivePurgeChoices(seat,def.effect.trashStarters)) actions.push({type:'special',...base,trash});
           else actions.push({ type: 'special', ...base });
@@ -155,7 +160,6 @@ function createGalacticAdapter(e) {
       });
     }
     if(state.phase==='buy'&&e.canManageResources(seat))p.hand.filter(e.canConvertCard).forEach(card=>actions.push({type:'resource',card:card.id,key:card.key,gain:e.cardResources(card)}));
-    if (e.canIncreaseStorage(seat)) for(const allocation of e.storageAllocations()) actions.push({type:'increase_storage',allocation});
     if (e.canManageResources(seat)) {
       for (const resource of e.RESOURCES) {
         for (let amount = 1; amount <= p.resources[resource]; amount++) actions.push({type:'discard_resources',resource,amount});
@@ -201,7 +205,6 @@ function createGalacticAdapter(e) {
       case 'consortium_exchange': e.consortiumExchange(seat,action.giveType,action.getType); return;
       case 'finish_consortium': e.finishConsortium(seat); return;
       case 'cancel_consortium': e.finishConsortium(seat,true); return;
-      case 'increase_storage': e.increaseStorage(seat,action.allocation); return;
       case 'bank_trade': e.bankTrade(seat,action.giveType,action.getType); return;
       case 'discard_resources': e.discardResources(seat,action.resource,action.amount); return;
       case 'trade_offer': e.offerTrade(seat,action); return;

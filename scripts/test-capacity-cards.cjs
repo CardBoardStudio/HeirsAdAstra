@@ -49,11 +49,32 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
 // Starting limits cannot hold any market card, so nothing is buyable until capacity rises.
 {
   const g = game(), { s, p } = g; s.phase = 'buy'; s.activePlayer = 0; p.passed = true; p.resources = { matter: 4, energy: 4, biomass: 4, data: 4 };
-  assert(g.adapter().legalActions(0).filter(a=>a.type==='buy').every(a=>['signalRelay','surveyNetwork','tacticalBriefing'].includes(a.key)));
+  assert(g.adapter().legalActions(0).filter(a=>a.type==='buy'&&a.source==='market').every(a=>['signalRelay','surveyNetwork','tacticalBriefing'].includes(a.key)));
   s.market = [{ key: 'ionThrusters', id: 'ion' }];
-  act(g, 0, 'increase_storage', a => a.allocation.energy === 4);
+  // Rules #storage-allocation: buy a Capacity Module, then play it on a later Operations turn.
+  act(g, 0, 'buy', a => a.source === 'capacity' && a.key === 'capacityModule');
+  const module = p.discard.find(c => c.key === 'capacityModule'); assert(module, 'The module enters discard');
+  assert.equal(p.resourceLimits.energy, 4, 'Buying a module raises nothing yet');
+  p.discard.splice(p.discard.indexOf(module), 1); p.hand.push(module); s.phase = 'operations'; p.passed = false; s.turnStage = 'action';
+  act(g, 0, 'special', a => a.card === module.id && a.allocation.energy === 4);
+  assert(![...p.hand, ...p.inPlay, ...p.discard, ...p.deck].some(c => c.id === module.id), 'A played module leaves the deck cycle');
+  assert.deepEqual(JSON.parse(JSON.stringify(p.storage.map(c => c.id))), [module.id], 'It goes to the Storage pile'); assert.equal(g.e.storageUpgradeCost(0).matter, 2, 'One stored module: the next costs 2 of each');
+  s.phase = 'buy'; s.activePlayer = 0; p.passed = true;
   assert.equal(p.resourceLimits.energy, 8); p.resources.energy = 5; p.resources.data = 1;
   act(g, 0, 'buy', a => a.key === 'ionThrusters');assert(p.discard.some(c => c.id === 'ion'));assert.equal(p.resources.energy, 0);
+}
+// Rules #storage-pile: stored modules never return through cleanup, reshuffle or draws.
+{
+  const g = game(), { s, p } = g;
+  p.storage = [{ key: 'capacityModule', id: 'stored', allocation: { matter: 0, energy: 0, biomass: 0, data: 4 } }];
+  p.discard.push(...p.deck.splice(0)); s.phase = 'buy'; s.activePlayer = 0;
+  for (const q of s.players) { q.passed = true; q.hand = []; }
+  let guard = 0; while (s.round === 1 && guard++ < 20) { const a = g.adapter(), seat = a.activeSeat(); a.applyAction(seat, a.legalActions(seat).find(x => x.type === 'finish_buy') || a.legalActions(seat)[0]); }
+  assert.equal(s.round, 2, 'Cleanup reshuffled the discard and drew a new hand');
+  assert.deepEqual(JSON.parse(JSON.stringify(p.storage.map(c => c.id))), ['stored']);
+  assert(![...p.hand, ...p.deck, ...p.discard, ...p.inPlay].some(c => c.id === 'stored'), 'A stored module is never reshuffled or drawn');
+  assert.equal(g.e.storageUpgradeCost(0).matter, 2);
+  assert(!g.adapter().legalActions(0).some(a => a.card === 'stored'), 'No command can use or trash a stored module');
 }
 // Military cards join the military deck; Wonders pay Prestige; Buy cards discount a purchase.
 {
@@ -120,7 +141,7 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
   assert.equal(view.harvesterYield, 2); assert.equal(view.marketCosts.length, view.market.length, 'Server rivals read printed prices');
   assert(s.players[0].resources[type] >= before + 2, 'The Harvester hex produced 2 at the round start');
 }
-// Rivals: value, save toward and raise capacity for a target card, then buy it.
+// Rivals: value and save toward a target card, buy a Capacity Module for it, then play it toward that price.
 {
   const g = game(), { s, e } = g, bot = s.players[1];
   Object.assign(s.planets[s.clusters[1].coords[1]], { owner: 1, upgrade: 'starbase' });
@@ -130,7 +151,14 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
   s.market = [{ key: 'ascendancyCodex', id: 'codex' }];
   Object.assign(bot, { hand: [], deck: [], discard: [], inPlay: [], passed: true, resources: { matter: 4, energy: 4, biomass: 4, data: 4 } });
   s.phase = 'buy'; s.activePlayer = 1; e.runAiBuy();
-  assert(bot.storagePurchases >= 1 && bot.resourceLimits.data > 4, 'The rival raised its Data limit toward a useful repeatable Prestige card');
+  assert.equal(bot.storagePurchases, 1, 'The rival bought one Capacity Module toward a useful repeatable Prestige card');
+  assert.equal(bot.resourceLimits.data, 4, 'Its limits rise only when the module is played');
+  const module = bot.discard.find(c => c.key === 'capacityModule'); assert(module);
+  bot.discard.splice(bot.discard.indexOf(module), 1); bot.hand = [module]; bot.passed = false; s.phase = 'operations'; s.activePlayer = 1;
+  e.runAiOperation();
+  assert(bot.resourceLimits.data > 4, 'Playing the module raised its Data limit toward the card');
+  assert(!bot.hand.some(c => c.id === module.id) && !bot.inPlay.some(c => c.id === module.id), 'The played module leaves hand');
+  assert(bot.storage.some(c => c.id === module.id), 'The rival stores the played module');
 }
 // A full game of four browser rivals reaches the 40-point target with the new cards.
 {
@@ -148,6 +176,6 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/37.42');
   const st = sim.state();
   assert.notEqual(st.winner, null, 'Rivals finish a 40-point game');
   assert(sim.prestige(st.winner) >= 40); assert(st.round > 10, 'A 40-point game takes many rounds');
-  assert(st.players.some(p => p.cardsPurchased >= 3), 'Rivals buy market cards'); assert(st.players.every(p => (p.storagePurchases || 0) >= 1), 'Every rival raises its limits');
+  assert(st.players.some(p => p.cardsPurchased >= 3), 'Rivals buy market cards'); assert(st.players.every(p => (p.storagePurchases || 0) >= 1), 'Every rival buys a Capacity Module'); assert(st.players.every(p => (p.storageUpgrades || 0) >= 1), 'Every rival plays a Capacity Module');
 }
-console.log('Capacity Cards: 31 retained stable ids including three draw-two cards within starting limits, ten-card mixed market, military deck purchases, Buy cards and Wonders, one-step orders, printed Construct discounts, rival capacity targeting and a full 40-point rival game passed.');
+console.log('Capacity Cards: 31 retained stable ids including three draw-two cards within starting limits, ten-card mixed market, military deck purchases, Buy cards and Wonders, one-step orders, printed Construct discounts, Capacity Module purchase and play, rival capacity targeting and a full 40-point rival game passed.');

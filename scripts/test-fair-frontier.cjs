@@ -51,7 +51,7 @@ for(const military of [false,true]){
  const g=game();g.s.phase='buy';g.p.storageUpgrades=20;g.p.resourceLimits={matter:1000,energy:1000,biomass:1000,data:1000};g.p.resources={matter:20,energy:20,biomass:20,data:20};
  g.s.market=[{key:'ionThrusters',id:'normal-1'},{key:'railBattery',id:'military-1'}];
  const beforeDeck=JSON.stringify(g.p.deck),beforeHand=JSON.stringify(g.p.hand),calls=g.calls();
- const a=g.adapter();assert(!a.legalActions(0).some(x=>x.type==='buy'&&x.source!=='market'),'Basic cards are not sold');
+ const a=g.adapter();assert(!a.legalActions(0).some(x=>x.type==='buy'&&!['market','capacity'].includes(x.source)),'Basic cards are not sold');assert(a.legalActions(0).filter(x=>x.type==='buy'&&x.source==='capacity').every(x=>x.key==='capacityModule'),'The Upgrades tray sells only Capacity Modules');
  const action=a.legalActions(0).find(x=>x.type==='buy'&&x.key===(military?'railBattery':'ionThrusters'));
  assert(action);a.applyAction(0,action);
  assert.equal(g.p.discard.some(c=>c.key===action.key),!military);assert.equal(g.p.military.some(c=>c.key===action.key),military);

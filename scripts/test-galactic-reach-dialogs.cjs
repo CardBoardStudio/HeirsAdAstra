@@ -469,7 +469,8 @@ test('30.35 archive: Trade Consortium gain and cancellation buttons resolve expl
 }));
 
 
-test('paid storage button preserves Buy and survives reload without a map building', () => {
+// Rules #storage-allocation: the Upgrades tray sells Capacity Modules; buying one changes no limit.
+test('Capacity Module pile buys a card into discard during Buy and survives reload', () => {
   const { storage } = playFirstRound();
   const state = JSON.parse(storage.getItem(SAVE_KEY));
   Object.assign(state, { phase: 'buy', activePlayer: 0, turnStage: 'human-buy' });
@@ -477,21 +478,23 @@ test('paid storage button preserves Buy and survives reload without a map buildi
   state.players[0].storageUpgrades = 0;
   writeSave(storage, state);
   const game = boot(storage), before = game.saved();
-  game.click('upgrade-storage-button');
-  assert(game.dialog('storage-allocation').open);
-  assert.deepEqual(game.saved(),before,'Opening an allocation is not a paid action');
-  for(const r of ['matter','energy','biomass','data'])game.dom.element('storage-points-'+r).value='0';
-  game.dom.element('storage-points-data').value='4';fire(game.dom.element('storage-points-data'),'input');
-  fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();
-  assert.equal(game.saved().players[0].resourceLimits.data,8);
-  assert.equal(game.saved().players[0].storageUpgrades, 1);
-  assert.equal(game.saved().phase, 'buy');
-  assert.equal(game.saved().players[0].bought, before.players[0].bought);
-  assert.deepEqual(game.saved().planets, before.planets);
-  assert.equal(game.dom.element('capacity-value').textContent, '0 stored · four separate limits');
+  const offer = game.dom.lastQuery('[data-capacity-offer]');
+  assert.equal(offer.length, 1, 'The Upgrades tray shows one Capacity Module pile');
+  assert(!offer[0].disabled, 'The first module costs 1 of each resource');
+  offer[0].click(); game.settle();
+  const after = game.saved();
+  assert.equal(after.players[0].storagePurchases, 1);
+  assert.equal(after.capacitySupply, before.capacitySupply - 1);
+  assert.equal(after.players[0].discard.filter(c => c.key === 'capacityModule').length, 1, 'The module enters discard');
+  assert.deepEqual(after.players[0].resourceLimits, before.players[0].resourceLimits, 'Buying a module raises no limit until it is played');
+  assert.deepEqual(after.players[0].resources, { matter: 0, energy: 0, biomass: 0, data: 0 });
+  assert.equal(after.phase, 'buy');
+  assert.deepEqual(after.planets, before.planets);
+  assert(!game.dialog('storage-allocation').open, 'Buying opens no allocation');
+  assert(game.dom.lastQuery('[data-capacity-offer]')[0].disabled, 'The second module costs 2 of each');
   const reloaded = boot(storage);
-  assert.equal(reloaded.saved().players[0].storageUpgrades, 1);
-  assert.equal(reloaded.dom.element('capacity-value').textContent, '0 stored · four separate limits');
+  assert.equal(reloaded.saved().players[0].storagePurchases, 1);
+  assert.equal(reloaded.saved().capacitySupply, before.capacitySupply - 1);
 });
 
 test('convert-all continues after automatic excess loss',()=>{
@@ -1018,19 +1021,24 @@ test('30.35 archive: Trade Consortium commits into play on its first exchange ac
 }));
 
 
+// A Capacity Module in hand: choosing its order opens the split; cancelling plays nothing.
+const playModule=game=>game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='module').click();
+const moduleSave=()=>{const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:2,energy:2,biomass:2,data:2};state.players[0].hand.push({id:'module',key:'capacityModule',starter:false,upgraded:false});writeSave(storage,state);return storage;};
 test('storage allocations cancel atomically, survive commitment and undo with the turn',()=>{
- const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:2,energy:2,biomass:2,data:2};writeSave(storage,state);
- let game=boot(storage),before=game.saved();game.click('upgrade-storage-button');assert(game.dialog('storage-allocation').open);
+ const storage=moduleSave();
+ let game=boot(storage),before=game.saved();playModule(game);game.settle();assert(game.dialog('storage-allocation').open);
  for(const r of ['matter','energy','biomass','data'])game.dom.element('storage-points-'+r).value='0';
  game.dom.element('storage-points-data').value='3';fire(game.dom.element('storage-points-data'),'input');assert(game.dom.element('storage-allocation-confirm').disabled);
  fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});assert.deepEqual(game.saved(),before);
  game.click('storage-allocation-cancel');assert(!game.dialog('storage-allocation').open);assert.deepEqual(game.saved(),before);
- game.click('upgrade-storage-button');game.dom.element('storage-points-data').value='4';fire(game.dom.element('storage-points-data'),'input');game=boot(storage);assert.deepEqual(game.saved(),before,'Reloading a draft spends nothing');
- game.click('upgrade-storage-button');for(const r of ['matter','energy','biomass','data'])game.dom.element('storage-points-'+r).value='1';fire(game.dom.element('storage-points-data'),'input');
+ playModule(game);game.settle();game.dom.element('storage-points-data').value='4';fire(game.dom.element('storage-points-data'),'input');game=boot(storage);assert.deepEqual(game.saved(),before,'Reloading a draft plays nothing');
+ playModule(game);game.settle();for(const r of ['matter','energy','biomass','data'])game.dom.element('storage-points-'+r).value='1';fire(game.dom.element('storage-points-data'),'input');
  fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();assert.deepEqual(game.saved().players[0].resourceLimits,{matter:5,energy:5,biomass:5,data:5});
+ const owned=p=>[...p.hand,...p.deck,...p.discard,...p.inPlay];assert(!owned(game.saved().players[0]).some(c=>c.id==='module'),'The played module leaves the deck cycle');assert.deepEqual(game.saved().players[0].storage.map(c=>c.id),['module'],'It is stored');assert.equal(game.dom.element('storage-pile-count').textContent,1,'The Storage pile count shows beside the mat');
+ const cleanup=boot(storage);assert.deepEqual(cleanup.saved().players[0].storage.map(c=>c.id),['module'],'The Storage pile survives reload');
  game.click('export-game-report');const report=game.downloads.at(-1);assert.deepEqual(report.save.state.players[0].resourceLimits,game.saved().players[0].resourceLimits);
  assert(report.save.gameHistory.events.some(e=>e.changes.some(c=>c.path.join('.')==='players.0.resourceLimits.data')));
- const reload=boot(storage);assert.deepEqual(reload.saved(),game.saved());reload.click('pass-button');reload.click('undo-turn-button');assert.deepEqual(reload.saved().players[0].resourceLimits,before.players[0].resourceLimits);
+ const reload=boot(storage);assert.deepEqual(reload.saved(),game.saved());reload.click('undo-turn-button');assert.deepEqual(reload.saved().players[0].resourceLimits,before.players[0].resourceLimits);
 });
 
 
@@ -1061,7 +1069,7 @@ test('Construct II can finish after one build following a reload',()=>{
  const {storage,coord}=constructTwoSave(),game=boot(storage);startFirstBuild(game);const before=game.saved().players[0].resources;const reload=boot(storage);reload.click('finish-construct');assert(!reload.saved().pendingConstruct);assert.equal(reload.saved().planets[coord].upgrade,'starbase');assert.deepEqual(reload.saved().players[0].resources,before);assert.equal(reload.saved().players[0].inPlay.filter(c=>c.id==='two-builds').length,1);
 });
 test('capacity allocation defaults to one each and is immediately confirmable',()=>{
- const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:2,energy:2,biomass:2,data:2};writeSave(storage,state);const game=boot(storage);game.click('upgrade-storage-button');for(const r of ['matter','energy','biomass','data'])assert.equal(game.dom.element('storage-points-'+r).value,'1');assert(!game.dom.element('storage-allocation-confirm').disabled);fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();assert.deepEqual(game.saved().players[0].resourceLimits,{matter:5,energy:5,biomass:5,data:5});
+ const storage=moduleSave(),game=boot(storage);playModule(game);game.settle();for(const r of ['matter','energy','biomass','data'])assert.equal(game.dom.element('storage-points-'+r).value,'1');assert(!game.dom.element('storage-allocation-confirm').disabled);fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();assert.deepEqual(game.saved().players[0].resourceLimits,{matter:5,energy:5,biomass:5,data:5});
 });
 
 let failed = 0;

@@ -28,8 +28,11 @@ p.storageUpgrades=20;p.resourceLimits={matter:1000,energy:1000,biomass:1000,data
 assert(e.buildUpgrade(0,home.coords[1],'starbase'));
 assert(e.buildShip(0,home.coords[1],'fleet'));
 assert(!e.buildShip(0,home.center,'explorer'));assert(e.buildShip(0,home.coords[1],'explorer'));
-assert(e.increaseStorage(0,{matter:1,energy:1,biomass:1,data:1}));
-assert(e.increaseStorage(0,{matter:1,energy:1,biomass:1,data:1}));
+// Rules #storage-allocation: capacity is a Capacity Module bought during your own Buy turn.
+assert(!e.buyCapacity(0),'No capacity purchase outside Buy');
+{const phase=e.state.phase,active=e.state.activePlayer;e.state.phase='buy';e.state.activePlayer=0;
+assert(e.buyCapacity(0));assert(e.buyCapacity(0));assert.equal(p.discard.filter(c=>c.key==='capacityModule').length,2);assert.equal(e.state.capacitySupply,e.CAPACITY_SUPPLY-2);
+e.state.phase=phase;e.state.activePlayer=active;}
 const center=e.state.clusters[4].center;
 e.state.fleets[center]={0:{settler:1,explorer:0,fleet:0}};
 assert(e.colonizePlanet(0,center));assert(!e.colonizePlanet(0,center));

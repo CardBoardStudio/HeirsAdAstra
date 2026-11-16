@@ -1766,8 +1766,8 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
     flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto minmax(0, 1fr); gap: 7px 6px;
     margin: 0; padding: 0; container-type: inline-size;
   }
-  /* Starter upgrades: a separate tray, labelled down its left edge. */
-  #upgrade-market { grid-column: 1; grid-row: 1; min-height: 0; display: grid; grid-template-columns: 18px repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, var(--utop-h, 66px)); gap: 5px; padding: 4px; border: 1px dashed #d9bd8055; border-radius: 9px; background: #ffffff06; }
+  /* Starter upgrades and the Capacity Module pile: a separate tray, labelled down its left edge. */
+  #upgrade-market { grid-column: 1; grid-row: 1; min-height: 0; display: grid; grid-template-columns: 18px repeat(3, minmax(0, 1fr)); grid-template-rows: minmax(0, var(--utop-h, 66px)); gap: 5px; padding: 4px; border: 1px dashed #d9bd8055; border-radius: 9px; background: #ffffff06; }
   #upgrade-market[hidden] { display: none; }
   #upgrade-market::before { content: 'Upgrades'; grid-column: 1; grid-row: 1; align-self: center; justify-self: center; writing-mode: vertical-rl; transform: rotate(180deg); color: #c9b98a; font-size: 9.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
   #open-trash { grid-column: 2; grid-row: 1; align-self: stretch; width: 86px; min-height: 0; margin: 0; padding: 4px 8px; border: 1px dashed #d9bd8077; border-radius: 9px; background: #ffffff08; color: var(--gold); font-size: 12px; line-height: 1.25; white-space: normal; text-align: center; }
