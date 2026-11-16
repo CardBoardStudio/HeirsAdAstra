@@ -946,8 +946,10 @@ function createGalacticReach(options = {}) {
     miss: '<span class="vocab-icon vocab-miss" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"></path></svg></span>',
     colonize: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 21V4"></path><path d="M5 4h12l-2.5 4L17 12H5"></path></svg></span>',
     build: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m14 4 6 6-3 3-6-6z"></path><path d="m11 7-8 8 3 3 8-8"></path></svg></span>',
+    move: '<span class="vocab-icon vocab-move" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 12h13"></path><path d="m13 6 6 6-6 6"></path></svg></span>',
+    limit: '<span class="vocab-icon vocab-limit" aria-hidden="true"><i></i></span>',
   };
-  const VOCAB_LABELS = [['prestige','Prestige'],['draw','Draw a card'],['hit','Hit'],['miss','Miss (a hit prevented)'],['colonize','Colonize'],['build','Build']];
+  const VOCAB_LABELS = [['prestige','Prestige'],['draw','Draw a card'],['move','Move'],['hit','Hit'],['miss','Miss'],['limit','Limit'],['colonize','Colonize'],['build','Build']];
   const COUNT_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5 };
   // A card's effect in the vocabulary: the same sentence with its recurring ideas as glyphs.
   function iconText(text) {
@@ -961,9 +963,13 @@ function createGalacticReach(options = {}) {
       .replace(/\badd (\d+) hits/gi, (m, n) => `+${n} @hit@`)
       .replace(/\+(\d+) hits?(?: this volley)?/gi, (m, n) => `+${n} @hit@`)
       .replace(/\bprevent (\d+) hits?(?: this volley)?/gi, (m, n) => `${n} @miss@`)
+      .replace(/\bMove (one|\d+) groups?/g, (m, w) => `@move@ ${count(w)} group`)
+      .replace(/\braise each resource limit by (\d+)/gi, (m, n) => `+${n} @limit@ on each resource`)
+      .replace(/\bRaise your (Matter|Energy|Biomass|Data) limit by (\d+)/g, (m, r, n) => `+${n} ${r} @limit@`)
+      .replace(/\bamong your resource limits\b/g, 'among your @limit@')
       .replace(/\bBuild or commission\b/g, '@build@')
       .replace(/\bColonize\b/g, '@colonize@'))
-      .replace(/@(prestige|draw|hit|miss|build|colonize)@/g, (m, key) => VOCAB_ICONS[key]);
+      .replace(/@(prestige|draw|hit|miss|build|colonize|move|limit)@/g, (m, key) => VOCAB_ICONS[key]);
   }
 
   function resourceText(text) {
@@ -3560,7 +3566,7 @@ function createGalacticReach(options = {}) {
     $('#symbol-legend').innerHTML = `<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) => {
       const cost = type === 'colony' ? { biomass: 2 } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
       return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-cost">${resourceDots(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
-    }).join('')}`;
+    }).join('')}<strong class="legend-heading">Card icons</strong><span class="legend-vocab symbol-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
   }
 
   // Replays reveal every faction's information, so fog never applies there.
@@ -3972,7 +3978,7 @@ function createGalacticReach(options = {}) {
     const canOrder=location==='hand'&&isHumanOps&&['prep','action'].includes(state.turnStage)&&definition.order&&!definition.reaction&&!definition.buyEffect;
     const isSelectedOrder=canOrder&&state.actionCardId===card.id&&Boolean(state.actionMode);
     const canBuyEffect=location==='hand'&&!replayMode&&state.phase==='buy'&&state.activePlayer===ME&&definition.buyEffect;
-    return `<article class="game-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''}" style="--card-accent:${definition.accent}"${card.id?` data-card-id="${card.id}"`:''}${location==='hand'&&definition.order?` data-order="${definition.order}"`:''}><span class="card-type">${definition.code?definition.code+' · ':''}${definition.kind}${definition.affinity?' · '+definition.affinity:''}${card.starter?' · STARTER':''}</span><span class="card-name">${definition.name}${starterLevel(card)===3?' III':card.upgraded?' II':''}</span>${cardHeadline(card)?`<span class="card-headline">${cardHeadline(card)}</span>`:''}${cardIllustration(definition)}${definition.lore?`<span class="card-lore">${esc(definition.lore)}</span>`:''}<span class="card-effect">${resourceText(definition.text)}${card.upgraded?` ${starterLevel(card)===3?'III':'II'}: ${upgradedOrderText(card)}${starterLevel(card)===3?' Draw one card when using the order.':''}`:''}</span><div class="card-footer"><span>${canConvertCard(card)?`<small>Convert</small>${resourceDots(conversionGain(card))}`:card.starter&&card.upgraded&&location==='hand'?`<span class="level-badge" title="Level ${starterLevel(card)===3?'III':'II'} starter: upgraded starters do not convert">${starterLevel(card)===3?'III':'II'}</span>`:''}</span></div>${location==='hand'?`<div class="card-buttons">${canResource?`<button class="button" data-resource-card="${card.id}" ${canStoreCard?'aria-label="Convert to resources"':`disabled title="Choose excess resources first"`}>${canStoreCard?'Convert<span class="label-detail"> to resources</span>':`Choose discards first`}</button>`:''}${canOrder?`<button class="button ${isSelectedOrder?'button-danger':'button-primary'}" data-order-card="${card.id}" ${card.key==='probe'?'data-order-mode="probe"':''} aria-pressed="${isSelectedOrder&&state.actionMode!=='excavate'}">${isSelectedOrder&&state.actionMode!=='excavate'?'Cancel order':card.key==='probe'?'Probe':'Use order'}</button>${card.key==='probe'?`<button class="button button-primary" data-order-card="${card.id}" data-order-mode="excavate" aria-pressed="${isSelectedOrder&&state.actionMode==='excavate'}">${isSelectedOrder&&state.actionMode==='excavate'?'Cancel Excavate':'Excavate'}</button>`:''}`:''}${canBuyEffect?`<button class="button button-primary" data-buy-effect="${card.id}">Use in Buy</button>`:''}${definition.reaction&&isHumanOps?'<span class="muted">Automatic reaction</span>':''}</div>`:''}</article>`;
+    return `<article class="game-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''}" style="--card-accent:${definition.accent}"${card.id?` data-card-id="${card.id}"`:''}${location==='hand'&&definition.order?` data-order="${definition.order}"`:''}><span class="card-type">${definition.code?definition.code+' · ':''}${definition.kind}${definition.affinity?' · '+definition.affinity:''}${card.starter?' · STARTER':''}</span><span class="card-name">${definition.name}${starterLevel(card)===3?' III':card.upgraded?' II':''}</span>${cardHeadline(card)?`<span class="card-headline"><span aria-hidden="true">${iconText(cardHeadline(card))}</span><span class="sr-only">${cardHeadline(card)}</span></span>`:''}${cardIllustration(definition)}${definition.lore?`<span class="card-lore">${esc(definition.lore)}</span>`:''}<span class="card-effect">${resourceText(definition.text)}${card.upgraded?` ${starterLevel(card)===3?'III':'II'}: ${upgradedOrderText(card)}${starterLevel(card)===3?' Draw one card when using the order.':''}`:''}</span><div class="card-footer"><span>${canConvertCard(card)?`<small>Convert</small>${resourceDots(conversionGain(card))}`:card.starter&&card.upgraded&&location==='hand'?`<span class="level-badge" title="Level ${starterLevel(card)===3?'III':'II'} starter: upgraded starters do not convert">${starterLevel(card)===3?'III':'II'}</span>`:''}</span></div>${location==='hand'?`<div class="card-buttons">${canResource?`<button class="button" data-resource-card="${card.id}" ${canStoreCard?'aria-label="Convert to resources"':`disabled title="Choose excess resources first"`}>${canStoreCard?'Convert<span class="label-detail"> to resources</span>':`Choose discards first`}</button>`:''}${canOrder?`<button class="button ${isSelectedOrder?'button-danger':'button-primary'}" data-order-card="${card.id}" ${card.key==='probe'?'data-order-mode="probe"':''} aria-pressed="${isSelectedOrder&&state.actionMode!=='excavate'}">${isSelectedOrder&&state.actionMode!=='excavate'?'Cancel order':card.key==='probe'?'Probe':'Use order'}</button>${card.key==='probe'?`<button class="button button-primary" data-order-card="${card.id}" data-order-mode="excavate" aria-pressed="${isSelectedOrder&&state.actionMode==='excavate'}">${isSelectedOrder&&state.actionMode==='excavate'?'Cancel Excavate':'Excavate'}</button>`:''}`:''}${canBuyEffect?`<button class="button button-primary" data-buy-effect="${card.id}">Use in Buy</button>`:''}${definition.reaction&&isHumanOps?'<span class="muted">Automatic reaction</span>':''}</div>`:''}</article>`;
   }
 
   function deckContents(player) {
@@ -4184,7 +4190,7 @@ function createGalacticReach(options = {}) {
   function capacityOffer() {
     const cost=storageUpgradeCost(ME);
     const reason=!canManageResources(ME)?'Add capacity during Operations or Buy, including off turn.':!canIncreaseStorage(ME)?`Needs ${cost.matter} of each resource.`:'';
-    return `<button class="game-card upgrade-offer capacity-offer ${reason?'unavailable':''}" style="--card-accent:var(--gold)" data-capacity-offer ${reason?`disabled title="${reason}"`:''} aria-label="Add 4 capacity for ${cost.matter} of each resource${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Capacity</span><span class="card-name">Add 4 capacity</span><span class="card-effect">Split 4 points among your resource limits as you choose.</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${cost.matter}</strong>${RESOURCES.map(resource => `<span class="pay-chip ${state.players[ME].resources[resource]>=cost[resource]?'can':'cannot'}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${cost.matter} of each resource</span></span></button>`;
+    return `<button class="game-card upgrade-offer capacity-offer ${reason?'unavailable':''}" style="--card-accent:var(--gold)" data-capacity-offer ${reason?`disabled title="${reason}"`:''} aria-label="Add 4 capacity for ${cost.matter} of each resource${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Capacity</span><span class="card-name">Add 4 capacity</span><span class="card-effect">${iconText('Split 4 points among your resource limits as you choose.')}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${cost.matter}</strong>${RESOURCES.map(resource => `<span class="pay-chip ${state.players[ME].resources[resource]>=cost[resource]?'can':'cannot'}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${cost.matter} of each resource</span></span></button>`;
   }
   function openUpgradeChoice(key, pay) {
     upgradeChoiceKey=key;
@@ -4545,7 +4551,7 @@ function createGalacticReach(options = {}) {
     // Each part of the table draws on its own: one failing part must never blank the market,
     // the relics or the turn's buttons. Failures are logged, shown once, and fail the checks.
     drawEach({renderHeader, renderScoreboard, renderBoard, renderResources, renderInspector, positionSectorScan, renderLog, renderHand, renderMarket, renderFleetSummary, renderTrade, renderRelicRow, renderOverflow, renderCombat, renderCombatReport, renderBoardPrimary});
-    drawEach({fitMarket, fitMap});
+    drawEach({fitMarket, stackLeft, fitMap});
     drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()), drawers: followTurnWithDrawer });
   }
 
@@ -4787,17 +4793,63 @@ function createGalacticReach(options = {}) {
     root.style.setProperty('--map-w', `${Math.floor(width / zoom)}px`);
   }
 
-  // On the table the market's three cost rows share the market's height exactly (the row's own
-  // height follows its cards, so the space is measured down to the bottom of the market panel,
-  // which the table's grid sizes).
+  // On the table the relics and the market are real cards (63:88), all one size: four rows of
+  // three - the relics, then the market's expensive, medium and cheap rows - filling the supply
+  // column's height. The column's width follows from the card size.
+  const CARD_GAP = 6;
   function fitMarket() {
-    const row = $('#market-row'), root = typeof document !== 'undefined' ? document.documentElement : null;
+    if (typeof window === 'undefined' || typeof getComputedStyle !== 'function') return;
+    const root = typeof document !== 'undefined' ? document.documentElement : null, shell = $('.app-shell');
+    const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches;
+    if (!root?.style || !shell?.getBoundingClientRect || !landscape) { ['--card-h', '--card-w', '--supply-w'].forEach(name => root?.style?.removeProperty?.(name)); fitMarketRows(); return; }
+    $('#market-row')?.style?.removeProperty?.('--mrow-h');
+    const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1, box = shell.getBoundingClientRect();
+    const front = parseFloat(getComputedStyle(shell).getPropertyValue('--band-h')) || 178;
+    const pad = parseFloat(getComputedStyle(shell).paddingTop) || 8;
+    const height = box.height / zoom - 2 * pad - front - 12;
+    if (height < 200) return;
+    const cardH = Math.floor((height - 3 * CARD_GAP) / 4), cardW = Math.floor(cardH * 63 / 88);
+    root.style.setProperty('--card-h', `${cardH}px`);
+    root.style.setProperty('--card-w', `${cardW}px`);
+    root.style.setProperty('--supply-w', `${cardW * 3 + CARD_GAP * 2}px`);
+  }
+  // On a portrait table the market's three cost rows share the market panel's height (each row's
+  // own height follows its cards, so the space is measured down to the panel's bottom).
+  function fitMarketRows() {
+    const row = $('#market-row'), root = document.documentElement;
     if (!row?.getBoundingClientRect || !tableLayout()) { row?.style?.removeProperty?.('--mrow-h'); return; }
     const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1, box = row.getBoundingClientRect();
     const panel = row.closest('#market-panel')?.getBoundingClientRect() || box;
     const height = (panel.bottom - box.top) / zoom - 2, gap = 5;
     if (height < 60) return;
     row.style.setProperty('--mrow-h', `${Math.floor((height - 2 * gap) / 3)}px`);
+  }
+  // The left column: each piece lies under the one before it, in order (track, round, comms,
+  // fleets, upgrades).
+  const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel', '#fleet-glance', '#upgrade-group'];
+  function stackLeft() {
+    if (typeof window === 'undefined' || typeof getComputedStyle !== 'function' || !document.documentElement?.style) return;
+    const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches;
+    const zoom = Number(document.documentElement?.style?.getPropertyValue('--table-zoom')) || 1;
+    let top = 0;
+    for (const sel of LEFT_STACK) {
+      const el = $(sel);
+      if (!el?.style || !el.getBoundingClientRect || !el.matches) continue;
+      if (!landscape) { el.style.removeProperty('--stack-top'); continue; }
+      el.style.setProperty('--stack-top', `${top}px`);
+      // An open comms log lies over the pieces below it; they keep their places.
+      const h = el.matches('.log-panel.open') ? (Number(el.dataset.closedH) || 0) : el.getBoundingClientRect().height / zoom;
+      if (el.matches('.log-panel') && !el.matches('.open')) el.dataset.closedH = String(h);
+      if (h) top += h + 8;
+    }
+    // When the stack would run into the map key at the column's foot, tighten it once (smaller
+    // upgrade cards, the latest comms entry only) and stack again.
+    const root = document.documentElement, legend = $('#map-legend-corner'), last = $(LEFT_STACK.at(-1));
+    // A second step drops the icon list from the corner key (the Map key button lists them).
+    const step = ['left-tight', 'left-tighter'].find(name => !root.classList.contains(name));
+    if (landscape && step && legend?.getBoundingClientRect && last?.getBoundingClientRect) {
+      if (last.getBoundingClientRect().bottom > legend.getBoundingClientRect().top - 4) { root.classList.add(step); stackLeft(); }
+    } else if (!landscape) root.classList.remove('left-tight', 'left-tighter');
   }
 
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
@@ -4884,14 +4936,15 @@ function createGalacticReach(options = {}) {
     fitTable();
     window.addEventListener('resize',fitTable);
     window.addEventListener('resize',fitMarket);
+    window.addEventListener('resize',stackLeft);
     window.addEventListener('resize',fitMap);
     // Late layout (web fonts, panels settling) re-fits the market and the map; their own sizing
     // does not change the panels' sizes, so this cannot loop.
     if (typeof ResizeObserver === 'function') {
-      const refit = new ResizeObserver(() => { fitMarket(); fitMap(); });
-      ['#market-panel', '#relics-panel', '.board-map-region'].forEach(sel => { const el = $(sel); if (el) refit.observe(el); });
+      const refit = new ResizeObserver(() => { fitMarket(); stackLeft(); fitMap(); });
+      ['.app-shell', '#market-panel', '#relics-panel', '.board-map-region'].forEach(sel => { const el = $(sel); if (el) refit.observe(el); });
     }
-    document.fonts?.ready?.then?.(() => { fitMarket(); fitMap(); });
+    document.fonts?.ready?.then?.(() => { fitMarket(); stackLeft(); fitMap(); });
     document.addEventListener('scroll',event=>{if(!$('#sector-popover').contains(event.target))positionSectorScan();},true);
     $('#open-map-key').addEventListener('click',()=>$('#map-key-dialog').showModal());
     $('#close-map-key').addEventListener('click',()=>$('#map-key-dialog').close());

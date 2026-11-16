@@ -2796,3 +2796,116 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .map-legend-corner .legend-vocab { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 6px; margin-top: 4px; padding-top: 5px; border-top: 1px solid #d9bd8030; font-size: 10.5px; }
   .map-legend-corner .legend-vocab > span { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
 }
+/* Move: an arrow; the resource limit: a gold pip, as on the mat. */
+.vocab-move svg { stroke: #2f6d8a; stroke-width: 2.4; }
+.vocab-limit i { display: block; width: .8em; height: .8em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fffbe8, #f0d27a 60%, #a8842c); box-shadow: 0 1px 1px #0006; }
+.map-legend-corner .vocab-move svg { stroke: #9fd0e6; }
+/* The card icons never take the pointer: pressing one presses the card under it. */
+.vocab-icon, .vocab-icon * { pointer-events: none; }
+.symbol-vocab { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; grid-column: 1 / -1; }
+.symbol-vocab > span { display: flex; align-items: center; gap: 6px; }
+
+/* ==== The final table (landscape). Left column, top to bottom: the Prestige track, the round's
+   phases, the comms log, the fleets, the map key with prices, the Upgrades (3x2 cards). Middle:
+   the map. Right: the relics and the market as real cards (63:88), four rows of three, sized to
+   the column's height (see fitMarket). Bottom band: menu and piles, your hand, the turn prompt with
+   small turn buttons, a large mat and Discard. ==== */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell, .app-shell.app-shell:has(#hand-row > :nth-child(7)) {
+    --left-w: 306px; --band-h: 178px; --mat-w: 470px; --tools-w: 170px;
+    grid-template-columns: var(--left-w) minmax(0, 1fr) var(--supply-w, 400px) !important;
+    grid-template-rows: auto minmax(0, 1fr) 0 0 0 0 0 0 var(--band-h) !important;
+  }
+  /* Left column: each piece at its stacked place (see stackLeft). */
+  #prestige-track, .phase-stepper, .log-panel, #fleet-glance, #upgrade-group {
+    grid-column: 1 !important; grid-row: 1 / 9 !important; align-self: start !important; justify-self: stretch !important; margin: var(--stack-top, 0px) 0 0 0 !important;
+  }
+  #prestige-track { width: calc(100% - 50px) !important; margin-left: 6px !important; margin-top: calc(var(--stack-top, 0px) + 4px) !important; }
+  .phase-stepper { justify-self: start !important; font-size: 9.5px; }
+  .phase-stepper li { font-size: 9.5px !important; padding: 2px 5px 2px 13px !important; }
+  .log-panel:not(.open) .game-log > .log-recent:nth-child(n+4) { display: none; }
+  .log-panel.open { align-self: start !important; max-height: calc(100% - var(--stack-top, 0px)); }
+  /* The map key lies at the foot of the left column; notices appear over it. */
+  #map-legend-corner { grid-column: 1 !important; grid-row: 1 / 9 !important; align-self: end !important; justify-self: stretch !important; width: auto; margin: 0 0 4px !important; padding: 6px 8px !important; gap: 2px 10px !important; font-size: 10px !important; }
+  #map-legend-corner .legend-vocab { grid-template-columns: repeat(3, auto) !important; justify-content: start; gap: 2px 8px !important; font-size: 9.5px !important; }
+  #map-legend-corner .legend-piece em { display: none; }
+  #map-legend-corner .resource-chip { min-height: 14px !important; }
+  #map-legend-corner .legend-piece { white-space: nowrap; }
+  #map-legend-corner { grid-template-columns: 1fr 1fr !important; column-gap: 10px; }
+  #map-legend-corner .legend-terrain, #map-legend-corner .legend-vocab { grid-column: 1 / -1; }
+  #map-legend-corner .legend-terrain { grid-template-columns: repeat(4, auto); justify-content: start; }
+  /* Upgrades: two rows of three real cards. */
+  #upgrade-group { display: block; }
+  .upgrade-group #upgrade-market { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; grid-template-rows: none !important; grid-auto-rows: auto; gap: 6px !important; padding: 0 !important; border: 0 !important; background: none !important; --utop-h: auto !important; }
+  .upgrade-group #upgrade-market::before { display: none !important; }
+  .upgrade-group #upgrade-market > .game-card { grid-column: auto !important; grid-row: auto !important; aspect-ratio: 63 / 88; height: auto !important; }
+  .upgrade-group #upgrade-market > [data-upgrade-level="2"][data-upgrade-offer="move"] { order: 1; }
+  .upgrade-group #upgrade-market > [data-upgrade-level="2"][data-upgrade-offer="construct"] { order: 2; }
+  .upgrade-group #upgrade-market > .capacity-offer { order: 3; }
+  .upgrade-group #upgrade-market > [data-upgrade-level="3"][data-upgrade-offer="move"] { order: 4; }
+  .upgrade-group #upgrade-market > [data-upgrade-level="3"][data-upgrade-offer="construct"] { order: 5; }
+  .upgrade-group #upgrade-market > .trash-pile { order: 6; }
+  .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 4 !important; line-clamp: 4 !important; }
+  .upgrade-group #upgrade-market .pay-options { flex-wrap: wrap; }
+  /* The map fills the middle column. */
+  .board-map-region, .map-tools { grid-column: 2 !important; grid-row: 1 / 9 !important; }
+  /* Right column: the relics row, then the market rows, all real cards of one size. */
+  #relics-panel, #relics-panel[hidden], #relics-panel.tab-panel { grid-column: 3 !important; grid-row: 1 !important; align-self: start !important; margin: 0 0 6px !important; }
+  .tab-panel { grid-column: 3 !important; grid-row: 2 / 9 !important; }
+  #relics-panel.tab-panel { grid-row: 1 !important; }
+  #fleet-panel.active { grid-column: 3 !important; grid-row: 1 / 9 !important; }
+  .relic-row { grid-template-columns: repeat(3, var(--card-w, 1fr)) !important; gap: 6px !important; }
+  #relics-panel { --rtop-h: var(--card-h, 120px); }
+  .relic-row > div, .relic-row > div:not(:has(> .button)) { height: var(--card-h, 120px) !important; }
+  .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "name" "effect" !important; align-content: start; }
+  .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) :is(.card-name, .card-effect) { white-space: normal !important; }
+  .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5; overflow: hidden; }
+  #market-row { grid-template-columns: repeat(3, var(--card-w, 1fr)) !important; grid-template-rows: repeat(3, var(--card-h, auto)) !important; grid-auto-rows: var(--card-h, auto) !important; gap: 6px !important; }
+  .market-cards #market-row > .game-card { grid-column: auto !important; }
+  #market-panel .section-intro { display: none !important; }
+  /* Bottom band. */
+  #hand-row { grid-column: 1 / -1 !important; grid-row: 9 !important; margin: 0 calc(var(--mat-w) + var(--tools-w) + var(--pile-w) + 76px) 0 calc(52px + 2 * var(--pile-w) + 23px) !important; }
+  .board-toolbar { grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: start !important; width: var(--tools-w); margin: 4px calc(var(--mat-w) + var(--pile-w) + 44px) 0 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; font-size: 11px; line-height: 1.3; }
+  .board-toolbar strong { font-size: 12px; }
+  #hand-panel .hand-tools { grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: end !important; width: var(--tools-w) !important; margin: 0 calc(var(--mat-w) + var(--pile-w) + 44px) 8px 0 !important; display: flex !important; flex-direction: column; gap: 4px; }
+  #hand-panel .hand-tools .button { width: 100%; min-height: 0 !important; padding: 3px 8px !important; font-size: 11.5px !important; line-height: 1.2; border-radius: 999px !important; }
+  #resource-grid.resource-grid { grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: end !important; width: var(--mat-w) !important; height: calc(var(--band-h) - 6px) !important; margin: 0 calc(var(--pile-w) + 26px) 0 0 !important; }
+  #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 18px)) !important; gap: 3px; }
+  #resource-grid { font-size: 11px; }
+  /* The fleets panel, compact. */
+  #fleet-glance { gap: 1px !important; padding: 4px 8px 5px !important; font-size: 10px !important; }
+  /* Notices lie over the map key at the foot of the left column. */
+  .toast { top: auto !important; bottom: calc((178px + 16px) * var(--table-zoom, 1)) !important; left: calc(20px * var(--table-zoom, 1)) !important; width: calc(270px * var(--table-zoom, 1)) !important; }
+  /* Upgrade cards: the effect in smaller type, three lines at most, inside the card. */
+  .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { font-size: 10px !important; line-height: 1.2 !important; -webkit-line-clamp: 3 !important; line-clamp: 3 !important; }
+  .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { font-size: 12px !important; line-height: 1.1 !important; }
+  /* A tight column (see stackLeft): smaller upgrade cards and only the latest comms entry. */
+  .left-tight .upgrade-group #upgrade-market { grid-template-columns: repeat(3, 84px) !important; justify-content: start; }
+  .left-tight .log-panel:not(.open) .game-log > .log-recent:nth-child(n+3) { display: none; }
+  /* A tight column also packs the map key: price chips on one line, smaller. */
+  .left-tight #map-legend-corner .legend-piece .resource-dots { flex-wrap: nowrap !important; gap: 1px !important; }
+  .left-tight #map-legend-corner .resource-chip { min-height: 13px !important; padding: 0 2px 0 1px !important; gap: 0 !important; font-size: 9px !important; }
+  .left-tight #map-legend-corner .resource-symbol { width: 9px !important; height: 9px !important; }
+  .left-tight #map-legend-corner .legend-piece { column-gap: 3px !important; font-size: 9.5px; }
+  .left-tight #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 15px)) !important; gap: 2px !important; }
+  .left-tight .app-shell { --mat-w: 400px !important; --tools-w: 170px !important; }
+  /* A big hand narrows each card so every strip keeps room for its badge. */
+  #hand-row:has(> :nth-child(7)) { --top-w: 168px !important; }
+  .left-tight .app-shell { --pile-w: 84px !important; }
+  /* Squarer tables (1300 units wide): a narrower mat and buttons, and smaller hand cards, so the
+     hand keeps its room in the bottom band. */
+  :root:not(.table-wide) .app-shell { --mat-w: 320px !important; --tools-w: 150px !important; }
+  /* There a raised card is wider than its resting slot, so the hand leaves room for it. */
+  :root:not(.table-wide) #hand-row { margin-right: calc(var(--mat-w) + var(--tools-w) + var(--pile-w) + 76px + max(0px, 200px - var(--top-w))) !important; }
+  :root:not(.table-wide) #hand-row { --top-w: 150px !important; }
+  :root:not(.table-wide) #hand-row:has(> :nth-child(7)) { --top-w: 116px !important; }
+  :root:not(.table-wide) #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 12px)) !important; gap: 2px !important; }
+  /* A tighter column drops the icon list from the corner key (the Map key button lists them). */
+  .left-tighter #map-legend-corner .legend-vocab { display: none !important; }
+  /* The hand keeps its low height (--front-h) at the foot of the taller band, so pointing at a card
+     lifts it. */
+  #hand-row { align-self: end !important; }
+  /* The piles keep their card height at the foot of the band. */
+  .pile-stats > button[id] { align-self: end !important; height: var(--front-h) !important; }
+  .left-tight .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 2 !important; line-clamp: 2 !important; }
+}

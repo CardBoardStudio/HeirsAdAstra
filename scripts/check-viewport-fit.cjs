@@ -416,7 +416,8 @@ async function runCase(browser, origin, testCase, viewport) {
     sharedTable = testCase.shared || null;
     await browser.navigate(`${origin}/galactic-reach/${testCase.table ? `?table=${TABLE_ID}` : testCase.shared ? `?shared=${TABLE_ID}` : ''}`);
   }
-  await browser.evaluate('new Promise(r => setTimeout(r, 400))');
+  // A shared or saved table loads its seats after the page, then fits again: let it settle.
+  await browser.evaluate(`new Promise(r => setTimeout(r, ${testCase.shared || testCase.table ? 900 : 400}))`);
   for (const selector of testCase.click || []) {
     const ok = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e || e.disabled) return false; e.click(); return true; })()`);
     if (!ok) { lastSlack = { px: 99 }; return [`could not click ${selector}`]; }
