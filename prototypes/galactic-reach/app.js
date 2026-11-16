@@ -987,6 +987,9 @@ function createGalacticReach(options = {}) {
       .replace(/\bgain (\d+) (?:more )?permanent Prestige/gi, (m, n) => `+${n} @prestige@`)
       .replace(/\bgain (\d+) Prestige/gi, (m, n) => `+${n} @prestige@`)
       .replace(/\b(?:then )?draws? (one|two|three|four|five|\d+) cards?/gi, (m, w) => `+${count(w)} @draw@`)
+      .replace(/\bdraw (one|two|three|\d+)\b(?! card)/gi, (m, w) => `+${count(w)} @draw@`)
+      .replace(/\+(\d+) movement\b/gi, (m, n) => `+${n} @move@`)
+      .replace(/\bBuild up to (two|three|\d+)(?: ships or structures)?/g, (m, w) => `@build@ up to ${count(w)}`)
       .replace(/\badd (\d+) hits/gi, (m, n) => `+${n} @hit@`)
       .replace(/\+(\d+) hits?(?: this volley)?/gi, (m, n) => `+${n} @hit@`)
       .replace(/\bprevent (\d+) hits?(?: this volley)?/gi, (m, n) => `${n} @miss@`)
@@ -4171,8 +4174,9 @@ function createGalacticReach(options = {}) {
     $$('[data-trash-hand]').forEach(button=>button.addEventListener('click',()=>$('#open-trash').click()));
     const prep=state.phase==='operations'&&state.activePlayer===ME&&state.turnStage==='prep';
     const convertAll = $('#convert-all-button');
-    convertAll.hidden = !canConvertCards();
-    convertAll.disabled = !canConvertCards() || !player.hand.some(canConvertCard);
+    // Shown only when it can do something: you may convert now and hold a level I starter.
+    convertAll.hidden = !canConvertCards() || !player.hand.some(canConvertCard);
+    convertAll.disabled = convertAll.hidden;
     convertAll.innerHTML = `<span>Convert level I starters</span><span class="conversion-symbols" aria-hidden="true">${['matter','energy'].map(resource => resourceDot(resource)).join('')}</span>`;
     $('#finish-construct').hidden=replayMode || !state.pendingConstruct || state.activePlayer!==ME;
     $('#skip-colony-build').hidden=replayMode || !state.pendingColonyBuild || state.activePlayer!==ME;
@@ -4298,7 +4302,10 @@ function createGalacticReach(options = {}) {
       const note=[ready.length?`${ready.length} ready`:'',inDeck?`${inDeck} in deck`:''].filter(Boolean).join(' · ')||`No level ${LEVEL_NAMES[level-1]} copy`;
       const canPay=RESOURCES.some(resource=>me.resources[resource]>=price);
       const reason=!humanBuy?'Upgrade during your Buy turn.':!ready.length?`No level ${LEVEL_NAMES[level-1]} ${def.name} in hand, discard or in play.`:!canPay?`Needs ${price} of one resource.`:'';
-      const effect=`${upgradedOrderText({key})}${level===3?' Draws one card when used as an order.':''} No longer converts to resources.`;
+      // The printed text of the copy you get, in the card vocabulary. A card with no conversion box
+      // cannot convert, so it says nothing about conversion.
+      const copy={key,starter:true,upgraded:true,level}, extraDraw=level===3&&key!=='construct';
+      const effect=iconText(`${upgradedOrderText(copy)}${extraDraw?' Draws one card when used as an order.':''}`);
       return `<button class="game-card upgrade-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-upgrade-offer="${key}" data-upgrade-level="${level}" ${reason?`disabled title="${reason}"`:''} aria-label="Upgrade ${esc(def.name)} to level ${LEVEL_NAMES[level]} for ${price} of one resource; does not use a purchase${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Starter upgrade</span><span class="card-name">${def.name} ${LEVEL_NAMES[level]}</span>${cardIllustration(def)}<span class="card-effect">${effect}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${price}</strong>${RESOURCES.map(resource=>`<span class="pay-chip ${me.resources[resource]>=price?'can':'cannot'}" data-pay="${resource}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${price} of one resource</span></span><span class="card-limit-note">${note}</span></button>`;
     })).join('')+capacityOffer(humanBuy)+trashPile(humanBuy);
     $$('[data-upgrade-offer]').forEach(button=>button.addEventListener('click',event=>openUpgradeChoice(button.dataset.upgradeOffer,event.target.closest?.('.pay-chip.can')?.dataset.pay)));
@@ -4889,8 +4896,8 @@ function createGalacticReach(options = {}) {
 
   // The map fills the space the other pieces leave: on a landscape table it may reach into the
   // left strip, as long as no hex runs under the Prestige track, the round's phases, the comms
-  // card, the fleets, the notice spot below them, the map tools or the short map key, which lie in
-  // the hexagon's empty corners.
+  // card, the fleets, the map tools or the map key (with any notice over it), which lie in the
+  // hexagon's empty corners.
   // Hex positions scale with the map's width, so they are measured once and the largest width
   // that clears every corner piece is found by scanning down from the largest.
   let fitMapLog = null;
@@ -4903,6 +4910,9 @@ function createGalacticReach(options = {}) {
     const box = region.getBoundingClientRect(), b = board.getBoundingClientRect();
     if (!b.width || !box.width) return;
     const hexes = [...board.querySelectorAll('.hex')].map(hex => { const r = hex.getBoundingClientRect(); return [(r.left - b.left) / b.width, (r.top - b.top) / b.width, (r.right - b.left) / b.width, (r.bottom - b.top) / b.width]; });
+    // The outermost hexes are the ones that meet a panel, so they are tried first: most sizes fail
+    // on the first few hexes instead of after hundreds.
+    hexes.sort((a, z) => Math.hypot(z[0] + z[2] - 1, (z[1] + z[3]) / 2 - b.height / b.width / 2) - Math.hypot(a[0] + a[2] - 1, (a[1] + a[3]) / 2 - b.height / b.width / 2));
     const ratio = b.height / b.width, gap = 6 * zoom;
     const rect = (element, [l, t, r, bottom] = [0, 0, 0, 0]) => { const e = element?.getBoundingClientRect?.(); return e && e.width ? [e.left - l * zoom, e.top - t * zoom, e.right + r * zoom, e.bottom + bottom * zoom] : null; };
     const track = rect($('#prestige-track'), [6, 4, 38, 5]);
@@ -4910,7 +4920,9 @@ function createGalacticReach(options = {}) {
     // An open comms log lies over the map on purpose; the map keeps clear of the closed card.
     if (!$('.log-panel.open')) fitMapLog = rect($('.log-panel'));
     const log = fitMapLog;
-    const blocks = [track, log, rect($('.phase-stepper')), rect($('#fleet-glance')), noticeSpot, rect($('.map-tools')), rect($('#map-legend-corner'))].filter(Boolean);
+    // The bottom band's pieces too: the map reaches down between your hand, piles, buttons and mat.
+    const band = [...document.querySelectorAll('#hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].map(e => rect(e));
+    const blocks = [track, log, rect($('.phase-stepper')), rect($('#fleet-glance')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
     const clear = (width, top) => {
       const left = box.right - width;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
@@ -4918,7 +4930,7 @@ function createGalacticReach(options = {}) {
     // The map lies against the supply. A map shorter than its space may also slide up or down
     // (centred first) so its empty corners take the panels above and below.
     const fits = width => {
-      const slack = box.height - width * ratio, tops = [slack / 2, ...Array.from({ length: 17 }, (_, i) => slack * i / 16)];
+      const slack = box.height - width * ratio, tops = [slack / 2, ...Array.from({ length: 9 }, (_, i) => slack * i / 8)];
       return tops.find(dy => clear(width, box.top + dy));
     };
     // Hexes are discrete, so a corner piece can clear a larger map and touch a smaller one: scan
@@ -4937,7 +4949,24 @@ function createGalacticReach(options = {}) {
   // units to show its name, cost and effect whole, so the shorter a card, the wider it is; cards
   // keep real card proportions (63:88) where that already leaves them that room (tall windows).
   // The column's width follows from the card size.
-  const CARD_GAP = 6, SUPPLY_ROWS = 6, CARD_MIN_W = 150, CARD_TEXT_AREA = 166 * 127;
+  // On a wide table the map is as tall as the window allows and the width left over would be bare
+  // felt between the left-hand panels and the map: balanceSupply hands it to the supply instead
+  // (wider cards, more of their pictures), up to cards 1.5 times as wide as tall, and the map,
+  // which lies against the supply, moves left into the space.
+  let supplyExtra = 0, supplyRoom = 0;
+  function balanceSupply() {
+    if (typeof window === 'undefined' || !document.documentElement?.style || !tableLayout() || !window.matchMedia?.('(orientation: landscape)').matches || $('.board-stage.map-zoomed')) return;
+    const board = $('#galaxy-board')?.getBoundingClientRect?.();
+    if (!board?.width) return;
+    const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
+    const right = Math.max(0, ...['#prestige-track', '.phase-stepper', '.log-panel:not(.open)', '#fleet-glance', '#map-legend-corner'].map(sel => $(sel)?.getBoundingClientRect?.()).filter(r => r?.width).map(r => r.right));
+    const slack = (board.left - right) / zoom - 16;
+    const next = Math.max(0, Math.min(supplyRoom, supplyExtra + Math.floor(slack / 3)));
+    if (Math.abs(next - supplyExtra) < 3) return;
+    supplyExtra = next;
+    fitMarket(); stackLeft(); fitMap();
+  }
+  const CARD_GAP = 6, SUPPLY_ROWS = 6, CARD_MIN_W = 150, CARD_TEXT_AREA = 170 * 127;
   function fitMarket() {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function') return;
     const root = typeof document !== 'undefined' ? document.documentElement : null, shell = $('.app-shell');
@@ -4949,7 +4978,10 @@ function createGalacticReach(options = {}) {
     const pad = parseFloat(getComputedStyle(shell).paddingTop) || 8;
     const height = box.height / zoom - 2 * pad - front - 12;
     if (height < 200) return;
-    const cardH = Math.floor((height - (SUPPLY_ROWS - 1) * CARD_GAP) / SUPPLY_ROWS), cardW = Math.max(Math.floor(cardH * 63 / 88), CARD_MIN_W, Math.ceil(CARD_TEXT_AREA / cardH));
+    const cardH = Math.floor((height - (SUPPLY_ROWS - 1) * CARD_GAP) / SUPPLY_ROWS), baseW = Math.max(Math.floor(cardH * 63 / 88), CARD_MIN_W, Math.ceil(CARD_TEXT_AREA / cardH));
+    supplyRoom = Math.max(0, Math.floor(cardH * 1.5) - baseW);
+    supplyExtra = Math.min(supplyExtra, supplyRoom);
+    const cardW = baseW + supplyExtra;
     root.style.setProperty('--card-h', `${cardH}px`);
     root.style.setProperty('--card-w', `${cardW}px`);
     root.style.setProperty('--supply-w', `${cardW * 3 + CARD_GAP * 2}px`);
@@ -4968,9 +5000,6 @@ function createGalacticReach(options = {}) {
   // The left column: each piece lies under the one before it, in order (track, round, comms,
   // fleets).
   const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel', '#fleet-glance'];
-  // The notice spot under the stack, in table units (the toast's size, see .toast).
-  const NOTICE_W = 236, NOTICE_H = 104;
-  let noticeSpot = null;
   function stackLeft(depth = 0) {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function' || !document.documentElement?.style) return;
     const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches;
@@ -4987,18 +5016,28 @@ function createGalacticReach(options = {}) {
       if (h) top += h + 8;
     }
     const root = document.documentElement, legend = $('#map-legend-corner'), last = $(LEFT_STACK.at(-1));
-    // Notices have a spot of their own just under the stack; the map keeps clear of it (fitMap).
-    const end = last?.getBoundingClientRect?.();
-    noticeSpot = landscape && end?.height ? [Math.min(end.left, 12 * zoom), end.bottom + 8 * zoom, end.left + NOTICE_W * zoom, end.bottom + (8 + NOTICE_H) * zoom] : null;
-    if (noticeSpot) root.style.setProperty('--notice-top', `${Math.round(noticeSpot[1])}px`);
+    // The map key lies in the middle of the column's free height (between the stack and your piles
+    // and hand), so the column has no long bare stretch.
+    const end = last?.getBoundingClientRect?.(), track = $('#prestige-track')?.getBoundingClientRect?.(), keyBox = legend?.getBoundingClientRect?.();
+    const floor = Math.min(...[...document.querySelectorAll('#hand-row, .pile-stats > button[id]')].map(e => e.getBoundingClientRect()).filter(r => r.height).map(r => r.top));
+    if (landscape && end?.height && track?.height && keyBox?.height && Number.isFinite(floor)) {
+      const areaTop = track.top - 4 * zoom, from = end.bottom + 8 * zoom, free = floor - 8 * zoom - from;
+      // A little below the middle: the hexagon's lower-left edge leaves the wider gap below.
+      const top = from + Math.max(0, (free - keyBox.height) * 0.56);
+      root.style.setProperty('--legend-top', `${Math.round((top - areaTop) / zoom)}px`);
+    } else root.style.removeProperty('--legend-top');
+    // Notices lie over the top of the map key (reference text the map keeps clear of), at the
+    // table's scale so they never run past it.
+    const key = landscape ? legend?.getBoundingClientRect?.() : null;
+    if (key?.height) root.style.setProperty('--notice-top', `${Math.round(key.top)}px`);
     else root.style.removeProperty('--notice-top');
-    // When the stack would run into the map key at the column's foot, tighten it once (the latest
-    // comms entry only) and stack again.
-    // A second step drops the icon list from the corner key (the Map key button lists them).
-    // At most two steps, whatever the page's class list reports.
+    // When the stack and the map key cannot both fit above your piles and hand, tighten the column
+    // once (the latest comms entry only) and stack again; a second step drops the icon list from
+    // the key (the Map key button lists them). At most two steps, whatever the class list reports.
     const step = ['left-tight', 'left-tighter'].find(name => !root.classList.contains(name));
-    if (depth < 2 && landscape && step && legend?.getBoundingClientRect && last?.getBoundingClientRect
-      && last.getBoundingClientRect().bottom > legend.getBoundingClientRect().top - 4) { root.classList.add(step); stackLeft(depth + 1); }
+    const stackEnd = last?.getBoundingClientRect?.(), keyNow = legend?.getBoundingClientRect?.();
+    if (depth < 2 && landscape && step && stackEnd?.height && keyNow?.height && Number.isFinite(floor)
+      && stackEnd.bottom + 8 * zoom + keyNow.height > floor - 4 * zoom) { root.classList.add(step); stackLeft(depth + 1); }
   }
 
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
@@ -5052,6 +5091,12 @@ function createGalacticReach(options = {}) {
           return orders.length ? [{ coord: hex.dataset.coord, type: orders[0].type, label: orders[0].label }] : [];
         });
       },
+      // The hand card whose chosen order waits for its first hex (Use order clicked, nothing chosen
+      // on the map yet): the card feel aims it exactly as a drag would.
+      aimCard() {
+        if (replayMode || !['move','construct','colonize'].includes(state.actionMode) || state.moveSource || state.pendingMove || state.pendingConstruct) return null;
+        return state.actionCardId || null;
+      },
       playAt(cardId, coord) {
         const order = availableContextOrders(coord, cardId)[0];
         if (!order || !startContextOrder(cardId, coord, order.group)) return false;
@@ -5088,13 +5133,15 @@ function createGalacticReach(options = {}) {
     // A resized window starts the column untightened, so a window that grows gets it back.
     window.addEventListener('resize',() => { document.documentElement.classList.remove('left-tight', 'left-tighter'); stackLeft(); });
     window.addEventListener('resize',fitMap);
+    // A resized window balances the supply afresh, from its narrowest cards.
+    window.addEventListener('resize',() => { supplyExtra = 0; fitMarket(); stackLeft(); fitMap(); balanceSupply(); });
     // Late layout (web fonts, panels settling) re-fits the market and the map; their own sizing
     // does not change the panels' sizes, so this cannot loop.
     if (typeof ResizeObserver === 'function') {
-      const refit = new ResizeObserver(() => { fitMarket(); stackLeft(); fitMap(); });
+      const refit = new ResizeObserver(() => { fitMarket(); stackLeft(); fitMap(); balanceSupply(); });
       ['.app-shell', '#market-panel', '#relics-panel', '.board-map-region'].forEach(sel => { const el = $(sel); if (el) refit.observe(el); });
     }
-    document.fonts?.ready?.then?.(() => { fitMarket(); stackLeft(); fitMap(); });
+    document.fonts?.ready?.then?.(() => { fitMarket(); stackLeft(); fitMap(); balanceSupply(); });
     document.addEventListener('scroll',event=>{if(!$('#sector-popover').contains(event.target))positionSectorScan();},true);
     $('#open-map-key').addEventListener('click',()=>$('#map-key-dialog').showModal());
     $('#close-map-key').addEventListener('click',()=>$('#map-key-dialog').close());
