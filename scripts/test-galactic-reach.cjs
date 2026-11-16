@@ -96,6 +96,7 @@ require('./test-playtest-feedback.cjs');
 require('./test-starter-conversion.cjs');
 require('./test-probe-discovery.cjs');
 require('./test-unlimited-buys.cjs');
+require('./test-tiered-market.cjs');
 require('./test-strategic-bots.cjs');
 require('./test-strategic-bot-study.cjs');
 

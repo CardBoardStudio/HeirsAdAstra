@@ -626,7 +626,7 @@ test('Market permits repeated affordable purchases and reloads with no purchase 
  const storage=createStorage(),state=boot(storage).saved();
  Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});
  Object.assign(state.players[0],{passed:true,hand:[],deck:[],discard:[],inPlay:[],buyStartDiscardIds:[],buyStartInPlayIds:[],buyLimit:1,resources:{matter:0,energy:6,biomass:0,data:3},resourceLimits:{matter:4,energy:10,biomass:4,data:10}});
- state.market=[{id:'purchase-1',key:'signalRelay'},{id:'purchase-2',key:'signalRelay'}];state.advancedDeck=[{id:'refill-3',key:'signalRelay'}];state.marketDiscard=[];
+ state.market=[{id:'purchase-1',key:'signalRelay'},{id:'purchase-2',key:'signalRelay'}];state.marketDecks={expensive:[],medium:[],cheap:[{id:'refill-3',key:'signalRelay'}]};
  writeSave(storage,state);let game=boot(storage);
  assert.match(game.dom.element('market-help').textContent,/as many cards as you can afford/);
  for(let n=1;n<=3;n++) {
