@@ -258,7 +258,8 @@ function createGalacticAdapter(e) {
     state.players.forEach((p, id) => {
       p.handCount = p.hand.length; p.deckCount = p.deck.length;
       if (id === seat) p.deck = [...p.deck].sort(byKey);
-      else { p.hand = []; p.deck = []; }
+      // The ids a seat held when its Buy began name cards in its hand, so they stay private too.
+      else { p.hand = []; p.deck = []; p.buyStartHandIds = []; }
     });
     state.probeStatus = e.probeStatus(seat);
     state.marketDecks = Object.fromEntries(Object.entries(state.marketDecks).map(([tier, deck]) => [tier, stub(deck.length)]));
