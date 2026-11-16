@@ -4048,6 +4048,7 @@ function createGalacticReach(options = {}) {
     // Rules #storage-allocation: the permanent Storage pile beside the mat.
     const stored=player.storage||[];
     $('#storage-pile-count').textContent=stored.length;
+    $('#storage-pile').setAttribute('aria-label',`Storage pile: ${stored.length} Capacity Module${stored.length===1?'':'s'}`);
     $('#storage-pile').title=stored.length?`Storage pile: ${stored.map(c=>RESOURCES.filter(r=>c.allocation?.[r]).map(r=>`+${c.allocation[r]} ${RESOURCE_NAMES[r]}`).join(', ')).join(' · ')}. Never reshuffled; the next Capacity Module costs ${stored.length+1} of each resource.`:'Storage pile: played Capacity Modules stay here. Your next one costs 1 of each resource.';
     renderPile('deck', replayMode?player.deckCount:player.deck.length, null);
     renderPile('discard', discardCount, replayMode?null:player.discard.at(-1));
@@ -4899,6 +4900,7 @@ function createGalacticReach(options = {}) {
     $('#discard-button').addEventListener('click',()=>$('#discard-dialog').showModal());
     $('#close-discard').addEventListener('click',()=>$('#discard-dialog').close());
     $('#in-play-button').addEventListener('click',()=>$('#in-play-dialog').showModal());
+    $('#storage-pile').addEventListener('click',()=>toast($('#storage-pile').title));
     $('#close-in-play').addEventListener('click',()=>$('#in-play-dialog').close());
     $('#new-game-button').addEventListener('click',()=>{
       if (options.newTable) { options.newTable(); return; }
