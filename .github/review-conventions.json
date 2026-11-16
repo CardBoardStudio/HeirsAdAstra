@@ -1,0 +1,16 @@
+{
+  "$comment": "Advisory PR title, description and commit checks (.github/workflows/review-conventions.yml). Required sections come from .github/pull_request_template.md; the blocking rules are .github/rules-contract.json. Keys: README.md \"Config reference\" in bitswell-hq/review-conventions.",
+  "header": {
+    "style": "area",
+    "maxLength": 72
+  },
+  "commits": {
+    "bodyTypes": [],
+    "breakingTrailer": "Breaking-Change"
+  },
+  "skip": {
+    "authors": ["github-actions[bot]"],
+    "branches": ["release/"]
+  },
+  "help": "See .github/pull_request_template.md, .gitmessage and docs/playtest-workflow.md."
+}

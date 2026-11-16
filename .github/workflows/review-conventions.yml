@@ -1,0 +1,22 @@
+# Advisory checks of the PR title, description and commit messages, from the
+# shared bitswell-hq/review-conventions workflow and .github/review-conventions.json.
+# The blocking Rules contract is rules.yml.
+name: Review conventions
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-conventions-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review-conventions:
+    # The same ref as scripts/lib/review-conventions.cjs (the tests check).
+    uses: bitswell-hq/review-conventions/.github/workflows/review-conventions.yml@v1
+    with:
+      mode: warn # the one switch: `block` fails the check on any finding
