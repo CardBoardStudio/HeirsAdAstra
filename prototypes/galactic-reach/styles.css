@@ -2269,12 +2269,11 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 #resource-grid .resource-amount { grid-area: nnum !important; justify-self: start; margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; font-size: 13px !important; line-height: 1 !important; }
 #resource-grid .resource-limit { grid-area: nnum !important; justify-self: end; align-self: center; font-size: 11px !important; color: var(--muted) !important; }
 #resource-grid { position: relative; }
-#resource-grid .mat-discard { position: absolute; top: 6px; right: 52px; min-height: 0; margin: 0; padding: 2px 10px; border: 1px dashed #c9a08a99; border-radius: 999px; background: #2a1814; color: #f0cdb8; font-size: 10.5px; font-weight: 700; }
 /* Choosing and dragging a trade. */
 #resource-grid .resource-box.mat-picked { box-shadow: inset 0 0 0 2px #f6e7b0 !important; }
-#resource-grid .resource-box.mat-target, #resource-grid .mat-discard.mat-target { box-shadow: inset 0 0 0 1.5px #8fd19e !important; }
+#resource-grid .resource-box.mat-target { box-shadow: inset 0 0 0 1.5px #8fd19e !important; }
 #resource-grid .resource-box.mat-blocked { opacity: .55; }
-#resource-grid .resource-box.mat-hover.mat-target, #resource-grid .mat-discard.mat-hover.mat-target { background: #8fd19e26 !important; box-shadow: inset 0 0 0 2px #8fd19e !important; }
+#resource-grid .resource-box.mat-hover.mat-target { background: #8fd19e26 !important; box-shadow: inset 0 0 0 2px #8fd19e !important; }
 #resource-grid .resource-box.mat-hover.mat-blocked { box-shadow: inset 0 0 0 2px var(--red) !important; opacity: .8; }
 .mat-trade-ghost { position: fixed; left: 0; top: 0; z-index: 90; display: grid; grid-template-columns: repeat(2, 9px); gap: 2px; pointer-events: none; filter: drop-shadow(0 4px 6px #000a); }
 .mat-trade-ghost i { width: 9px; height: 9px; border-radius: 2px; background: linear-gradient(145deg, color-mix(in srgb, var(--resource) 55%, #fff), var(--resource) 55%, color-mix(in srgb, var(--resource) 50%, #000)); }
@@ -2459,4 +2458,454 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .galaxy-board, .has-saved-table .galaxy-board, .has-replay .galaxy-board { width: var(--map-w, min(100cqw, 100cqh * 1.0543, var(--board-w))) !important; }
   .log-panel:not(.open) { align-self: end !important; }
   .toast { top: calc(80px * var(--table-zoom, 1)); bottom: auto; left: calc(16px * var(--table-zoom, 1)); }
+}
+
+/* ==== The turn lies with your seat: the round's phases, the turn prompt and Fleet/Trade sit at
+   the bottom of the supply, just above the turn's buttons, and the supply starts at the top. On
+   your turn there is no 'Your turn' banner: your hand glows and gently breathes (a still glow
+   under reduced motion); the turn title stays for screen readers. ==== */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { grid-template-rows: minmax(0, 1fr) auto auto auto auto auto auto auto var(--front-h) !important; }
+  .tab-panel { grid-row: 1 !important; }
+  #fleet-panel.active { grid-row: 1 / 3 !important; }
+  #relics-panel, #relics-panel[hidden] { grid-row: 2 !important; }
+  .phase-stepper { grid-row: 3 !important; align-self: end !important; margin-top: 6px !important; }
+  .board-toolbar { grid-row: 4 !important; align-self: center !important; margin: 4px 170px 0 0 !important; }
+  .console-nav { grid-row: 4 !important; align-self: center !important; margin-top: 4px; }
+}
+@media (min-width: 600px) and (min-height: 600px) {
+  body.my-turn .board-toolbar :is(#turn-title, #turn-dot) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  body.my-turn #hand-row > .game-card { outline: 2px solid #f2c94cd9; outline-offset: 2px; filter: drop-shadow(0 0 7px #f2c94c80); transform-origin: 50% 100%; animation: hand-breathe 2.4s ease-in-out infinite; }
+}
+@keyframes hand-breathe { 50% { scale: 1.025; outline-color: #f2c94c; filter: drop-shadow(0 0 12px #f2c94cb0); } }
+@media (prefers-reduced-motion: reduce) {
+  body.my-turn #hand-row > .game-card { animation: none; }
+}
+/* Phones: the hand peek glows too. */
+@media (max-width: 599px), (max-height: 599px) {
+  body.my-turn #hand-row > .game-card { box-shadow: 0 0 0 2px #f2c94ccc, 0 0 12px 2px #f2c94c55 !important; }
+}
+/* Portrait (an iPad held upright): the same move. The phases sit left of the turn's buttons, and
+   the turn prompt with Fleet/Trade lies between the comms card and your mat; the map takes the
+   rows they left at the top. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  .phase-stepper { grid-column: 1 / -1 !important; grid-row: 7 !important; justify-self: start !important; align-self: center !important; }
+  .log-panel { grid-column: 1 !important; }
+  .board-toolbar { grid-column: 2 !important; grid-row: 6 !important; align-self: start !important; margin: 0 !important; }
+  .console-nav { grid-column: 2 !important; grid-row: 6 !important; justify-self: start !important; align-self: end !important; margin: 0 0 6px 4px !important; }
+}
+
+/* ==== Supply cards read like cards without pointing at them: a folded market card shows as much
+   of its effect, wrapped, as its height allows (one to five lines, chosen by the card's own
+   height), in larger type under the name (up to two lines) and cost. Point at a card for the whole card as before. ==== */
+@media (min-width: 600px) and (min-height: 600px) {
+  #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) { container-type: size; align-content: start; row-gap: 3px !important; padding: 5px 8px 6px !important; }
+  #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { font-size: 14px !important; line-height: 1.15 !important; white-space: normal !important; display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden !important; text-overflow: clip !important; }
+  /* The full effect takes the one-line headline's place. */
+  #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-headline { display: none !important; }
+  #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect {
+    grid-area: head !important; display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 1 !important; line-clamp: 1 !important;
+    white-space: normal !important; overflow: hidden !important; font-size: 12px !important; line-height: 1.3 !important;
+  }
+  @container (min-height: 94px) { #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 2 !important; line-clamp: 2 !important; } }
+  @container (min-height: 110px) { #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 3 !important; line-clamp: 3 !important; } }
+  @container (min-height: 126px) { #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 4 !important; line-clamp: 4 !important; } }
+  @container (min-height: 142px) { #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 5 !important; line-clamp: 5 !important; } }
+}
+
+/* ==== The map key in the left column: the four terrain colours, then each piece with its price
+   (and the Harvester's yield), and the Excavate cost. The Map key button keeps the full
+   descriptions. ==== */
+.map-legend-corner { display: none; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .map-legend-corner {
+    display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px; z-index: 4; align-self: end; margin: 0; padding: 8px 9px 7px;
+    border-radius: 6px; background: linear-gradient(170deg, #3d5047, #2b3a34); box-shadow: inset 0 0 0 2px #c2a76b55, 0 1px 0 #55675f, 0 2px 0 #24312c, 0 3px 0 #18221f, 0 12px 20px -6px #000b;
+    color: #dfe6e0; font-size: 11px; font-weight: 600; line-height: 1.15; pointer-events: none;
+  }
+  .map-legend-corner .legend-terrain { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 8px; margin-bottom: 3px; }
+  .map-legend-corner .legend-res { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .map-legend-corner .legend-res i { flex: none; width: 12px; height: 13px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); }
+  .map-legend-corner .legend-res.matter i { background: #77828a; }
+  .map-legend-corner .legend-res.energy i { background: #5d8798; }
+  .map-legend-corner .legend-res.biomass i { background: #658d6b; }
+  .map-legend-corner .legend-res.data i { background: #8d7d9d; }
+  .map-legend-corner .legend-piece { display: grid; grid-template-columns: 14px auto 1fr; align-items: center; column-gap: 5px; row-gap: 1px; white-space: nowrap; }
+  .map-legend-corner .legend-piece b { font-weight: 700; }
+  .map-legend-corner .legend-piece .resource-dots { justify-self: end; display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; }
+  .map-legend-corner .legend-piece em { grid-column: 2 / -1; font-style: normal; font-size: 10px; color: #b7c2bb; }
+  .map-legend-corner .resource-chip { min-height: 16px; padding: 0 3px 0 2px; gap: 1px; font-size: 10.5px; box-shadow: none; }
+  .map-legend-corner .resource-symbol { width: 11px; height: 11px; }
+  .map-legend-corner .board-glyph { flex: none; width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; }
+  .map-legend-corner .legend-icon { font-size: 12px; text-align: center; color: var(--gold); }
+}
+/* Upright: in the map's bottom-right corner. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  .map-legend-corner { grid-column: 1 / -1 !important; grid-row: 3 !important; align-self: end; justify-self: end; width: 190px; }
+}
+
+/* ==== A hierarchy of contrast: your hand, the market, your mat and the map read first, crisp and
+   bright; the relics, the upgrades tray, the round's phases and the comms card sit back, quieter,
+   until you point at them. ==== */
+@media (min-width: 600px) and (min-height: 600px) {
+  /* First: the market's names and costs in the darkest ink; your mat's rim brighter. */
+  #market-row .game-card:not(.unavailable) .card-name { color: #14110a !important; font-weight: 600; }
+  #market-row .game-card:not(.unavailable) .card-effect { color: #2b2619 !important; }
+  .resource-grid { box-shadow: inset 0 0 0 2px #d9bd80b0, 0 1px 0 #55675f, 0 2px 0 #24312c, 0 3px 0 #18221f, 0 12px 20px -6px #000b !important; }
+  /* Second: quieter until pointed at or focused. */
+  #relics-panel .relic-row .game-card:not(:hover):not(:focus):not(:focus-within),
+  #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) { filter: saturate(.7) brightness(.9); }
+  #relics-panel > .section-intro, .relic-payment { opacity: .82; }
+  .phase-stepper { filter: saturate(.65) brightness(.88); }
+  .log-panel:not(.open) .game-log { color: #b7c2bb; }
+  .log-panel:not(.open) .game-log .log-latest { color: var(--text); }
+  .map-legend-corner { opacity: .85; }
+}
+
+/* ==== The +4 capacity token shows its current price at all times: '+4 · 2 each' with a dot in
+   each resource's colour (the price rises by 1 with each purchase). ==== */
+.storage-each { display: none; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .storage-upgrade-button .storage-each { display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+  .storage-upgrade-button .storage-each::before { content: '·'; margin: 0 1px;  opacity: .7; }
+  .storage-upgrade-button .storage-each b { font-weight: 800; }
+  .storage-upgrade-button .storage-each i { width: 6px; height: 6px; margin-left: -1px; border-radius: 50%; }
+  .storage-upgrade-button .storage-each i:first-of-type { margin-left: 2px; }
+  .storage-upgrade-button .storage-each i.matter { background: var(--matter); }
+  .storage-upgrade-button .storage-each i.energy { background: var(--energy); }
+  .storage-upgrade-button .storage-each i.biomass { background: var(--biomass); }
+  .storage-upgrade-button .storage-each i.data { background: var(--data); }
+}
+
+/* ==== The supply in rows: the three face-up relics on top, then the market by cost - the most
+   expensive row, the medium row, the cheap row (see tierMarket). The three rows share the
+   market's height (see fitMarket); each card fills its cell, with its name and as much of its
+   effect as fits, a cut line fading out. Point at a card for the whole card. ==== */
+@media (min-width: 600px) and (min-height: 600px) {
+  #market-row { grid-template-columns: repeat(12, minmax(0, 1fr)) !important; grid-template-rows: repeat(3, var(--mrow-h, auto)) !important; grid-auto-rows: var(--mrow-h, auto) !important; align-content: start; gap: 5px !important; }
+  .market-cards #market-row > .game-card { grid-column: span var(--tier-span, 4) !important; grid-row: var(--tier-row, auto) !important; align-self: stretch !important; justify-self: stretch; width: auto; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) { height: 100% !important; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto !important; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { align-self: stretch; min-height: 0; max-height: 100%; -webkit-line-clamp: 8 !important; line-clamp: 8 !important; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); }
+  #market-row .card-name { hyphens: auto; overflow-wrap: break-word; }
+  #market-row :is(.card-footer, .card-footer .resource-dots) { flex-wrap: wrap; row-gap: 2px; min-width: 0; }
+  #market-row .card-footer .resource-chip { min-height: 19px !important; padding: 0 3px 0 2px !important; gap: 1px !important; }
+  #market-row .card-footer .resource-symbol { width: 12px !important; height: 12px !important; }
+  #market-row .card-footer .resource-chip strong { font-size: 12px !important; }
+}
+/* Landscape: relics on top of the supply column, the market under them. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { grid-template-rows: auto minmax(0, 1fr) auto auto auto auto auto auto var(--front-h) !important; }
+  #relics-panel, #relics-panel[hidden] { grid-row: 1 !important; align-self: start !important; margin-bottom: 4px; }
+  .tab-panel { grid-row: 2 !important; }
+  #relics-panel.tab-panel { grid-row: 1 !important; }
+  #fleet-panel.active { grid-row: 1 / 3 !important; }
+}
+/* Upright: the relics row above the market row. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  #relics-panel, #relics-panel[hidden] { grid-row: 4 !important; }
+  #market-panel, #market-panel[hidden] { grid-row: 5 !important; }
+  #fleet-panel.active { grid-row: 4 / 6 !important; }
+}
+
+/* ==== Upgrades lie directly above your mat: the starter upgrades and Add 4 capacity as cards of
+   the same kind, each with its current price, and Trash a card during Buy. The +4 token on the
+   mat is gone. ==== */
+.storage-upgrade-control { display: none !important; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .upgrade-group { flex: none; min-height: 0; margin: 0; }
+  .upgrade-group #upgrade-market { grid-template-columns: 18px repeat(5, minmax(0, 1fr)) !important; --utop-h: 98px !important; }
+  .upgrade-group #open-trash { width: 64px !important; font-size: 11px !important; }
+  .capacity-offer .each-dots { display: inline-flex; gap: 2px; margin-left: 4px; vertical-align: middle; }
+  .capacity-offer .each-dots i { width: 6px; height: 6px; border-radius: 50%; }
+  .capacity-offer .each-dots i.matter { background: var(--matter); }
+  .capacity-offer .each-dots i.energy { background: var(--energy); }
+  .capacity-offer .each-dots i.biomass { background: var(--biomass); }
+  .capacity-offer .each-dots i.data { background: var(--data); }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  #hand-panel .hand-tools { grid-row: 5 !important; }
+  .upgrade-group { grid-column: 3 !important; grid-row: 6 !important; align-self: end; margin-top: 6px; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  /* Upright, the Upgrades group gets its own row under the market; the rows below move down one. */
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { grid-template-rows: auto auto minmax(0, 1fr) auto auto auto var(--mat-h) auto var(--front-h) !important; }
+  .upgrade-group { grid-column: 1 / -1 !important; grid-row: 6 !important; align-self: center; }
+  .log-panel, .resource-grid, .resource-tools, .board-toolbar, .console-nav, #hand-panel .hand-tools { grid-row: 7 !important; }
+  .phase-stepper { grid-row: 8 !important; }
+  .table-menu-button, .pile-stats > button[id], #discard-button, #hand-row { grid-row: 9 !important; }
+  .upgrade-group #upgrade-market { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; --utop-h: 96px !important; }
+  .upgrade-group #upgrade-market::before { display: none; }
+}
+/* Phones: the group sits in the Mat drawer above the mat. */
+@media (max-width: 599px), (max-height: 599px) {
+  .upgrade-group { display: block; margin: 0 0 8px; }
+  .upgrade-group #upgrade-market { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .upgrade-group #upgrade-market .game-card { min-height: 0; padding: 6px 7px; }
+  .upgrade-group #upgrade-market :is(.card-art, .card-lore, .card-limit-note) { display: none; }
+}
+/* Payment options on upgrade and capacity cards: the amount once, then one icon per resource,
+   lit (full colour, gold ring) when your stock can pay it now, dimmed when it cannot. */
+.pay-options { display: flex; flex-wrap: nowrap; align-items: center; gap: 3px; white-space: nowrap !important; }
+.pay-options > strong { font-size: 15px; margin-right: 1px; }
+.pay-chip { display: inline-grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; }
+.pay-chip .resource-symbol { width: 15px !important; height: 15px !important; margin: 0 !important; }
+.pay-chip.can { box-shadow: 0 0 0 1.5px var(--gold), 0 0 5px #f2c94c88; background: #fffaf0; }
+.pay-chip.cannot { opacity: .4; filter: grayscale(.8); }
+.upgrade-offer:not(:disabled) .pay-chip.can { cursor: pointer; }
+
+/* ==== Your hand as a fanned hand of cards: each card shows only a narrow strip along its left
+   edge (cost, name and a one-line summary, left-aligned), the cards overlap heavily, and the
+   hand sits low so the map gets the height. Point at, focus or tap a card to lift it whole. ==== */
+@media (min-width: 600px) and (min-height: 600px) {
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell, .app-shell.app-shell:has(#hand-row > :nth-child(7)) { --front-h: 96px !important; }
+  /* Each card shows a strip of up to 92 units, less when a big hand must fit the row. */
+  #hand-row { --top-w: 210px !important; --strip-w: 92px; --step: min(calc(var(--strip-w) - var(--top-w)), calc((100cqw - var(--top-w)) / (var(--n) - 1) - var(--top-w))) !important; }
+  #hand-row .game-card:not(:hover):not(:focus-within) {
+    grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "type" "cost" "gain" "name" "head" "effect" "buttons" "note" !important; grid-template-rows: none !important; grid-auto-rows: auto;
+    align-content: start; row-gap: 2px !important; padding-top: 6px !important; padding-left: 8px !important;
+  }
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-footer { grid-row: auto !important; justify-self: start; }
+  /* Resting cards keep their buttons focusable but out of the strip (focus lifts the card). */
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-buttons { position: absolute !important; width: 1px; height: 1px; margin: 0 !important; overflow: hidden; clip-path: inset(50%); }
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-limit-note,
+  #hand-row .game-card:not(:hover):not(:focus-within):has(.card-headline) .card-effect { display: none !important; }
+  /* A card without a one-line summary shows its effect as one line instead. */
+  #hand-row .game-card:not(:hover):not(:focus-within):not(:has(.card-headline)) .card-effect { display: block !important; font-size: 11px !important; line-height: 1.15 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 !important; }
+  #hand-row .game-card:not(:hover):not(:focus-within) :is(.card-name, .card-headline) { font-size: 12.5px !important; line-height: 1.15 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-headline { font-size: 11px !important; font-weight: 600; }
+  /* Overlap is the fan; a tilt would push corners past the table's edge. */
+  #hand-row > .game-card { --cf-fan: 0deg !important; }
+  /* The last card shows whole, so its text can use the full width. */
+  #hand-row .game-card:last-child:not(:hover):not(:focus-within) { padding-right: 8px !important; }
+}
+/* Upright, the turn's buttons move up beside the turn prompt (between the comms card and the
+   mat), clear of where a lifted hand card rises. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  #hand-panel .hand-tools { grid-column: 2 !important; grid-row: 7 !important; align-self: end !important; justify-self: stretch !important; flex-wrap: wrap; justify-content: flex-start; gap: 6px; margin: 0 0 6px !important; }
+  .console-nav { align-self: center !important; margin: 0 !important; }
+}
+
+/* ==== Landscape: the left column holds the Prestige track, the comms log and the fleets at a
+   glance at the top, and the map key at the bottom; the map fills the middle column; the round's
+   phases lie at the top of the supply, over the relics and the market. The Alien relics header
+   row is gone (Preview all is in the menu; the Excavate cost in the map key). ==== */
+.fleet-glance { display: none; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .fleet-glance-head { display: flex; justify-content: space-between; align-items: center; padding: 0; border: 0; background: none; color: #c9b98a; font: inherit; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
+  .fleet-glance-head small { color: #9fb0a8; font-size: 9.5px; letter-spacing: 0; text-transform: none; }
+  .fleet-glance-head:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; border-radius: 4px; }
+  .fleet-glance-row { display: grid; grid-template-columns: 30px repeat(3, 1fr); align-items: center; gap: 4px; }
+  .fleet-glance-row b { justify-self: start; padding: 0 5px; border-radius: 8px; background: var(--player); color: #10201c; font-size: 10px; font-weight: 800; }
+  .fleet-glance-row span { display: inline-flex; align-items: center; gap: 3px; }
+  .fleet-glance-row .board-glyph { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .board-map-region { grid-column: 2 !important; place-items: center !important; }
+  .map-tools { grid-column: 2 !important; }
+  .log-panel:not(.open) { align-self: start !important; }
+  .map-legend-corner { grid-column: 1 !important; grid-row: 1 / 9 !important; justify-self: stretch; align-self: end !important; margin: 0 0 0 4px !important; }
+  .fleet-glance {
+    grid-column: 1; grid-row: 1 / 9; align-self: end; z-index: 4; display: grid; gap: 3px; margin: 0 0 calc(var(--legend-h, 262px) + 10px) 4px; padding: 6px 9px 7px;
+    border-radius: 6px; background: linear-gradient(170deg, #3d5047, #2b3a34); box-shadow: inset 0 0 0 2px #c2a76b55, 0 3px 0 #18221f, 0 12px 20px -6px #000b; color: #dfe6e0; font-size: 11px; font-weight: 600;
+  }
+  #fleet-tab { display: none !important; }
+  #relics-panel > .section-intro:not(:has(#cancel-excavate:not([hidden]))), #relics-panel .relic-payment, #relic-row-help { display: none !important; }
+  /* The round's phases on top of the supply. */
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto auto var(--front-h) !important; }
+  .phase-stepper { grid-row: 1 !important; align-self: start !important; margin: 0 0 6px !important; }
+  #relics-panel, #relics-panel[hidden], #relics-panel.tab-panel { grid-row: 2 !important; }
+  .tab-panel { grid-row: 3 !important; }
+  #relics-panel.tab-panel { grid-row: 2 !important; }
+  #fleet-panel.active { grid-row: 2 / 4 !important; }
+  /* Notices lie over the map key at the bottom of the left column (it has no controls). */
+  .toast { top: auto !important; bottom: calc((var(--front-h-fixed, 96px) + 22px) * var(--table-zoom, 1)) !important; left: calc(20px * var(--table-zoom, 1)) !important; }
+}
+
+/* ==== The supply column with no band: the round's phases and the turn prompt on top, the relics,
+   the market (three rows of three), then the Upgrades area (Move II, Construct II, Add capacity /
+   Move III, Construct III, Trash) right above your mat. The turn's buttons and Trade stack to the
+   right of the mat, above Discard. The Fleet button is gone: the fleets panel is on the left. ==== */
+@media (min-width: 600px) and (min-height: 600px) {
+  #fleet-tab, #open-trash { display: none !important; }
+  #market-row > .game-card[hidden] { display: none !important; }
+  /* Upgrade cards show their whole name, payment icons and a two-line effect. */
+  .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2 !important; line-clamp: 2 !important; white-space: normal !important; overflow: hidden !important; font-size: 11px !important; line-height: 1.25 !important; }
+  .upgrade-group #upgrade-market { grid-template-columns: 16px repeat(3, minmax(0, 1fr)) !important; grid-template-rows: repeat(2, var(--utop-h)) !important; --utop-h: 88px !important; }
+  .upgrade-group #upgrade-market::before { grid-row: 1 / 3 !important; }
+  .upgrade-group #upgrade-market > [data-upgrade-offer="move"][data-upgrade-level="2"] { grid-column: 2; grid-row: 1; }
+  .upgrade-group #upgrade-market > [data-upgrade-offer="construct"][data-upgrade-level="2"] { grid-column: 3; grid-row: 1; }
+  .upgrade-group #upgrade-market > .capacity-offer { grid-column: 4; grid-row: 1; }
+  .upgrade-group #upgrade-market > [data-upgrade-offer="move"][data-upgrade-level="3"] { grid-column: 2; grid-row: 2; }
+  .upgrade-group #upgrade-market > [data-upgrade-offer="construct"][data-upgrade-level="3"] { grid-column: 3; grid-row: 2; }
+  .upgrade-group #upgrade-market > .trash-pile { grid-column: 4; grid-row: 2; box-shadow: 0 1px 0 #efe5cc, 0 2px 0 #cfc09c, 0 3px 0 #a99a77, 0 5px 0 #efe5cc, 0 6px 0 #a99a77, 0 9px 10px -3px #000a !important; }
+  .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { grid-template-rows: auto auto auto minmax(0, 1fr) auto auto auto auto var(--front-h) !important; }
+  .phase-stepper { grid-row: 1 !important; }
+  .board-toolbar { grid-row: 2 !important; align-self: start !important; margin: 0 0 6px !important; }
+  #relics-panel, #relics-panel[hidden], #relics-panel.tab-panel { grid-row: 3 !important; }
+  .tab-panel { grid-row: 4 !important; }
+  #relics-panel.tab-panel { grid-row: 3 !important; }
+  #fleet-panel.active { grid-row: 3 / 5 !important; }
+  .upgrade-group { grid-row: 6 !important; margin-top: 6px; }
+  /* The turn's buttons and Trade: a column right of the mat, above Discard. */
+  #resource-grid.resource-grid { justify-self: start !important; width: calc(100% - 252px) !important; margin-right: 0 !important; }
+  #hand-panel .hand-tools { grid-column: 3 !important; grid-row: 8 !important; justify-self: end !important; align-self: start !important; width: 240px !important; display: flex !important; flex-direction: column; align-items: stretch; gap: 6px; margin: 0 !important; }
+  #hand-panel .hand-tools .button { width: 100%; white-space: normal; text-align: center; }
+  .console-nav { display: none !important; }
+  #hand-panel .hand-tools #open-trade { align-self: stretch; }
+}
+/* Upright: the fleets panel joins the top rows, beside the Prestige track. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  .fleet-glance { display: grid !important; grid-column: 2 !important; grid-row: 1 !important; align-self: start; gap: 2px; padding: 5px 8px; border-radius: 6px; background: linear-gradient(170deg, #3d5047, #2b3a34); color: #dfe6e0; font-size: 11px; }
+}
+/* While you choose an Excavate reward, each relic's choose button lies over the foot of its card,
+   so the relics row keeps its height and the market keeps its room. */
+@media (min-width: 600px) and (min-height: 600px) {
+  .relic-row > div:has(> .button) { position: relative; height: var(--rtop-h, 56px) !important; }
+  .relic-row > div:has(> .button) > .game-card { height: 100% !important; }
+  .relic-row > div > .button { position: absolute !important; left: 4px; right: 4px; bottom: 3px; z-index: 2; min-height: 0 !important; padding: 1px 6px !important; font-size: 11px !important; line-height: 1.2; }
+}
+/* The Trash pile: a dark pile with light lettering. */
+.upgrade-group #upgrade-market > .trash-pile { background: linear-gradient(170deg, #4a302a, #2e1d19) !important; border-color: #a77b66 !important; color: #f4e3d6 !important; filter: none !important; }
+.upgrade-group #upgrade-market > .trash-pile :is(.card-name, .card-effect) { color: #f4e3d6 !important; }
+.upgrade-group #upgrade-market > .trash-pile.unavailable { opacity: .7; }
+
+/* ==== Filled resource icons everywhere, a shared icon vocabulary for card effects (Prestige,
+   Draw, Hit, Miss, Colonize, Build), and supply cards laid out like printed cards: name and text
+   from the top-left, the cost stacked down the right edge. ==== */
+.resource-symbol svg > :first-child, .resource-symbol.data svg circle { fill: currentColor; }
+.resource-symbol.matter svg > :not(:first-child) { stroke: #00000070; }
+.vocab-icon { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; vertical-align: -.2em; line-height: 1; }
+.vocab-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.vocab-star { color: #c99a1e; font-size: 1.1em; }
+.vocab-hit svg { fill: none; stroke: #c4482c; stroke-width: 2.6; }
+.vocab-miss svg { fill: #7ea3c4; stroke: #2e4a63; stroke-width: 1.4; }
+.card-icons { display: none; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) {
+    grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "name cost" "head cost" !important; grid-template-rows: auto minmax(0, 1fr) !important; column-gap: 6px !important;
+  }
+  #market-panel .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) :is(.card-type, .card-effect, .card-headline, .card-limit-note, .card-art, .card-lore) { display: none !important; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-icons { display: block; grid-area: head; align-self: stretch; min-height: 0; max-height: 100%; overflow: hidden; font-size: 12px; line-height: 1.3; color: #2b2619; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-footer { grid-area: cost !important; display: flex !important; flex-direction: column; align-items: flex-end; align-self: start; gap: 2px; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-footer .resource-dots { flex-direction: column; align-items: flex-end; gap: 2px; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { grid-area: name; }
+  /* The vocabulary in the map key. */
+  .map-legend-corner .legend-vocab { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 6px; margin-top: 4px; padding-top: 5px; border-top: 1px solid #d9bd8030; font-size: 10.5px; }
+  .map-legend-corner .legend-vocab > span { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+}
+/* Move: an arrow; the resource limit: a gold pip, as on the mat. */
+.vocab-move svg { stroke: #2f6d8a; stroke-width: 2.4; }
+.vocab-limit i { display: block; width: .8em; height: .8em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fffbe8, #f0d27a 60%, #a8842c); box-shadow: 0 1px 1px #0006; }
+.map-legend-corner .vocab-move svg { stroke: #9fd0e6; }
+/* The card icons never take the pointer: pressing one presses the card under it. */
+.vocab-icon, .vocab-icon * { pointer-events: none; }
+.symbol-vocab { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; grid-column: 1 / -1; }
+.symbol-vocab > span { display: flex; align-items: center; gap: 6px; }
+
+/* ==== The final table (landscape). Left column, top to bottom: the Prestige track, the round's
+   phases, the comms log, the fleets, the map key with prices, the Upgrades (3x2 cards). Middle:
+   the map. Right: the relics and the market as real cards (63:88), four rows of three, sized to
+   the column's height (see fitMarket). Bottom band: menu and piles, your hand, the turn prompt with
+   small turn buttons, a large mat and Discard. ==== */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  .app-shell, .has-saved-table .app-shell, .has-replay .app-shell, .app-shell.app-shell:has(#hand-row > :nth-child(7)) {
+    --left-w: 306px; --band-h: 178px; --mat-w: 470px; --tools-w: 170px;
+    grid-template-columns: var(--left-w) minmax(0, 1fr) var(--supply-w, 400px) !important;
+    grid-template-rows: auto minmax(0, 1fr) 0 0 0 0 0 0 var(--band-h) !important;
+  }
+  /* Left column: each piece at its stacked place (see stackLeft). */
+  #prestige-track, .phase-stepper, .log-panel, #fleet-glance, #upgrade-group {
+    grid-column: 1 !important; grid-row: 1 / 9 !important; align-self: start !important; justify-self: stretch !important; margin: var(--stack-top, 0px) 0 0 0 !important;
+  }
+  #prestige-track { width: calc(100% - 50px) !important; margin-left: 6px !important; margin-top: calc(var(--stack-top, 0px) + 4px) !important; }
+  .phase-stepper { justify-self: start !important; font-size: 9.5px; }
+  .phase-stepper li { font-size: 9.5px !important; padding: 2px 5px 2px 13px !important; }
+  .log-panel:not(.open) .game-log > .log-recent:nth-child(n+4) { display: none; }
+  .log-panel.open { align-self: start !important; max-height: calc(100% - var(--stack-top, 0px)); }
+  /* The map key lies at the foot of the left column; notices appear over it. */
+  #map-legend-corner { grid-column: 1 !important; grid-row: 1 / 9 !important; align-self: end !important; justify-self: stretch !important; width: auto; margin: 0 0 4px !important; padding: 6px 8px !important; gap: 2px 10px !important; font-size: 10px !important; }
+  #map-legend-corner .legend-vocab { grid-template-columns: repeat(3, auto) !important; justify-content: start; gap: 2px 8px !important; font-size: 9.5px !important; }
+  #map-legend-corner .legend-piece em { display: none; }
+  #map-legend-corner .resource-chip { min-height: 14px !important; }
+  #map-legend-corner .legend-piece { white-space: nowrap; }
+  #map-legend-corner { grid-template-columns: 1fr 1fr !important; column-gap: 10px; }
+  #map-legend-corner .legend-terrain, #map-legend-corner .legend-vocab { grid-column: 1 / -1; }
+  #map-legend-corner .legend-terrain { grid-template-columns: repeat(4, auto); justify-content: start; }
+  /* Upgrades: two rows of three real cards. */
+  #upgrade-group { display: block; }
+  .upgrade-group #upgrade-market { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; grid-template-rows: none !important; grid-auto-rows: auto; gap: 6px !important; padding: 0 !important; border: 0 !important; background: none !important; --utop-h: auto !important; }
+  .upgrade-group #upgrade-market::before { display: none !important; }
+  .upgrade-group #upgrade-market > .game-card { grid-column: auto !important; grid-row: auto !important; aspect-ratio: 63 / 88; height: auto !important; }
+  .upgrade-group #upgrade-market > [data-upgrade-level="2"][data-upgrade-offer="move"] { order: 1; }
+  .upgrade-group #upgrade-market > [data-upgrade-level="2"][data-upgrade-offer="construct"] { order: 2; }
+  .upgrade-group #upgrade-market > .capacity-offer { order: 3; }
+  .upgrade-group #upgrade-market > [data-upgrade-level="3"][data-upgrade-offer="move"] { order: 4; }
+  .upgrade-group #upgrade-market > [data-upgrade-level="3"][data-upgrade-offer="construct"] { order: 5; }
+  .upgrade-group #upgrade-market > .trash-pile { order: 6; }
+  .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 4 !important; line-clamp: 4 !important; }
+  .upgrade-group #upgrade-market .pay-options { flex-wrap: wrap; }
+  /* The map fills the middle column. */
+  .board-map-region, .map-tools { grid-column: 2 !important; grid-row: 1 / 9 !important; }
+  /* Right column: the relics row, then the market rows, all real cards of one size. */
+  #relics-panel, #relics-panel[hidden], #relics-panel.tab-panel { grid-column: 3 !important; grid-row: 1 !important; align-self: start !important; margin: 0 0 6px !important; }
+  .tab-panel { grid-column: 3 !important; grid-row: 2 / 9 !important; }
+  #relics-panel.tab-panel { grid-row: 1 !important; }
+  #fleet-panel.active { grid-column: 3 !important; grid-row: 1 / 9 !important; }
+  .relic-row { grid-template-columns: repeat(3, var(--card-w, 1fr)) !important; gap: 6px !important; }
+  #relics-panel { --rtop-h: var(--card-h, 120px); }
+  .relic-row > div, .relic-row > div:not(:has(> .button)) { height: var(--card-h, 120px) !important; }
+  .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) { grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "name" "effect" !important; align-content: start; }
+  .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) :is(.card-name, .card-effect) { white-space: normal !important; }
+  .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5; overflow: hidden; }
+  #market-row { grid-template-columns: repeat(3, var(--card-w, 1fr)) !important; grid-template-rows: repeat(3, var(--card-h, auto)) !important; grid-auto-rows: var(--card-h, auto) !important; gap: 6px !important; }
+  .market-cards #market-row > .game-card { grid-column: auto !important; }
+  #market-panel .section-intro { display: none !important; }
+  /* Bottom band. */
+  #hand-row { grid-column: 1 / -1 !important; grid-row: 9 !important; margin: 0 calc(var(--mat-w) + var(--tools-w) + var(--pile-w) + 76px) 0 calc(52px + 2 * var(--pile-w) + 23px) !important; }
+  .board-toolbar { grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: start !important; width: var(--tools-w); margin: 4px calc(var(--mat-w) + var(--pile-w) + 44px) 0 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; font-size: 11px; line-height: 1.3; }
+  .board-toolbar strong { font-size: 12px; }
+  #hand-panel .hand-tools { grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: end !important; width: var(--tools-w) !important; margin: 0 calc(var(--mat-w) + var(--pile-w) + 44px) 8px 0 !important; display: flex !important; flex-direction: column; gap: 4px; }
+  #hand-panel .hand-tools .button { width: 100%; min-height: 0 !important; padding: 3px 8px !important; font-size: 11.5px !important; line-height: 1.2; border-radius: 999px !important; }
+  #resource-grid.resource-grid { grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: end !important; width: var(--mat-w) !important; height: calc(var(--band-h) - 6px) !important; margin: 0 calc(var(--pile-w) + 26px) 0 0 !important; }
+  #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 18px)) !important; gap: 3px; }
+  #resource-grid { font-size: 11px; }
+  /* The fleets panel, compact. */
+  #fleet-glance { gap: 1px !important; padding: 4px 8px 5px !important; font-size: 10px !important; }
+  /* Notices lie over the map key at the foot of the left column. */
+  .toast { top: auto !important; bottom: calc((178px + 16px) * var(--table-zoom, 1)) !important; left: calc(20px * var(--table-zoom, 1)) !important; width: calc(270px * var(--table-zoom, 1)) !important; }
+  /* Upgrade cards: the effect in smaller type, three lines at most, inside the card. */
+  .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { font-size: 10px !important; line-height: 1.2 !important; -webkit-line-clamp: 3 !important; line-clamp: 3 !important; }
+  .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { font-size: 12px !important; line-height: 1.1 !important; }
+  /* A tight column (see stackLeft): smaller upgrade cards and only the latest comms entry. */
+  .left-tight .upgrade-group #upgrade-market { grid-template-columns: repeat(3, 84px) !important; justify-content: start; }
+  .left-tight .log-panel:not(.open) .game-log > .log-recent:nth-child(n+3) { display: none; }
+  /* A tight column also packs the map key: price chips on one line, smaller. */
+  .left-tight #map-legend-corner .legend-piece .resource-dots { flex-wrap: nowrap !important; gap: 1px !important; }
+  .left-tight #map-legend-corner .resource-chip { min-height: 13px !important; padding: 0 2px 0 1px !important; gap: 0 !important; font-size: 9px !important; }
+  .left-tight #map-legend-corner .resource-symbol { width: 9px !important; height: 9px !important; }
+  .left-tight #map-legend-corner .legend-piece { column-gap: 3px !important; font-size: 9.5px; }
+  .left-tight #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 15px)) !important; gap: 2px !important; }
+  .left-tight .app-shell { --mat-w: 400px !important; --tools-w: 170px !important; }
+  /* A big hand narrows each card so every strip keeps room for its badge. */
+  #hand-row:has(> :nth-child(7)) { --top-w: 168px !important; }
+  .left-tight .app-shell { --pile-w: 84px !important; }
+  /* Squarer tables (1300 units wide): a narrower mat and buttons, and smaller hand cards, so the
+     hand keeps its room in the bottom band. */
+  :root:not(.table-wide) .app-shell { --mat-w: 320px !important; --tools-w: 150px !important; }
+  /* There a raised card is wider than its resting slot, so the hand leaves room for it. */
+  :root:not(.table-wide) #hand-row { margin-right: calc(var(--mat-w) + var(--tools-w) + var(--pile-w) + 76px + max(0px, 200px - var(--top-w))) !important; }
+  :root:not(.table-wide) #hand-row { --top-w: 150px !important; }
+  :root:not(.table-wide) #hand-row:has(> :nth-child(7)) { --top-w: 116px !important; }
+  :root:not(.table-wide) #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 12px)) !important; gap: 2px !important; }
+  /* A tighter column drops the icon list from the corner key (the Map key button lists them). */
+  .left-tighter #map-legend-corner .legend-vocab { display: none !important; }
+  /* The hand keeps its low height (--front-h) at the foot of the taller band, so pointing at a card
+     lifts it. */
+  #hand-row { align-self: end !important; }
+  /* The piles keep their card height at the foot of the band. */
+  .pile-stats > button[id] { align-self: end !important; height: var(--front-h) !important; }
+  .left-tight .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 2 !important; line-clamp: 2 !important; }
 }

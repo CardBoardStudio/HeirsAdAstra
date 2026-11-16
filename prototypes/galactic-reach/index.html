@@ -34,6 +34,7 @@
         <a class="button button-ghost" href="/" style="text-decoration:none">Game library</a>
         <button class="button button-ghost" id="undo-turn-button" type="button" disabled title="Available after you complete a turn">Undo turn</button>
         <button class="button button-ghost" id="rules-button" type="button">Rules</button>
+        <button class="button button-ghost" id="open-relic-catalog" type="button" aria-label="Preview all 23 alien relics">Alien relics</button>
         <a class="button button-ghost" id="card-gallery-link" href="cards.html" target="_blank" rel="noopener" style="text-decoration:none">Card gallery</a>
         <button class="button button-ghost" id="new-game-button" type="button">New game</button>
       </div>
@@ -113,6 +114,7 @@
           <button type="button" class="log-toggle" id="log-toggle" aria-expanded="false" aria-controls="game-log"><span>Comms</span><small>Show all</small></button>
           <ol id="game-log" tabindex="0" aria-label="Comms feed" class="game-log" aria-live="polite"></ol>
         </section>
+        <section class="fleet-glance" id="fleet-glance" aria-label="Fleets at a glance"></section>
         </div>
       </aside>
             <nav class="phase-stepper" id="phase-stepper" aria-label="Round phases"><strong id="stepper-round">Round 1</strong><ol id="phase-stepper-steps"></ol></nav>
@@ -120,6 +122,7 @@
             <div class="board-map-region">
               <div class="galaxy-board" id="galaxy-board" role="group" aria-label="Interactive galaxy map" aria-describedby="resource-legend symbol-legend"></div>
             </div>
+            <div class="map-legend-corner" id="map-legend-corner" aria-hidden="true"></div>
           </div>
         </div>
         <div class="map-tools"><span class="map-pan-hint">Scroll or swipe to explore the board</span><label id="development-tools" hidden><input type="checkbox" id="reveal-entire-map"> Reveal entire map <small>Development</small></label><button class="button button-ghost" type="button" id="open-map-key" aria-label="Map key: resources, units and costs" title="Resources, units and costs">Map key</button><button class="button button-ghost" type="button" id="map-zoom" aria-pressed="false">Zoom map</button></div>
@@ -137,6 +140,10 @@
 
           </div>
         </div>
+        <section class="upgrade-group market-cards" id="upgrade-group" aria-label="Upgrades">
+          <div class="upgrade-market" id="upgrade-market" role="group" aria-label="Upgrades: starter upgrades and Add 4 capacity"></div>
+          <button class="button" id="open-trash" type="button" hidden>Trash a card</button>
+        </section>
         <div class="resource-grid" id="resource-grid"></div>
         <div class="pile-stats" role="group" aria-label="Your card piles">
           <button id="deck-button" type="button" title="Inspect remaining cards without revealing draw order"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Deck</span> <strong id="deck-count">0</strong></button>
@@ -145,7 +152,7 @@
           <button id="discard-button" type="button" title="Browse your discard pile"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Discard</span> <strong id="discard-count">0</strong></button>
         </div>
         <div class="storage-upgrade-control">
-          <button class="button storage-upgrade-button" id="upgrade-storage-button" type="button" aria-describedby="storage-upgrade-help"><span>Add 4 capacity</span><span id="storage-upgrade-cost"></span></button>
+          <button class="button storage-upgrade-button" id="upgrade-storage-button" type="button" aria-describedby="storage-upgrade-help"><span>Add 4 capacity</span><span class="storage-each" id="storage-upgrade-each" aria-hidden="true"></span><span id="storage-upgrade-cost"></span></button>
           <p class="muted" id="storage-upgrade-help">Choose how to split 4 points among your resource limits. Pay during Operations or Buy, including off turn.</p>
         </div>
         <details class="resource-tools" id="resource-tools">
@@ -159,11 +166,6 @@
             </div>
             <div id="bank-exchange-preview" class="resource-exchange-preview" role="status"></div>
             <button class="button button-primary" id="bank-exchange-button" type="submit" disabled>Convert</button>
-          </form>
-          <form id="discard-resource-form" class="resource-form">
-            <label>Discard<select id="discard-resource-type" aria-label="Resource to discard"></select></label>
-            <label>Amount<input id="discard-resource-amount" type="number" min="1" step="1" value="1" required></label>
-            <button class="button" id="discard-resource-button" type="submit">Discard resources</button>
           </form>
         </details>
         <div class="personal-report">
@@ -204,14 +206,11 @@
             </div>
             <div class="basic-market" id="basic-market"></div>
             <div class="market-cards">
-              <div class="upgrade-market" id="upgrade-market" role="group" aria-label="Starter upgrades"></div>
-              <button class="button" id="open-trash" type="button" hidden>Trash a card</button>
               <div class="card-row market-row" id="market-row"></div>
             </div>
           </div>
           <div class="tab-panel" id="relics-panel" data-panel="relics" role="tabpanel" aria-labelledby="relics-tab" tabindex="0" hidden>
             <div class="section-intro"><div><h2 id="relic-row-title">Alien relics</h2><p id="relic-deck-count"></p></div><button class="button" id="cancel-excavate" type="button" hidden>Cancel Excavate</button></div>
-            <button class="button button-ghost" id="open-relic-catalog" type="button" aria-label="Preview all 23 alien relics">Preview all 23</button>
             <p class="muted" id="relic-row-help">Browse rewards here. Use Excavate with your Explorer at a relic to choose one.</p>
             <p class="relic-payment">Excavation cost <span id="relic-cost"></span></p>
             <div class="relic-row" id="relic-row"></div>

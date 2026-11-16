@@ -28,6 +28,10 @@ const VIEWPORTS = [[1280, 720], [1440, 900], [1920, 1080]];
 const EXTRA_VIEWPORTS = [[1366, 768], [1680, 1050], [2000, 1118], [2560, 1440]];
 // Desktop windows taller than 16:9 (nearly square, and taller than wide): every case runs there.
 const TALL_VIEWPORTS = [[1440, 1200], [1600, 1600], [1800, 2000]];
+// A 1440x900 window at browser zoom 67%, 125%, 150% and 200%: the page sees a smaller or larger
+// CSS viewport at a matching device scale. At 200% it is phone-sized and gets the phone layout.
+const ZOOM_VIEWPORTS = [0.67, 1.25, 1.5, 2].map(zoom => [Math.round(1440 / zoom), Math.round(900 / zoom), zoom, `1440x900@${Math.round(zoom * 100)}%`]);
+const viewportName = viewport => viewport[3] || `${viewport[0]}x${viewport[1]}`;
 // Touch devices (mobile emulation with touch on): iPads in landscape and portrait must fit with no
 // page scroll, like the desktop; phones may scroll vertically (drawers) but never sideways.
 const TABLET_VIEWPORTS = [[1024, 768], [1180, 820], [1366, 1024], [768, 1024], [820, 1180], [1024, 1366]];
@@ -125,7 +129,7 @@ function piecesState() {
   });
   return state;
 }
-// Bank trades on the mat: 5 Matter to give, room for Data, Biomass to discard.
+// Bank trades on the mat: 5 Matter to give and room for Data.
 function matTradeState() {
   const state = operationsState(['move', 'construct']);
   state.players[0].resources = { matter: 5, energy: 2, biomass: 3, data: 1 };
@@ -173,7 +177,7 @@ const CASES = [
   // Phones: the Table drawer is the Prestige track (elsewhere the drawer button does nothing).
   { name: 'standings track (Table drawer on phones)', save: midGameState(), click: ['.phone-drawers [data-drawer="table"]'], devices: true },
   // The bank lies open at the table; choosing both sides fills its preview line.
-  { name: 'bank & discards, exchange chosen', save: midGameState(), click: ['#bank-give-biomass', '#bank-get-data'] },
+  { name: 'bank panel, exchange chosen', save: midGameState(), click: ['#bank-give-biomass', '#bank-get-data'] },
   // The first and last hand cards raised: they rise over the map, clear of the bank and the piles.
   { name: 'operations, first hand card raised (bank open)', save: midGameState(), focus: '#hand-row .game-card:first-child button' },
   { name: 'operations, last hand card raised', save: midGameState(), focus: '#hand-row .game-card:last-child button' },
@@ -187,10 +191,9 @@ const CASES = [
   { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
   { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
   { name: 'map pieces on every terrain', save: piecesState() },
-  // Trading with the bank on the mat: drag (mouse, and touch on iPads), tap then tap, and discard.
+  // Trading with the bank on the mat: drag (mouse, and touch on iPads), and tap then tap.
   { name: 'mat: drag Matter onto Data trades 4 for 1', save: matTradeState(), matTrade: { from: 'matter', to: 'data', how: 'drag', expect: { matter: -4, data: 1 } }, devices: 'tablet' },
   { name: 'mat: tap Matter, then Data', save: matTradeState(), matTrade: { from: 'matter', to: 'data', how: 'tap', expect: { matter: -4, data: 1 } } },
-  { name: 'mat: drag Biomass onto Discard', save: matTradeState(), matTrade: { from: 'biomass', to: 'discard', how: 'drag', expect: { biomass: -1 } } },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'], buyVisible: true, extraSizes: i === 0 })),
   // Buy with an empty hand (everything converted or played): the market and Finish Buy must show.
@@ -291,7 +294,8 @@ const MEASURE = `(() => {
     if (!shown(top)) continue;
     const t = top.getBoundingClientRect();
     if (t.top < -1 || t.bottom > H + 1 || t.left < -1 || t.right > W + 1) problems.push('card top outside viewport: ' + label(top));
-    const summary = top.querySelector('.card-headline') || top.querySelector('.card-effect');
+    // A top shows its one-line headline, its effect in icons, or its effect, whichever it shows.
+    const summary = [top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(e => e && e.getClientRects().length) || top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
     // An open Sector Scan (a popover over the map) may cover card tops while it is open.
     if (!document.querySelector(':is(dialog[open], body.menu-open, #fleet-panel.active, .sector-popover:popover-open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
@@ -364,6 +368,23 @@ const MEASURE = `(() => {
     const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open'); });
     if (blocked) { const hit = document.elementFromPoint(...blocked); problems.push('hex covered at ' + Math.round(blocked[0]) + ',' + Math.round(y) + ' by ' + (hit ? label(hit) : 'nothing')); break; }
   }
+  // The map fills the space left to it: at least 85% of its region's limiting dimension.
+  const region = document.querySelector('.board-map-region'), board = document.querySelector('#galaxy-board');
+  if (!phone && region && board && shown(board) && !document.querySelector('.board-stage.map-zoomed')) {
+    const r = region.getBoundingClientRect(), b = board.getBoundingClientRect(), limit = Math.min(r.width, r.height * 1.0543);
+    if (b.width < 0.85 * limit) problems.push('map too small: ' + Math.round(b.width) + 'px of a ' + Math.round(limit) + 'px space');
+  }
+  // Supply pieces never lie on one another (a raised or open piece may).
+  if (!phone && !modal && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), #fleet-panel.active')) {
+    const pieces = [...document.querySelectorAll('#upgrade-market, #open-trash, #market-row > .game-card, #relics-panel > .section-intro, .relic-row, .phase-stepper, .board-toolbar, .console-nav, #hand-panel .hand-tools, .resource-grid, .map-legend-corner, .prestige-track, .log-panel')].filter(shown);
+    const box = e => e.getBoundingClientRect();
+    outer: for (let i = 0; i < pieces.length; i++) for (let j = i + 1; j < pieces.length; j++) {
+      const a = pieces[i], c = pieces[j];
+      if (a.contains(c) || c.contains(a) || a.matches('.log-panel.open') || c.matches('.log-panel.open')) continue;
+      const p = box(a), q = box(c);
+      if (p.width > 1 && q.width > 1 && p.left < q.right - 2 && p.right > q.left + 2 && p.top < q.bottom - 2 && p.bottom > q.top + 2) { problems.push('pieces overlap: ' + label(a) + ' and ' + label(c)); break outer; }
+    }
+  }
   // Spare height in the tightest card: how far wider fonts can push before text is cut.
   const natural = document.createElement('style');
   natural.textContent = '.game-card > * { flex-grow: 0 !important; margin-bottom: 0 !important; }';
@@ -379,10 +400,13 @@ const MEASURE = `(() => {
   return { problems: problems.slice(0, 12), slack };
 })()`;
 
-async function runCase(browser, origin, testCase, [width, height]) {
+async function runCase(browser, origin, testCase, viewport) {
+  const [width, height, scale = 1] = viewport;
   const touch = testCase.device || false;
-  await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: touch });
+  await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: scale, mobile: touch });
   await browser.send('Emulation.setTouchEmulationEnabled', { enabled: touch, maxTouchPoints: touch ? 5 : 1 });
+  // Measure a still table: your hand's turn pulse (and other motion) rests under reduced motion.
+  await browser.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   if (testCase.lobby) {
     await browser.navigate(`${origin}/?game=galactic-reach#lobby/${TABLE_ID}`);
   } else {
@@ -392,7 +416,8 @@ async function runCase(browser, origin, testCase, [width, height]) {
     sharedTable = testCase.shared || null;
     await browser.navigate(`${origin}/galactic-reach/${testCase.table ? `?table=${TABLE_ID}` : testCase.shared ? `?shared=${TABLE_ID}` : ''}`);
   }
-  await browser.evaluate('new Promise(r => setTimeout(r, 400))');
+  // A shared or saved table loads its seats after the page, then fits again: let it settle.
+  await browser.evaluate(`new Promise(r => setTimeout(r, ${testCase.shared || testCase.table ? 900 : 400}))`);
   for (const selector of testCase.click || []) {
     const ok = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e || e.disabled) return false; e.click(); return true; })()`);
     if (!ok) { lastSlack = { px: 99 }; return [`could not click ${selector}`]; }
@@ -423,7 +448,8 @@ async function runCase(browser, origin, testCase, [width, height]) {
   const problems0 = [];
   // A real click on a raised card's button (press and release without moving) is still a click.
   if (testCase.tap) {
-    const card = await centre(testCase.tap.split(' [')[0]);
+    // Point at the card's visible strip first (a held hand fans its cards), so it lifts.
+    const card = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(testCase.tap.split(' [')[0])}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 36), y: r.top + Math.min(r.height / 2, 30) }; })()`);
     if (!card) return [`could not find ${testCase.tap}`];
     await mouse('mouseMoved', card.x, card.y);
     await browser.evaluate('new Promise(r => setTimeout(r, 300))');
@@ -438,11 +464,13 @@ async function runCase(browser, origin, testCase, [width, height]) {
   if (testCase.drag) {
     // Point at the card first, as a player does; it lifts. Then press where the case says:
     // anywhere on the card, its buttons included, must pick it up.
-    const card = await centre(testCase.drag);
+    // A held hand fans its cards, so point at the strip each card shows along its left edge.
+    const card = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(testCase.drag)}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 36), y: r.top + Math.min(r.height / 2, 30) }; })()`);
     if (!card) return [`could not find ${testCase.drag}`];
     await mouse('mouseMoved', card.x, card.y);
     await browser.evaluate('new Promise(r => setTimeout(r, 300))');
-    const from = testCase.grab ? await centre(`${testCase.drag} ${testCase.grab}`) : await centre(testCase.drag);
+    // Touch has no hover to lift the card, so press on its visible strip too.
+    const from = testCase.grab ? await centre(`${testCase.drag} ${testCase.grab}`) : testCase.device ? card : await centre(testCase.drag);
     if (!from) return [`could not find ${testCase.grab} on ${testCase.drag}`];
     await mouse('mouseMoved', from.x, from.y); await mouse('mousePressed', from.x, from.y);
     for (let i = 1; i <= 3; i++) await mouse('mouseMoved', from.x, from.y - 6 * i);
@@ -464,7 +492,7 @@ async function runCase(browser, origin, testCase, [width, height]) {
     const stock = () => browser.evaluate('Object.fromEntries([...document.querySelectorAll("#resource-grid .resource-box")].map(b => [b.dataset.resource, +b.querySelector(".resource-amount").textContent]))');
     const before = await stock();
     const a = await centre(`#resource-grid .resource-box[data-resource="${from}"] .mat-pips.now`);
-    const b = await centre(to === 'discard' ? '#resource-grid [data-mat-discard]' : `#resource-grid .resource-box[data-resource="${to}"]`);
+    const b = await centre(`#resource-grid .resource-box[data-resource="${to}"]`);
     if (!a || !b) return ['mat trade: could not find the rows'];
     if (how === 'drag') {
       await mouse('mouseMoved', a.x, a.y); await mouse('mousePressed', a.x, a.y);
@@ -479,7 +507,9 @@ async function runCase(browser, origin, testCase, [width, height]) {
     const after = await stock();
     for (const [resource, change] of Object.entries(expect)) if (after[resource] - before[resource] !== change) problems0.push(`mat trade: ${resource} changed by ${after[resource] - before[resource]}, expected ${change}`);
   }
-  await browser.evaluate(`window.__fitMode = ${JSON.stringify(isPhone([width, height]) ? 'phone' : 'fit')}; true`);
+  // The waiting room is a page, not the game table: in a short window (or at a high browser
+  // zoom) it may scroll vertically, like a phone.
+  await browser.evaluate(`window.__fitMode = ${JSON.stringify(isPhone([width, height]) || (testCase.lobby && height < 700) ? 'phone' : 'fit')}; true`);
   const { problems, slack } = await browser.evaluate(MEASURE);
   if (testCase.buyVisible) {
     const seen = await browser.evaluate(`(() => { const shown = e => e && e.checkVisibility() && e.getBoundingClientRect().height > 8;
@@ -522,7 +552,7 @@ async function runCase(browser, origin, testCase, [width, height]) {
   if (SHOTS) {
     fs.mkdirSync(SHOTS, { recursive: true });
     const shot = await browser.send('Page.captureScreenshot', { format: 'png' });
-    fs.writeFileSync(path.join(SHOTS, `${width}x${height}-${testCase.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`), Buffer.from(shot.data, 'base64'));
+    fs.writeFileSync(path.join(SHOTS, `${viewportName(viewport).replace('%', 'pct')}-${testCase.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`), Buffer.from(shot.data, 'base64'));
   }
   return problems;
 }
@@ -545,17 +575,18 @@ async function main() {
     const sizes = process.env.CHECK_SIZES?.split(',').map(size => size.split('x').map(Number));
     const runs = sizes ? sizes.flatMap(viewport => CASES.map(testCase => [viewport, testCase])) : [...[...VIEWPORTS, ...TALL_VIEWPORTS].flatMap(viewport => CASES.map(testCase => [viewport, testCase])),
       ...EXTRA_VIEWPORTS.flatMap(viewport => CASES.filter(testCase => testCase.extraSizes).map(testCase => [viewport, testCase])),
+      ...ZOOM_VIEWPORTS.flatMap(viewport => CASES.filter(testCase => !isPhone(viewport) || testCase.devices === true).map(testCase => [viewport, testCase])),
       ...[...TABLET_VIEWPORTS, ...PHONE_VIEWPORTS].flatMap(viewport => CASES.filter(testCase => testCase.devices === true || (testCase.devices === 'tablet' && !isPhone(viewport))).map(testCase => [viewport, { ...testCase, device: true, name: `${testCase.name} (touch)` }]))];
     for (const [viewport, testCase] of runs) {
-      if (only && !only.test(`${viewport.join('x')} ${testCase.name}`)) continue;
+      if (only && !only.test(`${viewportName(viewport)} ${testCase.name}`)) continue;
       if (process.env.CHECK_ORIGIN && (testCase.lobby || testCase.table || testCase.shared)) continue;
       checks++;
       browser.errors.length = 0;
       const problems = await runCase(browser, origin, testCase, viewport);
       problems.push(...(await browser.evaluate('window.galacticReachRenderErrors || []')).map(e => `table failed to draw ${e}`));
       problems.push(...browser.errors.filter(e => !/seat\.js|zk\/|Failed to fetch dynamically imported module/.test(e)).map(e => `page error: ${e.split('\n')[0]}`));
-      if (problems.length) { failures++; console.log(`not ok - ${viewport.join('x')} ${testCase.name}\n  ${problems.join('\n  ')}`); }
-      else console.log(`ok - ${viewport.join('x')} ${testCase.name}${lastSlack.px < 99 ? ` (tightest card: ${lastSlack.card}, ${lastSlack.px}px spare)` : ''}`);
+      if (problems.length) { failures++; console.log(`not ok - ${viewportName(viewport)} ${testCase.name}\n  ${problems.join('\n  ')}`); }
+      else console.log(`ok - ${viewportName(viewport)} ${testCase.name}${lastSlack.px < 99 ? ` (tightest card: ${lastSlack.card}, ${lastSlack.px}px spare)` : ''}`);
     }
   } finally { browser.close(); server.close(); }
   console.log(`${checks - failures}/${checks} viewport-fit checks passed.`);
