@@ -4061,6 +4061,7 @@ function createGalacticReach(options = {}) {
     $('#trash-resource')?.addEventListener('change',renderMarket);
     $$('[data-trash]').forEach(button=>button.addEventListener('click',()=>{if(decommission(ME,button.dataset.trash,$('#trash-resource').value)){render();saveGame();}}));
     renderUpgradeOffers(humanBuy);
+    tierMarket();
   }
 
 
@@ -4103,22 +4104,38 @@ function createGalacticReach(options = {}) {
     return [...player.hand,...player.discard,...player.inPlay].filter(card=>card.key===key&&card.starter&&starterLevel(card)<3);
   }
   const LEVEL_NAMES = ['','I','II','III'];
+  // The market's rows run from the most expensive cards (just under the relics) to the cheapest.
+  // Each row spans the supply's width: three cards to a row, or four when the cheap row holds four.
+  const MARKET_TIERS = ['expensive', 'medium', 'cheap'];
+  function tierMarket() {
+    const cards = [...($('#market-row')?.children || [])].filter(card => card.dataset?.buyMarket != null);
+    if (!cards.length) return;
+    const total = card => Object.values(ALL_CARDS[state.market[Number(card.dataset.buyMarket)]?.key]?.cost || {}).reduce((sum, n) => sum + n, 0);
+    const ranked = [...cards].sort((a, b) => total(b) - total(a));
+    const size = Math.floor(ranked.length / 3), sizes = [size, size, ranked.length - 2 * size];
+    let at = 0;
+    sizes.forEach((count, tier) => ranked.slice(at, at += count).forEach((card, place) => {
+      card.dataset.tier = MARKET_TIERS[tier];
+      card.style.setProperty('--tier-row', String(tier + 1));
+      card.style.setProperty('--tier-span', String(Math.max(1, Math.floor(12 / count))));
+      card.style.setProperty('order', String(tier * 10 + place));
+    }));
+  }
   function renderUpgradeOffers(humanBuy) {
     const me=state.players[ME], area=$('#upgrade-market');
     area.hidden=replayMode;
     if (replayMode) { area.innerHTML=''; return; }
-    area.innerHTML=UPGRADE_STARTERS.map(key=>{
-      const def=ALL_CARDS[key], ready=upgradeableStarters(me,key);
-      const inDeck=me.deck.filter(card=>card.key===key&&card.starter&&starterLevel(card)<3).length;
-      // Offer the lowest level a ready copy can reach: II while any level I copy is ready, else III.
-      const from=ready.length?Math.min(...ready.map(starterLevel)):1, level=from+1, price=from===1?2:3;
-      const note=!ready.length&&!inDeck?'All upgraded':[ready.length?`${ready.length} ready`:'',inDeck?`${inDeck} in deck`:''].filter(Boolean).join(' · ');
+    area.innerHTML=UPGRADE_STARTERS.flatMap(key=>[2,3].map(level=>{
+      // Level II upgrades a level I copy for 2 of one resource; level III a level II copy for 3.
+      const def=ALL_CARDS[key], ready=upgradeableStarters(me,key).filter(card=>starterLevel(card)===level-1), price=level===2?2:3;
+      const inDeck=me.deck.filter(card=>card.key===key&&card.starter&&starterLevel(card)===level-1).length;
+      const note=[ready.length?`${ready.length} ready`:'',inDeck?`${inDeck} in deck`:''].filter(Boolean).join(' · ')||`No level ${LEVEL_NAMES[level-1]} copy`;
       const canPay=RESOURCES.some(resource=>me.resources[resource]>=price);
-      const reason=!humanBuy?'Upgrade during your Buy turn.':!ready.length?'No upgradeable starter in hand, discard or in play.':!canPay?`Needs ${price} of one resource.`:'';
+      const reason=!humanBuy?'Upgrade during your Buy turn.':!ready.length?`No level ${LEVEL_NAMES[level-1]} ${def.name} in hand, discard or in play.`:!canPay?`Needs ${price} of one resource.`:'';
       const effect=`${upgradedOrderText({key})}${level===3?' Draws one card when used as an order.':''} No longer converts to resources.`;
-      return `<button class="game-card upgrade-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-upgrade-offer="${key}" ${reason?`disabled title="${reason}"`:''} aria-label="Upgrade ${esc(def.name)} to level ${LEVEL_NAMES[level]} for ${price} of one resource; does not use a purchase${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Starter upgrade</span><span class="card-name">${def.name} ${LEVEL_NAMES[level]}</span>${cardIllustration(def)}<span class="card-effect">${effect}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price"><strong>${price}</strong> of one resource</span></span><span class="card-limit-note">${note}</span></button>`;
-    }).join('')+capacityOffer();
-    $$('[data-upgrade-offer]').forEach(button=>button.addEventListener('click',()=>openUpgradeChoice(button.dataset.upgradeOffer)));
+      return `<button class="game-card upgrade-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-upgrade-offer="${key}" data-upgrade-level="${level}" ${reason?`disabled title="${reason}"`:''} aria-label="Upgrade ${esc(def.name)} to level ${LEVEL_NAMES[level]} for ${price} of one resource; does not use a purchase${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Starter upgrade</span><span class="card-name">${def.name} ${LEVEL_NAMES[level]}</span>${cardIllustration(def)}<span class="card-effect">${effect}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${price}</strong>${RESOURCES.map(resource=>`<span class="pay-chip ${me.resources[resource]>=price?'can':'cannot'}" data-pay="${resource}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${price} of one resource</span></span><span class="card-limit-note">${note}</span></button>`;
+    })).join('')+capacityOffer();
+    $$('[data-upgrade-offer]').forEach(button=>button.addEventListener('click',event=>openUpgradeChoice(button.dataset.upgradeOffer,event.target.closest?.('.pay-chip.can')?.dataset.pay)));
     $('[data-capacity-offer]')?.addEventListener('click',()=>openStorageAllocation());
     if ($('#upgrade-dialog').open) renderUpgradeChoice();
   }
@@ -4127,12 +4144,13 @@ function createGalacticReach(options = {}) {
   function capacityOffer() {
     const cost=storageUpgradeCost(ME);
     const reason=!canManageResources(ME)?'Add capacity during Operations or Buy, including off turn.':!canIncreaseStorage(ME)?`Needs ${cost.matter} of each resource.`:'';
-    return `<button class="game-card upgrade-offer capacity-offer ${reason?'unavailable':''}" style="--card-accent:var(--gold)" data-capacity-offer ${reason?`disabled title="${reason}"`:''} aria-label="Add 4 capacity for ${cost.matter} of each resource${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Capacity</span><span class="card-name">Add 4 capacity</span><span class="card-effect">Split 4 points among your resource limits as you choose.</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price"><strong>${cost.matter}</strong> of each<span class="each-dots" aria-hidden="true">${RESOURCES.map(resource => `<i class="${resource}"></i>`).join('')}</span></span></span></button>`;
+    return `<button class="game-card upgrade-offer capacity-offer ${reason?'unavailable':''}" style="--card-accent:var(--gold)" data-capacity-offer ${reason?`disabled title="${reason}"`:''} aria-label="Add 4 capacity for ${cost.matter} of each resource${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Capacity</span><span class="card-name">Add 4 capacity</span><span class="card-effect">Split 4 points among your resource limits as you choose.</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${cost.matter}</strong>${RESOURCES.map(resource => `<span class="pay-chip ${state.players[ME].resources[resource]>=cost[resource]?'can':'cannot'}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${cost.matter} of each resource</span></span></button>`;
   }
-  function openUpgradeChoice(key) {
+  function openUpgradeChoice(key, pay) {
     upgradeChoiceKey=key;
     const me=state.players[ME], select=$('#upgrade-resource');
     const price=Math.min(3,...upgradeableStarters(me,key).map(upgradePrice));
+    if (RESOURCES.includes(pay) && me.resources[pay]>=price) select.value=pay;
     if (!RESOURCES.includes(select.value) || me.resources[select.value]<price) select.value=RESOURCES.find(resource=>me.resources[resource]>=price) || 'matter';
     renderUpgradeChoice();
     if (!$('#upgrade-dialog').open) $('#upgrade-dialog').showModal();
@@ -4719,26 +4737,17 @@ function createGalacticReach(options = {}) {
     root.style.setProperty('--map-w', `${Math.floor(width / zoom)}px`);
   }
 
-  // On a wide table the market's cards are real cards (63:88). Choose three, four or five to a
-  // row, whichever lets the cards be tallest in the space the market has.
+  // On the table the market's three cost rows share the market's height exactly (the row's own
+  // height follows its cards, so the space is measured down to the bottom of the market panel,
+  // which the table's grid sizes).
   function fitMarket() {
     const row = $('#market-row'), root = typeof document !== 'undefined' ? document.documentElement : null;
-    if (!row?.getBoundingClientRect || !root?.classList?.contains('table-wide')) { row?.style?.removeProperty?.('--mcols'); row?.style?.removeProperty?.('--mcard-h'); return; }
-    // The row's own height follows its cards, so the space is measured down to the bottom of the
-    // market panel, which the table's grid sizes, or the relics below it.
+    if (!row?.getBoundingClientRect || !tableLayout()) { row?.style?.removeProperty?.('--mrow-h'); return; }
     const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1, box = row.getBoundingClientRect();
-    const panel = row.closest('#market-panel')?.getBoundingClientRect() || box, relics = $('#relics-panel')?.getBoundingClientRect();
-    const bottom = Math.min(panel.bottom, relics?.height ? relics.top - 6 * zoom : Infinity);
-    const width = box.width / zoom, height = (bottom - box.top) / zoom - 4, count = row.children.length, gap = 6;
-    if (!width || !height || !count) return;
-    const best = [3, 4, 5].map(cols => {
-      const rows = Math.ceil(count / cols);
-      const rowH = (height - (rows - 1) * gap) / rows;
-      return { cols, rowH, h: Math.min((width - (cols - 1) * gap) / cols * 88 / 63, rowH) };
-    }).reduce((a, b) => b.h > a.h ? b : a);
-    // The layout closest to real cards wins; its cards then fill their cells, leaving no gaps.
-    row.style.setProperty('--mcols', String(best.cols));
-    row.style.setProperty('--mcard-h', `${Math.floor(best.rowH)}px`);
+    const panel = row.closest('#market-panel')?.getBoundingClientRect() || box;
+    const height = (panel.bottom - box.top) / zoom - 2, gap = 5;
+    if (height < 60) return;
+    row.style.setProperty('--mrow-h', `${Math.floor((height - 2 * gap) / 3)}px`);
   }
 
   // On a desktop window the market and relics lie on the table together; Fleet opens over them.
