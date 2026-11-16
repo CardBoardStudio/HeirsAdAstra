@@ -4937,7 +4937,7 @@ function createGalacticReach(options = {}) {
   // units to show its name, cost and effect whole, so the shorter a card, the wider it is; cards
   // keep real card proportions (63:88) where that already leaves them that room (tall windows).
   // The column's width follows from the card size.
-  const CARD_GAP = 6, SUPPLY_ROWS = 6, CARD_MIN_W = 150, CARD_TEXT_AREA = 160 * 127;
+  const CARD_GAP = 6, SUPPLY_ROWS = 6, CARD_MIN_W = 150, CARD_TEXT_AREA = 166 * 127;
   function fitMarket() {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function') return;
     const root = typeof document !== 'undefined' ? document.documentElement : null, shell = $('.app-shell');
