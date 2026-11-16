@@ -39,5 +39,9 @@ if (require.main === module) {
   try {
     execFileSync(process.execPath, [require('node:path').join(__dirname, 'release.cjs'), 'check'], { stdio: 'inherit' });
   } catch (_) { process.exitCode = 1; }
+  // Review guidance (PR body + commit messages) reports warnings; its own MODE decides whether it fails.
+  try {
+    execFileSync(process.execPath, [require('node:path').join(__dirname, 'check-review-guidance.cjs'), ...process.argv.slice(2)], { stdio: 'inherit' });
+  } catch (_) { process.exitCode = 1; }
 }
 module.exports = { validate, ruleBearing, RULEBOOK };
