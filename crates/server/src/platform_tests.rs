@@ -397,7 +397,7 @@ async fn arena_enforces_ownership_pairs_seats_and_rates_exactly_once() {
 }
 
 #[tokio::test]
-async fn galactic_reach_uses_shared_accounts_rotations_and_isolated_ratings() {
+async fn heavy_galactic_reach_arena_series_rotations_and_ratings() {
     let _serial = ARENA_TEST.lock().await;
     let mut a = app(true);
     a.arena_seed = Some([8; 32]);

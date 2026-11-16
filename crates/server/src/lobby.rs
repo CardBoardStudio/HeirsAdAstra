@@ -371,6 +371,14 @@ pub async fn start(
             .chain(lobby.guests.iter().cloned())
             .collect();
         let seats = crate::shared::random_seats(&people, &mut rand::thread_rng());
+        #[cfg(test)]
+        let seats = match app.shared.seed {
+            Some(seed) => crate::shared::random_seats(
+                &people,
+                &mut <rand::rngs::StdRng as rand::SeedableRng>::from_seed(seed),
+            ),
+            None => seats,
+        };
         app.shared
             .open(crate::shared::log::Table {
                 id: id.clone(),

@@ -27,7 +27,7 @@ GR_SIMULATION_ARCHIVE_DIR=/absolute/path/to/study/games node scripts/balance-sim
 
 This works with the study and profiling runners too. Their normal stdout summaries remain usable. Full archiving adds measurement and disk overhead; profiling runs include that overhead and should be compared under the same recording configuration.
 
-CI uploads `output/simulations/` even when the JavaScript job fails, with a **90-day GitHub artifact retention**. Download CI artifacts for longer retention. Local archives have no such expiry.
+CI's **Balance harness** job uploads `output/simulations/` even when it fails, with a **90-day GitHub artifact retention**. That job is in the [heavy tier](release.md#heavy-tests): it runs on the release PRs and on manual CI runs, not on change PRs. Download CI artifacts for longer retention. Local archives have no such expiry.
 
 ## Interrupted and failed games
 
