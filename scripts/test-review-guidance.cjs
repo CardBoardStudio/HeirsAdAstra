@@ -1,6 +1,10 @@
 const assert = require('node:assert/strict');
-const { MODE, checkBody, checkCommit, report } = require('./check-review-guidance.cjs');
-assert.equal(MODE, 'warn', 'Review guidance stays advisory until the team decides to enforce it');
+const core = require('./review-guidance/core.cjs');
+const config = require('./review-guidance.config.cjs');
+const checkBody = body => core.checkBody(body, config);
+const checkCommit = commit => core.checkCommit(commit, config);
+const report = (findings, mode) => core.report(findings, { ...config, mode });
+assert.equal(config.mode, 'warn', 'Review guidance stays advisory until the team decides to enforce it');
 
 const guided = '## How to review\nStart at `fitMap` in app.js. Risky: the snug allowance. Skim: screenshots.\n\n## Decisions for review\nNone.\n\n## Verification\nChecks run.';
 assert.deepEqual(checkBody(guided), []);
@@ -25,4 +29,6 @@ try {
   assert.equal(report(['finding'], 'fail'), 1, 'Fail mode blocks on findings');
   assert.equal(report([], 'fail'), 0);
 } finally { console.log = log; }
+assert.deepEqual(core.checkBody('', {}), [], 'The core requires no sections without a config');
+assert(config.skip({ pull_request: { head: { ref: 'release/next' } } }), 'The release cut PR is skipped');
 console.log('Review guidance tests passed: body sections, commit subjects and bodies, trailers, warn and fail modes.');
