@@ -185,8 +185,8 @@ const CASES = [
   // The first and last hand cards raised: they rise over the map, clear of the bank and the piles.
   { name: 'operations, first hand card raised (bank open)', save: midGameState(), focus: '#hand-row .game-card:first-child button' },
   { name: 'operations, last hand card raised', save: midGameState(), focus: '#hand-row .game-card:last-child button' },
-  { name: 'operations, inspect view (pointed-at hand card)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), hover: '#hand-row .game-card:nth-child(3)', expect: 'inspect' },
-  { name: 'operations, inspect view (last of 8 cards)', save: operationsState(longHand), hover: '#hand-row .game-card:last-child', expect: 'inspect' },
+  { name: 'operations, pointed-at hand card opens whole', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), hover: '#hand-row .game-card:nth-child(3)', expect: 'inspect' },
+  { name: 'operations, pointed-at last of 8 cards opens whole', save: operationsState(longHand), hover: '#hand-row .game-card:last-child', expect: 'inspect' },
   { name: 'operations, drag Move onto your units', save: withFleet(operationsState(['move', 'construct', 'move'])), drag: '#hand-row .game-card[data-order="move"]', expect: 'dragged', devices: 'tablet' },
   { name: 'operations, drag Construct onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', expect: 'built' },
   { name: 'operations, drag a card onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted', devices: 'tablet' },
@@ -543,16 +543,19 @@ async function runCase(browser, origin, testCase, viewport) {
     const after = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
     if (after.hand !== steps.before.hand - 1 || !after.stock.some((n, i) => n > steps.before.stock[i])) problems.push('dropping a card on your reserves did not convert it');
   }
+  // Pointing at a hand card raises that card itself into the whole card, in place above the hand:
+  // its effect shows at reading size and whole, inside the window; no copy opens beside the map.
   if (testCase.expect === 'inspect') problems.push(...await browser.evaluate(`(() => {
-    const view = document.querySelector('#card-inspect'), problems = [];
-    if (!view || view.hidden || !view.querySelector('.game-card')) return ['inspect view did not open'];
-    const r = view.getBoundingClientRect(), overlaps = o => r.left < o.right - 1 && r.right > o.left + 1 && r.top < o.bottom - 1 && r.bottom > o.top + 1;
-    if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) problems.push('inspect view outside viewport');
-    const hex = [...document.querySelectorAll('.hex')].find(h => overlaps(h.getBoundingClientRect()));
-    if (hex) problems.push('inspect view covers hex ' + hex.dataset.coord);
-    if ([...document.querySelectorAll('#hand-row > .game-card')].some(c => overlaps(c.getBoundingClientRect()))) problems.push('inspect view covers the hand');
-    const card = view.querySelector('.game-card');
-    if (card.scrollHeight > card.clientHeight + 2) problems.push('inspect card text cut');
+    const card = document.querySelector('#hand-row > .game-card:hover'), problems = [];
+    if (document.querySelector('#card-inspect, .card-inspect')) problems.push('a separate inspect copy opened');
+    if (!card) return [...problems, 'the pointed-at card did not raise'];
+    const r = card.getBoundingClientRect(), effect = card.querySelector('.card-effect');
+    if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) problems.push('raised card outside viewport');
+    if (!effect || !effect.getClientRects().length || getComputedStyle(effect).clipPath.includes('inset(50%)')) problems.push('raised card does not show its effect');
+    else if (parseFloat(getComputedStyle(effect).fontSize) * (Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1) < 10) problems.push('raised card effect below reading size');
+    if (card.scrollHeight > card.clientHeight + 2) problems.push('raised card text cut');
+    const strip = document.querySelector('#hand-row').getBoundingClientRect();
+    if (Math.abs(r.bottom - strip.bottom) > 24) problems.push('raised card does not rise from the hand');
     return problems;
   })()`));
   if (testCase.expect === 'built') {
