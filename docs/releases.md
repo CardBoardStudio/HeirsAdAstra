@@ -2,6 +2,14 @@
 
 Newest first. Each section is written by `node scripts/release.cjs cut` from the `changes/` entries merged since the previous release ([release process](release.md)). Releases before this file existed are described in the [rules maintenance guide](rules/README.md).
 
+## 38.43 · Playtest 2026-11-15
+
+<!-- release after 9c969f6 -->
+Rules-changing release: start a new game. Unfinished 37.42 games and tables keep the archived 37.42 Integrated Playtest engine.
+- **Draw your next hand at cleanup** (rules change): You now draw your opening five cards at setup, and each later hand at the end of the round, after everyone finishes Buy and nobody has won. The round reads Production, Operations, Buy, Cleanup & draw, so you can plan your next hand while the round wraps up. [A round of play](rulebook.html#round).
+- **A real table that fits your window** (#53): On a desktop window the game no longer scrolls: the whole window is one table, scaled as a whole to fit. The map fills all the space the other pieces leave, in any window shape. In its top-left corner a small printed track races every faction to the Prestige goal (the acting faction's marker glows; point at a marker for that faction's overview, select it for the breakdown), and in its bottom-left corner a small comms card opens into the whole log. The turn and round and the whole supply at once (an Upgrades tray, the market and the alien relics) lie to the right, and your seat runs along the bottom: Deck and In play, your hand, a player mat of pips (no numbers) for production, stock and a gold capacity fence, and Discard with the turn's buttons. Drag 4 of one resource onto another on your mat to trade with the bank ([Player mat](rulebook.html#player-mat)). Cards look like printed card stock in a slight fan; point at one to read it whole, drag it onto a lit hex to play it or onto your mat to convert it. Market prices sit in each card's corner with a padlock on any resource above your limit, cards you can't buy yet are shaded with the reason ([Buy](rulebook.html#buy)), and held planets are ringed and buildings drawn in their owner's colour ([Reading ownership](rulebook.html#ownership-colours)). iPads get the same table, and phones a full-screen map with the hand, supply, mat, comms and track in drawers.
+- **Rivals find another bank exchange before skipping a card**: When a bank exchange would spend the funds a rival keeps for its next unit, the rival now tries exchanging a different resource before it passes on the card. [Rival cards](rulebook.html#rival-cards).
+
 ## 37.42 · Integrated Playtest
 
 <!-- release after 4b7cfc7 -->
