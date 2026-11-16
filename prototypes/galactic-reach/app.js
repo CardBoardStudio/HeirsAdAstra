@@ -4075,7 +4075,8 @@ function createGalacticReach(options = {}) {
   // Each card design shows one public-domain artwork from the National Gallery of Art
   // (card-art/<card key>.webp; card-art/manifest.json and the card gallery credit them).
   // Like the emblem, the picture never changes what a card does (rulebook #card-art).
-  const CARD_ART_KEYS = new Map(Object.entries({ ...ALL_CARDS, ...BASIC_TACTICS }).map(([key, def]) => [def, key]));
+  // Supply cards (the Capacity Module) have no artwork yet and keep their emblem.
+  const CARD_ART_KEYS = new Map(Object.entries({ ...ALL_CARDS, ...BASIC_TACTICS }).filter(([key]) => !SUPPLY_CARDS[key]).map(([key, def]) => [def, key]));
   function cardIllustration(definition) {
     const motif = definition.kind === 'Military' || definition.affinity === 'Military' ? 'fleet'
       : {move:'fleet',construct:'starbase',colonize:'colony',probe:'explorer',excavate:'harvester'}[definition.order]
