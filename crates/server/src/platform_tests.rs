@@ -29,6 +29,30 @@ async fn register_account(a: &App, name: &str) -> (String, String) {
     )
 }
 #[tokio::test]
+async fn sign_in_sessions_last_sixty_days() {
+    let a = app(true);
+    let (status, headers, _) = call(
+        &a,
+        "POST",
+        "/api/accounts/register",
+        "",
+        json!({"name":"Ada"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let set_cookie = headers[header::SET_COOKIE].to_str().unwrap();
+    assert!(set_cookie.contains("; Max-Age=5184000"), "{set_cookie}");
+    let expires: u64 = a
+        .store
+        .0
+        .lock()
+        .unwrap()
+        .query_row("SELECT expires FROM sessions", [], |r| r.get(0))
+        .unwrap();
+    assert!(expires.abs_diff(now() + 60 * 86400) <= 5);
+    assert_eq!(accounts::session_ttl(), 60 * 86400);
+}
+#[tokio::test]
 async fn accounts_survive_logout_and_keys_rotate_atomically() {
     let a = app(true);
     let (cookie, key) = register_account(&a, "Ada").await;

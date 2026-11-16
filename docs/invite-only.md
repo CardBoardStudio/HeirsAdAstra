@@ -21,6 +21,8 @@ The check runs on every request, so a change takes effect on the visitor's next 
 - **Expiry** only limits claiming. Members who claimed an invitation before it expired keep access.
 - **Revoking a Nido passkey** signs the session out within a minute.
 
+A sign-in lasts 60 days by default (`SESSION_TTL_DAYS` changes it). Logging out, a revoked invitation, a removed passkey, or **Sign out other sessions** ends it sooner.
+
 ## What is public
 
 Without membership, a visitor can reach only:
