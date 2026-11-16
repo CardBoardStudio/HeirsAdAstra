@@ -3521,6 +3521,10 @@ function createGalacticReach(options = {}) {
       ['settler','Settler'],['explorer','Explorer'],['fleet','Fleet'],
       ['colony','Colony'],['harvester','Harvester'],['starbase','Shipyard']
     ];
+    // A short key in the map's empty corner, so the board teaches itself without opening the
+    // Map key (which keeps the full descriptions).
+    const corner = $('#map-legend-corner');
+    if (corner) corner.innerHTML = RESOURCES.map(resource => `<span class="legend-res ${resource}"><i></i>${RESOURCE_NAMES[resource]}</span>`).join('') + entries.map(([type,label]) => `<span class="legend-piece">${BOARD_ICONS[type]}${label}</span>`).join('');
     $('#symbol-legend').innerHTML = `<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) => {
       const cost = type === 'colony' ? { biomass: 2 } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
       return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-cost">${resourceDots(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
@@ -4680,9 +4684,9 @@ function createGalacticReach(options = {}) {
 
   // The map fills the space the other pieces leave: on a landscape table it may reach into the
   // left strip, as long as no hex runs under the Prestige track, the notice spot below it, the
-  // comms card or the map tools, which lie in the hexagon's empty corners. Hex positions scale
-  // with the map's width, so they are measured once and the largest width that clears every
-  // corner piece is found by bisection.
+  // comms card, the map tools or the short map key, which lie in the hexagon's empty corners.
+  // Hex positions scale with the map's width, so they are measured once and the largest width
+  // that clears every corner piece is found by bisection.
   let fitMapLog = null;
   function fitMap() {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
@@ -4701,7 +4705,7 @@ function createGalacticReach(options = {}) {
     // An open comms log lies over the map on purpose; the map keeps clear of the closed card.
     if (!$('.log-panel.open')) fitMapLog = rect($('.log-panel'));
     const log = fitMapLog;
-    const blocks = [track, notice, log, rect($('.map-tools'))].filter(Boolean);
+    const blocks = [track, notice, log, rect($('.map-tools')), rect($('#map-legend-corner'))].filter(Boolean);
     const fits = width => {
       const height = width * ratio, left = box.right - width, top = box.top + (box.height - height) / 2;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
