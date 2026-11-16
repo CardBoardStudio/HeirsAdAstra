@@ -2528,3 +2528,21 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
   .map-legend-corner { grid-column: 1 / -1 !important; grid-row: 3 !important; }
 }
+
+/* ==== A hierarchy of contrast: your hand, the market, your mat and the map read first, crisp and
+   bright; the relics, the upgrades tray, the round's phases and the comms card sit back, quieter,
+   until you point at them. ==== */
+@media (min-width: 600px) and (min-height: 600px) {
+  /* First: the market's names and costs in the darkest ink; your mat's rim brighter. */
+  #market-row .game-card:not(.unavailable) .card-name { color: #14110a !important; font-weight: 600; }
+  #market-row .game-card:not(.unavailable) .card-effect { color: #2b2619 !important; }
+  .resource-grid { box-shadow: inset 0 0 0 2px #d9bd80b0, 0 1px 0 #55675f, 0 2px 0 #24312c, 0 3px 0 #18221f, 0 12px 20px -6px #000b !important; }
+  /* Second: quieter until pointed at or focused. */
+  #relics-panel .relic-row .game-card:not(:hover):not(:focus):not(:focus-within),
+  #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) { filter: saturate(.7) brightness(.9); }
+  #relics-panel > .section-intro, .relic-payment { opacity: .82; }
+  .phase-stepper { filter: saturate(.65) brightness(.88); }
+  .log-panel:not(.open) .game-log { color: #b7c2bb; }
+  .log-panel:not(.open) .game-log .log-latest { color: var(--text); }
+  .map-legend-corner { opacity: .85; }
+}
