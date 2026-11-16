@@ -314,16 +314,17 @@ fn create_test_session(
     .map_err(internal)?;
     tx.execute(
         "INSERT INTO sessions VALUES(?,?,?,?,?)",
-        rusqlite::params![digest(&token), id, name, true, now() + 86400],
+        rusqlite::params![
+            digest(&token),
+            id,
+            name,
+            true,
+            now() + accounts::session_ttl()
+        ],
     )
     .map_err(internal)?;
     tx.commit().map_err(internal)?;
-    let secure = if app.origin.starts_with("https://") {
-        "; Secure"
-    } else {
-        ""
-    };
-    Ok(([(header::SET_COOKIE,format!("drawing_board_alien_v11_session={token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400{secure}"))],Json(json!({"ok":true}))).into_response())
+    Ok(accounts::session_response(app, &token, json!({"ok":true})))
 }
 async fn logout(State(app): State<App>, headers: HeaderMap) -> ApiResult<Response> {
     if let Some(token) = cookie(&headers, "drawing_board_alien_v11_session") {
@@ -1092,5 +1093,15 @@ mod tests {
             .query_row("SELECT user_id FROM sessions", [], |r| r.get(0))
             .unwrap();
         assert!(id.starts_with("preview:"));
+        assert!(
+            headers[header::SET_COOKIE]
+                .to_str()
+                .unwrap()
+                .contains("; Max-Age=5184000")
+        );
+        let expires: u64 = db
+            .query_row("SELECT expires FROM sessions", [], |r| r.get(0))
+            .unwrap();
+        assert!(expires.abs_diff(now() + 60 * 86400) <= 5);
     }
 }
