@@ -1838,12 +1838,14 @@ impl BuiltinAgent {
                 number(&me["resources"][resource]) - number(&reserve[resource])
                     + number(&action["amount"]) * 0.01
             }
-            // Policy 26 (30.35 #buy): trash candidates come from discard or from play.
+            // #buy: trash candidates come from discard, from play or from hand, scored
+            // alike. Older rules never offer a hand card, so their games play as before.
             "decommission" => {
                 let card = me["discard"]
                     .as_array()
                     .into_iter()
                     .chain(me["inPlay"].as_array())
+                    .chain(me["hand"].as_array())
                     .flatten()
                     .find(|c| c["id"] == action["card"])
                     .unwrap();
@@ -2339,6 +2341,21 @@ mod tests {
             agent.score(&view, &purge(json!([]))) > agent.score(&view, &purge(json!(["m1"]))),
             "With no surplus a rival trashes nothing"
         );
+    }
+    #[test]
+    fn decommission_scores_hand_cards() {
+        // #buy: a card still in hand when Buy began may be trashed, with the same priority
+        // as the same card in discard.
+        let agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let mut view = strategic_view();
+        let surplus = json!([{"id":"m1","key":"move","starter":true}]);
+        view["players"][0]["deckContents"] = json!([{"key":"move","count":7}]);
+        let trash = json!({"type":"decommission","card":"m1","resource":"matter"});
+        view["players"][0]["hand"] = surplus.clone();
+        let from_hand = agent.score(&view, &trash);
+        view["players"][0]["hand"] = json!([]);
+        view["players"][0]["discard"] = surplus;
+        assert_eq!(from_hand, agent.score(&view, &trash));
     }
 
     #[test]

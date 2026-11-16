@@ -1109,11 +1109,13 @@ test('Buy upgrades and trashes starters in hand, discard and in play (28.33 #buy
   Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});
   Object.assign(state.players[0],{passed:true,resources:{matter:3,energy:2,biomass:0,data:0},
     hand:[{id:'up-hand',key:'move',starter:true}],discard:[{id:'up-discard',key:'construct',starter:true}],
-    inPlay:[{id:'up-play',key:'move',starter:true}],buyStartDiscardIds:['up-discard'],buyStartInPlayIds:['up-play']});
+    inPlay:[{id:'up-play',key:'move',starter:true}],buyStartDiscardIds:['up-discard'],buyStartInPlayIds:['up-play'],buyStartHandIds:['up-hand']});
   writeSave(storage,state);
   let game=boot(storage);
   const html=game.dom.element('decommission-area').innerHTML;
-  assert.deepEqual([...html.matchAll(/data-trash="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-play']);
+  assert.deepEqual([...html.matchAll(/data-trash="([^"]*)"/g)].map(m=>m[1]).sort(),['up-discard','up-hand','up-play']);
+  assert.match(html,/in hand/,'the Trash dialog says where a hand card is');
+  assert.match(game.dom.element('hand-row').innerHTML,/data-trash-hand="up-hand"/,'an eligible hand card offers Trash…');
   const choices=key=>{game.dom.lastQuery('[data-upgrade-offer]').find(b=>b.dataset.upgradeOffer===key).click();
     const ids=[...game.dom.element('upgrade-options').innerHTML.matchAll(/data-upgrade-card="([^"]*)"/g)].map(m=>m[1]).sort();
     game.dom.element('upgrade-dialog').close();game.settle();return ids;};
