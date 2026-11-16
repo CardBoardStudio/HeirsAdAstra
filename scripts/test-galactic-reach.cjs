@@ -102,3 +102,5 @@ require('./test-bot-search-cache.cjs');
 
 require('./test-corner-portals.cjs');
 require('./test-change-queue.cjs');
+
+require('./test-construct-iii-draw.cjs');
