@@ -131,3 +131,8 @@
 .pile-card::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(125deg, #ffffff2e 0%, #ffffff00 38%, #ffffff00 62%, #ffffff14 100%); }
 .pile-card.face-up { box-shadow: inset 0 1px 0 #fffffff0, inset 1px 0 0 #ffffff7a, inset -1px 0 0 #3a2f1a1f, inset 0 -2px 0 #3a2f1a26, inset 0 0 0 1.5px color-mix(in srgb, var(--card-accent) 75%, #6f6650), 0 0 0 1px #0b1517; }
 .pile-stats > button[data-empty="true"] .pile-card::after { display: none; }
+
+/* Use order aims the card like a drag: it stays raised and glowing, marked as in play, while the
+   hexes where its order can start light up (see syncAim). */
+#hand-row > .game-card.cf-aiming { --cf-lift: -14px; --cf-ring: 0 0 0 2.5px #f2d488, 0 0 18px #f2d488aa; }
+.cf-aim-active .hex:not(.cf-drop-target)::before { filter: brightness(.55) saturate(.6); }

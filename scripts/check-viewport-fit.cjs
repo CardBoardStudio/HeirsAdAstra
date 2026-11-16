@@ -193,6 +193,8 @@ const CASES = [
   // A raised card is mostly its name and buttons: picking it up by a button must work too.
   { name: 'operations, drag a card by its Convert button onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-resource-card]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
   { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
+  // Use order aims the card exactly as starting a drag does; clicking a lit hex plays it there.
+  { name: 'operations, Use order aims like a drag', save: operationsState(['construct', 'move']), click: ['#hand-row .game-card[data-order="construct"] [data-order-card]'], expect: 'aimed', devices: 'tablet' },
   { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
   { name: 'map pieces on every terrain', save: piecesState() },
   // Trading with the bank on the mat: drag (mouse, and touch on iPads), and tap then tap.
@@ -556,6 +558,15 @@ async function runCase(browser, origin, testCase, viewport) {
     if (card.scrollHeight > card.clientHeight + 2) problems.push('raised card text cut');
     const strip = document.querySelector('#hand-row').getBoundingClientRect();
     if (Math.abs(r.bottom - strip.bottom) > 24) problems.push('raised card does not rise from the hand');
+    return problems;
+  })()`));
+  if (testCase.expect === 'aimed') problems.push(...await browser.evaluate(`(() => {
+    const problems = [], lit = document.querySelectorAll('.hex.cf-drop-target');
+    if (!lit.length) problems.push('Use order lit no hexes');
+    if (!document.querySelector('#hand-row .game-card.cf-aiming.order-selected')) problems.push('the chosen card is not marked as in play');
+    lit[0]?.click();
+    if (!document.querySelector('#sector-popover')?.matches(':popover-open')) problems.push('clicking a lit hex did not open its build choices');
+    if (document.querySelector('.hex.cf-drop-target, .cf-aiming')) problems.push('the aim stayed after choosing a hex');
     return problems;
   })()`));
   if (testCase.expect === 'built') {

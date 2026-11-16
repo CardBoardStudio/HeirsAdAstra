@@ -5059,6 +5059,12 @@ function createGalacticReach(options = {}) {
           return orders.length ? [{ coord: hex.dataset.coord, type: orders[0].type, label: orders[0].label }] : [];
         });
       },
+      // The hand card whose chosen order waits for its first hex (Use order clicked, nothing chosen
+      // on the map yet): the card feel aims it exactly as a drag would.
+      aimCard() {
+        if (replayMode || !['move','construct','colonize'].includes(state.actionMode) || state.moveSource || state.pendingMove || state.pendingConstruct) return null;
+        return state.actionCardId || null;
+      },
       playAt(cardId, coord) {
         const order = availableContextOrders(coord, cardId)[0];
         if (!order || !startContextOrder(cardId, coord, order.group)) return false;
