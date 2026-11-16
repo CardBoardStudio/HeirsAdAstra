@@ -151,7 +151,12 @@
           <span>Hand <strong id="hand-pile-count">0</strong></span>
           <button id="in-play-button" type="button" title="Inspect used cards held outside discard until shared cleanup"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">In play</span> <strong id="in-play-count">0</strong></button>
           <button id="discard-button" type="button" title="Browse your discard pile"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Discard</span> <strong id="discard-count">0</strong></button>
-          <span id="storage-pile" title="Storage pile: played Capacity Modules stay here.">Storage <strong id="storage-pile-count">0</strong></span>
+        </div>
+        <!-- Rules #storage-pile: played Capacity Modules, on the mat where the +4 token was (its
+             former classes and ids keep that placement; the words are hidden on the desktop table). -->
+        <div class="storage-upgrade-control">
+          <button class="button storage-upgrade-button" id="storage-pile" type="button" aria-label="Storage pile: 0 Capacity Modules" aria-describedby="storage-upgrade-help"><b aria-hidden="true">▤</b><strong id="storage-pile-count">0</strong><span id="storage-upgrade-cost">in Storage</span></button>
+          <p class="muted" id="storage-upgrade-help">Storage pile: played Capacity Modules stay here for good. Your next one costs 1 + this count, of each resource.</p>
         </div>
         <details class="resource-tools" id="resource-tools">
           <summary>Bank &amp; discards</summary>
