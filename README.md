@@ -1,6 +1,6 @@
-# Drawing Board
+# Galactic Reach
 
-A Rust workbench for browser-based board-game playtests. The first experiment is **Voidwright**, a sci-fi deck builder inspired by Dominion: build an engine of ships and technology, acquire colonies, and finish with the most influence.
+**Galactic Reach** is a four-faction strategy game in playtest: command your faction, build your fleet, and chart a path to the stars. It runs in the browser against computer-controlled rivals or with friends at a shared table, on a Rust and SQLite server that also hosts accounts, invitations and a rated AI arena.
 
 ## Run locally
 
@@ -11,38 +11,28 @@ rustup target add wasm32-unknown-unknown
 ./scripts/dev.sh
 ```
 
-Open **http://127.0.0.1:3000** for the shared game library. Create an account under **Your account**, save its private recovery key, then open Voidwright tables or create AI players in **AI arena**. Galactic Reach can be played without signing in. The build script installs the pinned `wasm-bindgen` CLI under the ignored `.tools/` directory on first use. No Node runtime or frontend JavaScript framework is required to host the games. The server embeds QuickJS for Galactic Reach’s shared JavaScript rules. Node is used only for the browser-rule regression check.
+Open **http://127.0.0.1:3000** for the Galactic Reach home. Play as a guest without signing in, or create an account under **Your account**, save its private recovery key, then create tables in **Your tables** or AI players in **AI arena**. The build script installs the pinned `wasm-bindgen` CLI under the ignored `.tools/` directory on first use. No Node runtime or frontend JavaScript framework is required to host the games. The server embeds QuickJS for Galactic Reach’s shared JavaScript rules. Node is used only for the browser-rule regression check.
 
 For two human players on one computer, use separate browser profiles or a private window. Share the table invitation, join before launch, then have the host launch. Recovery keys and Nido identities return to the same account across sign-ins; browser sessions expire after 24 hours. The legacy development and preview login forms still create temporary identities.
 
-## Additional prototypes
+## The game
 
-[`prototypes/galactic-reach`](prototypes/galactic-reach) contains **Galactic Reach**, a self-contained browser prototype for a four-faction strategy game. It currently supports one human player against three computer-controlled factions and saves progress in the browser. The shared library links to it at `/galactic-reach/`; Voidwright is at `/voidwright/`. The Streamlined Reach experiment uses rules 12.17 and separate v11 browser keys; 4.9, 5.10, 6.11, 7.12, 8.13, 9.14, and 10.15 account tables retain their archived engines. See the prototype README for local play instructions and scope.
+[`prototypes/galactic-reach`](prototypes/galactic-reach) contains **Galactic Reach**, a self-contained browser prototype for a four-faction strategy game. It supports one human player against three computer-controlled factions, saved in the browser, and account tables shared with friends. The home page links to it at `/galactic-reach/`. The Streamlined Reach experiment uses rules 12.17 and separate v11 browser keys; 4.9, 5.10, 6.11, 7.12, 8.13, 9.14, and 10.15 account tables retain their archived engines. See the prototype README for local play instructions and scope.
 
 ## Included
 
-- Shared game library, persistent human profiles, recovery-key login, session revocation, and owned AI accounts.
+- Galactic Reach home, persistent human profiles, recovery-key login, session revocation, and owned AI accounts.
 - Reusable game/player traits, seven reference AI policies across two adapters, authoritative matches with rotating seats, and persistent per-lab Elo. See [game platform](docs/game-platform.md).
 - The current prototype/platform/experiment dependency graph and follow-up PR plan are tracked in the [playtest roadmap](docs/playtest-roadmap.md).
 - Optional local release deployment through Tailscale Funnel. See [local HTTPS hosting](docs/local-hosting.md).
 - Invite-only mode for a public host: Nido sign-in plus an administrator's invitation. See [invite-only hosting](docs/invite-only.md).
-
-- Yew Rust/WebAssembly UI: lobby, saved tables, private invitations, hand, market, collection, rules, and flight log.
 - Axum HTTP server with SQLite persistence, cookie sessions, membership checks, origin protection, and revision-checked commands.
-- Deterministic Rust rules engine, 18 cards, 2–4 players, practice bot, configurable 10–50-round cap, shared supply, reshuffles, and final scoring.
-- Choose six market piles from twelve action cards, use one of three market presets, and pick a shared starting deck for the table; see [cards and deck selection](docs/cards.md).
 - Nido passkey sign-in with live Stellar testnet wallet verification; see [Nido setup](docs/nido-auth.md).
 - Atomic snapshots and private, hash-linked command records for future replay tooling. These records are not a ZKP or a trustless consensus system.
 
 ## Rules
 
 Galactic Reach has a [canonical 12.17 rulebook](prototypes/galactic-reach/rulebook.html), served at `/galactic-reach/rulebook.html` on the live site and each PR preview. Read the [maintenance guide](docs/rules/README.md) before making changes; every gameplay-logic change must update the rulebook in the same PR. The [interactive tutorial](docs/rules/tutorial.md) is planned after rules review.
-
-### Voidwright
-
-Each player starts with the host's ten-card preset, shuffled, and draws 5. Classic (the default) has 7 Credits and 3 Outposts; Explorer substitutes one Credit for a Survey vessel; Industrial substitutes two Credits for two Reactors. Everyone, including Kepler, uses the same preset. Each turn grants 1 action and 1 buy. Play actions first. Playing any resource, playing all resources, or buying a card moves to the buy phase. Spend credits on supply cards; acquired cards go to discard. End the turn to discard the remaining hand and played cards, then draw 5, shuffling the discard pile if necessary. Unspent resources, actions, and buys expire.
-
-Colonies cannot be played; they score influence across your entire collection: Outpost 1, Colony 3, Metropolis 6. Influence is public in this prototype. The game finishes at the end of the turn when the Metropolis pile is empty, any 3 supply piles are empty, or all players have completed the configured number of turns. Most influence wins; tied players share victory. Salvage Drone automatically scraps a Credit from the remaining hand, otherwise an Outpost, if available.
 
 ## Build and verify
 
@@ -84,7 +74,11 @@ For a shared deployment, serve through HTTPS, set `APP_ORIGIN` to its exact publ
 
 The server currently knows the decks and controls shuffle entropy. Other players cannot retrieve your hand or draw order through the API, but this is **not** cryptographic privacy from the server. There is no Soroban deployment or ZKP implementation yet. [Architecture and migration notes](docs/architecture.md) explain what can be reused and what needs a different protocol.
 
-Both Voidwright and Galactic Reach implement the shared game/AI contract and run authoritative, rated matches in the arena. Choose a game there to create its AI roster and run a series. Galactic Reach reuses its browser rules inside the server and retains archived v4/v5 engines for old tables and replays. Human server tables and the Practice action currently belong to Voidwright. There is not yet a visual card editor or arbitrary game plugin system. Polling updates the table every 1.8 seconds. The prototype does not yet provide spectators, disconnect timeouts, game deletion, turn timers, or public matchmaking. Nido sign-in currently supports single-passkey admin authority on the pinned testnet implementation.
+Galactic Reach implements the shared game/AI contract and runs authoritative, rated matches in the arena. Galactic Reach reuses its browser rules inside the server and retains archived engines for old tables and replays. There is not yet a visual card editor or arbitrary game plugin system. Polling updates the table every 1.8 seconds. The prototype does not yet provide spectators, disconnect timeouts, game deletion, turn timers, or public matchmaking. Nido sign-in currently supports single-passkey admin authority on the pinned testnet implementation.
+
+## Example game: Voidwright
+
+The platform keeps a second implementation of the game/AI contract, **Voidwright**, as its example game: a deterministic Rust deck builder (`crates/game`) with a Yew/WebAssembly UI (`crates/web`), revision-checked human tables under `/api/games`, and a rated arena adapter. Players are not offered it: the home page, tables and AI arena show Galactic Reach only, while `/voidwright/`, its API routes, its tests and the container smoke check keep it working. Its rules and card setup are in [Voidwright cards and rules](docs/cards.md).
 
 ## Pull request previews
 
