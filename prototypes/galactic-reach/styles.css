@@ -2486,6 +2486,15 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (max-width: 599px), (max-height: 599px) {
   body.my-turn #hand-row > .game-card { box-shadow: 0 0 0 2px #f2c94ccc, 0 0 12px 2px #f2c94c55 !important; }
 }
+/* Portrait (an iPad held upright): the same move. The phases sit left of the turn's buttons, and
+   the turn prompt with Fleet/Trade lies between the comms card and your mat; the map takes the
+   rows they left at the top. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  .phase-stepper { grid-column: 1 / -1 !important; grid-row: 7 !important; justify-self: start !important; align-self: center !important; }
+  .log-panel { grid-column: 1 !important; }
+  .board-toolbar { grid-column: 2 !important; grid-row: 6 !important; align-self: start !important; margin: 0 !important; }
+  .console-nav { grid-column: 2 !important; grid-row: 6 !important; justify-self: start !important; align-self: end !important; margin: 0 0 6px 4px !important; }
+}
 
 /* ==== Supply cards read like cards without pointing at them: a folded market card shows as much
    of its effect, wrapped, as its height allows (one to five lines, chosen by the card's own
