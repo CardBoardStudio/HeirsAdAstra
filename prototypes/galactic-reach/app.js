@@ -4652,9 +4652,12 @@ function createGalacticReach(options = {}) {
   function fitTable() {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
     const root = document.documentElement, shell = document.querySelector('.app-shell');
-    if (!tableLayout() || !shell) { ['--table-zoom','--table-w','--table-h'].forEach(name => root.style.removeProperty(name)); return; }
+    if (!tableLayout() || !shell) { ['--table-zoom','--table-w','--table-h'].forEach(name => root.style.removeProperty(name)); root.classList.remove('table-wide'); return; }
     const width = window.innerWidth, height = Math.max(1, window.innerHeight - Math.max(0, shell.getBoundingClientRect().top));
     const [tableW, tableH] = tableSize(width, height);
+    // Wide tables have room for supply cards in real card proportions; squarer ones keep wider
+    // cards so the map stays big.
+    root.classList.toggle('table-wide', tableW === 1600);
     let zoom = Math.min(width / tableW, height / tableH), layoutW = width / zoom;
     const apply = () => {
       root.style.setProperty('--table-zoom', String(zoom));
