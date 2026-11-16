@@ -1,6 +1,6 @@
 # Accounts, game adapters, and AI players
 
-The shared library at `/` links to Galactic Reach at `/galactic-reach/` and Voidwright at `/voidwright/`. `/lab/` is an alias for the library. Galactic Reach rules are versioned: this experiment creates 18.23 games, with separate v18 browser storage; earlier tables through 17.22 retain their original engines. Switching between Render, localhost, and Tailscale creates separate browser storage. Old `/#table/<id>` links forward to Voidwright.
+The Galactic Reach home at `/` links to the game at `/galactic-reach/`. Voidwright, the platform's example game, stays at `/voidwright/` but the home page does not offer it. `/lab/` is an alias for the home page. Galactic Reach rules are versioned: this experiment creates 18.23 games, with separate v18 browser storage; earlier tables through 17.22 retain their original engines. Switching between Render, localhost, and Tailscale creates separate browser storage. Old `/#table/<id>` links forward to Voidwright.
 
 ## Account lifecycle
 
@@ -22,7 +22,7 @@ Invitation validation, account creation, role assignment, usage counting, and se
 
 ## Named tables
 
-**Your tables** (`/#tables`) lists both games for the signed-in account. Create a named Galactic Reach solo table or a Voidwright table (Kepler practice or friends), then reopen it later from the shelf. Existing Voidwright tables appear automatically. Friends need their own accounts before using a Voidwright table link. Sign-in preserves a direct table destination.
+**Your tables** (`/#tables`) lists the signed-in account's Galactic Reach tables. Create a named Galactic Reach table, then reopen it later from the list. Voidwright tables are created only through the API and are not listed; their links keep working. Friends need their own accounts before using a Voidwright table link. Sign-in preserves a direct table destination.
 
 `GET /api/tables` returns summaries without private saves. `POST /api/tables` accepts `game`, `name`, and Voidwright's `practice`/`round_limit` options. Voidwright keeps its existing authoritative `/api/games` routes. Galactic Reach links use `/galactic-reach/?table=<id>` and private `GET /api/tables/<id>` / `POST /api/tables/<id>/save` routes. Other accounts receive 404. Each account can hold 100 Galactic Reach tables, each with a 1 MiB save limit.
 

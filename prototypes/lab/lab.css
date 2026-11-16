@@ -131,8 +131,8 @@ small {
   height: 40px;
   display: grid;
   place-items: center;
-  font-size: 21px;
-  letter-spacing: -0.08em;
+  font-size: 17px;
+  letter-spacing: -0.04em;
 }
 .nav-label {
   margin: 55px 12px 13px;
@@ -1033,23 +1033,10 @@ dialog > .primary {
     }
   }
 }
-.practice-link {
-  display: block;
-  border: 0;
-  padding: 0;
-  background: none;
-  color: var(--cyan);
-  font-size: 10px;
-  margin-top: 7px;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
 main:focus {
   outline: none;
 }
 
-.arena-picker { margin-bottom: 24px; }
-.arena-picker select { max-width: 440px; }
 .series summary { overflow-wrap: anywhere; }
 
 .nido-signin { display:flex; align-items:center; justify-content:space-between; gap:24px; margin-bottom:24px; border-color:var(--cyan); }

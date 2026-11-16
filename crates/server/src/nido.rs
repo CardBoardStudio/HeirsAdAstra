@@ -198,7 +198,7 @@ async fn complete(
         // Verify eligibility before asking the user for a passkey approval.
         app.nido.keys(&account).await?;
         let message = format!(
-            "Sign in to Drawing Board\nOrigin: {}\nNetwork: Test SDF Network ; September 2015\nAccount: {}\nNonce: {}\nExpires: {}\nThis proves your identity only. No transaction or spending permission.",
+            "Sign in to Galactic Reach\nOrigin: {}\nNetwork: Test SDF Network ; September 2015\nAccount: {}\nNonce: {}\nExpires: {}\nThis proves your identity only. No transaction or spending permission.",
             app.origin, account, nonce, expires
         );
         let db = app.store.0.lock().map_err(internal)?;
