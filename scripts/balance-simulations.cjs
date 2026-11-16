@@ -1,7 +1,10 @@
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+const crypto=require('node:crypto');
+const {SimulationArchive,instrumentSource}=require('./lib/simulation-archive.cjs');
 
+const RUNNER_SOURCE=fs.readFileSync(__filename,'utf8');
 const sourcePath = path.resolve(__dirname, '../prototypes/galactic-reach/app.js');
 const original = fs.readFileSync(sourcePath, 'utf8');
 const strategies = ['military', 'economy', 'expansion'];
@@ -19,7 +22,7 @@ function replaceOrFail(source, search, replacement, label) {
   return source.replace(search, replacement);
 }
 
-function makeGame(seed, seatStrategies, fleetProduction) {
+function makeGame(seed, seatStrategies, fleetProduction, metadata={}) {
   let source = original;
   source = replaceOrFail(
     source,
@@ -99,6 +102,7 @@ function makeGame(seed, seatStrategies, fleetProduction) {
   beginRound();
   globalThis.__gr = {
     getState: () => state,
+    getCounters: () => ({turnSerial,cardSerial}),
     step: () => {
       if (state.winner !== null) return;
       if (state.pendingCombat) { const seat=combatActor(); applyCombatAction(seat,chooseCombatAction(combatView(seat),combatActions(seat))); return; }
@@ -121,18 +125,23 @@ function makeGame(seed, seatStrategies, fleetProduction) {
     `\n${bootstrap}\nglobalThis.__gr = createGalacticReach({ headless: true });`
   );
 
+  source=instrumentSource(source,'globalThis.__simulationArchiveEvent');
+  const archive=new SimulationArchive({metadata:{kind:'balance',seed,seatStrategies,fleetProduction,target:40,maxRound:24,maxSteps:20000,...metadata},sources:{'engine.js':source,'balance-runner.cjs':RUNNER_SOURCE,'original-app.js':original,'adapter.js':fs.readFileSync(path.resolve(__dirname,'../prototypes/galactic-reach/adapter.js'),'utf8')}});
   const math = Object.create(Math);
-  math.random = seededRandom(seed);
+  math.random = archive.random(seededRandom(seed));
   const context = {
     Math: math,
+    __simulationArchiveEvent:event=>archive.event(event),
     console: { log: () => {}, warn: () => {}, error: () => {} },
     setTimeout: () => 0,
     clearTimeout: () => {},
     localStorage: { getItem: () => null, setItem: () => {}, removeItem: () => {} }
   };
   vm.createContext(context);
-  vm.runInContext(source, context, { filename: sourcePath });
-  return context.__gr;
+  try{
+    vm.runInContext(source, context, { filename: sourcePath });
+    const game=context.__gr;archive.attach(game.getState,{kind:'balance'},game.getCounters);const step=game.step;game.step=()=>archive.invoke({method:'step',actor:game.getState().activePlayer},step);game.archive=archive;return game;
+  }catch(error){archive.finish({reason:'error',incomplete:true,error:{message:error.message,stack:error.stack}});throw error;}
 }
 
 function seatAssignments() {
@@ -154,20 +163,20 @@ function pct(value, total) {
   return total ? Math.round(value * 1000 / total) / 10 : 0;
 }
 
-function runBatch(label, fleetProduction, gamesPerAssignment = 40) {
+function runBatch(label, fleetProduction, gamesPerAssignment = 40,runId=crypto.randomUUID()) {
   const games = [];
   const assignments = seatAssignments();
   assignments.forEach((assignment, assignmentIndex) => {
     for (let repetition = 0; repetition < gamesPerAssignment; repetition += 1) {
       const seed = 20261011 + assignmentIndex * 100003 + repetition * 7919;
-      const game = makeGame(seed, assignment, fleetProduction);
+      const game = makeGame(seed, assignment, fleetProduction,{runId,label,assignmentIndex,repetition,gamesPerAssignment});
       let steps = 0;
       while (game.getState().winner === null && game.getState().round <= 24 && steps < 20000) {
         game.step();
         steps += 1;
       }
       const state = game.getState();
-      games.push({
+      const result={archive:game.archive.directory,seed,assignmentIndex,repetition,
         winner: state.winner,
         completed: state.winner !== null,
         rounds: state.winner === null ? 24 : state.round,
@@ -187,7 +196,9 @@ function runBatch(label, fleetProduction, gamesPerAssignment = 40) {
           conquests: state.sim.conquests[seat]
         })),
         combats: state.sim.combats
-      });
+      };
+      game.archive.finish({reason:result.completed?'victory':'limit',incomplete:!result.completed,summary:result});
+      games.push(result);
     }
   });
 
@@ -213,7 +224,7 @@ function runBatch(label, fleetProduction, gamesPerAssignment = 40) {
   });
 
   return {
-    label,
+    label,runId,archives:games.map(g=>g.archive),
     games: games.length,
     completed: completed.length,
     completionRate: pct(completed.length, games.length),
@@ -224,9 +235,15 @@ function runBatch(label, fleetProduction, gamesPerAssignment = 40) {
   };
 }
 
+if(require.main===module){
 const gamesPerAssignment = Number(process.argv[2] || 40);
+if(!Number.isInteger(gamesPerAssignment)||gamesPerAssignment<1)throw Error('gamesPerAssignment must be a positive integer');
+const runId=crypto.randomUUID();
 console.log(JSON.stringify({
-  gamesPerAssignment,
-  baseline: runBatch('without fleet production', false, gamesPerAssignment),
-  current: runBatch('with fleet production', true, gamesPerAssignment)
+  gamesPerAssignment,runId,
+  baseline: runBatch('without fleet production', false, gamesPerAssignment,runId),
+  current: runBatch('with fleet production', true, gamesPerAssignment,runId)
 }, null, 2));
+
+}
+module.exports={makeGame,runBatch};
