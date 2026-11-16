@@ -36,3 +36,4 @@ trusted-signers.local.json
 
 # Private local HTTPS host: credentials, persistent data, launchd logs
 .local/
+/card-evolution-runs/
