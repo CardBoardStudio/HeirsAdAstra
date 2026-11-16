@@ -4889,7 +4889,8 @@ function createGalacticReach(options = {}) {
 
   // The map fills the space the other pieces leave: on a landscape table it may reach into the
   // left strip, as long as no hex runs under the Prestige track, the round's phases, the comms
-  // card, the fleets, the map tools or the short map key, which lie in the hexagon's empty corners.
+  // card, the fleets, the notice spot below them, the map tools or the short map key, which lie in
+  // the hexagon's empty corners.
   // Hex positions scale with the map's width, so they are measured once and the largest width
   // that clears every corner piece is found by scanning down from the largest.
   let fitMapLog = null;
@@ -4909,7 +4910,7 @@ function createGalacticReach(options = {}) {
     // An open comms log lies over the map on purpose; the map keeps clear of the closed card.
     if (!$('.log-panel.open')) fitMapLog = rect($('.log-panel'));
     const log = fitMapLog;
-    const blocks = [track, log, rect($('.phase-stepper')), rect($('#fleet-glance')), rect($('.map-tools')), rect($('#map-legend-corner'))].filter(Boolean);
+    const blocks = [track, log, rect($('.phase-stepper')), rect($('#fleet-glance')), noticeSpot, rect($('.map-tools')), rect($('#map-legend-corner'))].filter(Boolean);
     const clear = (width, top) => {
       const left = box.right - width;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
@@ -4967,6 +4968,9 @@ function createGalacticReach(options = {}) {
   // The left column: each piece lies under the one before it, in order (track, round, comms,
   // fleets).
   const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel', '#fleet-glance'];
+  // The notice spot under the stack, in table units (the toast's size, see .toast).
+  const NOTICE_W = 236, NOTICE_H = 104;
+  let noticeSpot = null;
   function stackLeft(depth = 0) {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function' || !document.documentElement?.style) return;
     const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches;
@@ -4983,9 +4987,10 @@ function createGalacticReach(options = {}) {
       if (h) top += h + 8;
     }
     const root = document.documentElement, legend = $('#map-legend-corner'), last = $(LEFT_STACK.at(-1));
-    // Notices lie over the top of the map key: the map keeps clear of it, and your hand is below.
-    const end = legend?.getBoundingClientRect?.();
-    if (landscape && end?.height) root.style.setProperty('--notice-top', `${Math.round(end.top)}px`);
+    // Notices have a spot of their own just under the stack; the map keeps clear of it (fitMap).
+    const end = last?.getBoundingClientRect?.();
+    noticeSpot = landscape && end?.height ? [Math.min(end.left, 12 * zoom), end.bottom + 8 * zoom, end.left + NOTICE_W * zoom, end.bottom + (8 + NOTICE_H) * zoom] : null;
+    if (noticeSpot) root.style.setProperty('--notice-top', `${Math.round(noticeSpot[1])}px`);
     else root.style.removeProperty('--notice-top');
     // When the stack would run into the map key at the column's foot, tighten it once (the latest
     // comms entry only) and stack again.

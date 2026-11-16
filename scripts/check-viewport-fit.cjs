@@ -378,14 +378,20 @@ const MEASURE = `(() => {
   const region = document.querySelector('.board-map-region'), board = document.querySelector('#galaxy-board');
   if (!phone && region && board && shown(board) && !document.querySelector('.board-stage.map-zoomed')) {
     const r = region.getBoundingClientRect(), b = board.getBoundingClientRect(), limit = Math.min(r.width, r.height * 1.0543);
+    // The notice spot under the left-hand panels counts as a panel; an open comms log lies over the
+    // map, which keeps the size it has beside the closed card, so that state is not measured.
     if (matchMedia('(orientation: landscape)').matches) {
-      const hexes = [...board.querySelectorAll('.hex')].map(hex => hex.getBoundingClientRect());
-      const panels = [...document.querySelectorAll('#prestige-track, .phase-stepper, .log-panel:not(.open), #fleet-glance, .map-tools, #map-legend-corner')].filter(shown).map(e => e.getBoundingClientRect());
-      const apart = (a, o) => Math.max(o.left - a.right, a.left - o.right, o.top - a.bottom, a.top - o.bottom, 0);
-      const gaps = [Math.min(...hexes.map(h => h.left)) - r.left, Math.min(...hexes.map(h => h.top)) - r.top, r.bottom - Math.max(...hexes.map(h => h.bottom)),
-        ...panels.flatMap(o => hexes.map(h => apart(h, o)))];
-      const snug = Math.min(...gaps), slack = Math.max(16, 0.03 * b.width);
-      if (!(snug <= slack)) problems.push('map not snug: ' + Math.round(snug) + 'px from the nearest panel or edge (allowed ' + Math.round(slack) + 'px)');
+      if (!document.querySelector('.log-panel.open')) {
+        const hexes = [...board.querySelectorAll('.hex')].map(hex => hex.getBoundingClientRect());
+        const panels = [...document.querySelectorAll('#prestige-track, .phase-stepper, .log-panel, #fleet-glance, .map-tools, #map-legend-corner')].filter(shown).map(e => e.getBoundingClientRect());
+        const style = document.documentElement.style, zoom = Number(style.getPropertyValue('--table-zoom')) || 1, noticeTop = parseFloat(style.getPropertyValue('--notice-top'));
+        if (noticeTop) panels.push({ left: 0, top: noticeTop, right: 248 * zoom, bottom: noticeTop + 104 * zoom });
+        const apart = (h, o) => Math.max(o.left - h.right, h.left - o.right, o.top - h.bottom, h.top - o.bottom, 0);
+        const gaps = [Math.min(...hexes.map(h => h.left)) - r.left, Math.min(...hexes.map(h => h.top)) - r.top, r.bottom - Math.max(...hexes.map(h => h.bottom)),
+          ...panels.flatMap(o => hexes.map(h => apart(h, o)))];
+        const snug = Math.min(...gaps), slack = Math.max(16, 0.03 * b.width);
+        if (!(snug <= slack)) problems.push('map not snug: ' + Math.round(snug) + 'px from the nearest panel or edge (allowed ' + Math.round(slack) + 'px)');
+      }
     } else if (b.width < 0.85 * limit) problems.push('map too small: ' + Math.round(b.width) + 'px of a ' + Math.round(limit) + 'px space');
   }
   // Supply pieces never lie on one another (a raised or open piece may).
