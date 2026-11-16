@@ -1,4 +1,5 @@
-// Exercises .github/rules-contract.json through the shared review-conventions validator.
+// Exercises .github/rules-contract.json and .github/review-conventions.json through the
+// shared review-conventions validator, and checks its pin is the same everywhere.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -8,7 +9,7 @@ const { CONFIG } = require('./check-rules-contract.cjs');
 const RULEBOOK = 'prototypes/galactic-reach/rulebook.html';
 
 (async () => {
-  const { loadContext, checkBody } = await import(pathToFileURL(path.join(home(), 'src', 'core.mjs')).href);
+  const { loadContext, checkBody, checkCommitMessage } = await import(pathToFileURL(path.join(home(), 'src', 'core.mjs')).href);
   const ctx = await loadContext(ROOT, CONFIG);
   const body = '## Rules grounding\n[Round](prototypes/galactic-reach/rulebook.html#round): preserve alternating operations.\n\n## Gameplay impact\nNone: presentation changes preserve all actions and saved-state meaning.\n\n## Verification\nChecks run.';
   const run = (files, text = body) => checkBody({ body: text, files }, ctx).map(f => f.rule);
@@ -28,12 +29,22 @@ const RULEBOOK = 'prototypes/galactic-reach/rulebook.html';
   assert.deepEqual(run(['prototypes/galactic-reach/app.js', RULEBOOK], unrelated), ['rule-bearing-grounding']);
   assert.deepEqual(run([], body.replace(/(## \w+[\w ]*\n)([^#]+)/g, '$1<!-- $2 -->\n')), ['rules-grounding', 'gameplay-impact'], 'Unfilled template comments do not count');
 
-  // One pinned commit of the shared validator, everywhere it is named.
+  // The advisory config (.github/review-conventions.json): this repository's
+  // "Area: sentence" subjects, its template's sections and its trailer spelling.
+  const advisory = await loadContext(ROOT, '.github/review-conventions.json');
+  for (const heading of ['Rules grounding', 'Gameplay impact', 'How to review', 'Decisions for review']) assert(advisory.templates.default.includes(heading), heading);
+  const commit = message => checkCommitMessage(message, advisory).map(f => f.rule);
+  assert.deepEqual(commit('Galactic Reach: Harbors refit Fleets'), [], 'A small commit needs only its subject');
+  assert.deepEqual(commit('Galactic Reach: Harbors refit Fleets\n\nWhy: fleets stranded far from home.\n\nRefs: #57\nBreaking-Change: saved fleets gain hull.'), []);
+  assert.deepEqual(commit('Harbors refit Fleets'), ['header-format']);
+  assert.deepEqual(commit('Galactic Reach: Harbors refit Fleets\n\nFleets were stranded.'), ['body-why']);
+  assert.deepEqual(commit('Galactic Reach: Harbors refit Fleets\n\nWhy: x.\n\nBREAKING CHANGE: y'), ['trailer-breaking']);
+
+  // One pinned ref of the shared validator, everywhere it is named.
   const workflow = name => fs.readFileSync(path.join(ROOT, '.github', 'workflows', name), 'utf8');
+  assert.equal(workflow('review-conventions.yml').match(/uses: (\S+)/)?.[1], `${REPOSITORY}/.github/workflows/review-conventions.yml@${PIN}`, 'The Review conventions workflow calls the pinned ref');
   assert(workflow('rules.yml').includes(`repository: ${REPOSITORY}`) && workflow('rules.yml').includes(`ref: ${PIN}`), 'rules.yml checks out the pinned validator');
-  console.log('Rules contract tests passed: paired edits, unrelated work, invalid anchors, missing declarations, and renamed engine paths.');
+  console.log('Rules contract tests passed: paired edits, unrelated work, invalid anchors, missing declarations, renamed engine paths, and the advisory config.');
 })().catch(error => { console.error(error); process.exitCode = 1; });
 // Release tooling (docs/release.md) runs here too, so CI covers it without a workflow edit.
 require('./test-release.cjs');
-// Review guidance (PR body sections and commit messages) runs here too.
-require('./test-review-guidance.cjs');

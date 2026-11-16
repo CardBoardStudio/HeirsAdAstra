@@ -20,7 +20,5 @@ if (require.main === module) {
     ...(base ? ['--base', base] : []),
     ...(bodyIndex >= 0 ? ['--body-file', path.resolve(args[bodyIndex + 1])] : [])]);
   run([path.join(__dirname, 'release.cjs'), 'check']);
-  // Review guidance (PR body + commit messages) reports warnings; its own MODE decides whether it fails.
-  run([path.join(__dirname, 'check-review-guidance.cjs'), ...args]);
 }
 module.exports = { CONFIG };
