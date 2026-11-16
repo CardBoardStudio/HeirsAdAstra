@@ -25,7 +25,7 @@ const GAME_DIR = path.join(ROOT, 'prototypes/galactic-reach');
 const LAB_DIR = path.join(ROOT, 'prototypes/lab');
 // The three reference sizes, plus common laptop and desktop sizes for the Buy states.
 const VIEWPORTS = [[1280, 720], [1440, 900], [1920, 1080]];
-const EXTRA_VIEWPORTS = [[1366, 768], [1680, 1050], [2000, 1118], [2560, 1440]];
+const EXTRA_VIEWPORTS = [[1366, 768], [1680, 1050], [2000, 1075], [2000, 1118], [2560, 1440]];
 // Desktop windows taller than 16:9 (nearly square, and taller than wide): every case runs there.
 const TALL_VIEWPORTS = [[1440, 1200], [1600, 1600], [1800, 2000]];
 // A 1440x900 window at browser zoom 67%, 125%, 150% and 200%: the page sees a smaller or larger
@@ -185,14 +185,16 @@ const CASES = [
   // The first and last hand cards raised: they rise over the map, clear of the bank and the piles.
   { name: 'operations, first hand card raised (bank open)', save: midGameState(), focus: '#hand-row .game-card:first-child button' },
   { name: 'operations, last hand card raised', save: midGameState(), focus: '#hand-row .game-card:last-child button' },
-  { name: 'operations, inspect view (pointed-at hand card)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), hover: '#hand-row .game-card:nth-child(3)', expect: 'inspect' },
-  { name: 'operations, inspect view (last of 8 cards)', save: operationsState(longHand), hover: '#hand-row .game-card:last-child', expect: 'inspect' },
+  { name: 'operations, pointed-at hand card opens whole', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), hover: '#hand-row .game-card:nth-child(3)', expect: 'inspect' },
+  { name: 'operations, pointed-at last of 8 cards opens whole', save: operationsState(longHand), hover: '#hand-row .game-card:last-child', expect: 'inspect' },
   { name: 'operations, drag Move onto your units', save: withFleet(operationsState(['move', 'construct', 'move'])), drag: '#hand-row .game-card[data-order="move"]', expect: 'dragged', devices: 'tablet' },
   { name: 'operations, drag Construct onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', expect: 'built' },
   { name: 'operations, drag a card onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted', devices: 'tablet' },
   // A raised card is mostly its name and buttons: picking it up by a button must work too.
   { name: 'operations, drag a card by its Convert button onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-resource-card]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
   { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
+  // Use order aims the card exactly as starting a drag does; clicking a lit hex plays it there.
+  { name: 'operations, Use order aims like a drag', save: operationsState(['construct', 'move']), click: ['#hand-row .game-card[data-order="construct"] [data-order-card]'], expect: 'aimed', devices: 'tablet' },
   { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
   { name: 'map pieces on every terrain', save: piecesState() },
   // Trading with the bank on the mat: drag (mouse, and touch on iPads), and tap then tap.
@@ -378,21 +380,49 @@ const MEASURE = `(() => {
   const region = document.querySelector('.board-map-region'), board = document.querySelector('#galaxy-board');
   if (!phone && region && board && shown(board) && !document.querySelector('.board-stage.map-zoomed')) {
     const r = region.getBoundingClientRect(), b = board.getBoundingClientRect(), limit = Math.min(r.width, r.height * 1.0543);
-    // The notice spot under the left-hand panels counts as a panel; an open comms log lies over the
-    // map, which keeps the size it has beside the closed card, so that state is not measured.
+    // An open comms log lies over the map, which keeps the size it has beside the closed card, so
+    // that state is not measured.
     if (matchMedia('(orientation: landscape)').matches) {
       if (!document.querySelector('.log-panel.open')) {
         const hexes = [...board.querySelectorAll('.hex')].map(hex => hex.getBoundingClientRect());
-        const panels = [...document.querySelectorAll('#prestige-track, .phase-stepper, .log-panel, #fleet-glance, .map-tools, #map-legend-corner')].filter(shown).map(e => e.getBoundingClientRect());
-        const style = document.documentElement.style, zoom = Number(style.getPropertyValue('--table-zoom')) || 1, noticeTop = parseFloat(style.getPropertyValue('--notice-top'));
-        if (noticeTop) panels.push({ left: 0, top: noticeTop, right: 248 * zoom, bottom: noticeTop + 104 * zoom });
+        const panels = [...document.querySelectorAll('#prestige-track, .phase-stepper, .log-panel, #fleet-glance, .map-tools, #map-legend-corner, #hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].filter(shown);
         const apart = (h, o) => Math.max(o.left - h.right, h.left - o.right, o.top - h.bottom, h.top - o.bottom, 0);
-        const gaps = [Math.min(...hexes.map(h => h.left)) - r.left, Math.min(...hexes.map(h => h.top)) - r.top, r.bottom - Math.max(...hexes.map(h => h.bottom)),
-          ...panels.flatMap(o => hexes.map(h => apart(h, o)))];
-        const snug = Math.min(...gaps), slack = Math.max(16, 0.03 * b.width);
-        if (!(snug <= slack)) problems.push('map not snug: ' + Math.round(snug) + 'px from the nearest panel or edge (allowed ' + Math.round(slack) + 'px)');
+        const gaps = [['region left', Math.min(...hexes.map(h => h.left)) - r.left], ['region top', Math.min(...hexes.map(h => h.top)) - r.top], ['region bottom', r.bottom - Math.max(...hexes.map(h => h.bottom))],
+          ...panels.map(e => { const o = e.getBoundingClientRect(); return [label(e).slice(0, 40), Math.min(...hexes.map(h => apart(h, o)))]; })];
+        // The fit keeps a 6-unit gap and searches sizes in 1% steps (and a few heights), so "snug"
+        // allows that gap, two steps and a few pixels.
+        const zoomNow = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
+        const [near, snug] = gaps.reduce((a, g) => g[1] < a[1] ? g : a), slack = 6 * zoomNow + 0.02 * b.width + 6;
+        if (!(snug <= slack)) problems.push('map not snug: ' + Math.round(snug) + 'px from the nearest panel or edge, ' + near + ' (allowed ' + Math.round(slack) + 'px)' + ' ' + JSON.stringify(gaps.map(g => [g[0].slice(0, 18), Math.round(g[1])])) + ' region ' + [r.left, r.top, r.width, r.height].map(Math.round) + ' board ' + [b.left, b.top, b.width, b.height].map(Math.round));
       }
     } else if (b.width < 0.85 * limit) problems.push('map too small: ' + Math.round(b.width) + 'px of a ' + Math.round(limit) + 'px space');
+  }
+  // No wasted felt on a wide desktop table: the largest rectangle of table not covered by any piece
+  // or hex stays under 4% of the window (measured on an 8px grid).
+  // Only the table during a game is measured (not a waiting room, nor a shared table's top bar).
+  const tableArea = document.querySelector('.app-shell')?.getBoundingClientRect();
+  if (!phone && !modal && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, #fleet-panel.active, .board-stage.map-zoomed')) {
+    const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .phase-stepper, .log-panel, #fleet-glance, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
+    const cell = 8, cols = Math.ceil(innerWidth / cell), rows = Math.ceil(innerHeight / cell), heights = new Array(cols).fill(0);
+    const covered = new Uint8Array(cols * rows);
+    // Everything outside the table area counts as covered.
+    pieces.push(...[[0, 0, innerWidth, tableArea.top], [0, tableArea.bottom, innerWidth, innerHeight], [0, 0, tableArea.left, innerHeight], [tableArea.right, 0, innerWidth, innerHeight]].map(([left, top, right, bottom]) => ({ left, top, right, bottom })));
+    for (const r of pieces) for (let y = Math.max(0, Math.floor(r.top / cell)); y < Math.min(rows, Math.ceil(r.bottom / cell)); y++) for (let x = Math.max(0, Math.floor(r.left / cell)); x < Math.min(cols, Math.ceil(r.right / cell)); x++) covered[y * cols + x] = 1;
+    let best = 0, at = null;
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) heights[x] = covered[y * cols + x] ? 0 : heights[x] + 1;
+      const stack = [];
+      for (let x = 0; x <= cols; x++) {
+        const h = x < cols ? heights[x] : 0;
+        while (stack.length && heights[stack.at(-1)] >= h) {
+          const top = stack.pop(), width = stack.length ? x - stack.at(-1) - 1 : x, area = heights[top] * width;
+          if (area > best) { best = area; at = [(stack.length ? stack.at(-1) + 1 : 0) * cell, (y - heights[top] + 1) * cell, width * cell, heights[top] * cell]; }
+        }
+        stack.push(x);
+      }
+    }
+    const share = best * cell * cell / (innerWidth * innerHeight);
+    if (share > 0.04) problems.push('wasted felt: an empty ' + at[2] + 'x' + at[3] + ' rectangle at ' + at[0] + ',' + at[1] + ' (' + (share * 100).toFixed(1) + '% of the window)');
   }
   // Supply pieces never lie on one another (a raised or open piece may).
   if (!phone && !modal && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), #fleet-panel.active')) {
@@ -438,6 +468,8 @@ async function runCase(browser, origin, testCase, viewport) {
   }
   // A shared or saved table loads its seats after the page, then fits again: let it settle.
   await browser.evaluate(`new Promise(r => setTimeout(r, ${testCase.shared || testCase.table ? 900 : 400}))`);
+  // Web fonts change the panels' sizes, and the table re-fits when they are ready: measure it after.
+  await browser.evaluate('(document.fonts ? document.fonts.ready : Promise.resolve()).then(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))');
   for (const selector of testCase.click || []) {
     const ok = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e || e.disabled) return false; e.click(); return true; })()`);
     if (!ok) { lastSlack = { px: 99 }; return [`could not click ${selector}`]; }
@@ -543,16 +575,28 @@ async function runCase(browser, origin, testCase, viewport) {
     const after = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
     if (after.hand !== steps.before.hand - 1 || !after.stock.some((n, i) => n > steps.before.stock[i])) problems.push('dropping a card on your reserves did not convert it');
   }
+  // Pointing at a hand card raises that card itself into the whole card, in place above the hand:
+  // its effect shows at reading size and whole, inside the window; no copy opens beside the map.
   if (testCase.expect === 'inspect') problems.push(...await browser.evaluate(`(() => {
-    const view = document.querySelector('#card-inspect'), problems = [];
-    if (!view || view.hidden || !view.querySelector('.game-card')) return ['inspect view did not open'];
-    const r = view.getBoundingClientRect(), overlaps = o => r.left < o.right - 1 && r.right > o.left + 1 && r.top < o.bottom - 1 && r.bottom > o.top + 1;
-    if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) problems.push('inspect view outside viewport');
-    const hex = [...document.querySelectorAll('.hex')].find(h => overlaps(h.getBoundingClientRect()));
-    if (hex) problems.push('inspect view covers hex ' + hex.dataset.coord);
-    if ([...document.querySelectorAll('#hand-row > .game-card')].some(c => overlaps(c.getBoundingClientRect()))) problems.push('inspect view covers the hand');
-    const card = view.querySelector('.game-card');
-    if (card.scrollHeight > card.clientHeight + 2) problems.push('inspect card text cut');
+    const card = document.querySelector('#hand-row > .game-card:hover'), problems = [];
+    if (document.querySelector('#card-inspect, .card-inspect')) problems.push('a separate inspect copy opened');
+    if (!card) return [...problems, 'the pointed-at card did not raise'];
+    const r = card.getBoundingClientRect(), effect = card.querySelector('.card-effect');
+    if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) problems.push('raised card outside viewport');
+    if (!effect || !effect.getClientRects().length || getComputedStyle(effect).clipPath.includes('inset(50%)')) problems.push('raised card does not show its effect');
+    else if (parseFloat(getComputedStyle(effect).fontSize) * (Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1) < 10) problems.push('raised card effect below reading size');
+    if (card.scrollHeight > card.clientHeight + 2) problems.push('raised card text cut');
+    const strip = document.querySelector('#hand-row').getBoundingClientRect();
+    if (Math.abs(r.bottom - strip.bottom) > 24) problems.push('raised card does not rise from the hand');
+    return problems;
+  })()`));
+  if (testCase.expect === 'aimed') problems.push(...await browser.evaluate(`(() => {
+    const problems = [], lit = document.querySelectorAll('.hex.cf-drop-target');
+    if (!lit.length) problems.push('Use order lit no hexes');
+    if (!document.querySelector('#hand-row .game-card.cf-aiming.order-selected')) problems.push('the chosen card is not marked as in play');
+    lit[0]?.click();
+    if (!document.querySelector('#sector-popover')?.matches(':popover-open')) problems.push('clicking a lit hex did not open its build choices');
+    if (document.querySelector('.hex.cf-drop-target, .cf-aiming')) problems.push('the aim stayed after choosing a hex');
     return problems;
   })()`));
   if (testCase.expect === 'built') {
