@@ -133,7 +133,15 @@ function createGalacticReach(options = {}) {
 
   // 31.36 Capacity Cards: the basic cards are no longer for sale. Every market card
   // costs more of at least one resource than a starting limit of 4 can hold.
-  const MARKET_SIZE = 10;
+  // Tiered market (rules #market): three decks by a card's total price, each with three
+  // face-up slots, listed in table order (the relic row lies above Expensive).
+  const MARKET_TIERS = [
+    { id: 'expensive', name: 'Expensive', minPrice: 8 },
+    { id: 'medium', name: 'Medium', minPrice: 6 },
+    { id: 'cheap', name: 'Cheap', minPrice: 0 }
+  ];
+  const MARKET_TIER_SLOTS = 3;
+  const MARKET_SIZE = MARKET_TIERS.length * MARKET_TIER_SLOTS;
   const MARKET_COPIES = 2;
   const STARTING_LIMIT = 4;
   const DEFAULT_VICTORY_TARGET = 40;
@@ -184,6 +192,11 @@ function createGalacticReach(options = {}) {
     victoryDoctrine: { code: 'M10', name: 'Victory Doctrine', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 1, energy: 2, data: 6 }, attack: 2, shield: 0, victoryPrestige: 2, text: '+2 hits this volley. If your side wins a decisive combat victory, gain 2 more permanent Prestige.' }
   };
   const MARKET_CARDS = { ...ADVANCED_CARDS, ...MARKET_MILITARY };
+  // A market card's tier follows its printed price: the sum of every resource in it.
+  function marketTier(key) {
+    const price = Object.values(MARKET_CARDS[key]?.cost || {}).reduce((sum, n) => sum + n, 0);
+    return MARKET_TIERS.find(tier => price >= tier.minPrice).id;
+  }
   const MILITARY_CARDS = { ...BASIC_TACTICS, ...MARKET_MILITARY };
   const CARD_BY_TAG = {}; // Filled after the full card catalog below.
 
@@ -379,7 +392,7 @@ function createGalacticReach(options = {}) {
   // Card data only, for the card gallery page: no galaxy, state, timers or storage.
   if (options.catalog === true) return {
     rulesVersion: `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`, ADVANCED_CARDS, MARKET_MILITARY, BASIC_TACTICS, BASIC_CARDS, RELIC_CARDS,
-    MARKET_SIZE, MARKET_COPIES, STARTING_LIMIT, DEFAULT_VICTORY_TARGET, VICTORY_TARGET_CHOICES, RESOURCES, RESOURCE_NAMES
+    MARKET_SIZE, MARKET_COPIES, MARKET_TIERS, MARKET_TIER_SLOTS, marketTier, STARTING_LIMIT, DEFAULT_VICTORY_TARGET, VICTORY_TARGET_CHOICES, RESOURCES, RESOURCE_NAMES
   };
 
 
@@ -554,8 +567,9 @@ function createGalacticReach(options = {}) {
       : headless || options.names ? DEFAULT_LINEUP : rollLineup();
     const players = [0,1,2,3].map(index => createPlayer(index, lineup));
     const fleets = {};
-    // One shared supply mixes normal-deck and military-deck cards (rules #buy).
-    const advancedDeck = shuffled(Object.keys(MARKET_CARDS).flatMap(key => Array.from({ length: MARKET_COPIES }, () => makeCard(key))),'market-deck');
+    // Rules #market: one shuffled deck per price tier, each mixing normal-deck and military cards.
+    const marketDecks = Object.fromEntries(MARKET_TIERS.map(tier => [tier.id, shuffled(Object.keys(MARKET_CARDS).filter(key => marketTier(key) === tier.id)
+      .flatMap(key => Array.from({ length: MARKET_COPIES }, () => makeCard(key))), `market-deck:${tier.id}`)]));
     const target = Number(options.victoryTarget ?? newGameSettings.victoryTarget);
     const relicDeck = shuffled(Object.keys(RELIC_CARDS).map(key=>makeCard(key)),'relic-deck');
     const relicRow = [relicDeck.pop(),relicDeck.pop(),relicDeck.pop()];
@@ -563,7 +577,7 @@ function createGalacticReach(options = {}) {
     players.forEach(player => drawCards(player, 5));
     const initial = {
       version: SAVE_FORMAT_VERSION, round: 1, phase: 'production', firstPlayer: 0, activePlayer: 0, players,
-      portalLinks: {...CORNER_PORTAL_LINKS}, planets: galaxy.planets, clusters: galaxy.clusters, fleets, advancedDeck, market: [], marketDiscard: [],
+      portalLinks: {...CORNER_PORTAL_LINKS}, planets: galaxy.planets, clusters: galaxy.clusters, fleets, marketDecks, market: [],
       selected: null, actionMode: null, actionCardId: null, actionOptions: {}, moveSource: null, reachable: [],
       turnStage: 'waiting', log: [], winner: null,
       lastCombat: null, pendingCombat: null, pendingMove: null, pendingCombatReport: null, relicDeck, relicRow,
@@ -769,6 +783,8 @@ function createGalacticReach(options = {}) {
       const parsed = JSON.parse(raw);
       if (!parsed || parsed.version !== SAVE_FORMAT_VERSION || parsed.rulesRevision !== RULES_REVISION) return false;
       if (CHANNEL && parsed.devRules !== RULES_ID) return false;
+      // A save from before the tiered market has one market deck; it belongs to the earlier rules.
+      if (!parsed.marketDecks) return false;
       if (!Array.isArray(parsed.players) || parsed.players.length!==4 || parsed.players.some(p=>!p.resourceLimits || RESOURCES.some(r=>!Number.isSafeInteger(p.resourceLimits[r])||p.resourceLimits[r]<4))) return false;
       state = parsed;
       loadGameHistory();
@@ -1304,15 +1320,17 @@ function createGalacticReach(options = {}) {
     return card;
   }
 
+  // Rules #market: the face-up market lists Expensive, Medium, then Cheap cards, three slots
+  // each. Each tier refills only from its own deck; an empty deck leaves its slots empty.
   function fillMarket() {
-    while (state.market.length < MARKET_SIZE) {
-      if (!state.advancedDeck.length && state.marketDiscard.length) {
-        state.advancedDeck = shuffled(state.marketDiscard,'market-deck');
-        state.marketDiscard = [];
+    MARKET_TIERS.forEach(tier => {
+      const deck = state.marketDecks[tier.id];
+      while (deck.length && state.market.filter(card => marketTier(card.key) === tier.id).length < MARKET_TIER_SLOTS) {
+        const order = MARKET_TIERS.indexOf(tier);
+        const at = state.market.filter(card => MARKET_TIERS.findIndex(t => t.id === marketTier(card.key)) <= order).length;
+        state.market.splice(at, 0, deck.pop());
       }
-      if (!state.advancedDeck.length) break;
-      state.market.push(state.advancedDeck.pop());
-    }
+    });
   }
 
   function controlledPlanets(playerId) {
@@ -3162,7 +3180,10 @@ function createGalacticReach(options = {}) {
     if (!card) return false;
     const definition = ALL_CARDS[card.key];
     if (!payCost(player,purchaseCost(player,card.key))) return false;
-    state.market.splice(indexOrKey,1);
+    // Rules #market: the bought slot refills in place from its own tier's deck, or stays empty.
+    const refill = state.marketDecks[marketTier(card.key)];
+    if (refill.length) state.market.splice(indexOrKey,1,refill.pop());
+    else state.market.splice(indexOrKey,1);
     // Rules #buy: a military card joins your military deck; any other card enters discard.
     if (definition.military) player.military.push(card);
     else gainCard(player,card);
@@ -3171,7 +3192,6 @@ function createGalacticReach(options = {}) {
     player.buyDiscountEach = 0;
     if (player.buyHubDiscounts > 0) player.buyHubDiscounts -= 1;
     if (definition.gainPrestige) player.cardPrestige = (player.cardPrestige || 0) + definition.gainPrestige;
-    fillMarket();
     logEvent(`${player.name} acquired ${definition.name}${definition.military ? ' for its military deck' : ''}${definition.gainPrestige ? ` and gained ${definition.gainPrestige} permanent Prestige` : ''}.`);
     return true;
   }
@@ -4084,15 +4104,21 @@ function createGalacticReach(options = {}) {
   function renderMarket() {
     const humanBuy=!replayMode&&state.phase==='buy'&&state.activePlayer===ME;
     const me0=state.players[ME];
-    $('#market-help').textContent=replayMode?`${state.players[viewSeat].name} purchased ${state.players[viewSeat].cardsPurchased||0} cards.`:`Buy as many cards as you can afford in your Buy turn${purchaseDiscount(me0)?` (${[me0.buyDiscountEach?'Trade Syndicate':'',me0.buyHubDiscounts?'Procurement Hub':''].filter(Boolean).join(' + ')}: ${purchaseDiscount(me0)} less of each resource on your next purchase)`:''}; military cards join your military deck. Starter upgrades are paid separately.`;
+    $('#market-help').textContent=replayMode?`${state.players[viewSeat].name} purchased ${state.players[viewSeat].cardsPurchased||0} cards.`:`Buy as many cards as you can afford in your Buy turn${purchaseDiscount(me0)?` (${[me0.buyDiscountEach?'Trade Syndicate':'',me0.buyHubDiscounts?'Procurement Hub':''].filter(Boolean).join(' + ')}: ${purchaseDiscount(me0)} less of each resource on your next purchase)`:''}; military cards join your military deck. Rows: Expensive, Medium, Cheap. Starter upgrades are paid separately.`;
     $('#basic-market').innerHTML='';
-    $('#market-row').innerHTML=replayMode?'<p class="muted">Replays record purchases in the game log, not the market row.</p>':state.market.map((card,index)=>{
+    // Rules #market: three slots per tier, Expensive then Medium then Cheap; a slot whose deck ran out shows empty.
+    const slots=MARKET_TIERS.flatMap(tier=>{
+      const cards=state.market.map((card,index)=>({card,index,tier})).filter(slot=>marketTier(slot.card.key)===tier.id);
+      return [...cards,...Array.from({length:Math.max(0,MARKET_TIER_SLOTS-cards.length)},()=>({tier}))];
+    });
+    $('#market-row').innerHTML=replayMode?'<p class="muted">Replays record purchases in the game log, not the market row.</p>':slots.map(({card,index,tier})=>{
+      if(!card)return `<div class="game-card unavailable market-empty" data-market-tier="${tier.id}" role="note" aria-label="${tier.name} deck empty: this slot stays empty"><span class="card-type">${tier.name}</span><span class="card-name">Deck empty</span></div>`;
       const def=ALL_CARDS[card.key],cost=purchaseCost(me0,card.key);
       const disabled=!humanBuy||!canAfford(me0,cost);
       const reason=marketBlockReason(me0,cost,humanBuy);
       const note=reason.note?`<span class="card-limit-note">${reason.note}</span>`:'';
       const why=disabled?[reason.turn,reason.card].filter(Boolean).join(' ')||'You cannot buy this card now.':'';
-      return `<button class="game-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}" style="--card-accent:${def.accent}" data-buy-market="${index}" data-card-id="${card.id}" ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${esc(def.code)} ${esc(def.name)}${def.military?', military deck':''}${disabled?`. Unavailable: ${esc(why)}`:''}"><span class="card-type">${def.code} · ${def.military?'Military deck':def.kind}</span><span class="card-name">${def.name}</span>${def.resource?`<span class="card-gain" title="Converts for">${eachResourceGain(def.resource)?`<span class="gain-each">${eachResourceGain(def.resource)} each</span>`:resourceDots(def.resource)}</span>`:''}${cardIllustration(def)}<span class="card-effect">${resourceText(def.text)}</span><span class="card-icons" aria-hidden="true">${iconText(def.text)}</span><span class="card-footer"><small>Buy</small>${marketCostDots(me0,cost)}</span>${note}</button>`;
+      return `<button class="game-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}" style="--card-accent:${def.accent}" data-buy-market="${index}" data-market-tier="${tier.id}" data-card-id="${card.id}" ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${tier.name} market: ${esc(def.code)} ${esc(def.name)}${def.military?', military deck':''}${disabled?`. Unavailable: ${esc(why)}`:''}"><span class="card-type">${def.code} · ${def.military?'Military deck':def.kind}</span><span class="card-name">${def.name}</span>${def.resource?`<span class="card-gain" title="Converts for">${eachResourceGain(def.resource)?`<span class="gain-each">${eachResourceGain(def.resource)} each</span>`:resourceDots(def.resource)}</span>`:''}${cardIllustration(def)}<span class="card-effect">${resourceText(def.text)}</span><span class="card-icons" aria-hidden="true">${iconText(def.text)}</span><span class="card-footer"><small>Buy</small>${marketCostDots(me0,cost)}</span>${note}</button>`;
     }).join('');
     $$('[data-buy-market]').forEach(button=>button.addEventListener('click',()=>{if(buyCard(ME,'market',Number(button.dataset.buyMarket))){render();saveGame();}}));
     $('#finish-buy-button').hidden=!humanBuy;
@@ -4166,19 +4192,14 @@ function createGalacticReach(options = {}) {
   const LEVEL_NAMES = ['','I','II','III'];
   // The market's rows run from the most expensive cards (just under the relics) to the cheapest,
   // three cards to a row.
-  const MARKET_TIERS = ['expensive', 'medium', 'cheap'];
+  // Rules #market-tiers: each card, or an empty-deck slot, lies in its own price row
+  // (Expensive, Medium, Cheap) as the engine dealt it, three to a row.
   function tierMarket() {
-    const cards = [...($('#market-row')?.children || [])].filter(card => card.dataset?.buyMarket != null);
-    if (!cards.length) return;
-    const total = card => Object.values(ALL_CARDS[state.market[Number(card.dataset.buyMarket)]?.key]?.cost || {}).reduce((sum, n) => sum + n, 0);
-    const ranked = [...cards].sort((a, b) => total(b) - total(a));
-    // Three rows of three. Until the tiered-market rules give each tier its own deck, cards past
-    // the ninth (the cheapest) wait off the table.
-    ranked.forEach((card, place) => {
-      const tier = Math.floor(place / 3);
-      card.hidden = tier > 2;
-      card.dataset.tier = MARKET_TIERS[Math.min(tier, 2)];
-      card.style.setProperty('--tier-row', String(Math.min(tier, 2) + 1));
+    [...($('#market-row')?.children || [])].forEach((card, place) => {
+      const row = MARKET_TIERS.findIndex(tier => tier.id === card.dataset?.marketTier);
+      if (row < 0) return;
+      card.dataset.tier = MARKET_TIERS[row].id;
+      card.style.setProperty('--tier-row', String(row + 1));
       card.style.setProperty('--tier-span', '4');
       card.style.setProperty('order', String(place));
     });
@@ -5230,7 +5251,7 @@ function createGalacticReach(options = {}) {
   function headlessPort() {
     return {
       get state() { return state; }, get turnSerial() { return turnSerial; }, get cardSerial() { return cardSerial; },
-      clone, deckContents, ALL_CARDS, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
+      clone, deckContents, ALL_CARDS, MARKET_TIERS, marketTier, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
       canAfford, canConvertCard, cardResources, resourceGainTotal, remainingResourceCapacity, addResources,
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
       decommission, trashEligibleCards, excavatedRelicCount, useBuyEffect, resolveHumanSpecial,

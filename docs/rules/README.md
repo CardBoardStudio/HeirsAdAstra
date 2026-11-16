@@ -20,6 +20,7 @@ The rulebook is authoritative for intended play. The initial version documents e
 | `#resources`, `#orders`, `#movement` | `produceAll`, `cardResources`, `movementRange`, `reachableFrom`, `applyColonizeOrder` | `test-galactic-reach.cjs`, `test-long-reach.cjs` |
 | `#building`, `#combat` | `constructAt`, `excavate`, `resolveCombat`, `colonizePlanet` | `test-galactic-reach.cjs` |
 | `#resources`, `#trade`, `#buy` | `offerTrade`, `respondTrade`, `buyCard`, `upgradeStarter`, `decommission`/`trashEligibleCards`, `increaseStorage` | `test-galactic-reach.cjs`, `test-long-reach.cjs`, `test-trash-hand.cjs` |
+| `#market`, `#market-tiers` | `MARKET_TIERS`, `marketTier`, `fillMarket`, `buyCard`, `renderMarket` in `app.js`; `marketDecks` in `privateState`/`undoMark` (`adapter.js`); see [tiered market](tiered-market.md) | `test-tiered-market.cjs`, `test-unlimited-buys.cjs`, `test-shared-tables.cjs` |
 | `#politics`, `#victory` | `cleanupRound`, `calculatePrestige`, `finishRound` | `test-long-reach.cjs`, `test-pass-and-buy.cjs`, `test-resource-actions.cjs`, `test-galactic-reach-dialogs.cjs` |
 | `#shared-tables` | networked mode in `app.js` (`installNetworkClient`, `adoptServerView`), `privateState` in `adapter.js`, `crates/server/src/shared/`; see [shared tables](../shared-tables.md) | `cargo test -p server shared` |
 | `#cards`, `#clarifications` | card definitions, `resolveHumanSpecial`, `useBuyEffect`, `resolveCombat`; legal actions in `adapter.js` | relevant mechanic regression, added when resolving each discrepancy |

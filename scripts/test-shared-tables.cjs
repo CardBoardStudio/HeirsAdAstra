@@ -47,7 +47,8 @@ function replayer(log) {
 }
 
 const live = recorder(42), game = engine(live.shuffle);
-assert.equal(live.log.length, 17, 'Setup shuffles the map, four starting decks, the market and the relics.');
+assert.equal(live.log.length, 19, 'Setup shuffles the map, four starting decks, the three market tier decks and the relics.');
+assert.deepEqual(live.log.filter(e => e.purpose.startsWith('market-deck')).map(e => e.purpose), ['market-deck:expensive', 'market-deck:medium', 'market-deck:cheap']);
 assert.deepEqual(live.log.filter(e => e.purpose.startsWith('deck:')).map(e => e.purpose), ['deck:0', 'deck:1', 'deck:2', 'deck:3']);
 assert.equal(game.port.state.players[0].name, 'Ada');
 assert.equal(game.port.state.players[2].controller, 'ai');
@@ -62,7 +63,7 @@ for (let i = 0; i < 400 && game.adapter.activeSeat() !== null; i++) {
   actions.push([seat, action]);
 }
 assert(game.port.state.round > 1, 'Several rounds were played, including reshuffles.');
-assert(live.log.some(e => e.purpose.startsWith('deck:') && live.log.indexOf(e) >= 17), 'A discard reshuffle came from the authority.');
+assert(live.log.some(e => e.purpose.startsWith('deck:') && live.log.indexOf(e) >= 19), 'A discard reshuffle came from the authority.');
 
 const folded = engine(replayer(live.log));
 for (const [seat, action] of actions) folded.adapter.applyAction(seat, action);
@@ -78,7 +79,9 @@ for (const seat of [0, 1]) {
   assert.equal(view.players[other].deckCount, state.players[other].deck.length);
   const hidden = JSON.stringify(view);
   for (const card of [...state.players[other].hand, ...state.players[other].deck]) assert(!hidden.includes(`"${card.id}"`), `seat ${seat} cannot see ${card.id}`);
-  for (const card of [...state.relicDeck, ...state.advancedDeck]) assert(!hidden.includes(`"${card.id}"`), 'pile order stays hidden');
+  assert.deepEqual(Object.keys(view.marketDecks), ['expensive', 'medium', 'cheap']);
+  for (const [tier, deck] of Object.entries(view.marketDecks)) assert.equal(deck.length, state.marketDecks[tier].length, `the ${tier} deck's size is public`);
+  for (const card of [...state.relicDeck, ...Object.values(state.marketDecks).flat()]) assert(!hidden.includes(`"${card.id}"`), 'pile order stays hidden');
   assert.deepEqual(view.players[seat].hand, plain(state.players[seat].hand), 'a seat sees its own hand');
   assert.deepEqual(view.players[seat].deck.map(c => c.id).sort(), state.players[seat].deck.map(c => c.id).sort(), 'and its deck contents');
   const keys = view.players[seat].deck.map(c => c.key);

@@ -27,8 +27,8 @@ const forbidden=[
   assert(!d.effect?.gain&&!d.effect?.produce&&!d.buildGain&&!d.loot&&d.reaction!=='salvage',key);
   if(!['move','construct'].includes(key))assert(!d.resource&&!d.wildcard,`${key} prints no conversion gain`);
  }
- for(const card of [...g.s.market,...g.s.advancedDeck,...g.s.relicRow,...g.s.relicDeck])assert(!removed.includes(card.key));
- assert.equal(g.s.market.length+g.s.advancedDeck.length,62);assert.equal(g.s.relicRow.length+g.s.relicDeck.length,15);
+ for(const card of [...g.s.market,...Object.values(g.s.marketDecks).flat(),...g.s.relicRow,...g.s.relicDeck])assert(!removed.includes(card.key));
+ assert.equal(g.s.market.length+Object.values(g.s.marketDecks).flat().length,62);assert.equal(g.s.relicRow.length+g.s.relicDeck.length,15);
  const book=fs.readFileSync(path.join(root,'prototypes/galactic-reach/rulebook.html'),'utf8');
  for(const key of removed)assert(!book.includes(`data-card="${key}"`));
   for(const [key,d] of Object.entries({...g.e.MARKET_CARDS,...g.e.RELIC_CARDS})){
@@ -67,7 +67,7 @@ for(const key of ['move','construct']){
  if(key==='construct'){g.a.applyAction(0,{type:'finish_construct'});assert.equal(g.p.hand.length,1,'Second build does not repeat the draw');}
 }
 {
- const g=game();g.s.phase='buy';g.s.market=[{id:'monument',key:'monumentOfAccord'},{id:'dyson',key:'dysonLattice'}];g.s.advancedDeck=[];
+ const g=game();g.s.phase='buy';g.s.market=[{id:'monument',key:'monumentOfAccord'},{id:'dyson',key:'dysonLattice'}];g.s.marketDecks={expensive:[],medium:[],cheap:[]};
  const start=g.e.calculatePrestige(0);g.a.applyAction(0,g.a.legalActions(0).find(a=>a.type==='buy'&&a.key==='monumentOfAccord'));
  g.a.applyAction(0,g.a.legalActions(0).find(a=>a.type==='buy'&&a.key==='dysonLattice'));
  assert.equal(g.e.calculatePrestige(0),start+8);assert.equal(g.p.discard.length,2);

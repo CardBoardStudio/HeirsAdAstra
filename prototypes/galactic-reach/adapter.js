@@ -256,7 +256,7 @@ function createGalacticAdapter(e) {
       else { p.hand = []; p.deck = []; }
     });
     state.probeStatus = e.probeStatus(seat);
-    state.advancedDeck = stub(state.advancedDeck.length);
+    state.marketDecks = Object.fromEntries(Object.entries(state.marketDecks).map(([tier, deck]) => [tier, stub(deck.length)]));
     state.relicDeckCount = state.relicDeck.length;
     state.relicDeck = stub(state.relicDeck.length);
     state.planets = Object.fromEntries(Object.entries(state.planets).flatMap(([coord, planet]) => {
@@ -282,7 +282,7 @@ function createGalacticAdapter(e) {
     return {
       turn: e.turnSerial,
       reveal: {
-        decks: state.players.map(p => p.deck.length), market: state.advancedDeck.length, relics: state.relicDeck.length,
+        decks: state.players.map(p => p.deck.length), market: Object.values(state.marketDecks).reduce((n, deck) => n + deck.length, 0), relics: state.relicDeck.length,
         surveys: state.clusters.map(c => c.revealedBy.length), located: state.clusters.map(c => [...c.scannedBy].sort().join('.')),
         combat: state.pendingCombat ? `${state.pendingCombat.stage}:${state.pendingCombat.volley}` : null,
         combats: state.lastCombat ? JSON.stringify(state.lastCombat.summary) : null
