@@ -1337,7 +1337,9 @@ impl BuiltinAgent {
             "construct_draw" => {
                 if view["constructDrawOnly"] == true
                     && (number(&me["deckCount"]) > 0.0
-                        || me["discard"].as_array().is_some_and(|cards| !cards.is_empty()))
+                        || me["discard"]
+                            .as_array()
+                            .is_some_and(|cards| !cards.is_empty()))
                 {
                     12.0
                 } else {
@@ -2078,8 +2080,10 @@ mod tests {
         view["fleets"] = json!({});
         let agent = BuiltinAgent::new(Strategy::Military, [29; 32]);
         let draw = json!({"type":"construct_draw","card":"iii","key":"construct"});
-        let ii = json!({"type":"build","card":"ii","key":"construct","kind":"settler","coord":"-1,0"});
-        let iii = json!({"type":"build","card":"iii","key":"construct","kind":"settler","coord":"-1,0"});
+        let ii =
+            json!({"type":"build","card":"ii","key":"construct","kind":"settler","coord":"-1,0"});
+        let iii =
+            json!({"type":"build","card":"iii","key":"construct","kind":"settler","coord":"-1,0"});
         assert!(agent.score(&view, &iii) > agent.score(&view, &ii));
         assert!(agent.score(&view, &ii) > agent.score(&view, &draw));
         assert!(agent.score(&view, &draw) > agent.score(&view, &json!({"type":"pass"})));
