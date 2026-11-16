@@ -12,5 +12,6 @@
     "authors": ["github-actions[bot]"],
     "branches": ["release/"]
   },
-  "help": "See .github/pull_request_template.md, .gitmessage and docs/playtest-workflow.md."
+  "help": "See .github/pull_request_template.md, .gitmessage and docs/playtest-workflow.md.",
+  "module": "scripts/review-conventions-rules.mjs"
 }
