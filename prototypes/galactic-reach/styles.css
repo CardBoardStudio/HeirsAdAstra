@@ -3002,6 +3002,18 @@ body.background-stars > .starfield {
   mask-image: none;
   -webkit-mask-image: none;
 }
+
+/* Keep the decorative stars outside the six-sided game board, including its gaps. */
+body.background-stars .galaxy-board { position: relative; isolation: isolate; }
+body.background-stars .galaxy-board::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: #060911;
+  clip-path: polygon(25% 0, 75% 0, 100% 50%, 75% 100%, 25% 100%, 0 50%);
+}
 /* ==== Corner boxes: a card's cost is one rectangle sharing the card's top-right corner, its
    conversion value (what a level I starter converts into) one rectangle sharing its top-left
    corner. A card that cannot convert has no top-left box. ==== */
