@@ -47,7 +47,7 @@ In updated games, bank receipts per player-game are 1.85 Biomass, 1.53 Matter, 0
 
 ## Evidence and limits
 
-The compact [results and protocol](../../analysis/construct-iii-draw-30-2026-11-15/results.json) retain exact source hashes, seeds, lineups, uncertainty, player metrics and resource totals. Raw games, frozen source, measurement harness, CSVs, HTML report and a replay runner are in the local output bundle `output/construct-iii-draw-30-2026-11-15/study.zip`.
+The compact [results and protocol](https://github.com/CardBoardStudio/galactic-reach-studies/blob/main/construct-iii-draw-30-2026-11-15/results.json) retain exact source hashes, seeds, lineups, uncertainty, player metrics and resource totals. Raw games, frozen source, measurement harness, CSVs, HTML report and a replay runner are in the local output bundle `output/construct-iii-draw-30-2026-11-15/study.zip`.
 
 All 768 games complete with no stalls or invented winners. Scores, resource ledgers, transfers, bank ratios, storage costs/capacity, level-I-only conversions and draw denominators reconcile. Instrumentation controls reproduce final state and RNG counts. The cache-only proof covers 3,551 per-decision states and RNG traces across four games from the current baseline. It agrees with the separate [cache evaluation](search-performance.md).
 

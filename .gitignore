@@ -37,8 +37,9 @@ trusted-signers.local.json
 # Private local HTTPS host: credentials, persistent data, launchd logs
 .local/
 
-# Full local simulator archives; retained locally, not committed as source.
-/output/simulations/
+# Local study output and simulator archives; retained locally and published to
+# CardBoardStudio/galactic-reach-studies, never committed here (docs/history-slim.md).
+/output/
 /card-evolution-runs/
 
 # The shared review-conventions validator, checked out by the Rules contract job.
