@@ -1831,7 +1831,6 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #relic-cost::before { content: 'Excavate'; margin-right: 2px; color: var(--muted); font-size: 11px; }
   .relic-payment .resource-chip { min-height: 20px; padding: 0 4px 0 2px; }
   .relic-payment .resource-symbol { width: 13px; height: 13px; }
-  #open-relic-catalog { margin: 0 0 0 auto !important; min-height: 24px; white-space: nowrap; padding: 1px 9px; font-size: 11px; }
   .relic-row { flex: 1 1 100%; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 5px; min-height: 0; }
   .relic-row > div { display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; min-width: 0; }
   .relic-row > div:not(:has(> .button)) { height: var(--rtop-h, 56px); }
