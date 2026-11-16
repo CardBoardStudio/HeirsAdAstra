@@ -2881,9 +2881,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #resource-grid { font-size: 11px; }
   /* The fleets panel, compact. */
   #fleet-glance { gap: 1px !important; padding: 4px 8px 5px !important; font-size: 10px !important; }
-  /* Notices lie over the top of the map key (see stackLeft): reference text, clear of the map
-     (which keeps clear of the key) and of your hand below it. */
-  .toast { top: var(--notice-top, calc(360px * var(--table-zoom, 1))) !important; bottom: auto !important; left: calc(12px * var(--table-zoom, 1)) !important; width: calc(236px * var(--table-zoom, 1)) !important; }
+  /* Notices lie in their own spot under the fleets (see stackLeft; the map keeps clear of it), at
+     the table's scale so they fit it: 236 x 104 units. */
+  .toast { top: var(--notice-top, calc(360px * var(--table-zoom, 1))) !important; bottom: auto !important; left: calc(12px * var(--table-zoom, 1)) !important; width: calc(236px * var(--table-zoom, 1)) !important; box-sizing: border-box; padding: calc(8px * var(--table-zoom, 1)) calc(11px * var(--table-zoom, 1)) !important; font-size: calc(12px * var(--table-zoom, 1)) !important; line-height: 1.3 !important; }
   /* Upgrade cards: the effect in smaller type, five lines at most, inside the card. */
   .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { font-size: 10.5px !important; line-height: 1.2 !important; -webkit-line-clamp: 5 !important; line-clamp: 5 !important; }
   .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { font-size: 12px !important; line-height: 1.1 !important; }
