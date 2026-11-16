@@ -108,3 +108,5 @@ require('./test-corner-portals.cjs');
 require('./test-change-queue.cjs');
 
 require('./test-construct-iii-draw.cjs');
+
+require('./test-inward-worlds.cjs');

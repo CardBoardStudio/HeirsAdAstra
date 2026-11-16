@@ -11,18 +11,34 @@ function game(prefix='prototypes/galactic-reach/',seed=53){
 function bot(g){g.s.activePlayer=1;g.s.phase='operations';g.s.turnStage='ai';g.s.players[1].strategy='military';return g.s.players[1];}
 function funds(p){p.storageUpgrades=100;p.resourceLimits={matter:1000,energy:1000,biomass:1000,data:1000};p.resources={matter:30,energy:30,biomass:30,data:30};}
 const record={fixtures:0,matchedSetups:0};
+// Absolute positions deliberately change in the inward-corner experiment. Keep
+// comparing the actual dealt terrain/resources and sector order within clusters.
+function relativeTerrain(s){
+ const origins=new Map(s.clusters.flatMap((c,i)=>typeof c.center==='string'?[[c.id??i,c.center.split(',').map(Number)]]:[]));
+ const relative=(key,origin)=>key.split(',').map((n,i)=>Number(n)-origin[i]);
+ s.planets=Object.fromEntries(Object.entries(s.planets).map(([key,p])=>{
+  const origin=origins.get(p.cluster);if(!origin)return[key,p];
+  const at=relative(key,origin),next={...p};
+  if('q' in next)next.q=at[0];if('r' in next)next.r=at[1];
+  return[`${p.cluster}:${at.join(',')}`,next];
+ }));
+ for(const [i,c] of s.clusters.entries()){const origin=origins.get(c.id??i);if(!origin)continue;c.center='0,0';c.coords=c.coords.map(key=>relative(key,origin).join(','));}
+ return s;
+}
 for(let n=0;n<32;n++){
  const current=game(undefined,20261111+n*7919),old=game('crates/galactic-reach/rules/v20-',20261111+n*7919);
  assert.equal(current.a.rulesVersion,'galactic-reach/38.43');assert.equal(old.a.rulesVersion,'galactic-reach/20.25');
  // 31.36 replaces the market supply (72 cards, new serials) and adds a Prestige target; the map,
- // factions, decks and opening position still match 20.25. Supply-dependent fields are excluded.
+ // factions, decks and dealt sector contents still match 20.25. Supply-dependent fields are excluded.
+ // The inward corner worlds and re-enumerated moon positions are checked by the
+ // geometry suites; compare terrain relative to each cluster's center here.
  // 33.38 drops the ships-or-Explorers prompt (moveChoiceSource) for the unit picker.
  // Unlimited Buy removes the obsolete purchase cap; the dedicated Buy suite tests its new semantics.
  // Cleanup & draw deals the same opening hand at setup; only the draw's log line differs.
  // The tiered market splits the supply into three decks (marketDecks), excluded with the rest of the supply.
  const supply=['advancedDeck','marketDecks','market','marketDiscard','relicDeck','relicRow','victoryTarget','capacitySupply'],newPlayer=['storage','military','cardPrestige','buyLimit','buyDiscountEach','buyHubDiscounts','buyDiscountData','marketManipulated','resources'];
- const normalize=g=>{const s=plain(g.s);supply.forEach(k=>delete s[k]);s.players.forEach(p=>{delete p.storagePurchases;delete p.inPlay;delete p.resourceLimits;delete p.buyStartInPlayIds;delete p.buyStartHandIds;newPlayer.forEach(k=>delete p[k]);});delete s.portalLinks;delete s.pendingConstruct;delete s.moveChoiceSource;Object.values(s.planets).forEach(p=>{delete p.occupiedBy;if(p.cluster===12)p.special=null;});s.log=s.log.filter(line=>!/drew (five|its opening five) cards/.test(line));return {...s,version:0,rulesRevision:0,visibilityRevision:0};};assert.deepEqual(normalize(current),normalize(old));
- const observation=g=>{const v=plain(g.a.observe(0));['market','relicRow','relicDeckCount','victoryTarget','capacitySupply'].forEach(k=>delete v[k]);['portalLinks','portalMovementCost','harvesterYield','marketCosts','combinedProbe','cardStats','marketPrestige','tacticStats','combatVictoryPrestige','captureNeedsFleet','constructDrawOnly'].forEach(k=>delete v[k]);v.players.forEach(p=>{delete p.cardPrestige;delete p.military;delete p.resources;p.deckContents?.forEach(c=>delete c.level);});delete v.pendingConstruct;Object.values(v.planets).forEach(p=>delete p.occupiedBy);v.clusters.forEach(c=>delete c.located);v.players.forEach(p=>{delete p.storage;delete p.storagePurchases;delete p.storageUpgradeCost;delete p.inPlay;delete p.resourceLimits;p.capacity=0;p.prestige=0;});return v;};assert.deepEqual(observation(current),observation(old));const stable=g=>plain(g.a.legalActions(0)).filter(x=>!['trade_offer','bank_trade','discard_resources','resource','increase_storage'].includes(x.type));assert.deepEqual(stable(current),stable(old),'Orders match; resource-dependent actions differ with the 32.37 opening (issue #41)');record.matchedSetups++;
+ const normalize=g=>{const s=plain(g.s);supply.forEach(k=>delete s[k]);s.players.forEach(p=>{delete p.storagePurchases;delete p.inPlay;delete p.resourceLimits;delete p.buyStartInPlayIds;delete p.buyStartHandIds;newPlayer.forEach(k=>delete p[k]);});delete s.portalLinks;delete s.pendingConstruct;delete s.moveChoiceSource;Object.values(s.planets).forEach(p=>{delete p.occupiedBy;if(p.cluster===12)p.special=null;});s.log=s.log.filter(line=>!/drew (five|its opening five) cards/.test(line));return {...s,version:0,rulesRevision:0,visibilityRevision:0};};assert.deepEqual(relativeTerrain(normalize(current)),relativeTerrain(normalize(old)));
+ const observation=g=>{const v=plain(g.a.observe(0));['market','relicRow','relicDeckCount','victoryTarget','capacitySupply'].forEach(k=>delete v[k]);['portalLinks','portalMovementCost','harvesterYield','marketCosts','combinedProbe','cardStats','marketPrestige','tacticStats','combatVictoryPrestige','captureNeedsFleet','constructDrawOnly'].forEach(k=>delete v[k]);v.players.forEach(p=>{delete p.cardPrestige;delete p.military;delete p.resources;p.deckContents?.forEach(c=>delete c.level);});delete v.pendingConstruct;Object.values(v.planets).forEach(p=>delete p.occupiedBy);v.clusters.forEach(c=>delete c.located);v.players.forEach(p=>{delete p.storage;delete p.storagePurchases;delete p.storageUpgradeCost;delete p.inPlay;delete p.resourceLimits;p.capacity=0;p.prestige=0;});return v;};assert.deepEqual(relativeTerrain(observation(current)),relativeTerrain(observation(old)));const stable=g=>plain(g.a.legalActions(0)).filter(x=>!['trade_offer','bank_trade','discard_resources','resource','increase_storage'].includes(x.type));assert.deepEqual(stable(current),stable(old),'Orders match; resource-dependent actions differ with the 32.37 opening (issue #41)');record.matchedSetups++;
 }
 {
  const g=game(),p=bot(g),center=g.s.clusters[4].center;funds(p);p.hand=[{id:'col',key:'colonize'},{id:'build',key:'construct'}];g.s.fleets={[center]:{1:{settler:1,explorer:0,fleet:0}}};
