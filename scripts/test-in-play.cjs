@@ -147,3 +147,6 @@ for(const [file,hash] of Object.entries(JSON.parse(read('scripts/split-moves-arc
 // 34.39 preserves the exact published 33.38 Split Moves engine and client assets.
 assert.equal(replayRoutes['galactic-reach/33.38'],'/galactic-reach/rules/33.38/');
 for(const [file,hash] of Object.entries(JSON.parse(read('scripts/balance-package-archive-hashes.json'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(path.join(root,file))).digest('hex'),hash,`${file} must stay the published 33.38 asset`);
+
+// #buy: hand cards join Decommission (CI runs that suite through this in-play Buy suite).
+require('./test-trash-hand.cjs');
