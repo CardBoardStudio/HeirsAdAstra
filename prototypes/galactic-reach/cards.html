@@ -42,6 +42,20 @@
     .save-state { font-size: .82rem; color: var(--muted); }
     .export { margin-top: 28px; }
     .export textarea { width: 100%; box-sizing: border-box; min-height: 10em; background: var(--surface-2); color: var(--text); border: 1px solid var(--line-bright); border-radius: 6px; padding: 8px; font: .85rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .gallery-art { margin: -14px -14px 2px; position: relative; aspect-ratio: 2 / 1; overflow: hidden; border-radius: 6px 6px 0 0; background: var(--surface-2); }
+    .gallery-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .gallery-art figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 10px 5px; background: linear-gradient(transparent, #000c); color: #f1ead6; font-size: .72rem; line-height: 1.3; }
+    .credits { margin-top: 36px; border-top: 1px solid var(--line); padding-top: 8px; }
+    .credits .lede { margin-top: 0; }
+    .credits h3 { margin: 22px 0 10px; font-size: 1rem; color: var(--gold); letter-spacing: .04em; text-transform: uppercase; }
+    .credit-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 10px 16px; }
+    .credit-list li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: start; font-size: .85rem; line-height: 1.4; }
+    .credit-list img { width: 112px; aspect-ratio: 2 / 1; object-fit: cover; border-radius: 4px; background: var(--surface-2); }
+    .credit-list strong { display: block; color: var(--text); }
+    .credit-list .work { color: var(--muted); }
+    .credit-list a { color: var(--cyan); }
+    .site-footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: .8rem; }
+    .site-footer a { color: inherit; }
     :focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
   </style>
 </head>
@@ -51,7 +65,7 @@
       <div>
         <div class="eyebrow" id="gallery-version">GALACTIC REACH · 38.43 CONSTRUCT III PLAYTEST</div>
         <h1>Card gallery</h1>
-        <p class="lede">Every market card in this playtest: 22 normal-deck designs and 9 military designs. Use the printed id when leaving feedback. Market cards cannot convert to resources. Three draw-two cards fit your starting limits of 4. Other market cards need raised limits.</p>
+        <p class="lede">Every market card in this playtest: 22 normal-deck designs and 9 military designs. Use the printed id when leaving feedback. Market cards cannot convert to resources. Three draw-two cards fit your starting limits of 4. Other market cards need raised limits. Each design's art is credited under <a href="#card-art-credits">Card art credits</a>.</p>
       </div>
       <nav class="links" aria-label="Galactic Reach">
         <a class="button button-ghost" href="./" style="text-decoration:none">← Back to the game</a>
@@ -70,6 +84,12 @@
       <div class="save-row"><button class="button" id="copy-feedback" type="button">Copy all feedback</button><span class="save-state" id="copy-state" role="status"></span></div>
       <textarea id="feedback-text" readonly aria-label="All card feedback as text"></textarea>
     </section>
+    <section class="credits" id="card-art-credits" aria-labelledby="credits-title">
+      <h2 id="credits-title">Card art credits</h2>
+      <p class="lede">Every card design shows a public-domain painting, print or photograph from the <a href="https://www.nga.gov/open-access-images.html">National Gallery of Art, Washington</a>, released as open access under CC0. The Gallery asks for a credit, given here. Use of these works does not imply endorsement by the Gallery. The art is decoration only: a card does what its text says (<a href="rulebook.html#card-art">rulebook</a>).</p>
+      <div id="credit-groups"><p class="store-status">Loading credits…</p></div>
+    </section>
+    <footer class="site-footer"><span id="site-footer-version">Galactic Reach</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="#card-art-credits">Credits</a></footer>
   </main>
   <script>globalThis.drawingBoardTableBoot = true;</script>
   <script src="app.js?v=cheaper-cards-32-37"></script>
@@ -81,13 +101,14 @@
     const version = catalog.rulesVersion.split('/').pop();
     document.querySelector('#gallery-version').textContent = `GALACTIC REACH · ${version} · CARD GALLERY`;
     document.title = `Card gallery · Galactic Reach ${version}`;
+    document.querySelector('#site-footer-version').textContent = `Galactic Reach ${version} · playtest`;
     const $ = selector => document.querySelector(selector);
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     const cards = [...Object.entries(catalog.ADVANCED_CARDS), ...Object.entries(catalog.MARKET_MILITARY)].map(([key, def]) => ({ key, ...def }));
     const price = card => catalog.RESOURCES.reduce((n, r) => n + (card.cost[r] || 0), 0);
     const chips = gain => catalog.RESOURCES.filter(r => gain?.[r]).map(r => `<span class="chip ${r}">${gain[r]} ${catalog.RESOURCE_NAMES[r]}</span>`).join('') || '<span class="muted">None</span>';
     const storeKey = 'galactic-reach-card-feedback-31-36';
-    let saved = {}, serverEnabled = false, filter = 'all';
+    let saved = {}, serverEnabled = false, filter = 'all', art = {};
     try { saved = JSON.parse(localStorage.getItem(storeKey) || '{}') || {}; } catch { saved = {}; }
     const remember = () => { try { localStorage.setItem(storeKey, JSON.stringify(saved)); } catch { /* The text export still works. */ } };
 
@@ -112,7 +133,9 @@
       $('#card-grid').innerHTML = shown.map(card => {
         const entry = saved[card.code] || {};
         const note = `note-${card.code}`;
+        const work = art[card.key];
         return `<article class="gallery-card ${card.military ? 'military' : ''}" style="--accent:${card.accent}" aria-labelledby="name-${card.code}">
+          ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : ''}
           <div class="meta"><span class="code">${card.code}</span><span>${card.military ? 'Military deck' : `Normal deck · ${esc(card.kind)}`}</span></div>
           <h2 id="name-${card.code}">${esc(card.name)}</h2>
           <p class="effect">${esc(card.text)}</p>
@@ -183,7 +206,22 @@
         ? '<strong>Saving is on:</strong> “Save feedback” sends your verdict and note to this host for the developer, and keeps a copy in this browser.'
         : '<strong>Saved in this browser only:</strong> this host does not collect feedback. Use “Copy all feedback” below to send it.';
     });
+    // Credits for every card design, in the families the cards belong to.
+    function renderCredits() {
+      const names = Object.fromEntries([catalog.BASIC_CARDS, catalog.BASIC_TACTICS, catalog.ADVANCED_CARDS, catalog.MARKET_MILITARY, catalog.RELIC_CARDS]
+        .flatMap(set => Object.entries(set)).map(([key, def]) => [key, `${def.code ? `${def.code} · ` : ''}${def.name}`]));
+      const families = {};
+      for (const [key, work] of Object.entries(art)) (families[work.family] ||= []).push([key, work]);
+      $('#credit-groups').innerHTML = Object.entries(families).map(([family, works]) => `<h3>${esc(family)}</h3><ul class="credit-list">${works.map(([key, work]) => `<li>
+          <img src="${esc(work.image)}" alt="" loading="lazy" decoding="async">
+          <div><strong>${esc(names[key] || key)}</strong><span class="work"><a href="${esc(work.objectPage)}"><cite>${esc(work.title)}</cite></a>, ${esc(work.artist)}, ${esc(work.date)}. ${esc(work.medium.charAt(0).toUpperCase() + work.medium.slice(1))}. National Gallery of Art, Washington, ${esc(work.creditLine)}, ${esc(work.accession)}. ${esc(work.license)}.</span></div>
+        </li>`).join('')}</ul>`).join('');
+    }
     render();
+    fetch('card-art/manifest.json').then(r => r.ok ? r.json() : Promise.reject(new Error(r.status))).then(manifest => {
+      art = manifest.cards || {}; render(); renderCredits();
+      if (location.hash === '#card-art-credits') $('#card-art-credits').scrollIntoView();
+    }).catch(() => { $('#credit-groups').innerHTML = '<p class="store-status">The credits list could not load. See card-art/manifest.json.</p>'; });
   })();
   </script>
 </body>

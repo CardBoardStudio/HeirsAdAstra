@@ -38,6 +38,8 @@
         <a class="button button-ghost" id="card-gallery-link" href="cards.html" target="_blank" rel="noopener" style="text-decoration:none">Card gallery</a>
         <button class="button button-ghost" id="new-game-button" type="button">New game</button>
       </div>
+      <p class="site-footer" id="site-footer"><span id="site-footer-version">Galactic Reach</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="cards.html#card-art-credits" target="_blank" rel="noopener">Credits</a></p>
+      <script>document.querySelector('#site-footer-version').textContent = `Galactic Reach ${document.querySelector('.rules-badge').textContent.trim()}`;</script>
     </header>
     <button class="table-menu-button" id="table-menu-button" type="button" aria-expanded="false" aria-controls="table-menu" aria-label="Game menu"><span aria-hidden="true"></span></button>
     <details class="playtest-changes" id="playtest-changes">
