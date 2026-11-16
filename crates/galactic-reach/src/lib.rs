@@ -1333,9 +1333,22 @@ impl BuiltinAgent {
                     -20.0
                 }
             }
+            // Current engines expose this choice; archived observations never do.
+            "construct_draw" => {
+                if view["constructDrawOnly"] == true
+                    && (number(&me["deckCount"]) > 0.0
+                        || me["discard"]
+                            .as_array()
+                            .is_some_and(|cards| !cards.is_empty()))
+                {
+                    12.0
+                } else {
+                    -10.0
+                }
+            }
             "colonize" => 160.0,
             "build" | "second_build" | "colony_build" => {
-                match action["kind"].as_str().unwrap_or("") {
+                let value = match action["kind"].as_str().unwrap_or("") {
                     "starbase" => {
                         if bot_yards(view, seat) == 0 {
                             110.0
@@ -1414,6 +1427,24 @@ impl BuiltinAgent {
                             8.0
                         }
                     }
+                };
+                // Keep old policy scores byte-for-byte equivalent on archived engines.
+                if view["constructDrawOnly"] == true && action["type"] == "build" {
+                    let key = action["key"].as_str().unwrap_or("");
+                    let card = me["hand"]
+                        .as_array()
+                        .into_iter()
+                        .flatten()
+                        .find(|c| c["id"] == action["card"]);
+                    let bonus = match view["cardStats"][key]["buildDiscount"].as_str() {
+                        Some("free") => 0.75,
+                        Some("each") => 0.5,
+                        _ if key == "construct" && card.is_some_and(|c| c["level"] == 3) => 0.25,
+                        _ => 0.0,
+                    };
+                    value + bonus
+                } else {
+                    value
                 }
             }
             "resource" => {
@@ -2038,6 +2069,32 @@ mod tests {
         );
         assert_eq!(Strategy::Economy.version(), "gr-economy/29");
     }
+    #[test]
+    fn construct_iii_draw_choice_and_equivalent_card_preference() {
+        let mut view = strategic_view();
+        view["constructDrawOnly"] = json!(true);
+        view["players"][0]["deckCount"] = json!(1);
+        view["players"][0]["discard"] = json!([]);
+        view["players"][0]["hand"] = json!([
+            {"id":"ii","key":"construct","starter":true,"upgraded":true,"level":2},
+            {"id":"iii","key":"construct","starter":true,"upgraded":true,"level":3}
+        ]);
+        view["fleets"] = json!({});
+        let agent = BuiltinAgent::new(Strategy::Military, [29; 32]);
+        let draw = json!({"type":"construct_draw","card":"iii","key":"construct"});
+        let ii =
+            json!({"type":"build","card":"ii","key":"construct","kind":"settler","coord":"-1,0"});
+        let iii =
+            json!({"type":"build","card":"iii","key":"construct","kind":"settler","coord":"-1,0"});
+        assert!(agent.score(&view, &iii) > agent.score(&view, &ii));
+        assert!(agent.score(&view, &ii) > agent.score(&view, &draw));
+        assert!(agent.score(&view, &draw) > agent.score(&view, &json!({"type":"pass"})));
+        view["players"][0]["deckCount"] = json!(0);
+        assert!(agent.score(&view, &draw) < 0.0);
+        view["constructDrawOnly"] = json!(false);
+        assert_eq!(agent.score(&view, &iii), agent.score(&view, &ii));
+    }
+
     #[test]
     fn strategic_defense_targets_colonies_and_retains_a_guard() {
         let mut view = strategic_view();

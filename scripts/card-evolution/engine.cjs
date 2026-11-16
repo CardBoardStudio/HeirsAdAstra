@@ -10,6 +10,8 @@ const path = require('node:path');
 const vm = require('node:vm');
 const { execFileSync } = require('node:child_process');
 
+const { SimulationArchive, instrumentSource, hash } = require('../lib/simulation-archive.cjs');
+const ENGINE_SOURCE = fs.readFileSync(__filename, 'utf8');
 const ROOT = path.resolve(__dirname, '../..');
 const ENGINE_FILES = ['app', 'adapter'];
 
@@ -122,13 +124,30 @@ function patchApp(app) {
 
 // Returns create(options) -> { e: headless port, a: adapter }.
 function engineFactory(sources) {
-  const context = vm.createContext({ console: { log() {}, warn() {}, error() {} }, setTimeout: () => 0, clearTimeout() {} });
-  vm.runInContext(sources.adapter + '\n' + patchApp(sources.app), context);
+  let activeArchive;
+  const executable = instrumentSource(patchApp(sources.app));
+  const context = vm.createContext({ console: Object.fromEntries(['log','warn','error'].map(level => [level,(...args)=>activeArchive?.event({type:'console',level,args})])), setTimeout: () => 0, clearTimeout() {} });
+  vm.runInContext(sources.adapter + '\n' + executable, context);
   let port;
   const original = context.createGalacticAdapter;
   context.createGalacticAdapter = p => { port = p; return original(p); };
   return {
-    create(options) { const adapter = context.createGalacticReach({ ...options, headless: true }); return { e: port, a: adapter }; },
+    create(options) {
+      const archive = new SimulationArchive({ directory: options.archiveDirectory, metadata: {kind:'card-evolution', ...(options.archiveMetadata||{})}, sources: {
+        'engine.js': executable, 'adapter.js': sources.adapter, 'evolution-engine.cjs': ENGINE_SOURCE,
+        'card-pool.json': JSON.stringify(options.cardPool||null),
+        ...Object.fromEntries(['run.cjs','generator.cjs','scoring.cjs','default.config.json'].map(name=>[name,fs.readFileSync(path.join(__dirname,name),'utf8')]))
+      }});
+      activeArchive = archive;
+      try {
+        const adapter = context.createGalacticReach({ ...options, headless: true, random: archive.random(options.random||Math.random), simulationArchiveEvent:event=>archive.event(event) });
+        const e=port;
+        archive.attach(()=>e.state,{engineHash:hash(executable),adapterHash:hash(sources.adapter),target:options.victoryTarget},()=>({turnSerial:e.turnSerial,cardSerial:e.cardSerial}));
+        for(const name of ['runAiOperation','runAiBuy','applyCombatAction']){const fn=e[name];e[name]=(...args)=>archive.invoke({method:name,actor:e.state.pendingCombat?e.combatActor():e.state.activePlayer,args},()=>fn(...args));}
+        const apply=adapter.applyAction;adapter.applyAction=(...args)=>archive.invoke({method:'applyAction',actor:args[0],action:args[1]},()=>apply(...args));
+        return {e,a:adapter,archive};
+      } catch(error) {archive.finish({reason:'initialization-error',incomplete:true,error:{message:error.message,stack:error.stack}});throw error;}
+    },
     catalog() { return context.createGalacticReach({ catalog: true }); },
   };
 }
@@ -159,7 +178,8 @@ function playGame(factory, task) {
     relic: (seat, row, picked) => { row.forEach(key => bump(rec.relicOffers, seat, key)); if (picked) bump(rec.relicPicks, seat, picked); },
   };
   const started = Date.now();
-  const game = factory.create({ random: lcg(task.seed), evolutionMetrics: metrics, victoryTarget: task.victoryTarget, cardPool: task.pool });
+  const game = factory.create({ random: lcg(task.seed), evolutionMetrics: metrics, victoryTarget: task.victoryTarget, cardPool: task.pool, archiveMetadata: task });
+  try {
   const { e } = game;
   e.state.players.forEach((p, i) => { p.strategy = task.profiles[i]; });
   let steps = 0, stalled = false;
@@ -175,12 +195,15 @@ function playGame(factory, task) {
     if (before === after) { stalled = true; break; }
   }
   const s = e.state;
-  return {
-    seed: task.seed, index: task.index, profiles: task.profiles, completed: s.winner !== null, winner: s.winner, round: s.round, steps, stalled,
+  const result = {
+    archive: game.archive.directory, seed: task.seed, index: task.index, profiles: task.profiles, completed: s.winner !== null, winner: s.winner, round: s.round, steps, stalled,
     milliseconds: Date.now() - started,
     players: s.players.map((p, seat) => ({ seat, profile: task.profiles[seat], points: e.calculatePrestige(seat), cardsPurchased: p.cardsPurchased || 0, relics: p.relicsExcavated || 0 })),
     ...rec,
   };
+  game.archive.finish({reason:result.completed?'victory':stalled?'stalled':'limit',incomplete:!result.completed,summary:result});
+  return result;
+  } catch(error) {game.archive.finish({reason:'error',incomplete:true,error:{message:error.message,stack:error.stack}});throw error;}
 }
 
 module.exports = { ROOT, loadSources, resolveRef, toolingCommit, patchApp, engineFactory, currentCatalog, playGame, lcg };

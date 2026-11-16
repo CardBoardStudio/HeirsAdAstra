@@ -36,4 +36,7 @@ trusted-signers.local.json
 
 # Private local HTTPS host: credentials, persistent data, launchd logs
 .local/
+
+# Full local simulator archives; retained locally, not committed as source.
+/output/simulations/
 /card-evolution-runs/

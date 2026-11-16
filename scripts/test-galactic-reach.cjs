@@ -99,6 +99,9 @@ require('./test-unlimited-buys.cjs');
 require('./test-tiered-market.cjs');
 require('./test-strategic-bots.cjs');
 require('./test-strategic-bot-study.cjs');
+require('./test-bot-search-cache.cjs');
 
 require('./test-corner-portals.cjs');
 require('./test-change-queue.cjs');
+
+require('./test-construct-iii-draw.cjs');

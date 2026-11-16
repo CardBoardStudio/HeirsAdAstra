@@ -112,3 +112,7 @@ Promotion is a normal rules change, decided by the captain, never by the study:
 - `report.cjs`: `report.md`, shortlist files.
 - `default.config.json`: every setting, with the defaults above.
 - Test: `node scripts/test-card-evolution.cjs` (about 15 s).
+
+### Full game retention
+
+Every game also creates a full simulation archive by default (see [simulation archives](../../docs/simulation-archives.md)). It freezes the generated pool, configuration, study label and executable rules, and retains private positions, engine counters, actions/events, all random values and resource/hand histories. Its path is included in each `games.jsonl` record. Failed attempts and interrupted worker journals are kept too. Set `GR_SIMULATION_ARCHIVE_DIR` to a permanent study location when running from a temporary checkout. No local archive is automatically pruned.
