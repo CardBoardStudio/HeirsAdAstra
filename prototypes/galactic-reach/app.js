@@ -99,6 +99,13 @@ function createGalacticReach(options = {}) {
     starbase: { name: 'Shipyard', code: 'S', cost: { matter: 2, energy: 1, biomass: 1, data: 1 } },
   };
   const STORAGE_UPGRADE = { capacity: 4 };
+  // Rules #storage-allocation: capacity is a card. The table shares one pile of Capacity
+  // Modules in the Upgrades tray. A played module joins its owner's permanent Storage pile,
+  // and a module costs 1 + (cards in your Storage pile) of each resource.
+  const CAPACITY_SUPPLY = 20;
+  const SUPPLY_CARDS = {
+    capacityModule: { code: 'U01', name: 'Capacity Module', kind: 'Capacity', accent: 'var(--gold)', order: 'special', tag: 'capacityModule', supply: true, effect: { allocate: STORAGE_UPGRADE.capacity, store: true }, text: 'Costs 1 + the cards in your Storage pile, of each resource. Add 4 capacity points, split as you choose among your resource limits, then put this card in your Storage pile.' }
+  };
   // 32.37: a Harvester hex produces 2 of its resource (31.36 and earlier: 1).
   const HARVESTER_YIELD = 2;
   // Rules #victory: Prestige per decisive combat victory (2 from this package; 1 earlier).
@@ -387,7 +394,7 @@ function createGalacticReach(options = {}) {
   }
 });
   Object.assign(CARD_BY_TAG,Object.fromEntries([...Object.values(ADVANCED_CARDS),...Object.values(RELIC_CARDS)].filter(def=>def.tag).map(def=>[def.tag,def])));
-  const ALL_CARDS = { ...BASIC_CARDS, ...ADVANCED_CARDS, ...MARKET_MILITARY, ...RELIC_CARDS };
+  const ALL_CARDS = { ...BASIC_CARDS, ...ADVANCED_CARDS, ...MARKET_MILITARY, ...SUPPLY_CARDS, ...RELIC_CARDS };
 
   // Card data only, for the card gallery page: no galaxy, state, timers or storage.
   if (options.catalog === true) return {
@@ -553,7 +560,7 @@ function createGalacticReach(options = {}) {
     return {
       id: index, name: options.names?.[index] || PLAYER_NAMES[faction], color: PLAYER_COLORS[faction], strategy: PLAYER_STRATEGIES[faction],
       resources: { matter: 0, energy: 0, biomass: 1, data: 1 }, deck: shuffled(deck,`deck:${index}`), discard: [], hand: [], inPlay: [],
-      resourceLimits: { matter:4, energy:4, biomass:4, data:4 }, storageUpgrades: 0, storagePurchases: 0, initialShipyardCoord: null, cardsPurchased: 0, relicsExcavated: 0, combatVictories: 0, passed: false, tradeUsed: false, bought: 0,
+      resourceLimits: { matter:4, energy:4, biomass:4, data:4 }, storageUpgrades: 0, storagePurchases: 0, storage: [], initialShipyardCoord: null, cardsPurchased: 0, relicsExcavated: 0, combatVictories: 0, passed: false, tradeUsed: false, bought: 0,
       buyDiscountEach: 0, buyHubDiscounts: 0, buyStartDiscardIds: [], buyStartInPlayIds: [], buyStartHandIds: [], combatBonus: 0, military: [], cardPrestige: 0,
       tradesWith: [0,0,0,0], ...(options.controllers ? {controller: options.controllers[index]} : {})
     };
@@ -577,7 +584,7 @@ function createGalacticReach(options = {}) {
     players.forEach(player => drawCards(player, 5));
     const initial = {
       version: SAVE_FORMAT_VERSION, round: 1, phase: 'production', firstPlayer: 0, activePlayer: 0, players,
-      portalLinks: {...CORNER_PORTAL_LINKS}, planets: galaxy.planets, clusters: galaxy.clusters, fleets, marketDecks, market: [],
+      portalLinks: {...CORNER_PORTAL_LINKS}, planets: galaxy.planets, clusters: galaxy.clusters, fleets, marketDecks, market: [], capacitySupply: CAPACITY_SUPPLY,
       selected: null, actionMode: null, actionCardId: null, actionOptions: {}, moveSource: null, reachable: [],
       turnStage: 'waiting', log: [], winner: null,
       lastCombat: null, pendingCombat: null, pendingMove: null, pendingCombatReport: null, relicDeck, relicRow,
@@ -787,8 +794,10 @@ function createGalacticReach(options = {}) {
       if (!parsed.marketDecks) return false;
       if (!Array.isArray(parsed.players) || parsed.players.length!==4 || parsed.players.some(p=>!p.resourceLimits || RESOURCES.some(r=>!Number.isSafeInteger(p.resourceLimits[r])||p.resourceLimits[r]<4))) return false;
       state = parsed;
+      if (!Number.isInteger(state.capacitySupply)) state.capacitySupply = CAPACITY_SUPPLY;
+      state.players.forEach(p => { if (!Array.isArray(p.storage)) p.storage = []; });
       loadGameHistory();
-      cardSerial = Math.max(1, ...state.players.flatMap(p => [...p.deck, ...p.discard, ...p.hand, ...p.inPlay].map(c => Number(String(c.id).split('-').pop()) || 0)), ...state.market.map(c => Number(String(c.id).split('-').pop()) || 0)) + 1;
+      cardSerial = Math.max(1, ...state.players.flatMap(p => [...p.deck, ...p.discard, ...p.hand, ...p.inPlay, ...(p.storage || [])].map(c => Number(String(c.id).split('-').pop()) || 0)), ...state.market.map(c => Number(String(c.id).split('-').pop()) || 0)) + 1;
       if (!state.visibilityRevision) {
         const everyone = [0,1,2,3];
         HOME_CLUSTER_OWNERS.forEach(([clusterIndex]) => {
@@ -1531,7 +1540,7 @@ function createGalacticReach(options = {}) {
     if(player.hand.some(canConvertCard)&&canConvertCards())return true;
     if (player.hand.some(card => { const effect = ALL_CARDS[card.key].buyEffect; return effect; })) return true;
     if (RESOURCES.some(resource => player.resources[resource] >= 3) && trashEligibleCards(player).length) return true;
-    if (canIncreaseStorage(ME)) return true;
+    if (canBuyCapacity(ME)) return true;
     return RESOURCES.some(give => RESOURCES.some(get => canBankTrade(ME, give, get)));
   }
 
@@ -1806,8 +1815,16 @@ function createGalacticReach(options = {}) {
       if (!headless && playerId===ME) openArchivePurge(card.id);
       return false;
     }
-    removeHandCard(player,card.id,effect.trashSelf?'trash':'inPlay');
+    // Capacity Module (rules #storage-allocation): `choice` is the chosen split of its points.
+    if (effect.allocate && !validStorageAllocation(choice,effect.allocate)) {
+      if (!headless && playerId===ME && canManageResources(ME)) openStorageAllocation(card.id);
+      return false;
+    }
+    const played = removeHandCard(player,card.id,effect.trashSelf||effect.store?'trash':'inPlay');
+    // Capacity Module: the card and its chosen split stay in the permanent Storage pile.
+    if (effect.store) player.storage.push({...played, allocation: {...choice}});
     const notes = [];
+    if (effect.allocate) { addStorageCapacity(playerId,choice); player.storageUpgrades += 1; notes.push(`added ${effect.allocate} capacity points (${RESOURCES.filter(r=>choice[r]).map(r=>`+${choice[r]} ${RESOURCE_NAMES[r]}`).join(', ')}) and stored the card`); }
     if (effect.limits) { addStorageCapacity(playerId,effect.limits); notes.push(`raised its limits (${RESOURCES.filter(r=>effect.limits[r]).map(r=>`+${effect.limits[r]} ${RESOURCE_NAMES[r]}`).join(', ')})`); }
     if (effect.trashStarters) {
       const targets = choice.map(id=>player.discard.find(c=>c.id===id));
@@ -2678,7 +2695,7 @@ function createGalacticReach(options = {}) {
     const target=yards&&state.market?aiTargetCard(playerId):null;
     if (target) {
       const cost=ALL_CARDS[target.key].cost,limits=resourceLimits(playerId),needsRoom=RESOURCES.some(r=>(cost[r]||0)>limits[r]);
-      const price=(state.players[playerId].storagePurchases||0)+1;
+      const price=storageUpgradeCost(playerId).matter;
       RESOURCES.forEach(r=>{base[r]=Math.min(limits[r],Math.max(base[r]||0,cost[r]||0,needsRoom?price:0));});
     }
     const plan=aiStorageBudget(playerId);
@@ -2693,7 +2710,7 @@ function createGalacticReach(options = {}) {
   function aiStorageAllocation(playerId, points, extraGain = {}, payment = {}) {
     const player=state.players[playerId],limits=resourceLimits(playerId),income=aiIncome(playerId),protection=aiStorageProtection(playerId);
     const allocation=Object.fromEntries(RESOURCES.map(r=>[r,0]));
-    const paid=RESOURCES.some(r=>(payment[r]||0)>0),nextPrice=(player.storagePurchases||0)+(paid?2:1);
+    const paid=RESOURCES.some(r=>(payment[r]||0)>0),nextPrice=storageUpgradeCost(playerId).matter+(paid?1:0);
     for(let n=0;n<points;n++) {
       const score=r=>{
         const limit=limits[r]+allocation[r],need=player.resources[r]-(payment[r]||0)+(extraGain[r]||0)+income[r]*2-limit;
@@ -2901,20 +2918,14 @@ function createGalacticReach(options = {}) {
       .sort((a,b)=>b.score-a.score||a.card.id.localeCompare(b.card.id))[0]?.card||null;
   }
 
-  // Rules #resources: a rival raises the limits its target card needs during its own Buy turn.
+  // Rules #rival-cards: during its own Buy a rival buys a Capacity Module toward the limits
+  // its target card needs, unless it already holds an unplayed one.
   function aiCapacityForTarget(playerId) {
     const target=aiTargetCard(playerId);
-    if (!target) return false;
+    if (!target || aiUnplayedModules(playerId)) return false;
     const cost=purchaseCost(state.players[playerId],target.key),limits=resourceLimits(playerId);
-    if (!RESOURCES.some(r=>(cost[r]||0)>limits[r]) || !canIncreaseStorage(playerId)) return false;
-    const allocation=Object.fromEntries(RESOURCES.map(r=>[r,0]));
-    const fallback=aiStorageAllocation(playerId,1),spare=RESOURCES.find(r=>fallback[r])||'data';
-    for (let n=0;n<STORAGE_UPGRADE.capacity;n++) {
-      const need=r=>(cost[r]||0)-limits[r]-allocation[r];
-      const resource=[...RESOURCES].sort((a,b)=>need(b)-need(a)||RESOURCES.indexOf(a)-RESOURCES.indexOf(b))[0];
-      allocation[need(resource)>0?resource:spare]++;
-    }
-    return increaseStorage(playerId,allocation);
+    if (!RESOURCES.some(r=>(cost[r]||0)>limits[r])) return false;
+    return buyCapacity(playerId);
   }
 
   function aiUseResources(player, exceptCardId, desiredCost = {}) {
@@ -3131,8 +3142,8 @@ function createGalacticReach(options = {}) {
       if (aiUseResources(p,colonize.id,cost)&&applyColonizeOrder(id,target,colonize)) return;
     }
     // Pure-gain orders first: permanent Prestige, permanent capacity, and big draws.
-    const boost=p.hand.find(c=>{const effect=ALL_CARDS[c.key].effect;return effect&&(effect.prestige||effect.limits||effect.draw>=2);});
-    if (boost&&resolveCardEffect(id,boost,ALL_CARDS[boost.key])) return;
+    const boost=p.hand.find(c=>{const effect=ALL_CARDS[c.key].effect;return effect&&(effect.prestige||effect.limits||effect.allocate||effect.draw>=2);});
+    if (boost&&resolveCardEffect(id,boost,ALL_CARDS[boost.key],ALL_CARDS[boost.key].effect.allocate?aiModuleAllocation(id,ALL_CARDS[boost.key].effect.allocate):null)) return;
     const excavation=p.hand.find(c=>['probe','excavate'].includes(c.key));
     if (excavation) {
       const site=Object.entries(state.planets).find(([coord,planet])=>planet.special==='relic'&&state.fleets[coord]?.[id]?.explorer&&relicKnown(state.clusters[planet.cluster],id));
@@ -3167,7 +3178,7 @@ function createGalacticReach(options = {}) {
         // Preserve the recorded AI-specific Surge effect while changing policy.
         const gain={};controlledPlanets(id).filter(([,p])=>true).slice(0,3).forEach(([,planet])=>{gain[planet.type]=(gain[planet.type]||0)+1;});
         const result=addResources(p,gain);aiPlayCard(p,special);completeAction(id,`${p.name} triggered an Industrial Surge.${overflowNote(result)}`);
-      } else {const def=ALL_CARDS[special.key];resolveHumanSpecial(special,def,id,def.tag==='alienCradle'?aiStorageAllocation(id,RELIC_STORAGE_POINTS,{biomass:2}):def.effect?.trashStarters?aiArchivePurgeChoice(id,def.effect.trashStarters):null);if (state.pendingConsortium)runAiConsortium();}
+      } else {const def=ALL_CARDS[special.key];resolveHumanSpecial(special,def,id,def.tag==='alienCradle'?aiStorageAllocation(id,RELIC_STORAGE_POINTS,{biomass:2}):def.effect?.allocate?aiModuleAllocation(id,def.effect.allocate):def.effect?.trashStarters?aiArchivePurgeChoice(id,def.effect.trashStarters):null);if (state.pendingConsortium)runAiConsortium();}
       return;
     }
     // Use the draw-only order after useful builds and movement, then reassess next turn.
@@ -3212,7 +3223,8 @@ function createGalacticReach(options = {}) {
 
   function buyCard(playerId, source, indexOrKey) {
     const player = state.players[playerId];
-    // 31.36: the market is the only purchase source; basic cards are not sold.
+    // 31.36: basic cards are not sold. Besides the market, the Upgrades tray sells Capacity Modules.
+    if (source === 'capacity') return indexOrKey === 'capacityModule' && buyCapacity(playerId);
     if (source !== 'market' || state.phase !== 'buy' || state.activePlayer !== playerId) return false;
     const card = state.market[indexOrKey];
     if (!card) return false;
@@ -3305,7 +3317,7 @@ function createGalacticReach(options = {}) {
       if(!upgradeStarter(id,upgrade.id,resource))break;
     }
     // 31.36: then raise the limits the target market card needs (cheap starter upgrades come first).
-    for (let n=0;n<2&&aiCapacityForTarget(id);n++);
+    aiCapacityForTarget(id);
     const preservesPayment=choice=>{
       if (!choice.bank) return false;
       const funds={...p.resources},cost=purchaseCost(p,choice.key);
@@ -3395,36 +3407,61 @@ function createGalacticReach(options = {}) {
   }
 
   function storageUpgradeCost(playerId) {
-    const price = (state.players[playerId].storagePurchases || 0) + 1;
+    // Rules #capacity-module: 1 + the cards in your Storage pile, of each resource.
+    const price = (state.players[playerId].storage || []).length + 1;
     return Object.fromEntries(RESOURCES.map(resource => [resource,price]));
   }
 
-  function canIncreaseStorage(playerId) {
-    return canManageResources(playerId) && canAfford(state.players[playerId],storageUpgradeCost(playerId));
+  // Rules #storage-allocation: buy a Capacity Module on your own Buy turn. Market
+  // discounts neither apply to it nor get used by it, and it never refills the market.
+  function canBuyCapacity(playerId) {
+    const player = state.players[playerId];
+    return !!player && state.phase === 'buy' && state.activePlayer === playerId && !replayMode && overflowPlayer() < 0
+      && !state.pendingCombat && state.winner === null && (state.capacitySupply || 0) > 0 && canAfford(player,storageUpgradeCost(playerId));
   }
 
-  function increaseStorage(playerId, allocation) {
-    if (!canIncreaseStorage(playerId) || !validStorageAllocation(allocation)) return false;
+  function buyCapacity(playerId) {
+    if (!canBuyCapacity(playerId)) return false;
     const player = state.players[playerId];
     payCost(player,storageUpgradeCost(playerId));
-    addStorageCapacity(playerId,allocation);
-    player.storageUpgrades += 1;
+    state.capacitySupply -= 1;
+    gainCard(player,makeCard('capacityModule'));
     player.storagePurchases = (player.storagePurchases || 0) + 1;
-    logEvent(`${player.name} bought 4 capacity points: ${RESOURCES.filter(r=>allocation[r]).map(r=>`+${allocation[r]} ${RESOURCE_NAMES[r]}`).join(", ")}.`);
-    render(); saveGame();
+    player.bought += 1;
+    player.cardsPurchased = (player.cardsPurchased || 0) + 1;
+    logEvent(`${player.name} bought a Capacity Module (${state.capacitySupply} left in the pile).`);
     return true;
   }
 
+  // Capacity Modules a rival owns but has not played yet (hand, deck or discard).
+  function aiUnplayedModules(playerId) {
+    const player = state.players[playerId];
+    return [...player.hand,...player.deck,...player.discard].filter(card=>card.key==='capacityModule').length;
+  }
+
+  // A rival buys one Capacity Module when its storage plan is worthwhile and it holds no
+  // unplayed module; it plays the module from hand during Operations (runAiOperation).
   function aiManageStorage(playerId, extraGain = {}) {
-    if (!canManageResources(playerId)) return false;
-    let bought=false;
-    for (let n=0;n<5;n++) {
-      const plan=aiStorageBudget(playerId,extraGain),player=state.players[playerId];
-      if (!plan || !canIncreaseStorage(playerId) || !RESOURCES.every(r=>player.resources[r]-plan.cost[r]>=Math.min(player.resources[r],plan.protection[r]||0))) break;
-      if (!increaseStorage(playerId,aiStorageAllocation(playerId,STORAGE_UPGRADE.capacity,extraGain,plan.cost))) break;
-      bought=true;
+    if (!canBuyCapacity(playerId) || aiUnplayedModules(playerId)) return false;
+    const plan=aiStorageBudget(playerId,extraGain),player=state.players[playerId];
+    if (!plan || !RESOURCES.every(r=>player.resources[r]-plan.cost[r]>=Math.min(player.resources[r],plan.protection[r]||0))) return false;
+    return buyCapacity(playerId);
+  }
+
+  // Where a rival puts a played module's points: first toward the limits its target
+  // market card needs, then by its usual storage pressure.
+  function aiModuleAllocation(playerId, points = STORAGE_UPGRADE.capacity) {
+    const target=aiTargetCard(playerId);
+    const cost=target?purchaseCost(state.players[playerId],target.key):{},limits=resourceLimits(playerId);
+    if (!RESOURCES.some(r=>(cost[r]||0)>limits[r])) return aiStorageAllocation(playerId,points);
+    const allocation=Object.fromEntries(RESOURCES.map(r=>[r,0]));
+    const fallback=aiStorageAllocation(playerId,1),spare=RESOURCES.find(r=>fallback[r])||'data';
+    for (let n=0;n<points;n++) {
+      const need=r=>(cost[r]||0)-limits[r]-allocation[r];
+      const resource=[...RESOURCES].sort((a,b)=>need(b)-need(a)||RESOURCES.indexOf(a)-RESOURCES.indexOf(b))[0];
+      allocation[need(resource)>0?resource:spare]++;
     }
-    return bought;
+    return allocation;
   }
 
   function discardResources(playerId, resource, amount) {
@@ -3822,12 +3859,6 @@ function createGalacticReach(options = {}) {
       </article>`;
     }).join('');
     matSeen[viewSeat] = Object.fromEntries(RESOURCES.map(resource => [resource, { have: player.resources[resource], cap: limits[resource], next: production[resource] }]));
-    const upgrade = $('#upgrade-storage-button');
-    upgrade.disabled = !canIncreaseStorage(ME);
-    upgrade.title = canManageResources(ME) ? `Pay ${storageUpgradeCost(ME).matter} of each resource for 4 capacity points to distribute (paid upgrade ${(player.storagePurchases || 0)+1}).` : 'Available during Operations or Buy, including off turn.';
-    $('#storage-upgrade-cost').innerHTML = resourceDots(storageUpgradeCost(ME));
-    // On the table the +4 token shows its price at all times: the same amount of each resource.
-    $('#storage-upgrade-each').innerHTML = `<b>${storageUpgradeCost(ME).matter}</b><span>each</span>${RESOURCES.map(resource => `<i class="${resource}"></i>`).join('')}`;
 
   }
 
@@ -4044,7 +4075,8 @@ function createGalacticReach(options = {}) {
   // Each card design shows one public-domain artwork from the National Gallery of Art
   // (card-art/<card key>.webp; card-art/manifest.json and the card gallery credit them).
   // Like the emblem, the picture never changes what a card does (rulebook #card-art).
-  const CARD_ART_KEYS = new Map(Object.entries({ ...ALL_CARDS, ...BASIC_TACTICS }).map(([key, def]) => [def, key]));
+  // Supply cards (the Capacity Module) have no artwork yet and keep their emblem.
+  const CARD_ART_KEYS = new Map(Object.entries({ ...ALL_CARDS, ...BASIC_TACTICS }).filter(([key]) => !SUPPLY_CARDS[key]).map(([key, def]) => [def, key]));
   function cardIllustration(definition) {
     const motif = definition.kind === 'Military' || definition.affinity === 'Military' ? 'fleet'
       : {move:'fleet',construct:'starbase',colonize:'colony',probe:'explorer',excavate:'harvester'}[definition.order]
@@ -4116,6 +4148,11 @@ function createGalacticReach(options = {}) {
     $('#hand-pile-count').textContent=player.hand.length;
     $('#discard-count').textContent=discardCount;
     $('#in-play-count').textContent=player.inPlay.length;
+    // Rules #storage-allocation: the permanent Storage pile beside the mat.
+    const stored=player.storage||[];
+    $('#storage-pile-count').textContent=stored.length;
+    $('#storage-pile').setAttribute('aria-label',`Storage pile: ${stored.length} Capacity Module${stored.length===1?'':'s'}`);
+    $('#storage-pile').title=stored.length?`Storage pile: ${stored.map(c=>RESOURCES.filter(r=>c.allocation?.[r]).map(r=>`+${c.allocation[r]} ${RESOURCE_NAMES[r]}`).join(', ')).join(' · ')}. Never reshuffled; the next Capacity Module costs ${stored.length+1} of each resource.`:'Storage pile: played Capacity Modules stay here. Your next one costs 1 of each resource.';
     renderPile('deck', replayMode?player.deckCount:player.deck.length, null);
     renderPile('discard', discardCount, replayMode?null:player.discard.at(-1));
     renderPile('in-play', player.inPlay.length, player.inPlay.at(-1));
@@ -4263,9 +4300,9 @@ function createGalacticReach(options = {}) {
       const reason=!humanBuy?'Upgrade during your Buy turn.':!ready.length?`No level ${LEVEL_NAMES[level-1]} ${def.name} in hand, discard or in play.`:!canPay?`Needs ${price} of one resource.`:'';
       const effect=`${upgradedOrderText({key})}${level===3?' Draws one card when used as an order.':''} No longer converts to resources.`;
       return `<button class="game-card upgrade-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-upgrade-offer="${key}" data-upgrade-level="${level}" ${reason?`disabled title="${reason}"`:''} aria-label="Upgrade ${esc(def.name)} to level ${LEVEL_NAMES[level]} for ${price} of one resource; does not use a purchase${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Starter upgrade</span><span class="card-name">${def.name} ${LEVEL_NAMES[level]}</span>${cardIllustration(def)}<span class="card-effect">${effect}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${price}</strong>${RESOURCES.map(resource=>`<span class="pay-chip ${me.resources[resource]>=price?'can':'cannot'}" data-pay="${resource}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${price} of one resource</span></span><span class="card-limit-note">${note}</span></button>`;
-    })).join('')+capacityOffer()+trashPile(humanBuy);
+    })).join('')+capacityOffer(humanBuy)+trashPile(humanBuy);
     $$('[data-upgrade-offer]').forEach(button=>button.addEventListener('click',event=>openUpgradeChoice(button.dataset.upgradeOffer,event.target.closest?.('.pay-chip.can')?.dataset.pay)));
-    $('[data-capacity-offer]')?.addEventListener('click',()=>openStorageAllocation());
+    $$('[data-capacity-offer]').forEach(button=>button.addEventListener('click',()=>{if(buyCard(ME,'capacity','capacityModule')){render();saveGame();}}));
     $('[data-trash-pile]')?.addEventListener('click',()=>$('#open-trash')?.click());
     if ($('#upgrade-dialog').open) renderUpgradeChoice();
   }
@@ -4274,12 +4311,12 @@ function createGalacticReach(options = {}) {
     const label=($('#open-trash')?.textContent||'Trash a card').replace('Trash a card','').trim();
     return `<button class="game-card upgrade-offer trash-pile ${humanBuy?'':'unavailable'}" type="button" data-trash-pile ${humanBuy?'':'disabled title="Trash a card during your Buy turn."'} aria-label="Trash pile: trash a card from your deck${humanBuy?'':'. Unavailable: during your Buy turn only.'}"><span class="card-type">Trash</span><span class="card-name">Trash pile</span><span class="card-effect">Remove a card from your deck${label?` ${label}`:''}.</span></button>`;
   }
-  // Add 4 capacity lies with the starter upgrades as a card of the same kind, showing its current
-  // price (the same amount of each resource). It opens the same split-the-points dialog.
-  function capacityOffer() {
-    const cost=storageUpgradeCost(ME);
-    const reason=!canManageResources(ME)?'Add capacity during Operations or Buy, including off turn.':!canIncreaseStorage(ME)?`Needs ${cost.matter} of each resource.`:'';
-    return `<button class="game-card upgrade-offer capacity-offer ${reason?'unavailable':''}" style="--card-accent:var(--gold)" data-capacity-offer ${reason?`disabled title="${reason}"`:''} aria-label="Add 4 capacity for ${cost.matter} of each resource${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Capacity</span><span class="card-name">Add 4 capacity</span><span class="card-effect">${iconText('Split 4 points among your resource limits as you choose.')}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${cost.matter}</strong>${RESOURCES.map(resource => `<span class="pay-chip ${state.players[ME].resources[resource]>=cost[resource]?'can':'cannot'}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${cost.matter} of each resource</span></span></button>`;
+  // Rules #capacity-module: the shared Capacity Module pile lies with the starter upgrades,
+  // showing this faction's price (1 + its Storage pile, of each resource). Choosing it buys one.
+  function capacityOffer(humanBuy) {
+    const me=state.players[ME],def=SUPPLY_CARDS.capacityModule,left=state.capacitySupply||0,cost=storageUpgradeCost(ME),stored=(me.storage||[]).length;
+    const reason=!humanBuy?'Buy during your Buy turn.':!left?'The capacity pile is empty.':!canAfford(me,cost)?`Needs ${cost.matter} of each resource.`:'';
+    return `<button class="game-card upgrade-offer capacity-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-capacity-offer="capacityModule" ${reason?`disabled title="${reason}"`:''} aria-label="Buy a Capacity Module for ${cost.matter} of each resource (1 + ${stored} in your Storage pile); ${left} left in the pile${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Supply · ${left} left</span><span class="card-name">${def.name}</span><span class="card-effect">${iconText('Play in Operations: split 4 points among your resource limits, then store this card.')}</span><span class="card-footer"><small>1 + ${stored} stored</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${cost.matter}</strong>${RESOURCES.map(resource => `<span class="pay-chip ${me.resources[resource]>=cost[resource]?'can':'cannot'}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${cost.matter} of each resource</span></span></button>`;
   }
   function openUpgradeChoice(key, pay) {
     upgradeChoiceKey=key;
@@ -4524,12 +4561,13 @@ function createGalacticReach(options = {}) {
   function openStorageAllocation(cardId = null) {
     if (headless || replayMode || !canManageResources(ME)) return false;
     const card=cardId?state.players[ME].hand.find(c=>c.id===cardId):null;
-    if (cardId && (state.phase!=='operations'||!card||ALL_CARDS[card.key].tag!=='alienCradle')) return false;
-    if (!cardId&&!canIncreaseStorage(ME))return false;
-    storageAllocationDraft={cardId,points:cardId?RELIC_STORAGE_POINTS:STORAGE_UPGRADE.capacity};
+    // Rules #storage-allocation: a played Capacity Module or Cradle of Lost Suns chooses a split.
+    const definition=card&&ALL_CARDS[card.key],cradle=definition?.tag==='alienCradle';
+    if (state.phase!=='operations'||!card||!(cradle||definition.effect?.allocate)) return false;
+    storageAllocationDraft={cardId,points:cradle?RELIC_STORAGE_POINTS:definition.effect.allocate};
     $('#storage-allocation-help').textContent=`Assign all ${storageAllocationDraft.points} points. Each point raises one chosen resource limit by 1. You may put several points into the same resource.`;
-    $('#storage-allocation-cost').innerHTML=cardId?'Cradle of Lost Suns · no resource payment. Gain 2 Biomass and draw one card after confirming.':`Cost: ${resourceDots(storageUpgradeCost(ME))}`;
-    $('#storage-allocation-confirm').textContent=cardId?'Play relic and add capacity':'Buy capacity';
+    $('#storage-allocation-cost').innerHTML=cradle?'Cradle of Lost Suns · no resource payment. Gain 2 Biomass and draw one card after confirming.':'Capacity Module · uses your Operations action. After confirming, the card goes to your Storage pile.';
+    $('#storage-allocation-confirm').textContent=cradle?'Play relic and add capacity':'Play Capacity Module';
     $('#storage-allocation-options').innerHTML=RESOURCES.map(r=>`<label class="storage-allocation-option" for="storage-points-${r}">${resourceDot(r)}<span>${RESOURCE_NAMES[r]}<small id="storage-limit-${r}"></small></span><input id="storage-points-${r}" aria-label="${RESOURCE_NAMES[r]} capacity points" aria-describedby="storage-limit-${r}" type="number" min="0" max="${storageAllocationDraft.points}" step="1" value="1" required></label>`).join('');
     RESOURCES.forEach(r=>{const input=$(`#storage-points-${r}`);input.value='1';input.addEventListener('input',updateStorageAllocation);});
     updateStorageAllocation();$('#storage-allocation-dialog').showModal();return true;
@@ -5067,6 +5105,7 @@ function createGalacticReach(options = {}) {
     $('#discard-button').addEventListener('click',()=>$('#discard-dialog').showModal());
     $('#close-discard').addEventListener('click',()=>$('#discard-dialog').close());
     $('#in-play-button').addEventListener('click',()=>$('#in-play-dialog').showModal());
+    $('#storage-pile').addEventListener('click',()=>toast($('#storage-pile').title));
     $('#close-in-play').addEventListener('click',()=>$('#in-play-dialog').close());
     $('#new-game-button').addEventListener('click',()=>{
       if (options.newTable) { options.newTable(); return; }
@@ -5098,7 +5137,6 @@ function createGalacticReach(options = {}) {
     });
     $('#close-relic-catalog').addEventListener('click',()=>$('#relic-catalog-dialog').close());
     $('#cancel-excavate').addEventListener('click',()=>{if(state.actionMode!=='excavate' || state.pendingCombat)return;clearAction();switchTab('hand');render();saveGame();});
-    $('#upgrade-storage-button').addEventListener('click',()=>openStorageAllocation());
     $('#storage-allocation-cancel').addEventListener('click',()=>$('#storage-allocation-dialog').close());
     $('#storage-allocation-dialog').addEventListener('close',()=>{storageAllocationDraft=null;});
     $('#archive-purge-cancel').addEventListener('click',()=>$('#archive-purge-dialog').close());
@@ -5116,10 +5154,10 @@ function createGalacticReach(options = {}) {
       event.preventDefault();if(!storageAllocationDraft)return;
       const allocation=Object.fromEntries(RESOURCES.map(r=>[r,Number($(`#storage-points-${r}`).value)]));
       if(!validStorageAllocation(allocation,storageAllocationDraft.points)||!canManageResources(ME))return;
-      const card=storageAllocationDraft.cardId?state.players[ME].hand.find(c=>c.id===storageAllocationDraft.cardId):null;
-      if(storageAllocationDraft.cardId&&!card)return;
-      const isRelic=!!storageAllocationDraft.cardId;storageAllocationDraft=null;$('#storage-allocation-dialog').close();
-      if(isRelic)resolveHumanSpecial(card,ALL_CARDS[card.key],ME,allocation);else increaseStorage(ME,allocation);
+      const card=state.players[ME].hand.find(c=>c.id===storageAllocationDraft.cardId);
+      if(!card)return;
+      storageAllocationDraft=null;$('#storage-allocation-dialog').close();
+      resolveHumanSpecial(card,ALL_CARDS[card.key],ME,allocation);
     });
     $('#convert-all-button').addEventListener('click',convertAllResources);
     $('#trade-form').addEventListener('submit',submitTrade);
@@ -5198,8 +5236,8 @@ function createGalacticReach(options = {}) {
     convertAllResources = () => { if (canConvertCards()) send(...state.players[ME].hand.filter(canConvertCard).map(c => ({type:'resource',card:c.id}))); };
     resolveHumanSpecial = (card, definition, id = ME, allocation = null) => {
       if (!mine(id) || !card || state.pendingCombat) return false;
-      if (definition.tag === 'alienCradle') {
-        if (!validStorageAllocation(allocation,RELIC_STORAGE_POINTS)) { if (canManageResources(ME)) openStorageAllocation(card.id); return false; }
+      if (definition.tag === 'alienCradle' || definition.effect?.allocate) {
+        if (!validStorageAllocation(allocation,definition.effect?.allocate || RELIC_STORAGE_POINTS)) { if (canManageResources(ME)) openStorageAllocation(card.id); return false; }
         return send({type:'special',card:card.id,allocation});
       }
       if (definition.effect?.trashStarters) {
@@ -5234,7 +5272,6 @@ function createGalacticReach(options = {}) {
     consortiumGain = (id, resource) => canConsortiumGain(id,resource) && send({type:'consortium_gain',resource});
     consortiumExchange = (id, giveType, getType) => canConsortiumExchange(id,giveType,getType) && send({type:'consortium_exchange',giveType,getType});
     finishConsortium = (id, cancel = false) => !!consortiumPending(id) && send({type:cancel ? 'cancel_consortium' : 'finish_consortium'});
-    increaseStorage = (id, allocation) => mine(id) && canIncreaseStorage(ME) && validStorageAllocation(allocation) && send({type:'increase_storage',allocation});
     discardResources = (id, resource, amount) => mine(id) && canManageResources(ME) && send({type:'discard_resources',resource,amount});
     bankTrade = (id, giveType, getType) => mine(id) && canBankTrade(ME,giveType,getType) && send({type:'bank_trade',giveType,getType});
     offerTrade = (id, terms) => mine(id) && canOfferTrade(ME,terms) && send({type:'trade_offer',giveType:terms.giveType,getType:terms.getType,giveAmount:terms.giveAmount,getAmount:terms.getAmount});
@@ -5299,7 +5336,7 @@ function createGalacticReach(options = {}) {
   function headlessPort() {
     return {
       get state() { return state; }, get turnSerial() { return turnSerial; }, get cardSerial() { return cardSerial; },
-      clone, deckContents, ALL_CARDS, MARKET_TIERS, marketTier, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
+      clone, deckContents, ALL_CARDS, MARKET_TIERS, marketTier, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, CAPACITY_SUPPLY, SUPPLY_CARDS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
       canAfford, canConvertCard, cardResources, resourceGainTotal, remainingResourceCapacity, addResources,
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
       decommission, trashEligibleCards, excavatedRelicCount, useBuyEffect, resolveHumanSpecial,
@@ -5309,7 +5346,7 @@ function createGalacticReach(options = {}) {
       totalResources, playerCapacity, resourceLimits, resourceExcess, totalResourceExcess, storageAllocations, validStorageAllocation, overflowPlayer, discardOverflow,
       canConsortiumGain, canConsortiumExchange, consortiumGain, consortiumExchange, finishConsortium,
       canConstructDraw, useConstructDraw, performConstructOrder, canSecondConstruct, finishConstruct, movementRange, constructionCost, constructAt, applyColonizeOrder, canColonyBuild, finishColonyBuild,
-      canIncreaseStorage, increaseStorage, canManageResources, convertCard, drawStarterBonus, starterLevel, upgradePrice, discardResources, canBankTrade, bankTrade,
+      canBuyCapacity, buyCapacity, canManageResources, convertCard, drawStarterBonus, starterLevel, upgradePrice, discardResources, canBankTrade, bankTrade,
       canOfferTrade, offerTrade, tradeResponseAllowed, tradeBlockReason, respondTrade, cancelTrade,
       purchaseCost, buildDiscountOptions, avoidsHostile, applyBuildBonus, victoryTarget, tacticHand, MARKET_CARDS, HARVESTER_YIELD,
       archivePurgeChoices, MILITARY_CARDS, COMBAT_VICTORY_PRESTIGE

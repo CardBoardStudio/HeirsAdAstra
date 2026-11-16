@@ -107,7 +107,7 @@ for (const at of [0, 4, 8]) {
   const view = plain(a.observe(1));
   assert.equal(view.market.length, 9); assert.equal(view.marketCosts.length, 9);
   startBuy(g);
-  const keys = new Set(a.legalActions(0).filter(x => x.type === 'buy').map(x => x.index));
+  const keys = new Set(a.legalActions(0).filter(x => x.type === 'buy' && x.source === 'market').map(x => x.index));
   assert.deepEqual([...keys].sort(), [0, 1, 2, 3, 4, 5, 6, 7, 8], 'A rich faction may buy from any row');
   assert.equal(s.round, 1);
 }
