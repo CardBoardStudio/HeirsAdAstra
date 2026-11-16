@@ -4213,6 +4213,9 @@ function createGalacticReach(options = {}) {
     renderBoardEdges();
     if (replayMode) { renderReplayDecision(); return; }
     const humanTurn=state.activePlayer===ME&&state.winner===null;
+    // On your turn your hand glows and gently pulses instead of a 'Your turn' banner; the turn title
+    // stays for screen readers.
+    document.body?.classList?.toggle('my-turn', humanTurn && !replayMode);
     const otherHuman=state.players[state.activePlayer]?.controller==='human';
     $('#turn-dot').style.background=state.players[state.activePlayer]?.color||'var(--cyan)';
     $('#turn-title').textContent=state.winner!==null?`${state.players[state.winner].name} won`:humanTurn?'Your turn':`${state.players[state.activePlayer].name} is acting`;

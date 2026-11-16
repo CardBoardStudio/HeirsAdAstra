@@ -383,6 +383,8 @@ async function runCase(browser, origin, testCase, [width, height]) {
   const touch = testCase.device || false;
   await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: touch });
   await browser.send('Emulation.setTouchEmulationEnabled', { enabled: touch, maxTouchPoints: touch ? 5 : 1 });
+  // Measure a still table: your hand's turn pulse (and other motion) rests under reduced motion.
+  await browser.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
   if (testCase.lobby) {
     await browser.navigate(`${origin}/?game=galactic-reach#lobby/${TABLE_ID}`);
   } else {
