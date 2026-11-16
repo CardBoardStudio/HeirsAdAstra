@@ -4888,8 +4888,8 @@ function createGalacticReach(options = {}) {
   }
 
   // The map fills the space the other pieces leave: on a landscape table it may reach into the
-  // left strip, as long as no hex runs under the Prestige track, the notice spot below it, the
-  // comms card, the map tools or the short map key, which lie in the hexagon's empty corners.
+  // left strip, as long as no hex runs under the Prestige track, the round's phases, the comms
+  // card, the fleets, the map tools or the short map key, which lie in the hexagon's empty corners.
   // Hex positions scale with the map's width, so they are measured once and the largest width
   // that clears every corner piece is found by scanning down from the largest.
   let fitMapLog = null;
@@ -4897,7 +4897,7 @@ function createGalacticReach(options = {}) {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
     const root = document.documentElement, region = $('.board-map-region'), board = $('#galaxy-board');
     const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches && !$('.board-stage.map-zoomed');
-    if (!landscape || !region?.getBoundingClientRect || !board) { root.style.removeProperty('--map-w'); return; }
+    if (!landscape || !region?.getBoundingClientRect || !board) { ['--map-w', '--map-top'].forEach(name => root.style.removeProperty(name)); return; }
     const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1;
     const box = region.getBoundingClientRect(), b = board.getBoundingClientRect();
     if (!b.width || !box.width) return;
@@ -4909,17 +4909,24 @@ function createGalacticReach(options = {}) {
     // An open comms log lies over the map on purpose; the map keeps clear of the closed card.
     if (!$('.log-panel.open')) fitMapLog = rect($('.log-panel'));
     const log = fitMapLog;
-    const blocks = [track, log, rect($('.map-tools')), rect($('#map-legend-corner'))].filter(Boolean);
-    const fits = width => {
-      const height = width * ratio, left = box.right - width, top = box.top + (box.height - height) / 2;
+    const blocks = [track, log, rect($('.phase-stepper')), rect($('#fleet-glance')), rect($('.map-tools')), rect($('#map-legend-corner'))].filter(Boolean);
+    const clear = (width, top) => {
+      const left = box.right - width;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
+    };
+    // The map lies against the supply. A map shorter than its space may also slide up or down
+    // (centred first) so its empty corners take the panels above and below.
+    const fits = width => {
+      const slack = box.height - width * ratio, tops = [slack / 2, ...Array.from({ length: 17 }, (_, i) => slack * i / 16)];
+      return tops.find(dy => clear(width, box.top + dy));
     };
     // Hexes are discrete, so a corner piece can clear a larger map and touch a smaller one: scan
     // down from the largest size in 1% steps and take the first that fits.
     const high = Math.min(box.width, box.height / ratio);
-    const width = Array.from({ length: 61 }, (_, step) => high * (1 - step / 100)).find(fits);
-    if (!width) { root.style.removeProperty('--map-w'); return; }
+    const width = Array.from({ length: 61 }, (_, step) => high * (1 - step / 100)).find(w => fits(w) !== undefined);
+    if (!width) { ['--map-w', '--map-top'].forEach(name => root.style.removeProperty(name)); return; }
     root.style.setProperty('--map-w', `${Math.floor(width / zoom)}px`);
+    root.style.setProperty('--map-top', `${Math.floor(fits(width) / zoom)}px`);
   }
 
   // On the table the supply is six rows of three cards, all one size: the relics, the market's
@@ -4929,7 +4936,7 @@ function createGalacticReach(options = {}) {
   // units to show its name, cost and effect whole, so the shorter a card, the wider it is; cards
   // keep real card proportions (63:88) where that already leaves them that room (tall windows).
   // The column's width follows from the card size.
-  const CARD_GAP = 6, SUPPLY_ROWS = 6, CARD_MIN_W = 150, CARD_TEXT_AREA = 150 * 127;
+  const CARD_GAP = 6, SUPPLY_ROWS = 6, CARD_MIN_W = 150, CARD_TEXT_AREA = 160 * 127;
   function fitMarket() {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function') return;
     const root = typeof document !== 'undefined' ? document.documentElement : null, shell = $('.app-shell');
@@ -4976,9 +4983,9 @@ function createGalacticReach(options = {}) {
       if (h) top += h + 8;
     }
     const root = document.documentElement, legend = $('#map-legend-corner'), last = $(LEFT_STACK.at(-1));
-    // Notices lie in the column's free space, just under the stack, clear of your hand.
-    const end = last?.getBoundingClientRect?.();
-    if (landscape && end?.height) root.style.setProperty('--notice-top', `${Math.round(end.bottom + 8 * zoom)}px`);
+    // Notices lie over the top of the map key: the map keeps clear of it, and your hand is below.
+    const end = legend?.getBoundingClientRect?.();
+    if (landscape && end?.height) root.style.setProperty('--notice-top', `${Math.round(end.top)}px`);
     else root.style.removeProperty('--notice-top');
     // When the stack would run into the map key at the column's foot, tighten it once (the latest
     // comms entry only) and stack again.
