@@ -291,7 +291,8 @@ const MEASURE = `(() => {
     if (!shown(top)) continue;
     const t = top.getBoundingClientRect();
     if (t.top < -1 || t.bottom > H + 1 || t.left < -1 || t.right > W + 1) problems.push('card top outside viewport: ' + label(top));
-    const summary = top.querySelector('.card-headline') || top.querySelector('.card-effect');
+    // A top shows its one-line headline, or its effect in the headline's place.
+    const summary = [top.querySelector('.card-headline'), top.querySelector('.card-effect')].find(e => e && e.getClientRects().length) || top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
     // An open Sector Scan (a popover over the map) may cover card tops while it is open.
     if (!document.querySelector(':is(dialog[open], body.menu-open, #fleet-panel.active, .sector-popover:popover-open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {

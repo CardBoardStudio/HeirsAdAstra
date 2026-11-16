@@ -2486,3 +2486,21 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (max-width: 599px), (max-height: 599px) {
   body.my-turn #hand-row > .game-card { box-shadow: 0 0 0 2px #f2c94ccc, 0 0 12px 2px #f2c94c55 !important; }
 }
+
+/* ==== Supply cards read like cards without pointing at them: a folded market card shows as much
+   of its effect, wrapped, as its height allows (one to five lines, chosen by the card's own
+   height), in larger type under the name (up to two lines) and cost. Point at a card for the whole card as before. ==== */
+@media (min-width: 600px) and (min-height: 600px) {
+  #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) { container-type: size; align-content: start; row-gap: 3px !important; padding: 5px 8px 6px !important; }
+  #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { font-size: 14px !important; line-height: 1.15 !important; white-space: normal !important; display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden !important; text-overflow: clip !important; }
+  /* The full effect takes the one-line headline's place. */
+  #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-headline { display: none !important; }
+  #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect {
+    grid-area: head !important; display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 1 !important; line-clamp: 1 !important;
+    white-space: normal !important; overflow: hidden !important; font-size: 12px !important; line-height: 1.3 !important;
+  }
+  @container (min-height: 94px) { #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 2 !important; line-clamp: 2 !important; } }
+  @container (min-height: 110px) { #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 3 !important; line-clamp: 3 !important; } }
+  @container (min-height: 126px) { #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 4 !important; line-clamp: 4 !important; } }
+  @container (min-height: 142px) { #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { -webkit-line-clamp: 5 !important; line-clamp: 5 !important; } }
+}
