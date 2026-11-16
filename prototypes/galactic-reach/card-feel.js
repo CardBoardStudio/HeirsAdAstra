@@ -154,6 +154,7 @@
   }
   function rendered(next) {
     fanHand();
+    syncAim();
     const before = view, saved = previous;
     view = next; previous = null;
     if (before && saved && !next.replay && !still() && !drag) animate(before, next, saved);
@@ -292,6 +293,63 @@
     else if (over?.kind === 'play') $(`#hand-row [data-order-card="${id}"]`)?.click();
     swallowClick = true;
   }
+
+  // ---- Use order aims the card exactly as starting a drag does. ----
+  // While a chosen order waits for its first hex, the same hexes light up as for a drag, the card
+  // is marked as in play, and pointing at a lit hex says what choosing it does. Clicking a lit hex
+  // plays the order there, as a drop would; Escape or Use order again cancels.
+  let aim = null, aimDone = null;
+  function clearAim() {
+    if (!aim) return;
+    for (const hex of aim.hexes) hex.classList.remove('cf-drop-target', 'cf-drop-hover');
+    aim.card?.classList.remove('cf-aiming');
+    aim.label.remove();
+    document.body.classList.remove('cf-aim-active');
+    aim = null;
+  }
+  function syncAim() {
+    clearAim();
+    const id = !drag && api?.aimCard?.();
+    if (!id) { aimDone = null; return; }
+    if (id === aimDone) return;
+    const card = $(`#hand-row > .game-card[data-card-id="${id}"]`);
+    const hexes = (api.dropTargets(id) || []).map(target => $(`.hex[data-coord="${target.coord}"]`)).filter(Boolean);
+    if (!card || !hexes.length) return;
+    hexes.forEach(hex => hex.classList.add('cf-drop-target'));
+    card.classList.add('cf-aiming');
+    document.body.classList.add('cf-aim-active');
+    const label = document.createElement('div');
+    label.className = 'cf-drop-label';
+    label.setAttribute('aria-hidden', 'true');
+    label.hidden = true;
+    document.body.append(label);
+    aim = { id, card, hexes, label, name: card.querySelector('.card-name')?.textContent.trim() || 'order', over: null };
+  }
+  document.addEventListener('pointermove', event => {
+    if (!aim || drag) return;
+    const hex = document.elementFromPoint(event.clientX, event.clientY)?.closest('.hex.cf-drop-target');
+    if (aim.over !== hex) { aim.over?.classList.remove('cf-drop-hover'); hex?.classList.add('cf-drop-hover'); aim.over = hex; }
+    aim.label.textContent = hex ? `${aim.name} here` : '';
+    aim.label.hidden = !hex;
+    if (hex) {
+      aim.label.style.left = `${Math.min(innerWidth - 12 - aim.label.offsetWidth, event.clientX + 18)}px`;
+      aim.label.style.top = `${Math.min(innerHeight - 30, event.clientY + 16)}px`;
+    }
+  });
+  document.addEventListener('click', event => {
+    const hex = aim && event.target.closest?.('.hex.cf-drop-target');
+    if (!hex) return;
+    event.preventDefault(); event.stopPropagation();
+    const { id } = aim;
+    aimDone = id;
+    clearAim();
+    api.playAt(id, hex.dataset.coord);
+  }, true);
+  document.addEventListener('keydown', event => {
+    if (!aim || drag || event.key !== 'Escape') return;
+    event.preventDefault();
+    $(`#hand-row [data-order-card="${aim.id}"]`)?.click();
+  });
 
   globalThis.galacticReachCardFeel = { attach(next) { api = next; }, beforeRender, rendered };
 })();
