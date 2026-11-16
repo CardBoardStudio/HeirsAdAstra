@@ -4975,9 +4975,13 @@ function createGalacticReach(options = {}) {
       if (el.matches('.log-panel') && !el.matches('.open')) el.dataset.closedH = String(h);
       if (h) top += h + 8;
     }
+    const root = document.documentElement, legend = $('#map-legend-corner'), last = $(LEFT_STACK.at(-1));
+    // Notices lie in the column's free space, just under the stack, clear of your hand.
+    const end = last?.getBoundingClientRect?.();
+    if (landscape && end?.height) root.style.setProperty('--notice-top', `${Math.round(end.bottom + 8 * zoom)}px`);
+    else root.style.removeProperty('--notice-top');
     // When the stack would run into the map key at the column's foot, tighten it once (the latest
     // comms entry only) and stack again.
-    const root = document.documentElement, legend = $('#map-legend-corner'), last = $(LEFT_STACK.at(-1));
     // A second step drops the icon list from the corner key (the Map key button lists them).
     // At most two steps, whatever the page's class list reports.
     const step = ['left-tight', 'left-tighter'].find(name => !root.classList.contains(name));
