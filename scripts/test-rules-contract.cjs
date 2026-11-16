@@ -20,3 +20,5 @@ assert(run([], '<!--' + body + '-->').length, 'Unfilled template comments do not
 console.log('Rules contract tests passed: paired edits, unrelated work, invalid anchors, missing declarations, and renamed engine paths.');
 // Release tooling (docs/release.md) runs here too, so CI covers it without a workflow edit.
 require('./test-release.cjs');
+// Review guidance (PR body sections and commit messages) runs here too.
+require('./test-review-guidance.cjs');
