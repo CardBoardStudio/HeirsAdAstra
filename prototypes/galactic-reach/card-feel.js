@@ -49,7 +49,21 @@
       card.style.setProperty('--cf-fan', `${(offset * step).toFixed(2)}deg`);
       card.style.setProperty('--cf-arc', `${(-Math.max(0, 5 - offset * offset * 1.1)).toFixed(1)}px`);
     });
+    placeSlots();
   }
+  // Each card's resting place in the hand, in table units, so a raised card can stay inside the
+  // hand's band (styles.css shifts it left when it would run past the hand's right edge).
+  function placeSlots() {
+    const row = $('#hand-row'), box = row?.getBoundingClientRect?.();
+    if (!box?.width) return;
+    const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
+    row.style.setProperty('--hand-w', `${Math.round(box.width / zoom)}px`);
+    for (const card of $$('#hand-row > .game-card')) {
+      if (card.matches(':hover, :focus-within')) continue;
+      card.style.setProperty('--slot-x', `${Math.round((card.getBoundingClientRect().left - box.left) / zoom)}px`);
+    }
+  }
+  addEventListener('resize', () => requestAnimationFrame(placeSlots));
 
   // ---- Inspect: pointing at a hand card (or focusing it) raises that card itself into the whole
   // card, in place above the hand (CSS); there is no separate copy beside the map. ----

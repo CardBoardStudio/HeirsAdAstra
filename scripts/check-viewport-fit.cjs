@@ -385,21 +385,25 @@ const MEASURE = `(() => {
     if (matchMedia('(orientation: landscape)').matches) {
       if (!document.querySelector('.log-panel.open')) {
         const hexes = [...board.querySelectorAll('.hex')].map(hex => hex.getBoundingClientRect());
-        const panels = [...document.querySelectorAll('#prestige-track, .phase-stepper, .log-panel, #fleet-glance, .map-tools, #map-legend-corner, #hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].filter(shown).map(e => e.getBoundingClientRect());
+        const panels = [...document.querySelectorAll('#prestige-track, .phase-stepper, .log-panel, #fleet-glance, .map-tools, #map-legend-corner, #hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].filter(shown);
         const apart = (h, o) => Math.max(o.left - h.right, h.left - o.right, o.top - h.bottom, h.top - o.bottom, 0);
-        const gaps = [Math.min(...hexes.map(h => h.left)) - r.left, Math.min(...hexes.map(h => h.top)) - r.top, r.bottom - Math.max(...hexes.map(h => h.bottom)),
-          ...panels.flatMap(o => hexes.map(h => apart(h, o)))];
-        const snug = Math.min(...gaps), slack = Math.max(16, 0.03 * b.width);
-        if (!(snug <= slack)) problems.push('map not snug: ' + Math.round(snug) + 'px from the nearest panel or edge (allowed ' + Math.round(slack) + 'px)');
+        const gaps = [['region left', Math.min(...hexes.map(h => h.left)) - r.left], ['region top', Math.min(...hexes.map(h => h.top)) - r.top], ['region bottom', r.bottom - Math.max(...hexes.map(h => h.bottom))],
+          ...panels.map(e => { const o = e.getBoundingClientRect(); return [label(e).slice(0, 40), Math.min(...hexes.map(h => apart(h, o)))]; })];
+        const [near, snug] = gaps.reduce((a, g) => g[1] < a[1] ? g : a), slack = Math.max(16, 0.03 * b.width);
+        if (!(snug <= slack)) problems.push('map not snug: ' + Math.round(snug) + 'px from the nearest panel or edge, ' + near + ' (allowed ' + Math.round(slack) + 'px)' + ' ' + JSON.stringify(gaps.map(g => [g[0].slice(0, 18), Math.round(g[1])])) + ' region ' + [r.left, r.top, r.width, r.height].map(Math.round) + ' board ' + [b.left, b.top, b.width, b.height].map(Math.round));
       }
     } else if (b.width < 0.85 * limit) problems.push('map too small: ' + Math.round(b.width) + 'px of a ' + Math.round(limit) + 'px space');
   }
   // No wasted felt on a wide desktop table: the largest rectangle of table not covered by any piece
   // or hex stays under 4% of the window (measured on an 8px grid).
-  if (!phone && !modal && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, #fleet-panel.active, .board-stage.map-zoomed')) {
+  // Only the table during a game is measured (not a waiting room, nor a shared table's top bar).
+  const tableArea = document.querySelector('.app-shell')?.getBoundingClientRect();
+  if (!phone && !modal && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, #fleet-panel.active, .board-stage.map-zoomed')) {
     const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .phase-stepper, .log-panel, #fleet-glance, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
     const cell = 8, cols = Math.ceil(innerWidth / cell), rows = Math.ceil(innerHeight / cell), heights = new Array(cols).fill(0);
     const covered = new Uint8Array(cols * rows);
+    // Everything outside the table area counts as covered.
+    pieces.push(...[[0, 0, innerWidth, tableArea.top], [0, tableArea.bottom, innerWidth, innerHeight], [0, 0, tableArea.left, innerHeight], [tableArea.right, 0, innerWidth, innerHeight]].map(([left, top, right, bottom]) => ({ left, top, right, bottom })));
     for (const r of pieces) for (let y = Math.max(0, Math.floor(r.top / cell)); y < Math.min(rows, Math.ceil(r.bottom / cell)); y++) for (let x = Math.max(0, Math.floor(r.left / cell)); x < Math.min(cols, Math.ceil(r.right / cell)); x++) covered[y * cols + x] = 1;
     let best = 0, at = null;
     for (let y = 0; y < rows; y++) {
@@ -461,6 +465,8 @@ async function runCase(browser, origin, testCase, viewport) {
   }
   // A shared or saved table loads its seats after the page, then fits again: let it settle.
   await browser.evaluate(`new Promise(r => setTimeout(r, ${testCase.shared || testCase.table ? 900 : 400}))`);
+  // Web fonts change the panels' sizes, and the table re-fits when they are ready: measure it after.
+  await browser.evaluate('(document.fonts ? document.fonts.ready : Promise.resolve()).then(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))');
   for (const selector of testCase.click || []) {
     const ok = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(selector)}); if (!e || e.disabled) return false; e.click(); return true; })()`);
     if (!ok) { lastSlack = { px: 99 }; return [`could not click ${selector}`]; }
