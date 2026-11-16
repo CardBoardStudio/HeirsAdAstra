@@ -4107,22 +4107,24 @@ function createGalacticReach(options = {}) {
     return [...player.hand,...player.discard,...player.inPlay].filter(card=>card.key===key&&card.starter&&starterLevel(card)<3);
   }
   const LEVEL_NAMES = ['','I','II','III'];
-  // The market's rows run from the most expensive cards (just under the relics) to the cheapest.
-  // Each row spans the supply's width: three cards to a row, or four when the cheap row holds four.
+  // The market's rows run from the most expensive cards (just under the relics) to the cheapest,
+  // three cards to a row.
   const MARKET_TIERS = ['expensive', 'medium', 'cheap'];
   function tierMarket() {
     const cards = [...($('#market-row')?.children || [])].filter(card => card.dataset?.buyMarket != null);
     if (!cards.length) return;
     const total = card => Object.values(ALL_CARDS[state.market[Number(card.dataset.buyMarket)]?.key]?.cost || {}).reduce((sum, n) => sum + n, 0);
     const ranked = [...cards].sort((a, b) => total(b) - total(a));
-    const size = Math.floor(ranked.length / 3), sizes = [size, size, ranked.length - 2 * size];
-    let at = 0;
-    sizes.forEach((count, tier) => ranked.slice(at, at += count).forEach((card, place) => {
-      card.dataset.tier = MARKET_TIERS[tier];
-      card.style.setProperty('--tier-row', String(tier + 1));
-      card.style.setProperty('--tier-span', String(Math.max(1, Math.floor(12 / count))));
-      card.style.setProperty('order', String(tier * 10 + place));
-    }));
+    // Three rows of three. Until the tiered-market rules give each tier its own deck, cards past
+    // the ninth (the cheapest) wait off the table.
+    ranked.forEach((card, place) => {
+      const tier = Math.floor(place / 3);
+      card.hidden = tier > 2;
+      card.dataset.tier = MARKET_TIERS[Math.min(tier, 2)];
+      card.style.setProperty('--tier-row', String(Math.min(tier, 2) + 1));
+      card.style.setProperty('--tier-span', '4');
+      card.style.setProperty('order', String(place));
+    });
   }
   function renderUpgradeOffers(humanBuy) {
     const me=state.players[ME], area=$('#upgrade-market');
@@ -4137,10 +4139,16 @@ function createGalacticReach(options = {}) {
       const reason=!humanBuy?'Upgrade during your Buy turn.':!ready.length?`No level ${LEVEL_NAMES[level-1]} ${def.name} in hand, discard or in play.`:!canPay?`Needs ${price} of one resource.`:'';
       const effect=`${upgradedOrderText({key})}${level===3?' Draws one card when used as an order.':''} No longer converts to resources.`;
       return `<button class="game-card upgrade-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-upgrade-offer="${key}" data-upgrade-level="${level}" ${reason?`disabled title="${reason}"`:''} aria-label="Upgrade ${esc(def.name)} to level ${LEVEL_NAMES[level]} for ${price} of one resource; does not use a purchase${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Starter upgrade</span><span class="card-name">${def.name} ${LEVEL_NAMES[level]}</span>${cardIllustration(def)}<span class="card-effect">${effect}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${price}</strong>${RESOURCES.map(resource=>`<span class="pay-chip ${me.resources[resource]>=price?'can':'cannot'}" data-pay="${resource}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${price} of one resource</span></span><span class="card-limit-note">${note}</span></button>`;
-    })).join('')+capacityOffer();
+    })).join('')+capacityOffer()+trashPile(humanBuy);
     $$('[data-upgrade-offer]').forEach(button=>button.addEventListener('click',event=>openUpgradeChoice(button.dataset.upgradeOffer,event.target.closest?.('.pay-chip.can')?.dataset.pay)));
     $('[data-capacity-offer]')?.addEventListener('click',()=>openStorageAllocation());
+    $('[data-trash-pile]')?.addEventListener('click',()=>$('#open-trash')?.click());
     if ($('#upgrade-dialog').open) renderUpgradeChoice();
+  }
+  // The Trash pile lies with the upgrades: during your Buy turn it opens the trash choice.
+  function trashPile(humanBuy) {
+    const label=($('#open-trash')?.textContent||'Trash a card').replace('Trash a card','').trim();
+    return `<button class="game-card upgrade-offer trash-pile ${humanBuy?'':'unavailable'}" type="button" data-trash-pile ${humanBuy?'':'disabled title="Trash a card during your Buy turn."'} aria-label="Trash pile: trash a card from your deck${humanBuy?'':'. Unavailable: during your Buy turn only.'}"><span class="card-type">Trash</span><span class="card-name">Trash pile</span><span class="card-effect">Remove a card from your deck${label?` ${label}`:''}.</span></button>`;
   }
   // Add 4 capacity lies with the starter upgrades as a card of the same kind, showing its current
   // price (the same amount of each resource). It opens the same split-the-points dialog.
@@ -4831,6 +4839,9 @@ function createGalacticReach(options = {}) {
     }
     setupMatTrades();
     setupPhoneCardSheet();
+    // Trade lies with the turn's buttons (beside the mat on the table, in the action strip on a phone).
+    const tradeButton=$('#open-trade'), turnButtons=$('#hand-panel .hand-tools');
+    if (tradeButton && turnButtons?.append) turnButtons.append(tradeButton);
     setupLogCard();
     $('#bank-trade-form').addEventListener('submit',event => {
       event.preventDefault();
