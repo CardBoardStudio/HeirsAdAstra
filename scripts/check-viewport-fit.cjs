@@ -28,6 +28,10 @@ const VIEWPORTS = [[1280, 720], [1440, 900], [1920, 1080]];
 const EXTRA_VIEWPORTS = [[1366, 768], [1680, 1050], [2000, 1118], [2560, 1440]];
 // Desktop windows taller than 16:9 (nearly square, and taller than wide): every case runs there.
 const TALL_VIEWPORTS = [[1440, 1200], [1600, 1600], [1800, 2000]];
+// A 1440x900 window at browser zoom 67%, 125%, 150% and 200%: the page sees a smaller or larger
+// CSS viewport at a matching device scale. At 200% it is phone-sized and gets the phone layout.
+const ZOOM_VIEWPORTS = [0.67, 1.25, 1.5, 2].map(zoom => [Math.round(1440 / zoom), Math.round(900 / zoom), zoom, `1440x900@${Math.round(zoom * 100)}%`]);
+const viewportName = viewport => viewport[3] || `${viewport[0]}x${viewport[1]}`;
 // Touch devices (mobile emulation with touch on): iPads in landscape and portrait must fit with no
 // page scroll, like the desktop; phones may scroll vertically (drawers) but never sideways.
 const TABLET_VIEWPORTS = [[1024, 768], [1180, 820], [1366, 1024], [768, 1024], [820, 1180], [1024, 1366]];
@@ -396,9 +400,10 @@ const MEASURE = `(() => {
   return { problems: problems.slice(0, 12), slack };
 })()`;
 
-async function runCase(browser, origin, testCase, [width, height]) {
+async function runCase(browser, origin, testCase, viewport) {
+  const [width, height, scale = 1] = viewport;
   const touch = testCase.device || false;
-  await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: touch });
+  await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: scale, mobile: touch });
   await browser.send('Emulation.setTouchEmulationEnabled', { enabled: touch, maxTouchPoints: touch ? 5 : 1 });
   // Measure a still table: your hand's turn pulse (and other motion) rests under reduced motion.
   await browser.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
@@ -442,7 +447,8 @@ async function runCase(browser, origin, testCase, [width, height]) {
   const problems0 = [];
   // A real click on a raised card's button (press and release without moving) is still a click.
   if (testCase.tap) {
-    const card = await centre(testCase.tap.split(' [')[0]);
+    // Point at the card's visible strip first (a held hand fans its cards), so it lifts.
+    const card = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(testCase.tap.split(' [')[0])}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 36), y: r.top + Math.min(r.height / 2, 30) }; })()`);
     if (!card) return [`could not find ${testCase.tap}`];
     await mouse('mouseMoved', card.x, card.y);
     await browser.evaluate('new Promise(r => setTimeout(r, 300))');
@@ -500,7 +506,9 @@ async function runCase(browser, origin, testCase, [width, height]) {
     const after = await stock();
     for (const [resource, change] of Object.entries(expect)) if (after[resource] - before[resource] !== change) problems0.push(`mat trade: ${resource} changed by ${after[resource] - before[resource]}, expected ${change}`);
   }
-  await browser.evaluate(`window.__fitMode = ${JSON.stringify(isPhone([width, height]) ? 'phone' : 'fit')}; true`);
+  // The waiting room is a page, not the game table: in a short window (or at a high browser
+  // zoom) it may scroll vertically, like a phone.
+  await browser.evaluate(`window.__fitMode = ${JSON.stringify(isPhone([width, height]) || (testCase.lobby && height < 700) ? 'phone' : 'fit')}; true`);
   const { problems, slack } = await browser.evaluate(MEASURE);
   if (testCase.buyVisible) {
     const seen = await browser.evaluate(`(() => { const shown = e => e && e.checkVisibility() && e.getBoundingClientRect().height > 8;
@@ -543,7 +551,7 @@ async function runCase(browser, origin, testCase, [width, height]) {
   if (SHOTS) {
     fs.mkdirSync(SHOTS, { recursive: true });
     const shot = await browser.send('Page.captureScreenshot', { format: 'png' });
-    fs.writeFileSync(path.join(SHOTS, `${width}x${height}-${testCase.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`), Buffer.from(shot.data, 'base64'));
+    fs.writeFileSync(path.join(SHOTS, `${viewportName(viewport).replace('%', 'pct')}-${testCase.name.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}.png`), Buffer.from(shot.data, 'base64'));
   }
   return problems;
 }
@@ -566,17 +574,18 @@ async function main() {
     const sizes = process.env.CHECK_SIZES?.split(',').map(size => size.split('x').map(Number));
     const runs = sizes ? sizes.flatMap(viewport => CASES.map(testCase => [viewport, testCase])) : [...[...VIEWPORTS, ...TALL_VIEWPORTS].flatMap(viewport => CASES.map(testCase => [viewport, testCase])),
       ...EXTRA_VIEWPORTS.flatMap(viewport => CASES.filter(testCase => testCase.extraSizes).map(testCase => [viewport, testCase])),
+      ...ZOOM_VIEWPORTS.flatMap(viewport => CASES.filter(testCase => !isPhone(viewport) || testCase.devices === true).map(testCase => [viewport, testCase])),
       ...[...TABLET_VIEWPORTS, ...PHONE_VIEWPORTS].flatMap(viewport => CASES.filter(testCase => testCase.devices === true || (testCase.devices === 'tablet' && !isPhone(viewport))).map(testCase => [viewport, { ...testCase, device: true, name: `${testCase.name} (touch)` }]))];
     for (const [viewport, testCase] of runs) {
-      if (only && !only.test(`${viewport.join('x')} ${testCase.name}`)) continue;
+      if (only && !only.test(`${viewportName(viewport)} ${testCase.name}`)) continue;
       if (process.env.CHECK_ORIGIN && (testCase.lobby || testCase.table || testCase.shared)) continue;
       checks++;
       browser.errors.length = 0;
       const problems = await runCase(browser, origin, testCase, viewport);
       problems.push(...(await browser.evaluate('window.galacticReachRenderErrors || []')).map(e => `table failed to draw ${e}`));
       problems.push(...browser.errors.filter(e => !/seat\.js|zk\/|Failed to fetch dynamically imported module/.test(e)).map(e => `page error: ${e.split('\n')[0]}`));
-      if (problems.length) { failures++; console.log(`not ok - ${viewport.join('x')} ${testCase.name}\n  ${problems.join('\n  ')}`); }
-      else console.log(`ok - ${viewport.join('x')} ${testCase.name}${lastSlack.px < 99 ? ` (tightest card: ${lastSlack.card}, ${lastSlack.px}px spare)` : ''}`);
+      if (problems.length) { failures++; console.log(`not ok - ${viewportName(viewport)} ${testCase.name}\n  ${problems.join('\n  ')}`); }
+      else console.log(`ok - ${viewportName(viewport)} ${testCase.name}${lastSlack.px < 99 ? ` (tightest card: ${lastSlack.card}, ${lastSlack.px}px spare)` : ''}`);
     }
   } finally { browser.close(); server.close(); }
   console.log(`${checks - failures}/${checks} viewport-fit checks passed.`);

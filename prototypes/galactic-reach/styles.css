@@ -2780,7 +2780,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .vocab-icon { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; vertical-align: -.2em; line-height: 1; }
 .vocab-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .vocab-star { color: #c99a1e; font-size: 1.1em; }
-.vocab-hit svg { fill: #e06a4a; stroke: #8a2f1c; stroke-width: 1.4; }
+.vocab-hit svg { fill: none; stroke: #c4482c; stroke-width: 2.6; }
 .vocab-miss svg { fill: #7ea3c4; stroke: #2e4a63; stroke-width: 1.4; }
 .card-icons { display: none; }
 @media (min-width: 600px) and (min-height: 600px) {

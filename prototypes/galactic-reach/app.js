@@ -942,7 +942,7 @@ function createGalacticReach(options = {}) {
   const VOCAB_ICONS = {
     prestige: '<span class="vocab-icon vocab-star" aria-hidden="true">★</span>',
     draw: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="5" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h8a2 2 0 0 0 2-2V7"></path></svg></span>',
-    hit: '<span class="vocab-icon vocab-hit" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m12 2 2.2 6.3L21 8l-5 4.6 2.6 6.9L12 15.6 5.4 19.5 8 12.6 3 8l6.8.3z"></path></svg></span>',
+    hit: '<span class="vocab-icon vocab-hit" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5l14 14M19 5 5 19"></path><path d="M3 9l3-3M15 21l3-3M21 9l-3-3M9 21l-3-3"></path></svg></span>',
     miss: '<span class="vocab-icon vocab-miss" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"></path></svg></span>',
     colonize: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 21V4"></path><path d="M5 4h12l-2.5 4L17 12H5"></path></svg></span>',
     build: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m14 4 6 6-3 3-6-6z"></path><path d="m11 7-8 8 3 3 8-8"></path></svg></span>',
@@ -4731,7 +4731,11 @@ function createGalacticReach(options = {}) {
     // Wide tables have room for supply cards in real card proportions; squarer ones keep wider
     // cards so the map stays big.
     root.classList.toggle('table-wide', tableW === 1600);
-    let zoom = Math.min(width / tableW, height / tableH), layoutW = width / zoom;
+    // The pieces keep their natural size in CSS pixels and only shrink when the window is too
+    // small to hold the table; they never grow to fill a large window. So browser zoom works:
+    // zooming in makes the pieces larger and leaves the map (which fills what is left) smaller,
+    // and zooming out does the reverse.
+    let zoom = Math.min(1, width / tableW, height / tableH), layoutW = width / zoom;
     const apply = () => {
       root.style.setProperty('--table-zoom', String(zoom));
       root.style.setProperty('--table-w', `${layoutW}px`);
