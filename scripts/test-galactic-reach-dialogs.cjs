@@ -562,13 +562,24 @@ test('Relics tab browses read-only and participates in keyboard tab navigation',
 function productionNumbers(game) {
  const html=game.dom.element('resource-grid').innerHTML;
  return Object.fromEntries(['matter','energy','biomass','data'].map(resource=>{
-  const article=html.match(new RegExp('<article class="resource-box '+resource+'"[\\s\\S]*?</article>'))?.[0];assert(article);
+  const article=html.match(new RegExp('<article class="resource-box '+resource+'[^"]*"[\\s\\S]*?</article>'))?.[0];assert(article);
   const amount=Number(article.match(/class="resource-production"[^>]*>\+(\d+)/)?.[1]);assert(Number.isInteger(amount));
   assert(article.includes('+'+amount+' per round'),'Accessible name explains production');return [resource,amount];
  }));
 }
 test('Resource counters show starting production separately from available stock',()=>{
  const game=boot(createStorage());assert.deepEqual(productionNumbers(game),{matter:1,energy:0,biomass:0,data:0});
+ const html=game.dom.element('resource-grid').innerHTML;
+ assert(!html.includes('mat-pips rate'),'No separate square production row');
+ assert(!html.includes('mat-key cap'),'No separate capacity marker');
+ for(const resource of ['matter','energy','biomass','data']){
+  const article=html.match(new RegExp('<article class="resource-box '+resource+'[^"]*"[\\s\\S]*?</article>'))[0];
+  const pips=[...article.matchAll(/<i aria-hidden="true" class="([^"]*)"><\/i>/g)].map(m=>m[1].trim().split(/\s+/));
+  assert.equal(pips.length,21);assert.equal(pips.filter(p=>p.includes('shut')).length,17,'Only four slots available');
+  assert.equal(pips.filter(p=>p.includes('producing')).length,resource==='matter'?1:0);
+  assert.equal(pips.filter(p=>p.includes('full')).length,resource==='energy'?0:1);
+ }
+
 });
 test('Production readout includes Harvesters and per-group collection and reacts to control changes',()=>{
  const storage=createStorage(),state=boot(storage).saved();

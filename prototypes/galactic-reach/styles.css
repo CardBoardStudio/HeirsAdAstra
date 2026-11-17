@@ -2433,6 +2433,16 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* The fence when the stock has gone past it: ringed in red. */
 #resource-grid .mat-pips.now i.cap.full { box-shadow: 0 0 0 2px var(--red); }
 
+/* Current resource mat. Keep the earlier two-row styles for retained dev engines. */
+#resource-grid > .resource-box.mat-rings { grid-template-areas: "icon now" !important; grid-template-rows: auto !important; padding-block: 3px !important; }
+#resource-grid .mat-rings .mat-pips.now { align-items: center; min-height: 25px; }
+#resource-grid .mat-rings .mat-pips.now i { box-sizing: border-box; border: 1px solid #71877b; box-shadow: none; }
+#resource-grid .mat-rings .mat-pips.now i.shut { background: #41554a; border-color: #53675a; }
+#resource-grid .mat-rings .mat-pips.now i.producing { border: 4.5px solid var(--resource); }
+#resource-grid > .ring-key .mat-key i { box-sizing: border-box; width: 14px; height: 14px; border-radius: 50%; }
+#resource-grid > .ring-key .production i { background: #0b1618; border: 3px solid #c9b98a; }
+#resource-grid > .ring-key .unavailable i { background: #41554a; border: 1px solid #53675a; }
+
 /* ==== The comms log on the table: a small card of the latest three entries, printed like the
    player mat; selecting it opens the whole log in place. Phones show the whole log in the Comms
    drawer. ==== */
