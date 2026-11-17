@@ -3,6 +3,8 @@ const root=path.resolve(__dirname,'../prototypes/galactic-reach'),ctx=vm.createC
 vm.runInContext(fs.readFileSync(path.join(root,'adapter.js'),'utf8')+fs.readFileSync(path.join(root,'app.js'),'utf8'),ctx);
 let e;const create=ctx.createGalacticAdapter;ctx.createGalacticAdapter=p=>{e=p;return create(p);};
 const a=ctx.createGalacticReach({headless:true,random:()=>.3}),view=a.observe(0);
+assert.equal(JSON.stringify(view.harvesterCost),JSON.stringify(e.STRUCTURES.harvester.cost));
+view.harvesterCost.matter=99;assert.equal(e.STRUCTURES.harvester.cost.matter,1);assert.equal(a.observe(1).harvesterCost.matter,1,'Printed costs are cloned public metadata');
 let checked=0;
 for(const [key,card] of Object.entries(e.ALL_CARDS)){
  const stats=view.cardStats[key];

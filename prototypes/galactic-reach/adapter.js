@@ -15,8 +15,8 @@ function createGalacticAdapter(e) {
     const state = s();
     return e.clone({
       portalLinks: state.portalLinks, portalMovementCost: e.PORTAL_MOVEMENT_COST, combat: e.combatView(seat), combinedProbe:true, constructDrawOnly:true, investmentPlanning:true, seat, round: state.round, victoryTarget: e.victoryTarget(),
-      // 32.37: public card prices and Harvester yield, so server rivals need no rules-specific tables.
-      harvesterYield: e.HARVESTER_YIELD, marketPaymentCosts: state.market.map(card=>e.purchaseCost(state.players[seat],card.key)), marketCosts: state.market.map(card => e.ALL_CARDS[card.key]?.cost || {}),
+      // 32.37: public card/build prices and Harvester yield, so server rivals need no rules-specific tables.
+      harvesterYield: e.HARVESTER_YIELD, harvesterCost: e.STRUCTURES.harvester.cost, marketPaymentCosts: state.market.map(card=>e.purchaseCost(state.players[seat],card.key)), marketCosts: state.market.map(card => e.ALL_CARDS[card.key]?.cost || {}),
       // 34.39: printed Wonder Prestige, military card stats and the capture rule, published for the same reason.
       marketPrestige: state.market.map(card => e.ALL_CARDS[card.key]?.gainPrestige || 0),
       // Printed effects are public; no deck order or private hand is included here.

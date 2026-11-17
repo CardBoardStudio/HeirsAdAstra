@@ -1159,6 +1159,52 @@ fn investment_horizon(view: &Value) -> f64 {
         .ceil()
         .clamp(0.0, 6.0)
 }
+// Research only: one delayed return when existing stock/income leaves no marginal room.
+// Printed costs account for payment freeing room; free first builds have no delay.
+fn harvester_headroom_delay(
+    view: &Value,
+    seat: usize,
+    action: &Value,
+    resource: &str,
+    income: f64,
+) -> Option<(f64, bool)> {
+    if view["harvesterHeadroomPlanning"] != true || !view["harvesterCost"].is_object() {
+        return None;
+    }
+    let printed = view["harvesterCost"].as_object()?;
+    if printed.is_empty()
+        || printed.iter().any(|(r, v)| {
+            !RESOURCE_KEYS.contains(&r.as_str())
+                || v.as_f64().is_none_or(|n| !n.is_finite() || n < 0.0)
+        })
+    {
+        return None;
+    }
+    let index = RESOURCE_KEYS.iter().position(|r| *r == resource)?;
+    let mut cost: [f64; 4] =
+        std::array::from_fn(|i| number(&view["harvesterCost"][RESOURCE_KEYS[i]]));
+    if action["type"] == "build" {
+        match action["discountResource"].as_str() {
+            Some("free") => cost = [0.0; 4],
+            Some("each") => cost.iter_mut().for_each(|n| *n = (*n - 1.0).max(0.0)),
+            Some(r) => {
+                if let Some(i) = RESOURCE_KEYS.iter().position(|key| *key == r) {
+                    cost[i] = (cost[i] - 1.0).max(0.0);
+                }
+            }
+            None => {}
+        }
+    }
+    let free = cost.iter().all(|n| *n == 0.0);
+    let stock_after =
+        (number(&view["players"][seat]["resources"][resource]) - cost[index]).max(0.0);
+    let delay = if !free && stock_after + income >= bot_limit(view, seat, resource) {
+        1.0
+    } else {
+        0.0
+    };
+    Some((delay, free))
+}
 fn established_construction(me: &Value) -> bool {
     ["hand", "discard", "inPlay", "deckContents"]
         .iter()
@@ -1869,19 +1915,22 @@ impl BuiltinAgent {
                         } else {
                             view["harvesterYield"].as_f64().unwrap_or(2.0)
                         };
-                        if resource == "data" && income == 0.0 && number(&view["round"]) <= 2.0 {
-                            53.0
-                        } else if shortage > 0.0
-                            && gain.min(shortage) * (investment_horizon(view) - 1.0).max(0.0) >= 3.0
-                        {
-                            10.0 + shortage * 7.0 + if economy { 4.0 } else { 0.0 }
-                        } else if view["productionDiscipline"] == true
-                            && !(action["type"] == "build"
+                        let headroom =
+                            harvester_headroom_delay(view, seat, action, resource, income);
+                        let (delay, free) = headroom.unwrap_or((
+                            0.0,
+                            action["type"] == "build"
                                 && matches!(
                                     action["discountResource"].as_str(),
                                     Some("free" | "each")
-                                ))
-                        {
+                                ),
+                        ));
+                        let returns = (investment_horizon(view) - 1.0 - delay).max(0.0);
+                        if resource == "data" && income == 0.0 && number(&view["round"]) <= 2.0 {
+                            53.0
+                        } else if shortage > 0.0 && gain.min(shortage) * returns >= 3.0 {
+                            10.0 + shortage * 7.0 + if economy { 4.0 } else { 0.0 }
+                        } else if (view["productionDiscipline"] == true || delay > 0.0) && !free {
                             // Pass scores zero. Merely lowering this to +1 still pays for it.
                             -1.0
                         } else {
@@ -3567,6 +3616,104 @@ mod tests {
         view["players"][0]["hand"] = json!([]);
         view["players"][0]["discard"] = surplus;
         assert_eq!(from_hand, agent.score(&view, &trash));
+    }
+
+    #[test]
+    fn harvester_headroom_waits_for_delayed_returns_but_keeps_useful_and_free_builds() {
+        let agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["productionDiscipline"] = json!(true);
+        view["harvesterCost"] = json!({"matter":1,"energy":1,"data":1});
+        view["harvesterYield"] = json!(2);
+        view["round"] = json!(15);
+        view["players"][0]["prestige"] = json!(32);
+        view["players"][0]["resources"]["biomass"] = json!(4);
+        view["players"][0]["resourceLimits"]["biomass"] = json!(4);
+        view["planets"]["1,0"] = json!({"type":"biomass","owner":0});
+        view["planets"]["2,0"] = json!({"type":"biomass","owner":0});
+        let paid = json!({"type":"build","kind":"harvester","coord":"1,0"});
+        let original = agent.score(&view, &paid);
+        assert!(original > 0.0);
+        view["harvesterHeadroomPlanning"] = json!(true);
+        assert!(agent.score(&view, &paid) < agent.score(&view, &json!({"type":"pass"})));
+        view["players"][0]["resources"]["biomass"] = json!(0);
+        assert_eq!(
+            agent.score(&view, &paid),
+            original,
+            "Room keeps the normal payback"
+        );
+        view["players"][0]["resources"]["biomass"] = json!(4);
+        view["players"][0]["prestige"] = json!(3);
+        assert!(
+            agent.score(&view, &paid) > 0.0,
+            "A longer race can justify full-stock investment"
+        );
+        view["players"][0]["prestige"] = json!(39);
+        let free =
+            json!({"type":"build","kind":"harvester","coord":"1,0","discountResource":"free"});
+        let each =
+            json!({"type":"build","kind":"harvester","coord":"1,0","discountResource":"each"});
+        assert!(agent.score(&view, &free) > 0.0);
+        assert!(agent.score(&view, &each) > 0.0);
+        view["harvesterCost"]["matter"] = json!(2);
+        assert!(
+            agent.score(&view, &each) < 0.0,
+            "Partial discount is still paid"
+        );
+        let second = json!({"type":"second_build","kind":"harvester","coord":"1,0","discountResource":"free"});
+        assert!(
+            agent.score(&view, &second) < 0.0,
+            "Second builds do not inherit the first discount"
+        );
+        view["players"][0]["prestige"] = json!(32);
+        view["harvesterCost"] = json!({});
+        assert_eq!(
+            agent.score(&view, &paid),
+            original,
+            "Empty cost metadata preserves old scores"
+        );
+        view.as_object_mut().unwrap().remove("harvesterCost");
+        assert_eq!(
+            agent.score(&view, &paid),
+            original,
+            "Missing metadata preserves old scores"
+        );
+        view["investmentPlanning"] = json!(false);
+        let archived = agent.score(&view, &paid);
+        view["harvesterHeadroomPlanning"] = json!(false);
+        assert_eq!(agent.score(&view, &paid), archived);
+
+        let mut room = strategic_view();
+        room["investmentPlanning"] = json!(true);
+        room["productionDiscipline"] = json!(true);
+        room["harvesterHeadroomPlanning"] = json!(true);
+        room["harvesterCost"] = json!({"matter":1,"energy":1,"data":1});
+        room["harvesterYield"] = json!(2);
+        room["round"] = json!(17);
+        room["players"][0]["prestige"] = json!(34);
+        room["players"][0]["resources"]["matter"] = json!(4);
+        room["players"][0]["resourceLimits"]["matter"] = json!(4);
+        room["planets"] = json!({"0,0":{"type":"matter","owner":null}});
+        assert!(
+            agent.score(
+                &room,
+                &json!({"type":"build","kind":"harvester","coord":"0,0"})
+            ) > 0.0,
+            "Construction payment frees room"
+        );
+        room["round"] = json!(1);
+        room["players"][0]["prestige"] = json!(3);
+        room["players"][0]["resources"]["data"] = json!(1);
+        room["planets"] = json!({"0,0":{"type":"data","owner":null}});
+        assert_eq!(
+            agent.score(
+                &room,
+                &json!({"type":"build","kind":"harvester","coord":"0,0"})
+            ),
+            53.0,
+            "Keep initial Data bootstrap"
+        );
     }
 
     #[test]
