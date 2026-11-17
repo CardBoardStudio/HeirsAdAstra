@@ -174,7 +174,7 @@
       const action = button.dataset.coach;
       if (action === 'got-it') { prefs.seen[button.dataset.id] = true; savePrefs(); }
       if (action === 'hide') setEnabled(false);
-      if (action === 'more') { coach.dataset.expanded = String(coach.dataset.expanded !== 'true'); if (currentAnchor !== undefined) position(coach, currentAnchor); return; }
+      if (action === 'more') { coach.dataset.expanded = String(coach.dataset.expanded !== 'true'); position(coach, currentAnchor); return; }
       globalThis.galacticReachTutorial?.coachAction?.(action, button.dataset);
       schedule();
     });
@@ -203,6 +203,7 @@
     if (key !== lastKey) {
       lastKey = key;
       box.dataset.expanded = 'false';
+      delete box.dataset.full; delete box.dataset.fit;
       const buttons = [...(tip.buttons || []), ...(tip.dock ? [{ action: 'more', label: 'More' }] : [])];
       const bar = tip.progress ? `<ol class="gr-coach-progress" aria-hidden="true">${Array.from({ length: tip.progress.lessons }, (_, i) => `<li class="${i < tip.progress.finishedLessons ? 'done' : ''}${i === tip.progress.current ? ' current' : ''}"></li>`).join('')}</ol>` : '';
       box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}" data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
@@ -231,7 +232,33 @@
     const r = key.getBoundingClientRect();
     if (r.width < 200 || r.height < 120) return null;
     const above = $('#fleet-glance')?.getBoundingClientRect();
-    return { left: r.left, width: r.width, top: r.top, bottom: r.bottom, ceiling: above?.height ? above.bottom + 8 : 10 };
+    // The hexagon's slanted edge can reach into the key's box: start below any hex in this column.
+    let top = r.top;
+    for (const hexEl of $$('.hex')) {
+      const h = hexEl.getBoundingClientRect();
+      if (h.right > r.left + 2 && h.left < r.right - 2 && h.top < r.bottom && h.bottom > r.top) top = Math.max(top, h.bottom + 2);
+    }
+    if (r.bottom - top < 120) return null;
+    return { left: r.left, width: r.width, top, bottom: r.bottom, ceiling: above?.height ? above.bottom + 8 : 10 };
+  }
+
+  // A long docked note shows its first whole sentences until you choose More, so nothing is cut.
+  function fitText(box, text, room) {
+    const full = box.dataset.full || text.textContent;
+    box.dataset.full = full;
+    text.textContent = full;
+    if (box.offsetHeight <= room) return false;
+    const sentences = full.split(/(?<=[.!?])\s+/);
+    for (let count = sentences.length - 1; count >= 1; count--) {
+      text.textContent = `${sentences.slice(0, count).join(' ')} …`;
+      if (box.offsetHeight <= room) return true;
+    }
+    const words = sentences[0].split(/\s+/);
+    for (let count = words.length - 1; count >= 4; count--) {
+      text.textContent = `${words.slice(0, count).join(' ')} …`;
+      if (box.offsetHeight <= room) return true;
+    }
+    return true;
   }
 
   // Beside the anchor, never over it and never off screen (the table does not scroll).
@@ -239,21 +266,19 @@
     const margin = 10, gap = 14, vw = innerWidth, vh = innerHeight;
     const dock = box.classList.contains('docked') ? dockRect() : null;
     if (dock) {
-      // Within the map key's own area; a longer note shows its first lines and a More button.
-      // More lets it grow upward, over the map, because you asked to read it all.
+      // Within the map key's own area. More lets a long note grow upward over the map, because
+      // you asked to read it all.
       box.style.width = `${Math.round(dock.width)}px`;
       const text = box.querySelector('.gr-coach-text'), more = box.querySelector('[data-coach="more"]');
       const expanded = box.dataset.expanded === 'true';
-      box.classList.remove('clamped'); text?.style.removeProperty('--lines');
-      const room = (expanded ? dock.bottom - dock.ceiling : dock.bottom - dock.top);
-      if (text && box.offsetHeight > room) {
-        const line = parseFloat(getComputedStyle(text).lineHeight) || 17;
-        const rest = box.offsetHeight - text.offsetHeight + (more ? 0 : 34);
-        box.classList.add('clamped');
-        text.style.setProperty('--lines', String(Math.max(2, Math.floor((room - rest) / line))));
+      const room = Math.round(expanded ? dock.bottom - dock.ceiling : dock.bottom - dock.top);
+      const fit = `${lastKey}|${room}|${Math.round(dock.width)}|${expanded}`;
+      if (text && box.dataset.fit !== fit) {
+        box.dataset.fit = fit;
+        if (more) more.hidden = false;
+        const cut = expanded ? (text.textContent = box.dataset.full || text.textContent, false) : fitText(box, text, room);
+        if (more) { more.hidden = !cut && !expanded; more.textContent = expanded ? 'Less' : 'More'; }
       }
-      if (more) more.hidden = !box.classList.contains('clamped') && !expanded;
-      if (more) more.textContent = expanded ? 'Less' : 'More';
       const tall = box.offsetHeight;
       box.style.left = `${Math.round(dock.left)}px`;
       box.style.top = `${Math.round(Math.max(expanded ? dock.ceiling : dock.top, dock.bottom - tall))}px`;
@@ -348,8 +373,17 @@
     addEventListener('resize', schedule);
     // Cards animate between piles after a render, and a raised hand card moves: follow the anchor,
     // and look again now and then for a dialog or popover the table opened without a render.
-    setInterval(() => { if (coach && !coach.hidden && currentAnchor && coach.dataset.side !== 'inline') position(coach, shown(currentAnchor) ? currentAnchor : null); }, 250);
+    setInterval(() => { if (coach && !coach.hidden && coach.dataset.side !== 'inline' && (currentAnchor || coach.classList.contains('docked') || coach.dataset.side === 'none')) position(coach, currentAnchor && shown(currentAnchor) ? currentAnchor : null); }, 250);
     setInterval(schedule, 1000);
+    // Fonts arriving or the table refitting change the note's and the map key's sizes: place it again
+    // before the next paint, so it never rests on a hex.
+    const replace = () => { if (coach && !coach.hidden && coach.dataset.side !== 'inline') position(coach, currentAnchor && shown(currentAnchor) ? currentAnchor : null); };
+    if (globalThis.ResizeObserver) {
+      const watch = new ResizeObserver(replace);
+      for (const el of [$('#map-legend-corner'), $('#galaxy-board'), document.documentElement]) if (el) watch.observe(el);
+      ensureCoach(); watch.observe(coach);
+    }
+    document.fonts?.ready?.then(() => { lastKey = ''; schedule(); });
     syncMenu();
   }
 
