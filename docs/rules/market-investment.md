@@ -12,7 +12,7 @@ This is local research, not a release. The retained baseline keeps the eight pri
 | Paid Harvester discipline | Retain for evaluation | Fresh 12/32 to15/32 wins, fewer paid builds and lower overflow; not independently enabled in adapter |
 | Market access | Useful among tested bots | Fresh normal access beats points-only/no purchases at30 and40; not proof of every card or specialist dominance |
 | Named-order trimming correction | Retain | Actual command defect corrected; no claim of uniform win improvement |
-| Colony execution-only preference | Training running | Printed payments/retention/Prestige only; purchase valuation unchanged |
+| Colony execution-only preference | Fresh validation planned | Training30 unchanged;40 wins5/12→6/12,+0.42 Prestige; small sample |
 | Range/Industry valuation | Opt-in only | Training regression at30, provisional improvement at40 |
 | Seed Ark at2 Biomass | Reject adoption | Earlier acquisition/use, but wins4/12→2/12 at30 and5/12→2/12 at40 |
 | Cheaper World Engine | Reject adoption | Corrected-policy Market wins6/12 to4/12 at30 and6/12 to5/12 at40 |
@@ -609,3 +609,22 @@ Execution-only training active:30 control `native/run-tpmyq6`,subject `native/ru
 Execution-only preparation passes corrected exact forty-decision native replay,source/packaged rulebook checks,web build and rules-contract tests. Initial flag-off cases exactly reproduce prior4B control results on full player metrics,winner,rounds,steps,map (`native/colony-execution-default-off-interim-parity.json`). No default website flag is enabled.
 
 `audit-native-colony-payments.cjs` verifies actual successful subject Colony command/payment pairs,local Settler retention and immediate card Prestige,with trace/final-state hashes and independent colonization/capture counters. Applied to the completed fresh40 Market batch,it matches94 regular orders (68neutral26capture,162B paid,no Settler retained) and3 Evergreen Ark orders (1neutral2capture,0B paid,all3 Settlers retained). This illustrates why the execution comparison includes relic terms; it is not counterfactual strategic value or proof that more uses improve wins. Report `native/retained-market-40-colony-payments.json`.
+
+
+Execution-only30 training complete:12 pairs match exact frozen sources/binary/opening maps. Both subjects4/12 wins,21.67 mean Prestige,5.00 purchases,7.50 Harvesters; all paired final Prestige/win deltas are zero. Degenerate training bootstrap intervals do not prove no effect on other maps. Actual terms audit shows ordinary Colonize33uses (25neutral8capture,58B)→32 (25neutral7capture,57B),Evergreen Ark1capture/1retained Settler/0B→2captures/2retained/0B. Thus one real payment/retention choice improves without a final scoring benefit. Reports `native/colony-execution-30-{paired,training}.json`, `native/colony-execution-30-{control,subject}-payments.json`. Forty-point batches remain active; no performance adoption from a sensible local choice alone.
+
+
+### Colony execution-only training complete: provisional follow-up
+
+All48 games complete with exact matched sources/binary and opening maps. At40,control5/12 wins,29.67 Prestige,8.25 purchases,9.75 Harvesters;subject6/12,30.08,8.17,9.75. Paired win delta+8.33 percentage points,mean score+0.4167; three-galaxy bootstrap ranges[0,+25] and[0,+0.75] are exploratory,not validation. Thirty-point final scores/wins remain unchanged despite one better payment/retention choice. Reports `native/colony-execution-40-{paired,training}.json` and payment reports. Retain as opt-in until fresh evaluation; no global enablement or price adoption from this small sample.
+
+Predeclare fresh execution-only validation at30/40,eight new seeds1510010+7919*i,four rotations each,cutoff80,128games. Freeze all sources/binary from `native/run-tpmyq6/sources`;compare execution none versus subject,Market/Economy/Expansion/Military. Common production discipline/protected budgets remain all;market-filter off;all other extra research flags off;Seed Ark4B and World price-v1. Compare wins and score separately by target,actual Colony payments/Settler retention,market uses/resources. Do not tune on partial results,aggregate targets to hide regressions,or reuse these seeds to confirm a later card design. This is a skill test,not a comparison of equally skilled Market versus Economy.
+
+
+Forty-point actual terms audit:regular Colonize35uses/61B andEvergreen1capture/1retained Settler→regular34/60B andEvergreen3captures/3retained Settlers. Total subject Colonies established/captured36→37; this is actual trajectory accounting,not causal attribution of every final point. All source/trace/independent counters match. No Seed Ark price change accompanies this skill.
+
+
+Fresh execution validation active:30 control `native/run-M79s93`,subject `native/run-1Tm0sW`;40 control `native/run-XEzbSY`,subject `native/run-OTXEOc`,32games each. Protocol inspection confirms identical frozen source/executable hashes. Seed range was checked against retained protocols before launch. Outcomes and mechanism audits remain pending; no coefficients or card designs change during this evaluation.
+
+
+Colony-payment audit regression tests now cover actual neutral payment,zero-cost capture with retained Settler,missing payment evidence,resource-gain payment,impossible Settler retention,corrupt trace/final hashes and independent Colony/capture counter mismatches. `test-native-colony-payments-audit.cjs` passes; the strengthened audit also revalidates the full completed fresh40 Market batch (`native/retained-market-40-colony-payments-guarded.json`). Only audit tooling changes during the fresh execution evaluation; frozen policies and declared price baseline remain untouched.

@@ -13,6 +13,7 @@ function audit(directory){
     assert.equal(active,null);
     if(c?.method==='applyAction'&&c.actor===seat&&a?.type==='colonize'){
      const card=state.players[seat].hand.find(x=>x.id===a.card);assert(card,'Selected Colony card absent');
+     assert((state.fleets[a.coord]?.[seat]?.settler||0)>=1,'Colony action needs a Settler');
      active={command:c,round:state.round,key:card.key,card:card.id,coord:a.coord,capture:state.planets[a.coord].owner!==null&&state.planets[a.coord].owner!==seat,settlersBefore:state.fleets[a.coord]?.[seat]?.settler||0,cardPointsBefore:state.players[seat].cardPrestige||0,paid:zero(),paymentEvents:0};
     }
    }
@@ -20,7 +21,7 @@ function audit(directory){
    if(active&&r.type==='after-decision'){
     assert.deepEqual(c,active.command);assert(active.paymentEvents>0,'Missing Colony payment evidence');assert.equal(state.planets[active.coord].owner,seat);
     active.settlersAfter=state.fleets[active.coord]?.[seat]?.settler||0;assert(active.settlersAfter===active.settlersBefore||active.settlersAfter===active.settlersBefore-1);
-    active.keptSettler=active.settlersAfter===active.settlersBefore;active.cardPointsGained=(state.players[seat].cardPrestige||0)-active.cardPointsBefore;delete active.command;actions.push(active);active=null;
+    active.keptSettler=active.settlersAfter===active.settlersBefore;active.cardPointsGained=(state.players[seat].cardPrestige||0)-active.cardPointsBefore;assert(active.cardPointsGained>=0,'Colony must not remove card Prestige');delete active.command;actions.push(active);active=null;
    }
   }
   assert.equal(active,null);assert.equal(hash(state),m.finalStateHash);assert.equal(actions.length,g.players[seat].colonizations,'Independent Colony metric mismatch');assert.equal(actions.filter(a=>a.capture).length,g.players[seat].captures,'Capture metric mismatch');
