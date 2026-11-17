@@ -25,7 +25,8 @@ async function analyze(directory){
   const archivedProtocol=JSON.parse(fs.readFileSync(path.join(g.archive,'sources/protocol.json')));assert.deepEqual(archivedProtocol,g.protocol);
   const sources=Object.fromEntries(Object.entries(m.sourceHashes).filter(([name])=>name!=='protocol.json'));if(!referenceSources)referenceSources=sources;assert.deepEqual(sources,referenceSources,'Game/policy/instrumentation source differs');
   for(const [name,key] of [['original-app.js','app'],['original-adapter.js','adapter'],['native-policy.rs','rust'],['native-bridge.rs','bridge'],['Cargo.lock','lock'],['rulebook.html','rulebook']])assert.equal(m.sourceHashes[name],protocol.sourceHashes[key]);
-  manifests.set(g.id,m);
+  assert.deepEqual(m.metadata,task,'Archive task metadata differs');
+  const {metadata,...compactManifest}=m;manifests.set(g.id,compactManifest);
   if(g.kind==='baseline'){assert.equal(g.rotation,0);assert(!baselines.has(g.seed));baselines.set(g.seed,g);}else{assert(protocol.cards.includes(g.card));assert.equal(g.protocol.excludeCard,g.card);const key=g.card+'/'+g.seed+'/'+g.rotation;assert(!omissions.has(key));omissions.set(key,g);assert.equal(g.players[g.subjectSeat].marketBuys[g.card]||0,0,'Omission card purchased');}
  }
  assert.equal(baselines.size,protocol.seedList.length);const starts=new Map();

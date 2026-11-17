@@ -689,14 +689,39 @@ fn bank_rate(view: &Value, seat: usize, resource: &str) -> f64 {
         4.0
     }
 }
+/// Current stock only: improve a rate when a useful trade can follow immediately.
 fn exchange_surplus(view: &Value, seat: usize, resource: &str) -> f64 {
     if bank_rate(view, seat, resource) <= 2.0 {
         return 0.0;
     }
     let i = RESOURCE_KEYS.iter().position(|r| *r == resource).unwrap();
-    (number(&view["players"][seat]["resources"][resource]) - planning_protection(view, seat)[i])
-        .max(0.0)
-        + number(&bot_income(view, seat)[resource])
+    if view["cardPurchasePlanning"] != true {
+        return (number(&view["players"][seat]["resources"][resource])
+            - planning_protection(view, seat)[i])
+            .max(0.0)
+            + number(&bot_income(view, seat)[resource]);
+    }
+    let goal = bot_storage_reserve(view, seat);
+    let me = &view["players"][seat];
+    if RESOURCE_KEYS.iter().any(|give| {
+        bank_rate(view, seat, give) == 2.0
+            && number(&me["resources"][*give]) - number(&goal[*give]) >= 2.0
+            && RESOURCE_KEYS.iter().any(|get| {
+                get != give
+                    && number(&me["resources"][*get])
+                        < number(&goal[*get]).min(bot_limit(view, seat, get))
+            })
+    }) {
+        return 0.0;
+    }
+    let deficit = RESOURCE_KEYS.iter().any(|get| {
+        *get != resource
+            && number(&me["resources"][*get]) < number(&goal[*get]).min(bot_limit(view, seat, get))
+    });
+    if !deficit {
+        return 0.0;
+    }
+    (number(&me["resources"][resource]) - number(&goal[resource])).max(0.0)
 }
 fn capacity_card(key: &str) -> Option<([f64; 4], f64, bool)> {
     CAPACITY_CARDS
@@ -880,7 +905,12 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
         .clamp(1.0, 5.0);
     let fallback_draw = number(&stats["fallbackDraw"]);
     let draw = number(&stats["draw"]).max(fallback_draw);
-    let draw_value = draw * (7.0 + size.min(18.0) * 0.25) * (horizon / 2.0).min(1.0);
+    let acquisition = if view["cardPurchasePlanning"] == true {
+        ((horizon - (number(&me["deckCount"]) / 5.0).ceil()).max(0.0) / horizon).min(1.0)
+    } else {
+        1.0
+    };
+    let draw_value = acquisition * draw * (7.0 + size.min(18.0) * 0.25) * (horizon / 2.0).min(1.0);
     let mut value = 6.0 + prestige * 9.0 + number(&stats["prestige"]) * horizon.min(4.0) * 8.0;
     value += draw_value;
     if stats["bankRate"] == 2 {
@@ -888,7 +918,23 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
         let exchanges = RESOURCE_KEYS
             .iter()
             .map(|r| {
-                ((number(&me["resources"][*r]) + number(&income[*r]) * 2.0) / 2.0).clamp(0.0, 3.0)
+                if view["cardPurchasePlanning"] == true {
+                    let future = (number(&me["resources"][*r]) + number(&income[*r]) * 2.0)
+                        .min(bot_limit(view, seat, r));
+                    let missing = RESOURCE_KEYS.iter().any(|get| {
+                        get != r
+                            && number(&me["resources"][*get]) + number(&income[*get]) * 2.0
+                                < bot_limit(view, seat, get)
+                    });
+                    if missing {
+                        ((future - 2.0).max(0.0) / 2.0).min(3.0)
+                    } else {
+                        0.0
+                    }
+                } else {
+                    ((number(&me["resources"][*r]) + number(&income[*r]) * 2.0) / 2.0)
+                        .clamp(0.0, 3.0)
+                }
             })
             .fold(0.0, f64::max);
         let family: f64 = ["hand", "discard", "inPlay", "deckContents"]
@@ -902,7 +948,7 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
     // Research only: printed one-less-of-each coupons need a later purchase to pay off.
     // Face-up prices bound possible savings; this is not a promise of future spending.
     if view["investmentPlanning"] == true
-        && view["buyDiscountPlanning"] == true
+        && (view["buyDiscountPlanning"] == true || view["cardPurchasePlanning"] == true)
         && horizon > 1.0
         && matches!(
             stats["buyEffect"].as_str(),
@@ -917,6 +963,9 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
             .filter(|other| {
                 view["cardStats"][*other].is_object()
                     && view["cardStats"][*other]["buyEffect"].as_str().is_none()
+                    && !view["excludedMarketCards"]
+                        .as_array()
+                        .is_some_and(|cards| cards.iter().any(|c| c == *other))
             })
             .filter_map(|other| observed_cost(view, other))
             .map(|cost| cost.iter().filter(|n| **n > 0.0).count() as f64)
@@ -944,7 +993,12 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
             value -= 18.0;
         }
         // Like other engine investments, a tactic needs an opportunity to pay off.
-        if view["militaryHorizon"] == true && horizon == 1.0 {
+        if view["cardPurchasePlanning"] == true && !market_combat_opportunity(view, seat) {
+            value *= 0.35;
+        }
+        if (view["militaryHorizon"] == true || view["cardPurchasePlanning"] == true)
+            && horizon == 1.0
+        {
             value -= 15.0;
         }
     } else {
@@ -965,7 +1019,9 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
                 }
             }
             "colonize" => {
-                let printed = view["colonyPlanning"] == true && view["investmentPlanning"] == true;
+                let printed = (view["colonyPlanning"] == true
+                    || view["cardPurchasePlanning"] == true)
+                    && view["investmentPlanning"] == true;
                 let useful = bot_units(view, seat, "settler") > 0.0
                     && (!printed || public_colony_opportunity(view, seat));
                 let mut colony_value = if useful {
@@ -992,7 +1048,9 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
             }
             _ => {}
         }
-        if view["orderBenefitPlanning"] == true && view["investmentPlanning"] == true {
+        if (view["orderBenefitPlanning"] == true || view["cardPurchasePlanning"] == true)
+            && view["investmentPlanning"] == true
+        {
             let uses = (horizon * 5.0 / size.max(5.0)).min(3.0);
             match stats["order"].as_str().unwrap_or("") {
                 "move" => {
@@ -1011,7 +1069,14 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
                 }
                 "construct" => {
                     if let Some(discount) = stats["buildDiscount"].as_str() {
-                        value += (if discount == "free" { 2.5 } else { 2.0 }) * uses;
+                        value += (if view["cardPurchasePlanning"] == true {
+                            if discount == "free" { 8.0 } else { 6.0 }
+                        } else if discount == "free" {
+                            2.5
+                        } else {
+                            2.0
+                        }) * uses
+                            * acquisition;
                         if stats["secondBuild"] == true {
                             value += 3.0;
                         }
@@ -1031,6 +1096,25 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
         }
         if horizon == 1.0 && prestige == 0.0 {
             value -= 15.0;
+        }
+    }
+    if view["cardPurchasePlanning"] == true && !military {
+        let pressure = bot_income(view, seat);
+        value += stats["limits"]
+            .as_object()
+            .into_iter()
+            .flat_map(|m| m.iter())
+            .map(|(r, n)| {
+                number(n).min(
+                    (number(&me["resources"][r]) + number(&pressure[r]) * horizon
+                        - bot_limit(view, seat, r))
+                    .max(0.0),
+                ) * 2.0
+            })
+            .sum::<f64>()
+            * acquisition;
+        if stats["trashSelf"] == true {
+            value += 4.0 * acquisition;
         }
     }
     let income = bot_income(view, seat);
@@ -2432,7 +2516,11 @@ impl BuiltinAgent {
                 {
                     -10.0
                 } else {
-                    75.0 + exchange_surplus(view, seat, resource).min(8.0)
+                    (if view["cardPurchasePlanning"] == true {
+                        110.0
+                    } else {
+                        75.0
+                    }) + exchange_surplus(view, seat, resource).min(8.0)
                 }
             }
             "special" => {
@@ -2647,6 +2735,13 @@ impl BuiltinAgent {
                     -100.0
                 } else if bootstrap || funded {
                     100.0
+                        + if view["cardPurchasePlanning"] == true
+                            && bank_rate(view, seat, give) == 2.0
+                        {
+                            5.0
+                        } else {
+                            0.0
+                        }
                 } else {
                     -20.0
                 }
@@ -3898,6 +3993,62 @@ mod tests {
         assert!(
             agent.score(&view, &trade) < 0.0,
             "Ordinary4:1rate stays unchanged"
+        );
+    }
+
+    #[test]
+    fn current_card_planning_requires_a_real_exchange_and_precedes_four_to_one() {
+        let mut v = strategic_view();
+        v["investmentPlanning"] = json!(true);
+        v["cardPurchasePlanning"] = json!(true);
+        v["players"][0]["resources"] = json!({"matter":2,"energy":2,"biomass":6,"data":0});
+        v["cardStats"]["exchangeProtocol"] = json!({"order":"special","bankRate":2});
+        let play = json!({"type":"special","key":"exchangeProtocol","resource":"biomass"});
+        let trade = json!({"type":"bank_trade","giveType":"biomass","getType":"data"});
+        let mut agent = BuiltinAgent::new(Strategy::Market, [7; 32]);
+        assert_eq!(
+            agent.select_action(&v, &[trade.clone(), play.clone()]),
+            1,
+            "Enable2:1before spending4"
+        );
+        v["players"][0]["resources"]["biomass"] = json!(1);
+        v["planets"]["1,0"] = json!({"owner":0,"type":"biomass","upgrade":"harvester"});
+        assert!(
+            agent.score(&v, &play) < 0.0,
+            "Future production cannot fund the trade now"
+        );
+        v["players"][0]["resources"] = json!({"matter":12,"energy":12,"biomass":12,"data":12});
+        assert!(
+            agent.score(&v, &play) < 0.0,
+            "No deficit means no reason to spend an order"
+        );
+        v["players"][0]["resources"] = json!({"matter":2,"energy":6,"biomass":6,"data":0});
+        v["players"][0]["bankTradeRates"] = json!({"energy":2});
+        assert!(
+            agent.score(&v, &play) < 0.0,
+            "Use an existing useful discount before another card"
+        );
+    }
+
+    #[test]
+    fn current_buying_reads_free_builds_coupons_and_acquisition_delay() {
+        let mut v = strategic_view();
+        v["investmentPlanning"] = json!(true);
+        v["cardPurchasePlanning"] = json!(true);
+        v["cardStats"]["worldEngine"] =
+            json!({"order":"construct","draw":1,"buildDiscount":"free"});
+        let free = capacity_value(&v, 0, "worldEngine").unwrap();
+        v["cardStats"]["worldEngine"]["buildDiscount"] = Value::Null;
+        assert!(
+            free > capacity_value(&v, 0, "worldEngine").unwrap() + 10.0,
+            "Printed free builds have real future savings"
+        );
+        v["cardStats"]["signalRelay"] = json!({"order":"special","draw":2});
+        let soon = capacity_value(&v, 0, "signalRelay").unwrap();
+        v["players"][0]["deckCount"] = json!(30);
+        assert!(
+            soon > capacity_value(&v, 0, "signalRelay").unwrap(),
+            "A new card waits in discard"
         );
     }
 

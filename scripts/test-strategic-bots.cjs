@@ -55,7 +55,7 @@ for(const strategy of ['military','economy','expansion']) {
 }
 {
   const g=game();g.p.hand=Array.from({length:6},(_,i)=>({id:'starter'+i,key:i<3?'move':'construct',starter:true}));
-  assert(g.e.aiBuyValue(1,'signalRelay')>g.e.aiBuyValue(1,'worldEngine'),'Useful draw beats an expensive extra build in this deck');
+  const freeBuild=g.e.aiBuyValue(1,'worldEngine'),discount=g.e.ALL_CARDS.worldEngine.buildDiscount;g.e.ALL_CARDS.worldEngine.buildDiscount=null;assert(g.e.aiBuyValue(1,'worldEngine')<freeBuild,'Removing the printed free build lowers its value');g.e.ALL_CARDS.worldEngine.buildDiscount=discount;
   assert(g.e.aiBuyValue(1,'seedArk')<g.e.aiBuyValue(1,'signalRelay'),'No Settler means little value in another Colonize card');
   const before=g.e.aiBuyValue(1,'signalRelay');g.p.discard.push({id:'owned',key:'signalRelay'});assert(g.e.aiBuyValue(1,'signalRelay')<before);
 }
@@ -118,3 +118,12 @@ for(const strategy of ['military','economy','expansion']) {
   assert.equal(g.e.aiTargetCard(1).id,'near');
 }
 console.log('Strategic rivals: upgrades, scoring reserves, defense, useful cards/rewards, production investment, market-first budgeting, reachable targets and privacy passed.');
+
+{
+ const g=game();g.p.resources={matter:2,energy:2,biomass:8,data:0};g.p.hand=[{id:'bank',key:'exchangeProtocol'}];
+ assert.equal(g.e.aiExchangeResource(1),'biomass','A held surplus can fund a real missing-resource trade');
+ g.p.resources.biomass=1;assert.equal(g.e.aiExchangeResource(1),null,'Next round production is not current stock');
+ g.p.resources={matter:50,energy:50,biomass:50,data:50};assert.equal(g.e.aiExchangeResource(1),null,'No spending deficit means no wasted exchange order');
+ g.p.resources={matter:2,energy:2,biomass:8,data:0};g.p.bankExchangeResources=['biomass'];assert.equal(g.e.aiExchangeResource(1),null,'Use the already active discount first');
+ const plan=g.e.bankPlanForCost(g.p,{data:1});assert.equal(plan[0].giveType,'biomass','Prefer2:1to an available4:1giver');
+}

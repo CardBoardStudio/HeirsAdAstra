@@ -2677,7 +2677,7 @@ function createGalacticReach(options = {}) {
         const givers = [...RESOURCES].filter(type => type !== getType && spare(type) >= bankTradeRate(player.id,type));
         const keepsReserve = givers.filter(type => spare(type) - (reserve[type] || 0) >= bankTradeRate(player.id,type));
         const giveType = (keepsReserve.length ? keepsReserve : givers)
-          .sort((a,b) => spare(b) - (reserve[b] || 0) - (spare(a) - (reserve[a] || 0)) || spare(b) - spare(a))[0];
+          .sort((a,b) => bankTradeRate(player.id,a)-bankTradeRate(player.id,b) || spare(b) - (reserve[b] || 0) - (spare(a) - (reserve[a] || 0)) || spare(b) - spare(a))[0];
         if (!giveType) return null;
         resources[giveType] -= bankTradeRate(player.id,giveType); resources[getType]++;
         plan.push({giveType,getType});
@@ -2811,7 +2811,7 @@ function createGalacticReach(options = {}) {
         for(const giveType of RESOURCES) if(node.funds[giveType]>=bankTradeRate(player.id,giveType)) for(const getType of RESOURCES) {
           if(getType===giveType||node.funds[getType]>=(desiredCost[getType]||0)||node.funds[getType]>=limits[getType])continue;
           const funds={...node.funds,[giveType]:node.funds[giveType]-bankTradeRate(player.id,giveType),[getType]:node.funds[getType]+1};
-          const candidate={funds,available:node.available,steps:[...node.steps,{type:'bank',giveType,getType}],penalty:node.penalty+.5};
+          const candidate={funds,available:node.available,steps:[...node.steps,{type:'bank',giveType,getType}],penalty:node.penalty+bankTradeRate(player.id,giveType)/8};
           const marker=key(candidate);if(!seen.has(marker)){seen.add(marker);next.push(candidate);}
         }
       }
@@ -2925,26 +2925,43 @@ function createGalacticReach(options = {}) {
     return p.hand.some(c=>!before.has(c.id));
   }
 
+  // A concrete trade from held stock; production arriving next round cannot fund it.
+  function aiExchangeResource(playerId) {
+    const p=state.players[playerId],goal=aiReserves(playerId),limits=resourceLimits(playerId);
+    if(RESOURCES.some(give=>bankTradeRate(playerId,give)===2&&p.resources[give]-(goal[give]||0)>=2&&RESOURCES.some(get=>get!==give&&p.resources[get]<Math.min(goal[get]||0,limits[get]))))return null;
+    return RESOURCES.filter(give=>bankTradeRate(playerId,give)>2&&p.resources[give]-(goal[give]||0)>=2
+      &&RESOURCES.some(get=>get!==give&&p.resources[get]<Math.min(goal[get]||0,limits[get])))
+      .sort((a,b)=>(p.resources[b]-(goal[b]||0))-(p.resources[a]-(goal[a]||0)))[0]||null;
+  }
+  function aiTryExchange(playerId) {
+    const card=state.players[playerId].hand.find(c=>ALL_CARDS[c.key].effect?.bankRate),resource=card&&aiExchangeResource(playerId);
+    return Boolean(resource&&resolveHumanSpecial(card,ALL_CARDS[card.key],playerId,resource));
+  }
+
   function aiCardUtility(playerId, key) {
     const p=state.players[playerId],def=ALL_CARDS[key],cards=aiCards(playerId),effect=def.effect||{};
     const horizon=Math.max(1,Math.min(5,Math.ceil((victoryTarget()-Math.max(...state.players.map((_,id)=>calculatePrestige(id))))/5)));
     const fallbackDraw=def.fallbackDraw||0,draw=Math.max(effect.draw||def.orderDraw||(def.tag==='alienEchoes'?3:0),fallbackDraw),fleets=countPlacedShips(playerId,'fleet');
-    const drawValue=draw*(7+Math.min(cards.length,18)*.25)*Math.min(1,horizon/2);
+    const acquisition=Math.min(1,Math.max(0,horizon-Math.ceil(p.deck.length/5))/horizon);
+    const drawValue=acquisition*draw*(7+Math.min(cards.length,18)*.25)*Math.min(1,horizon/2);
     let value=6+(def.gainPrestige||0)*9+(effect.prestige||0)*Math.min(4,horizon)*8;
     value+=drawValue;
-    if(effect.bankRate){const income=aiIncome(playerId);value-=cards.filter(c=>ALL_CARDS[c.key].effect?.bankRate).length*10;value+=Math.max(...RESOURCES.map(r=>Math.min(3,(p.resources[r]+income[r]*2)/2)))*4*Math.min(3,horizon*5/Math.max(5,cards.length));}
+    if(effect.bankRate){const income=aiIncome(playerId);value-=cards.filter(c=>ALL_CARDS[c.key].effect?.bankRate).length*10;value+=Math.max(...RESOURCES.map(r=>RESOURCES.some(get=>get!==r&&p.resources[get]+income[get]*2<resourceLimits(playerId)[get])?Math.min(3,Math.max(0,Math.min(resourceLimits(playerId)[r],p.resources[r]+income[r]*2)-2)/2):0))*4*Math.min(3,horizon*5/Math.max(5,cards.length));}
     if (effect.limits) value+=RESOURCES.reduce((n,r)=>n+Math.min(2,effect.limits[r]||0),0)*1.5;
     if (def.order==='construct') value+=aiOrderCount(playerId,'construct')<3?15:5;
     if (def.order==='move') value+=countPlacedShips(playerId,'settler')+countPlacedShips(playerId,'explorer')+fleets?aiOrderCount(playerId,'move')<4?12:3:0;
     const uses=Math.min(3,horizon*5/Math.max(5,cards.length));
     if(def.order==='move')value+=(def.range||0)*2+(fleets?Math.min(4,def.assault||0)*2:0);
-    if(def.order==='construct'&&def.buildDiscount)value+=(def.buildDiscount==='free'?2.5:2)*uses+(def.secondBuild?3:0);
+    if(def.order==='construct'&&def.buildDiscount)value+=(def.buildDiscount==='free'?8:6)*uses*acquisition+(def.secondBuild?3:0);
     if (def.order==='colonize') {
       const opportunities=state.clusters.some(c=>c.kind==='world'&&state.planets[c.center].owner!==playerId);
       let colonyValue=!opportunities||!countPlacedShips(playerId,'settler')?-15:Math.max(0,16-aiOrderCount(playerId,'colonize')*8);
       if(opportunities&&countPlacedShips(playerId,'settler'))colonyValue+=((def.keepSettler?6:0)+Math.max(0,2-(def.colonyCost??2))*2+(def.colonyPrestige||0)*6)*uses;
       value+=fallbackDraw?Math.max(0,colonyValue-drawValue):colonyValue;
     }
+    if(def.buyEffect&&horizon>1){const saving=Math.max(0,...marketOffers().filter(c=>c.key!==key&&!ALL_CARDS[c.key].buyEffect).map(c=>RESOURCES.filter(r=>(ALL_CARDS[c.key].cost[r]||0)>0).length));value+=saving*Math.min(3,(horizon-1)*5/Math.max(5,cards.length))*2;}
+    if(effect.limits){const income=aiIncome(playerId),limits=resourceLimits(playerId);value+=RESOURCES.reduce((n,r)=>n+Math.min(effect.limits[r]||0,Math.max(0,p.resources[r]+income[r]*horizon-limits[r]))*2,0)*acquisition;}
+    if(effect.trashSelf)value+=4*acquisition;
     if (def.military) {
       if (!fleets) return -20;
       const power=c=>(c.attack||0)+(c.shield||0)*.8+(c.pierce?2:0)+(c.victoryPrestige||0)*1.5;
@@ -3205,6 +3222,7 @@ function createGalacticReach(options = {}) {
     if (state.pendingColonyBuild) {aiColonyBuild(state.activePlayer);return;}
     const id=state.activePlayer,p=state.players[id];
     aiManageStorage(id);
+    if(aiTryExchange(id))return;
     const colonyRank=c=>{const t=colonyTerms(ALL_CARDS[c.key].tag,false);return (t.keepSettler?10:0)+t.prestige*3-t.biomass;};
     const colonize=p.hand.filter(c=>ALL_CARDS[c.key].order==='colonize').sort((a,b)=>colonyRank(b)-colonyRank(a))[0];
     const target=findColonizeTarget(id);
@@ -3230,8 +3248,6 @@ function createGalacticReach(options = {}) {
       const origin=Object.keys(state.fleets).sort((a,b)=>aiCompareCoords(a,b,id)).find(coord=>probeRelic(id,coord,probe.id,true)&&!state.clusters.some(c=>relicKnown(c,id)&&relicCoordInCluster(c)));
       if (origin && probeRelic(id,origin,probe.id)) return;
     }
-    const exchange=p.hand.find(c=>ALL_CARDS[c.key].effect?.bankRate);
-    if(exchange){const income=aiIncome(id),resource=RESOURCES.filter(r=>bankTradeRate(id,r)>2).sort((a,b)=>(p.resources[b]+income[b]*2)-(p.resources[a]+income[a]*2))[0];if(resource&&p.resources[resource]+income[resource]>=2&&resolveHumanSpecial(exchange,ALL_CARDS[exchange.key],id,resource))return;}
     aiRespondToTrades(id);
     // These caches end before any card, payment or order changes the position.
     const moveCards=p.hand.filter(c=>ALL_CARDS[c.key].order==='move'),movePlans=new Map(),routeCache=new Map();
@@ -5493,7 +5509,7 @@ function createGalacticReach(options = {}) {
   function headlessPort() {
     return {
       get state() { return state; }, get turnSerial() { return turnSerial; }, get cardSerial() { return cardSerial; },
-      clone, deckContents, catalogMarketEnabled, marketOffers, marketCopiesRemaining, bankTradeRate, ALL_CARDS, MARKET_TIERS, marketTier, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, CAPACITY_SUPPLY, SUPPLY_CARDS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
+      clone, deckContents, aiExchangeResource, aiTryExchange, catalogMarketEnabled, marketOffers, marketCopiesRemaining, bankTradeRate, ALL_CARDS, MARKET_TIERS, marketTier, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, CAPACITY_SUPPLY, SUPPLY_CARDS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
       canAfford, canConvertCard, cardResources, resourceGainTotal, remainingResourceCapacity, addResources,
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
       decommission, trashEligibleCards, excavatedRelicCount, useBuyEffect, resolveHumanSpecial,
