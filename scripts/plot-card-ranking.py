@@ -36,7 +36,7 @@ for i, (card, color) in enumerate(zip(cards, colors)):
     buys.barh(i, card['purchases'], height=.5, color=color, alpha=.8)
     buys.text(card['purchases'] + 1, i, str(card['purchases']), va='center', fontsize=10, color='#253741')
 effects.axvline(0, color='#6e7e82', linewidth=1)
-effects.set_yticks(y, [c['name'] + ('  [not bought]' if not c['purchases'] else '') for c in cards])
+effects.set_yticks(y, [c['name'] + (' *' if c.get('missingMapBlocks') else '') + ('  [not bought]' if not c['purchases'] else '') for c in cards])
 effects.invert_yaxis()
 effects.set_xlabel('Prestige benefit of retaining access (mean and exploratory 95% interval)', fontsize=11, labelpad=15)
 buys.set_xlabel('Baseline purchases', fontsize=11, labelpad=15)
@@ -45,13 +45,13 @@ buys.set_xlim(0, max(c['purchases'] for c in cards) * 1.28 + 1)
 fig.suptitle('Which cards help the Market bots?', x=.03, ha='left', y=.98,
              fontsize=24, fontweight='bold', color='#172f3b')
 fig.text(.03, .945,
-         f"{report['completedGames']:,} games · {len(report['protocol']['seedList'])} maps · "
+         f"{report['completedGames']:,}/{report.get('plannedGames',report['completedGames']):,} games · {len(report['protocol']['seedList'])} maps · "
          f"{report['protocol']['target']}-Prestige goal · four Market bots · full finite catalog",
          fontsize=12, color='#465d68')
 fig.text(.03, .021,
-         'Positive values favor access; negative values favor withholding the card from one bot.\n'
-         'Whole maps are bootstrap units. Intervals are not corrected for comparing 34 cards.\n'
-         'Unbought cards are untested by this policy. Substitutes remain available; this is not a universal human tier list.',
+         ('* Incomplete map blocks excluded for flagged cards; see the report for coverage.\n' if report.get('missingCases') else 'Positive values favor access; negative values favor withholding the card from one bot.\n')
+         + 'Whole maps are bootstrap units. Intervals are not corrected for comparing 34 cards.\n'
+         'Rarely bought cards have limited evidence. Substitutes remain available; this is not a universal human tier list.',
          fontsize=11, linespacing=1.5, color='#465d68')
 fig.subplots_adjust(left=.25, right=.97, bottom=.11, top=.915, wspace=.12)
 args.output.parent.mkdir(parents=True, exist_ok=True)
