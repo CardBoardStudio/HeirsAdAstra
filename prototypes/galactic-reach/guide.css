@@ -1,6 +1,6 @@
 /* Guidance and Learn to play coach marks (guide.js): a printed note card laid beside the piece
    of the table it is about. Fixed to the window, so it never makes the table scroll. */
-.gr-coach {
+.gr-coach, .gr-bubble {
   --coach-paper: #f7f0dd; --coach-ink: #253436; --coach-muted: #566461; --coach-edge: #c9a75a;
   position: fixed; z-index: 60; left: 0; top: 0; box-sizing: border-box;
   width: min(320px, calc(100vw - 20px));
@@ -31,11 +31,11 @@
 
 /* The arrow points from the note at its anchor. */
 .gr-coach-arrow { position: absolute; width: 12px; height: 12px; background: var(--coach-paper); border: 1px solid var(--coach-edge); transform: rotate(45deg); }
-.gr-coach[data-side="none"] .gr-coach-arrow, .gr-coach[data-side="inline"] .gr-coach-arrow { display: none; }
-.gr-coach[data-side="top"] .gr-coach-arrow { bottom: -7px; left: calc(var(--along, 50%) - 6px); border-top: 0; border-left: 0; }
-.gr-coach[data-side="bottom"] .gr-coach-arrow { top: -7px; left: calc(var(--along, 50%) - 6px); border-bottom: 0; border-right: 0; }
-.gr-coach[data-side="right"] .gr-coach-arrow { left: -7px; top: calc(var(--along, 50%) - 6px); border-top: 0; border-right: 0; }
-.gr-coach[data-side="left"] .gr-coach-arrow { right: -7px; top: calc(var(--along, 50%) - 6px); border-bottom: 0; border-left: 0; }
+:is(.gr-coach, .gr-bubble)[data-side="none"] .gr-coach-arrow, .gr-coach[data-side="inline"] .gr-coach-arrow { display: none; }
+:is(.gr-coach, .gr-bubble)[data-side="top"] .gr-coach-arrow { bottom: -7px; left: calc(var(--along, 50%) - 6px); border-top: 0; border-left: 0; }
+:is(.gr-coach, .gr-bubble)[data-side="bottom"] .gr-coach-arrow { top: -7px; left: calc(var(--along, 50%) - 6px); border-bottom: 0; border-right: 0; }
+:is(.gr-coach, .gr-bubble)[data-side="right"] .gr-coach-arrow { left: -7px; top: calc(var(--along, 50%) - 6px); border-top: 0; border-right: 0; }
+:is(.gr-coach, .gr-bubble)[data-side="left"] .gr-coach-arrow { right: -7px; top: calc(var(--along, 50%) - 6px); border-bottom: 0; border-left: 0; }
 
 /* Inside a modal dialog (a battle, a choice), the note sits at the top of that dialog. */
 .gr-coach.in-dialog { position: static; width: auto; max-height: none; margin: 0 0 10px; box-shadow: 0 0 0 2px #ffc95e55; }
@@ -110,3 +110,44 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
   display: grid; place-items: center; color: #062026; font: 700 18px/1 system-ui; opacity: 0; }
 .gr-stage-ghost[hidden] { display: none; }
 @media (prefers-reduced-motion: reduce) { .gr-stage-ring.active, .gr-stage-path { animation: none; } }
+
+/* The Sector Scan wears the same bubble (app.js lays it beside the chosen hex with
+   galacticReachGuide.anchorBubble). A popover: Escape or a click elsewhere closes it. The body
+   scrolls on a short window, so the arrow outside it is never clipped. */
+.gr-bubble[popover] { inset: auto; margin: 0; overflow: visible; min-height: 0; width: min(300px, calc(100vw - 20px)); padding: 0; }
+.gr-bubble:not([data-side]) .gr-coach-arrow { display: none; }
+.gr-bubble .scan-body { max-height: calc(100dvh - 24px); overflow: auto; overscroll-behavior: contain; padding: 9px 11px 10px; }
+.gr-bubble .panel-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin: 0 0 4px; }
+.gr-bubble .panel-heading h2 { margin: 1px 0 0; font-size: 17px; }
+.gr-bubble .coordinate { color: var(--coach-muted); letter-spacing: 0; text-transform: none; font-weight: 600; }
+.gr-bubble p, .gr-bubble .muted { margin: 0 0 6px; color: var(--coach-muted); font-size: 12px; line-height: 1.35; }
+.gr-bubble .fact-list { gap: 4px; }
+.gr-bubble .fact { padding: 3px 7px; border-radius: 4px; background: #ece2c6; color: var(--coach-ink); }
+.gr-bubble .fact span { color: var(--coach-muted); font-size: 10px; }
+.gr-bubble .fact strong { font-size: 12px; }
+.gr-bubble .context-actions { gap: 5px; margin-top: 7px; }
+.gr-bubble .context-actions:empty { display: none; }
+.gr-bubble .button { min-height: 32px; padding: 4px 9px; font-size: 12px; color: var(--coach-ink); border-color: #a89d83; background: #fffaf0; }
+.gr-bubble .button:hover:not(:disabled) { color: var(--coach-ink); border-color: #8a6a1f; background: #fff3cf; }
+.gr-bubble .dialog-close { flex: none; min-height: 26px; padding: 2px 8px; background: transparent; }
+.gr-bubble .move-picker { border-color: #c9b98f; }
+.gr-bubble .move-picker legend { color: #6b4f12; }
+.gr-bubble .move-picker-row select { background: #fffaf0; color: var(--coach-ink); border-color: #a89d83; }
+/* Orders from your hand: one row per card, its picture beside what it does here. */
+.gr-bubble .context-order-list { gap: 5px; padding-top: 0; width: 100%; }
+.gr-bubble .context-order-list > strong { color: #8a6a1f; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.gr-bubble .scan-order { justify-content: flex-start; gap: 8px; padding: 3px 8px 3px 3px; text-align: left; }
+.scan-order-art { flex: none; width: 30px; height: 38px; overflow: hidden; border-radius: 4px; border: 1px solid var(--card-accent, #a89d83); background: #1b2b2d; }
+.scan-order-art .card-art { display: block; width: 100%; height: 100%; margin: 0; }
+.scan-order-art .card-picture { width: 100%; height: 100%; object-fit: cover; }
+.scan-order-art :is(.card-emblem, .card-registration, .card-orbit) { display: none; }
+.scan-order-art .card-art:not(.has-picture) svg { width: 100%; height: 100%; color: var(--card-accent, #f2d488); }
+.scan-order-text { display: grid; line-height: 1.2; }
+.scan-order-text strong { font-size: 12.5px; }
+.scan-order-text small { color: var(--coach-muted); font-size: 11px; }
+/* A build or commission choice: one compact row, its cost as small chips at the end. */
+.gr-bubble .context-actions > .button { flex: 1 1 100%; justify-content: space-between; min-height: 30px; padding: 3px 4px 3px 9px; text-align: left; }
+.gr-bubble .resource-dots { display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 3px; }
+.gr-bubble .resource-chip { gap: 3px; min-height: 20px; padding: 1px 5px; border-color: color-mix(in srgb, var(--chip-color) 55%, #a89d83); background: #253436; }
+.gr-bubble .resource-chip strong { color: #f7f0dd; font-size: 11px; }
+.gr-bubble .resource-chip .resource-symbol { width: 12px; height: 12px; }

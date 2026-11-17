@@ -550,7 +550,7 @@
     if (box.classList.contains('free') && !box.classList.contains('in-dialog')) box.classList.toggle('docked', Boolean(currentDock && dockRect()));
     positionBox(box, anchor); placePointer(anchor); drawStage();
   }
-  function positionBox(box, anchor) {
+  function positionBox(box, anchor, extraAvoid = currentAvoid, { besideOnly = false } = {}) {
     const margin = 10, gap = 14, vw = innerWidth, vh = innerHeight;
     const dock = box.classList.contains('docked') ? dockRect() : null;
     if (dock) {
@@ -612,7 +612,8 @@
     }
     // A crowded corner (the discard pile, the turn button): the nearest open stretch of the map,
     // with the separate arrow on the target. Chosen only when every side would cover text.
-    const map = $('.board-map-region')?.getBoundingClientRect();
+    // A bubble with no separate arrow (the Sector Scan) stays beside its target so its own arrow can aim.
+    const map = besideOnly ? null : $('.board-map-region')?.getBoundingClientRect();
     if (map?.width > width && map.height > height) {
       options.push({ side: 'none', left: Math.max(map.left, Math.min(map.right - width, ax - width / 2)), top: Math.max(map.top, Math.min(map.bottom - height, a.top - gap - height)), fits: true, slide: 1.5 });
       // While a raised card fills part of the map, any open stretch of it (nearer is better).
@@ -623,7 +624,7 @@
     }
     // Of the sides that fit, prefer the one that hides least of what you may need next: the lit
     // hexes of an aimed order and an open Sector Scan.
-    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...currentAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden]), #resource-grid, #open-trade, #convert-all-button:not([hidden]), #prestige-track')].filter((el, i) => i === 0 || (el !== around && !around.contains(el))).map(el => el.getBoundingClientRect());
+    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...extraAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden]), #resource-grid, #open-trade, #convert-all-button:not([hidden]), #prestige-track')].filter((el, i) => el && el !== box && (i === 0 || (el !== around && !around.contains(el)))).map(el => el.getBoundingClientRect());
     const covered = o => avoid.reduce((sum, r) => sum + Math.max(0, Math.min(o.left + width, r.right) - Math.max(o.left, r.left)) * Math.max(0, Math.min(o.top + height, r.bottom) - Math.max(o.top, r.top)), 0);
     const raised = $$(':is(#hand-row, .market-cards, .relic-row) .game-card:is(:hover, :focus-within), .toast').map(el => el.getBoundingClientRect());
     const texty = $$(TEXTY).filter(el => el !== around && !el.contains(around) && !around.contains(el) && shown(el)).map(el => el.getBoundingClientRect());
@@ -757,7 +758,10 @@
     syncMenu();
   }
 
-  const api = { rendered(next) { port = next; schedule(); }, refresh: schedule, prefs, setEnabled, place, hide, handCard, hex, firstShown, shown, turnButton, costText, context: () => context() };
+  // The same bubble for any table pop-up (the Sector Scan uses it): laid beside its anchor with its
+  // arrow (.gr-coach-arrow) aimed at it, never over it, and clear of lit hexes and of `avoid`.
+  const anchorBubble = (box, anchor, avoid = []) => positionBox(box, anchor, avoid, { besideOnly: true });
+  const api = { rendered(next) { port = next; schedule(); }, refresh: schedule, prefs, setEnabled, place, hide, handCard, hex, firstShown, shown, turnButton, costText, anchorBubble, context: () => context() };
   globalThis.galacticReachGuide = api;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();

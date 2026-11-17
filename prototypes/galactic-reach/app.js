@@ -3729,6 +3729,11 @@ function createGalacticReach(options = {}) {
           const button = document.createElement('button');
           button.type='button'; button.className='hex'; button.dataset.coord=key;
           button.addEventListener('click',event=>{if(!selectHex(key))showSectorScan(event.detail===0);});
+          // Pointing at (or focusing) a hex raises the hand cards that could start an order there.
+          button.addEventListener('pointerenter',()=>pointAtHex(key));
+          button.addEventListener('focus',()=>pointAtHex(key));
+          button.addEventListener('pointerleave',()=>pointAtHex(null,key));
+          button.addEventListener('blur',()=>pointAtHex(null,key));
           button.innerHTML=TERRITORY_SVG+'<svg class="portal-ring" viewBox="0 0 100 116" aria-hidden="true" focusable="false"><polygon class="portal-ring-base" points="50,3 97,30 97,86 50,113 3,86 3,30"></polygon><polygon class="portal-ring-line" points="50,3 97,30 97,86 50,113 3,86 3,30"></polygon></svg><span class="hex-pieces"><span class="hex-fleets"></span><span class="hex-buildings"></span><span class="special"></span></span>';
           row.appendChild(button);
         }
@@ -3920,7 +3925,7 @@ function createGalacticReach(options = {}) {
       if (seen.has(signature)) continue;
       seen.add(signature);
       const name = `${def.name}${starterLevel(card)===3?' III':card.upgraded?' II':''}`;
-      const add = (type,label,group=null) => orders.push({card:card.id,type,group,label:`${label} · ${name}`});
+      const add = (type,label,group=null) => orders.push({card:card.id,type,group,label:`${label} · ${name}`,action:label,name});
       if (def.order === 'move' && fleetCount(fleet)) {
         for (const group of ['ships','explorer']) {
           const moving = fleetGroup(fleet,group);
@@ -3966,8 +3971,44 @@ function createGalacticReach(options = {}) {
     const title = document.createElement('strong');
     title.textContent = 'Orders from your hand';
     list.appendChild(title);
-    for (const order of orders) list.appendChild(actionButton(order.label,()=>startContextOrder(order.card,coord,order.group)));
+    const hand = state.players[ME].hand;
+    for (const order of orders) {
+      // The card's own picture beside what it does here; choosing it starts the order exactly as
+      // Use order or a drag would. Pointing at it raises that card in your hand.
+      const def = ALL_CARDS[hand.find(card => card.id === order.card)?.key];
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'button scan-order'; button.dataset.scanOrderCard = order.card;
+      button.setAttribute('aria-label', order.label);
+      if (def?.accent) button.style.setProperty('--card-accent', def.accent);
+      button.innerHTML = `<span class="scan-order-art">${def ? cardIllustration(def) : ''}</span><span class="scan-order-text"><strong>${esc(order.action)}</strong><small>${esc(order.name)}</small></span>`;
+      button.addEventListener('click', () => startContextOrder(order.card, coord, order.group));
+      for (const type of ['pointerenter', 'focus']) button.addEventListener(type, () => { pointedOrderCard = order.card; syncPlaysHere(); });
+      for (const type of ['pointerleave', 'blur']) button.addEventListener(type, () => { if (pointedOrderCard === order.card) { pointedOrderCard = null; syncPlaysHere(); } });
+      list.appendChild(button);
+    }
     actions.appendChild(list);
+  }
+
+  // The board teaches what to play: while you point at, focus or choose a hex, the hand cards whose
+  // order can start there rise and glow, as a card does while it aims at hexes (Use order or a
+  // drag). Pointing at one of the Sector Scan's orders narrows it to that card. Presentation only.
+  let pointedHex = null, pointedOrderCard = null;
+  function pointAtHex(key, leaving = null) {
+    if (leaving && pointedHex !== leaving) return;
+    pointedHex = key;
+    syncPlaysHere();
+  }
+  function syncPlaysHere() {
+    if (headless) return;
+    const scanOpen = $('#sector-popover')?.matches?.(':popover-open');
+    const coord = pointedHex || (scanOpen ? state.selected : null);
+    const busy = state.actionMode || state.pendingMove || document.body.classList.contains('cf-drag-active') || document.body.classList.contains('cf-aim-active');
+    const ids = new Set();
+    if (coord && !busy) {
+      if (pointedOrderCard && scanOpen && coord === state.selected) ids.add(pointedOrderCard);
+      else for (const card of state.players[ME].hand) if (availableContextOrders(coord, card.id).length) ids.add(card.id);
+    }
+    for (const card of $$('#hand-row > .game-card')) card.classList.toggle('cf-plays-here', ids.has(card.dataset.cardId));
   }
 
   function renderInspector() {
@@ -4746,9 +4787,10 @@ function createGalacticReach(options = {}) {
     $('#round-goal').textContent=`${victoryTarget()} Prestige`;
     // Each part of the table draws on its own: one failing part must never blank the market,
     // the relics or the turn's buttons. Failures are logged, shown once, and fail the checks.
-    drawEach({renderHeader, renderScoreboard, renderBoard, renderResources, renderInspector, positionSectorScan, renderLog, renderHand, renderMarket, renderMilitaryPile, renderTrade, renderRelicRow, renderOverflow, renderCombat, renderCombatReport, renderBoardPrimary});
+    drawEach({renderHeader, renderScoreboard, renderBoard, renderResources, renderInspector, renderLog, renderHand, renderMarket, renderMilitaryPile, renderTrade, renderRelicRow, renderOverflow, renderCombat, renderCombatReport, renderBoardPrimary});
     drawEach({fitMarket, stackLeft, fitMap});
     settleFit();
+    drawEach({syncPlaysHere, positionSectorScan, settleSectorScan});
     drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()), drawers: followTurnWithDrawer, guide: () => guide?.rendered?.(guidePort()) });
   }
 
@@ -5151,22 +5193,19 @@ function createGalacticReach(options = {}) {
     if (!panel?.matches(':popover-open') || !state.selected) return;
     const hex=$(`.hex[data-coord="${state.selected}"]`);
     if (!hex) return;
-    const vw=document.documentElement.clientWidth, vh=window.innerHeight, gap=12;
-    panel.style.width=`${Math.min(370,vw-24)}px`;
-    let rect=hex.getBoundingClientRect();
-    const width=panel.offsetWidth, height=panel.offsetHeight;
-    // While choosing a Move's units, keep the highlighted destinations clickable (#movement):
-    // anchor beside the source and every reachable hex, if that side has room.
-    if (state.actionMode==='move' && state.moveSource===state.selected) {
-      const area=[hex,...document.querySelectorAll('.hex.target')].map(h=>h.getBoundingClientRect());
-      const box={left:Math.min(...area.map(r=>r.left)),right:Math.max(...area.map(r=>r.right)),top:rect.top,bottom:rect.bottom};
-      if (box.right+gap+width<=vw-gap || box.left-gap-width>=gap) rect=box;
-    }
-    let left=rect.right+gap, top=rect.top;
-    if (left+width>vw-gap) left=rect.left-width-gap;
-    if (left<gap) { left=(vw-width)/2; top=rect.bottom+gap; if(top+height>vh-gap) top=rect.top-height-gap; }
-    panel.style.left=`${Math.max(gap,Math.min(vw-width-gap,left))}px`;
-    panel.style.top=`${Math.max(gap,Math.min(vh-height-gap,top))}px`;
+    // The guide's bubble: beside the hex with its arrow aimed at it, never over it. It also stays
+    // clear of a Move's reachable hexes (#movement keeps them clickable), the raised hand cards
+    // this hex lights up, the turn’s main button, a guide note and a notice (toast).
+    globalThis.galacticReachGuide?.anchorBubble?.(panel, hex, $$('#hand-row > .game-card.cf-plays-here, #board-primary:not([hidden]), #gr-coach:not([hidden]), .toast'));
+  }
+  // The map refits just after a render and may move the hex: follow it for a few frames.
+  let scanSettling = 0;
+  function settleSectorScan() {
+    const already = scanSettling > 0;
+    scanSettling = 20;
+    if (already || typeof requestAnimationFrame !== 'function') return;
+    const step = () => { positionSectorScan(); if (--scanSettling > 0) requestAnimationFrame(step); };
+    requestAnimationFrame(step);
   }
 
   function showSectorScan(keyboard=false) {
@@ -5174,7 +5213,8 @@ function createGalacticReach(options = {}) {
     // A move that started a battle opens the battle window: the scan must not reopen over it.
     if (document.querySelector('dialog[open]:modal')) return;
     if (!panel.matches(':popover-open')) panel.showPopover();
-    positionSectorScan();
+    syncPlaysHere();
+    positionSectorScan(); settleSectorScan();
     if (keyboard) $('#close-sector-scan').focus();
   }
 
@@ -5226,6 +5266,8 @@ function createGalacticReach(options = {}) {
       bankTrade(ME,bankSelection.give,bankSelection.get);
     });
     window.addEventListener('resize',positionSectorScan);
+    // Closing the scan (Escape, a click elsewhere, Close) lowers the cards it raised.
+    $('#sector-popover').addEventListener('toggle',()=>{ pointedOrderCard=null; syncPlaysHere(); });
     fitTable();
     window.addEventListener('resize',fitTable);
     window.addEventListener('resize',fitMarket);
