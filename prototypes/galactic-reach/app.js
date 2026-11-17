@@ -7,6 +7,8 @@ function createGalacticReach(options = {}) {
   const replayMode = options.replay === true;
   // Presentation only: card stock, motion, the inspect view and drag-to-play (card-feel.js).
   const cardFeel = headless || replayMode ? null : globalThis.galacticReachCardFeel || null;
+  // Presentation only: on-table guidance and the Learn to play coach marks (guide.js).
+  const guide = headless || replayMode ? null : globalThis.galacticReachGuide || null;
   const developmentMode = !headless && !replayMode &&
     (/^(localhost|127\.0\.0\.1)$/.test(globalThis.location?.hostname || '') || /^drawing-board-pr-\d+(?:-[a-z0-9]+)?\.onrender\.com$/.test(globalThis.location?.hostname || '')) &&
     new URLSearchParams(globalThis.location?.search || '').get('dev')==='1';
@@ -26,9 +28,13 @@ function createGalacticReach(options = {}) {
   const CHANNEL = !headless && globalThis.galacticReachChannel?.channel === 'dev' ? globalThis.galacticReachChannel : null;
   const RULES_ID = CHANNEL?.rules || `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`;
   const KEY_SUFFIX = CHANNEL ? `-${RULES_ID.split('/').pop()}` : '';
-  const SAVE_KEY = `galactic-reach-save-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
-  const TURN_HISTORY_KEY = `galactic-reach-turn-history-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
-  const HISTORY_KEY = `galactic-reach-history-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
+  // The Learn to play walkthrough (tutorial.js) keeps its game under its own keys, so starting,
+  // replaying or leaving a lesson never touches the guest save (docs/rules/tutorial.md).
+  const TUTORIAL = !headless && !replayMode && options.tutorial === true;
+  const KEY_BASE = TUTORIAL ? 'galactic-reach-tutorial' : 'galactic-reach';
+  const SAVE_KEY = `${KEY_BASE}-save-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
+  const TURN_HISTORY_KEY = `${KEY_BASE}-turn-history-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
+  const HISTORY_KEY = `${KEY_BASE}-history-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
   if (CHANNEL && typeof document !== 'undefined') document.querySelectorAll('.rules-badge').forEach(badge => { badge.textContent = CHANNEL.label; });
   const RESOURCES = ['matter', 'energy', 'biomass', 'data'];
   const RESOURCE_NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Biomass', data: 'Data' };
@@ -1567,6 +1573,7 @@ function createGalacticReach(options = {}) {
     clearTimeout(aiTimer);
     if (overflowPlayer() >= 0) return;
     const expectedPlayer = state.activePlayer;
+    if (TUTORIAL) delay = Math.min(delay, 200);
     aiTimer = setTimeout(() => {
       aiTimer = null;
       if (state.pendingCombat || state.pendingCombatReport || overflowPlayer() >= 0 || options.paused?.() || state.phase !== phase || state.activePlayer !== expectedPlayer || state.winner !== null) return;
@@ -3132,6 +3139,8 @@ function createGalacticReach(options = {}) {
   function runAiOperation() {
     if (state.pendingCombat || state.phase !== 'operations' || state.activePlayer === ME || state.winner !== null) return;
     if (overflowPlayer()>=0) return;
+    // Learn to play: the rivals hold still so each lesson's position stays as staged.
+    if (TUTORIAL) { passOperations(state.activePlayer); return; }
     if (state.pendingConsortium) {runAiConsortium();return;}
     if (state.pendingConstruct) {aiSecondConstruct(state.activePlayer);return;}
     if (state.pendingColonyBuild) {aiColonyBuild(state.activePlayer);return;}
@@ -3301,6 +3310,7 @@ function createGalacticReach(options = {}) {
   }
 
   function runAiBuy() {
+    if (TUTORIAL) { nextBuyPlayer(); return; }
     const id=state.activePlayer,p=state.players[id];
     aiManageStorage(id);
     const reserve=aiReserves(id);
@@ -4248,7 +4258,9 @@ function createGalacticReach(options = {}) {
     if (replayMode) { $('#decommission-area').innerHTML=''; renderUpgradeOffers(false); return; }
     const eligible=trashEligibleCards(state.players[ME]);
     const selectedResource = $('#trash-resource')?.value;
-    const trashResource = RESOURCES.includes(selectedResource) ? selectedResource : RESOURCES.find(resource=>state.players[ME].resources[resource]>=3) || 'matter';
+    // Keep the chosen payment while it can still pay; otherwise offer one that can.
+    const canPayTrash = resource => state.players[ME].resources[resource]>=3;
+    const trashResource = RESOURCES.includes(selectedResource) && (canPayTrash(selectedResource) || !RESOURCES.some(canPayTrash)) ? selectedResource : RESOURCES.find(canPayTrash) || 'matter';
     const trashOptions = RESOURCES.map(resource =>
       `<option value="${resource}" ${resource===trashResource?'selected':''}>${RESOURCE_NAMES[resource]}</option>`
     ).join('');
@@ -4691,7 +4703,8 @@ function createGalacticReach(options = {}) {
     $('#combat-help').textContent=view.stage==='tactic'?`Your base attack is ${combatPower(mine.pieces)}; the opponent’s is ${combatPower(enemy.pieces)}. Fire adds 1 hit. Screen prevents 2. Opponent bonuses and shields remain unknown until both commit. Damage is simultaneous.`:'Escape moves only the chosen Explorers. Other units stay. Energy costs are included in these choices; there is no ship-stacking limit.';
     $('#combat-history').innerHTML=view.summary.map(line=>`<p>${esc(line)}</p>`).join('');
     $$('[data-combat-action]').forEach(button=>button.addEventListener('click',()=>applyCombatAction(ME,actions[Number(button.dataset.combatAction)])));
-    if (!dialog.open) dialog.showModal();
+    // The Sector Scan that started the move must not lie over the battle's tactics.
+    if (!dialog.open) { if ($('#sector-popover')?.matches?.(':popover-open')) $('#sector-popover').hidePopover(); dialog.showModal(); }
   }
 
   function renderOverflow() {}
@@ -4736,7 +4749,34 @@ function createGalacticReach(options = {}) {
     drawEach({renderHeader, renderScoreboard, renderBoard, renderResources, renderInspector, positionSectorScan, renderLog, renderHand, renderMarket, renderMilitaryPile, renderTrade, renderRelicRow, renderOverflow, renderCombat, renderCombatReport, renderBoardPrimary});
     drawEach({fitMarket, stackLeft, fitMap});
     settleFit();
-    drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()), drawers: followTurnWithDrawer });
+    drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()), drawers: followTurnWithDrawer, guide: () => guide?.rendered?.(guidePort()) });
+  }
+
+  // Guidance (guide.js) is presentation only: it reads the table through these questions,
+  // the same ones the hand, Sector Scan and market ask, and never changes the game. Only the
+  // Learn to play walkthrough may stage a lesson's position, under its own save keys.
+  let guidePortCache = null;
+  function guidePort() {
+    if (guidePortCache) return guidePortCache;
+    const me = () => state.players[ME];
+    guidePortCache = {
+      get state() { return state; }, me: ME, tutorial: TUTORIAL, cards: ALL_CARDS, resources: RESOURCES, ships: SHIP_STATS, structures: STRUCTURES,
+      excavationCost: EXCAVATION_COST, turnSerial: () => turnSerial,
+      ordersAt: (coord, cardId = null) => availableContextOrders(coord, cardId),
+      canAfford: cost => canAfford(me(), cost), purchaseCost: key => purchaseCost(me(), key),
+      canConvertCards, canConvertCard, canBuyCapacity: () => canBuyCapacity(ME), capacityCost: () => storageUpgradeCost(ME),
+      starterLevel, upgradePrice, canBankTrade: (give, get) => canBankTrade(ME, give, get), overflow: () => overflowPlayer(),
+      limits: () => resourceLimits(ME), prestige: id => calculatePrestige(id), victoryTarget, trashEligible: () => trashEligibleCards(me()),
+      relicKnown: cluster => relicKnown(cluster, ME), clusterKnown: cluster => clusterKnown(cluster, ME), canConstructDraw: card => canConstructDraw(ME, card),
+      stage: TUTORIAL ? (change, message) => {
+        if (state.pendingCombat || state.pendingCombatReport) return false;
+        change({ ...headlessPort(), state, makeCard, ensureFleet, drawCards, logEvent, revealClusterAt, clusterForCoord, homeCoord });
+        if (message) logEvent(message);
+        clearTurnHistory(); saveGame(); render();
+        return true;
+      } : null
+    };
+    return guidePortCache;
   }
 
   // Bank trades on the mat: drag from one resource's Now row onto another resource (4 for 1, the
@@ -5131,6 +5171,8 @@ function createGalacticReach(options = {}) {
 
   function showSectorScan(keyboard=false) {
     const panel=$('#sector-popover');
+    // A move that started a battle opens the battle window: the scan must not reopen over it.
+    if (document.querySelector('dialog[open]:modal')) return;
     if (!panel.matches(':popover-open')) panel.showPopover();
     positionSectorScan();
     if (keyboard) $('#close-sector-scan').focus();
@@ -5156,7 +5198,8 @@ function createGalacticReach(options = {}) {
       playAt(cardId, coord) {
         const order = availableContextOrders(coord, cardId)[0];
         if (!order || !startContextOrder(cardId, coord, order.group)) return false;
-        if (['construct','colonize'].includes(order.type)) showSectorScan(false);
+        // A dropped Move shows its units in the Sector Scan too, as choosing the hex after Use order does.
+        if (['construct','colonize','move'].includes(order.type)) showSectorScan(false);
         return true;
       },
     });
@@ -5548,4 +5591,4 @@ function createGalacticReach(options = {}) {
   }
  }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticReach;
-else if (typeof document !== 'undefined' && !globalThis.drawingBoardTableBoot) createGalacticReach();
+else if (typeof document !== 'undefined' && !globalThis.drawingBoardTableBoot) createGalacticReach(globalThis.galacticReachTutorial?.engineOptions?.() || {});

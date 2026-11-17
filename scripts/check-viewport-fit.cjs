@@ -371,6 +371,29 @@ const MEASURE = `(() => {
       .find(e => !raised.contains(e) && !e.closest(own) && !e.closest('.hex') && home && shown(e) && (() => { const c = e.getBoundingClientRect(); return c.width > 1 && c.height > 1 && c.left < r.right - 1 && c.right > r.left + 1 && c.top < r.bottom - 1 && c.bottom > r.top + 1; })());
     if (under) problems.push('raised card ' + label(raised).slice(0, 60) + ' overlaps ' + label(under));
   }
+  // A guidance note (guide.js) may lie over the map, beside what it describes: it must be wholly
+  // on screen, never cover the element it points at, and point at it with its arrow.
+  for (const note of document.querySelectorAll('#gr-coach')) {
+    const style = getComputedStyle(note);
+    if (note.hidden || style.display === 'none' || style.visibility === 'hidden' || note.closest('dialog')) continue;
+    const n = note.getBoundingClientRect();
+    if (!phone && (n.left < -1 || n.top < -1 || n.right > W + 1 || n.bottom > H + 1)) problems.push('guidance note outside viewport: ' + [n.left, n.top, n.right, n.bottom].map(Math.round));
+    const target = document.querySelector('.gr-coach-target');
+    if (target && !phone) {
+      const t = target.getBoundingClientRect();
+      const overlap = Math.max(0, Math.min(n.right, t.right) - Math.max(n.left, t.left)) * Math.max(0, Math.min(n.bottom, t.bottom) - Math.max(n.top, t.top));
+      if (overlap > 0.15 * t.width * t.height) problems.push('guidance note covers its own target: ' + label(target));
+      const pointer = document.querySelector('.gr-coach-pointer:not([hidden])');
+      const textual = [...document.querySelectorAll('.game-card, .panel, #fleet-glance, .log-panel, .relic-row, .resource-box, #prestige-track, .phase-stepper, .pile-stats > button, #map-legend-corner, .board-heading, .console-tab, #board-primary, #open-trade, #convert-all-button')]
+        .filter(e => shown(e) && !e.contains(target) && !target.contains(e) && !e.closest('#gr-coach'))
+        .find(e => { const r = e.getBoundingClientRect(); return Math.max(0, Math.min(n.right, r.right) - Math.max(n.left, r.left)) * Math.max(0, Math.min(n.bottom, r.bottom) - Math.max(n.top, r.top)) > 0.08 * n.width * n.height; });
+      // While a card is being dragged, or a Sector Scan offers its choices, the table is crowded with
+      // lit hexes and that panel: the note stays beside its target and may overlap other text briefly.
+      const transient = document.body.classList.contains('cf-drag-active') || document.querySelector('#sector-popover:popover-open');
+      if (textual && !transient) problems.push('guidance note lies over other text: ' + label(textual));
+      if (!['top', 'bottom', 'left', 'right'].includes(note.dataset.side) && !pointer) problems.push('guidance note does not point at its target: ' + label(target));
+    }
+  }
   // A toast may lie over reference text, never over a card, a control or the map.
   for (const toast of document.querySelectorAll('.toast')) {
     const t = toast.getBoundingClientRect();
@@ -381,7 +404,7 @@ const MEASURE = `(() => {
   if (!phone && !modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
     // The centre and both side edges of every hex must be clickable.
     const r = hex.getBoundingClientRect(), y = r.top + r.height / 2;
-    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open'); });
+    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open, #gr-coach, .gr-coach-pointer, .gr-stage'); });
     if (blocked) { const hit = document.elementFromPoint(...blocked); problems.push('hex covered at ' + Math.round(blocked[0]) + ',' + Math.round(y) + ' by ' + (hit ? label(hit) : 'nothing')); break; }
   }
   // The map fills the space left to it. On a landscape table it reaches between the left-hand
@@ -580,6 +603,19 @@ async function runCase(browser, origin, testCase, viewport) {
     if (!seen.finish) problems.push('Finish Buy not visible in Buy');
   }
   problems.push(...problems0);
+  if (!touch && !isPhone([width, height]) && !testCase.hover && !testCase.tap && !testCase.drag && /^(1280x720|1440x900)$/.test(`${width}x${height}`) && scale === 1) {
+    const noteShown = 'getComputedStyle(document.querySelector("#gr-coach") || document.body).display !== "none" && !document.querySelector("#gr-coach")?.hidden && getComputedStyle(document.querySelector("#gr-coach") || document.body).visibility !== "hidden" && !document.querySelector("#gr-coach")?.closest("dialog")';
+    if (await browser.evaluate(`(() => !!document.querySelector('#gr-coach') && (${noteShown}))()`)) {
+      const cards = await browser.evaluate(`[...document.querySelectorAll('#hand-row > .game-card')].slice(0, 3).concat([...document.querySelectorAll('[data-buy-market]')].slice(0, 2)).map(e => { const r = e.getBoundingClientRect(), next = e.nextElementSibling?.getBoundingClientRect(); const right = e.closest('#hand-row') && next && next.left > r.left ? Math.min(r.right, next.left) : r.right; return { x: (r.left + right) / 2, y: r.top + Math.min(24, r.height / 2) }; })`);
+      for (const card of cards) {
+        await mouse('mouseMoved', card.x, card.y);
+        await browser.evaluate('new Promise(r => setTimeout(r, 200))');
+        const ok = await browser.evaluate(`(() => { if (!(${noteShown})) return 'the guidance note vanished'; const n = document.querySelector('#gr-coach').getBoundingClientRect(); const card = document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus-within)'); if (!card) return ''; const r = card.getBoundingClientRect(); const overlap = Math.max(0, Math.min(n.right, r.right) - Math.max(n.left, r.left)) * Math.max(0, Math.min(n.bottom, r.bottom) - Math.max(n.top, r.top)); return overlap > 0.04 * r.width * r.height ? 'the guidance note lies over the raised card' : ''; })()`);
+        if (ok) { problems.push(`${ok} while pointing at a card at ${Math.round(card.x)},${Math.round(card.y)}`); break; }
+      }
+      await mouse('mouseMoved', 4, 4);
+    }
+  }
   if (testCase.expect === 'converted') {
     if (!steps[0]?.arrow || !steps[0]?.zone || !/^\+\d/.test(steps[0]?.gain)) problems.push('drag did not light your reserves and the gain');
     const after = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');

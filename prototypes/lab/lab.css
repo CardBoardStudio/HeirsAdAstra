@@ -1106,3 +1106,9 @@ main:focus {
 .dash-claims small { display: inline !important; margin: 0 0 0 4px !important; }
 .dash-empty { color: var(--muted); text-align: center !important; padding: 26px 0 !important; }
 @media (max-width: 780px) { .dash-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .dash-tools > div:first-child { grid-column: 1 / -1; } .dash-table { min-width: 640px; } }
+
+/* Learn to play sits beside Create a table on the home page (docs/rules/tutorial.md). */
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.hero-actions .learn-to-play { border-color: var(--gold); color: var(--text); }
+.hero-actions .learn-to-play:hover { border-color: var(--cyan); }
+.learn-note { margin: 8px 0 0; font-size: 12px; color: #93a8bf; }
