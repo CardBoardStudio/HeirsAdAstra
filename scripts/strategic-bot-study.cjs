@@ -5,6 +5,8 @@ const {Worker,isMainThread,parentPort,workerData}=require('node:worker_threads')
 const {SimulationArchive,instrumentSource,hash,resultDirectory}=require('./lib/simulation-archive.cjs');
 const {account:accountResources,blank:blankLedger}=require('./audit-native-resource-ledger.cjs');
 const RESOURCE_ACCOUNTING='receipt-ledger-v2';
+// Snapshot the helper with the module that loaded it, not later between games.
+const LEDGER_SOURCE=fs.readFileSync(path.join(__dirname,'audit-native-resource-ledger.cjs'),'utf8');
 const RUNNER_SOURCE=fs.readFileSync(__filename,'utf8');
 const root=path.resolve(__dirname,'..'),profiles=['military','economy','expansion'];
 const baseDefault='d3e3ab6a672e330aa3a69eddd9c2d5b537ab76fa';
@@ -38,7 +40,7 @@ function factory(app,adapter) {
     const configuration=Object.fromEntries(Object.entries(options).filter(([key,value])=>!['random','simulationArchive','studyMetrics','reconstruction','resume','archiveSources','archiveMetadata'].includes(key)&&typeof value!=='function'));
     const recorder=options.simulationArchive||new SimulationArchive({directory:options.archiveDirectory,metadata:options.archiveMetadata||{kind:'browser-policy',victoryTarget:options.victoryTarget||40},sources:{'study-runner.cjs':RUNNER_SOURCE}});
     activeArchive=recorder;const engineHash=hash(app),adapterHash=hash(adapter);
-    recorder.addSources({'resource-ledger.cjs':fs.readFileSync(path.join(__dirname,'audit-native-resource-ledger.cjs'),'utf8'),'study-runner.cjs':RUNNER_SOURCE,...(options.archiveSources||{}),['engine-'+engineHash+'.js']:app,['adapter-'+adapterHash+'.js']:adapter});
+    recorder.addSources({'resource-ledger.cjs':LEDGER_SOURCE,'study-runner.cjs':RUNNER_SOURCE,...(options.archiveSources||{}),['engine-'+engineHash+'.js']:app,['adapter-'+adapterHash+'.js']:adapter});
     try{
       const a=c.createGalacticReach({...options,headless:true,random:recorder.random(options.random||Math.random),simulationArchiveEvent:event=>{if(flows){accountResources(flows,event);options.studyMetrics.forEach((m,id)=>{const v=flows[id];m.resourceAccounting=RESOURCE_ACCOUNTING;for(const k of ['matter','energy','biomass','data'])m.spent[k]=v.paidCosts[k]+v.starterUpgrades[k]+v.trashing[k]+v.escape[k]+v.consortiumGiven[k];});}recorder.event(event);}});
       recorder.attach(()=>e.state,{engineHash,adapterHash,policy:options.archivePolicy||null,configuration:{...configuration,headless:true}},()=>({turnSerial:e.turnSerial,cardSerial:e.cardSerial}));
