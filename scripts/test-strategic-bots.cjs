@@ -125,5 +125,5 @@ console.log('Strategic rivals: upgrades, scoring reserves, defense, useful cards
  g.p.resources.biomass=1;assert.equal(g.e.aiExchangeResource(1),null,'Next round production is not current stock');
  g.p.resources={matter:50,energy:50,biomass:50,data:50};assert.equal(g.e.aiExchangeResource(1),null,'No spending deficit means no wasted exchange order');
  g.p.resources={matter:2,energy:2,biomass:8,data:0};g.p.bankExchangeResources=['biomass'];assert.equal(g.e.aiExchangeResource(1),null,'Use the already active discount first');
- const plan=g.e.bankPlanForCost(g.p,{data:1});assert.equal(plan[0].giveType,'biomass','Prefer2:1to an available4:1giver');
+ g.p.resources.energy=8;const plan=g.e.bankPlanForCost(g.p,{data:1});assert.equal(plan[0].giveType,'biomass','Prefer2:1to an available4:1giver');
 }
