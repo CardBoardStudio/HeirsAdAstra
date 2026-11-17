@@ -2783,7 +2783,8 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
 @media (min-width: 600px) and (min-height: 600px) {
   .relic-row > div:has(> .button) { position: relative; height: var(--rtop-h, 56px) !important; }
   .relic-row > div:has(> .button) > .game-card { height: 100% !important; }
-  .relic-row > div > .button { position: absolute !important; left: 4px; right: 4px; bottom: 3px; z-index: 2; min-height: 0 !important; padding: 1px 6px !important; font-size: 11px !important; line-height: 1.2; }
+  /* A hovered relic rises to layer 30; its reward control must stay above it. */
+  .relic-row > div > .button { position: absolute !important; left: 4px; right: 4px; bottom: 3px; z-index: 31; min-height: 0 !important; padding: 1px 6px !important; font-size: 11px !important; line-height: 1.2; }
 }
 /* The Trash pile: a dark pile with light lettering. */
 .upgrade-group #upgrade-market > .trash-pile { background: linear-gradient(170deg, #4a302a, #2e1d19) !important; border-color: #a77b66 !important; color: #f4e3d6 !important; filter: none !important; }
