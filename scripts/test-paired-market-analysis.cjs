@@ -1,0 +1,6 @@
+const assert=require('node:assert/strict'),{compareRows}=require('./compare-market-studies.cjs');
+const left=[1,2].flatMap(seed=>[0,1].map(rotation=>({seed,rotation,completed:true,mapHash:`${seed}/${rotation}`,winner:1,subjectSeat:0,players:[{points:10}]}))),right=left.map(g=>({...g,winner:0,players:[{points:13}]}));
+const x=compareRows(left,right,1000);assert.equal(x.pairs,4);assert.equal(x.galaxies,2);assert.deepEqual(x.delta,{winRate:1,points:3});assert.deepEqual(x.seedBootstrap95,{winRate:[1,1],points:[3,3]});assert.deepEqual(compareRows(left,left,1000).delta,{winRate:0,points:0});
+assert.throws(()=>compareRows(left,right.slice(1)),/Unequal/);assert.throws(()=>compareRows([...left,left[0]],right),/Duplicate/);assert.throws(()=>compareRows(left,right.map((g,i)=>i?g:{...g,mapHash:'wrong'})),/map mismatch/);assert.throws(()=>compareRows(left,right.map((g,i)=>i?g:{...g,completed:false})),/Incomplete/);
+const unequal=left.slice(0,3);assert.throws(()=>compareRows(unequal,unequal),/same rotations/);assert.throws(()=>compareRows(left,right,0),/Positive integer/);
+console.log('Paired analysis: galaxy blocks, known deltas, zero controls, bootstrap bounds and missing/duplicate/incomplete/map guards pass.');

@@ -138,13 +138,13 @@ assert.equal(move.moveGroup,'explorer'); assert.equal(move.destination,'3,0');
 r.state.fleets['1,0']={2:{fleet:1}};
 assert(!r.chooseAiMove(1) || r.chooseAiMove(1).destination!=='3,0','Do not jump through a hostile fleet');
 // The end-of-round rule ends at 10 or above, and never one point below.
-for(const points of [39,40,41]) {
-  // 31.36: new games default to a 40 Prestige target (rules #victory).
+for(const points of [29,30,31]) {
+  // 31.36: new games default to a 30 Prestige target (rules #victory).
   const s=fresh(100); s.players[0].cardPrestige=points-3;
   assert.equal(r.calculatePrestige(0),points);
   r.finishRound();
-  assert.equal(s.winner,points>=40?0:null);
-  assert.equal(s.round,points>=40?1:2);
+  assert.equal(s.winner,points>=30?0:null);
+  assert.equal(s.round,points>=30?1:2);
 }
 fresh(99); r.state.phase='operations'; r.state.activePlayer=0; r.state.turnStage='prep';
 const order=r.makeCard('move'); r.state.players[0].hand=[order];

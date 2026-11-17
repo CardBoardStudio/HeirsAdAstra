@@ -1,0 +1,23 @@
+// Join complete retained runs with their already validated opening-Buy exposure audits.
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),assert=require('node:assert/strict');
+const {analyze}=require('./analyze-market-investment.cjs'),{hash}=require('./lib/simulation-archive.cjs');
+function summarize(inputs){
+ assert(inputs.length>0);let definitions,appHash,commonSources,commonBinary;const arms=[];
+ for(const [directory,exposureFile] of inputs){
+  const protocol=JSON.parse(fs.readFileSync(path.join(directory,'protocol.json'))),source=fs.readFileSync(path.join(directory,'sources/app.js'),'utf8'),exposure=JSON.parse(fs.readFileSync(exposureFile)),report=analyze(directory);
+  assert.equal(hash(source),protocol.sourceHashes.app);assert.equal(exposure.appHash,hash(source));assert.equal(path.resolve(exposure.directory),path.resolve(directory));assert.equal(exposure.catalogScope,'all market designs');
+  assert.equal(report.recorded,report.scheduled,'Incomplete scheduled run');assert.equal(report.completed,report.scheduled,'Cutoffs need separate reporting');
+  const catalog={};for(const name of ['ADVANCED_CARDS','MARKET_MILITARY']){const match=source.match(new RegExp('const '+name+' = (\\{[\\s\\S]*?\\n  \\});'));assert(match,'Printed catalog changed');Object.assign(catalog,vm.runInNewContext('('+match[1]+')'));}
+  assert.deepEqual(Object.keys(catalog).sort(),Object.keys(exposure.cards).sort());
+  if(definitions){assert.equal(hash(source),appHash,'Card comparisons require the same frozen game');assert.deepEqual(protocol.sourceHashes,commonSources,'Policy/adapter/rulebook sources differ');assert.equal(protocol.binaryHash,commonBinary,'Native binaries differ');}else{definitions=catalog;appHash=hash(source);commonSources=protocol.sourceHashes;commonBinary=protocol.binaryHash;}
+  const profile=protocol.profiles[0],label=`${profile}/${protocol.target}`;assert(!arms.some(a=>a.label===label),'Duplicate arm');
+  arms.push({label,directory,exposureFile,exposureHash:hash(fs.readFileSync(exposureFile)),target:protocol.target,profile,games:report.completed,sourceHashes:protocol.sourceHashes,binaryHash:protocol.binaryHash,subject:report.subject,exposure:exposure.cards});
+ }
+ const cards=Object.fromEntries(Object.entries(definitions).map(([key,def])=>[key,{name:def.name,kind:def.kind,military:!!def.military,cost:def.cost,order:def.order||null,draw:def.effect?.draw||def.orderDraw||0,fallbackDraw:def.fallbackDraw||0,prestigeOnBuy:def.gainPrestige||0,prestigeOnPlay:def.effect?.prestige||def.colonyPrestige||0,trashesItself:!!def.effect?.trashSelf,arms:Object.fromEntries(arms.map(a=>{
+  const e=a.exposure[key],c=a.subject.cards[key]||{buys:0,plays:0,tacticPlays:0,buyers:0};assert.equal(c.buys,e.bought,'Independent exposure and purchase totals differ');
+  return[a.label,{purchases:c.buys,buyers:c.buyers,normalPlays:c.plays,tacticPlays:c.tacticPlays,usesPerPurchasedCopy:c.buys?(c.plays+c.tacticPlays)/c.buys:null,gamesVisible:e.gamesVisible,gamesWithFundableOffer:e.gamesWithFundableOffer,visibleBuyStarts:e.visibleBuyStarts,fundableBuyStarts:e.fundable||0,meanFirstVisibleRound:e.meanFirstVisibleRound,meanFirstFundableRound:e.meanFirstFundableRound}];
+ }))}]));
+ return {sourceHash:hash(fs.readFileSync(__filename)),analysisSourceHash:hash(fs.readFileSync(require.resolve('./analyze-market-investment.cjs'))),appHash,scope:'Complete retained subject runs, kept separate by profile and target. Exposure is opening own Buy only; raw fundability ignores reserves/filters/refills and repeated Buy starts are not independent opportunities. Uses per purchased copy is descriptive, not causal value. Wonders score when bought; self-trashing cards can succeed once; unplayed tactics can affect deterrence. Printed Prestige per play is conditional on completing that card order, not an additional measured scoring metric. No buyer-win causal claims.',arms:arms.map(({exposure,subject,...a})=>({...a,subjectWins:subject.wins,meanPrestige:subject.points})),cards};
+}
+if(require.main===module){const[out,...args]=process.argv.slice(2);assert(out&&args.length>0&&args.length%2===0,'Usage: node summarize-market-card-use.cjs out.json run-dir exposure.json ...');const pairs=[];for(let i=0;i<args.length;i+=2)pairs.push(args.slice(i,i+2));const result=summarize(pairs);fs.writeFileSync(out,JSON.stringify(result,null,2));console.log(JSON.stringify({designs:Object.keys(result.cards).length,arms:result.arms.map(a=>a.label),unboughtDespiteSomeRawFundability:Object.entries(result.cards).filter(([,c])=>Object.values(c.arms).every(a=>a.purchases===0)&&Object.values(c.arms).some(a=>a.gamesWithFundableOffer>0)).map(([key])=>key)}));}
+module.exports={summarize};
