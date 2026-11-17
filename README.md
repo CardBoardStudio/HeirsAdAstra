@@ -64,6 +64,7 @@ Run `./scripts/build-web.sh` again after UI changes, then reload the browser. Ba
 | `NIDO_AUTH` | `1` | Enable current Nido testnet wallets; `0` disables sign-in |
 | `NIDO_RPC_URL` | Stellar testnet RPC | Trusted HTTPS testnet RPC used for live wallet verification |
 | `NIDO_WALLET_HOST` | `test.nido.fyi` | Nido wallet host; e.g. `362.test.nido.fyi` for a Nido PR preview (see `docs/nido-auth.md`) |
+| `SESSION_TTL_DAYS` | `60` | Sign-in lifetime in days (1-3650) for the session cookie and its stored expiry; existing sessions keep theirs |
 | `ACCESS` | `open` | `invite-only` admits only Nido administrators and invitation holders; see [invite-only hosting](docs/invite-only.md) |
 | `TRUSTED_CLIENT_IP_HEADER` | unset | Proxy header carrying the client address (e.g. `X-Forwarded-For`) for per-client sign-in limits; set only behind a proxy that writes it |
 | `RUST_LOG` | unset | Server diagnostic filter, e.g. `info` |
