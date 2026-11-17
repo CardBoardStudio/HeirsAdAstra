@@ -4,7 +4,7 @@ The round-16 human report on 38.43 ended 33–19–15–14 at a target of 30. Th
 
 ## Current research decisions
 
-This is local research, not a release. The retained baseline keeps the eight price-v1 changes and World Engine draw; the current working tree tentatively tests Monument2M6B2D;Survey Network’s2B1E cost mix is rejected; the two-Biomass Seed Ark proposal is also rejected after training; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
+This is local research, not a release. The retained baseline keeps the eight price-v1 changes and World Engine draw; Monument2M6B2D is not adopted after inconclusive fresh confirmation;Survey Network’s2B1E cost mix is rejected; the two-Biomass Seed Ark proposal is also rejected after training; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
 
 | Candidate | Current disposition | Evidence boundary |
 | --- | --- | --- |
@@ -14,7 +14,7 @@ This is local research, not a release. The retained baseline keeps the eight pri
 | Named-order trimming correction | Retain | Actual command defect corrected; no claim of uniform win improvement |
 | Colony execution-only preference | Opt-in only | Fresh30 wins10/32→9/32;40 wins10/32→12/32; no clear universal score/strength benefit |
 | Range/Industry valuation | Opt-in only | Training regression at30, provisional improvement at40 |
-| Monument2M6B2D | Fresh confirmation planned | Training wins4/12→5/12 at30,5/12→6/12 at40;resource effects mixed |
+| Monument2M6B2D | Not adopted | Fresh30 wins12/32→11/32;40 wins7/32→8/32;uncertain scores and no Biomass-overflow benefit |
 | Survey Network2B1E | Reject adoption | Thirty-point regression;only small40-point signal;restore early draw pricing |
 | Seed Ark at2 Biomass | Reject adoption | Earlier acquisition/use, but wins4/12→2/12 at30 and5/12→2/12 at40 |
 | Cheaper World Engine | Reject adoption | Corrected-policy Market wins6/12 to4/12 at30 and6/12 to5/12 at40 |
@@ -693,3 +693,32 @@ Price analysis provenance now verifies every paired game's archived instrumented
 
 
 Fresh Monument runs active:30 control `native/run-BuLQSJ`,candidate `native/run-4DVPFU`;40 control `native/run-zPgLgh`,candidate `native/run-Yc5253`. All new games/sources/states/RNG remain retained;no policy/price tuning during the comparison.
+
+
+### Fresh Monument confirmation:30 complete,mixed
+
+All64 thirty-point games complete. Exact declared price-only checks pass for published and archived instrumented engines;all paired tooling/source hashes and opening maps match. Control12/32wins,22.66 Prestige,4.84 purchases,6.75 Harvesters;candidate11/32,23.63,4.84,6.88. Paired win delta-3.125 percentage points,whole-galaxy interval[-15.625,+9.375];score+0.96875,[-0.75,+2.6875]. Neither a clear improvement nor a demonstrated general strength gain. Reports `native/monument-resource-mix-30-fresh{,-paired}.json`.
+
+Both subjects buy9 Monuments across8 buyers. Permanent card Prestige4.50→4.375;overflow M15.4→16.2%,E16.6→17.5%,B24.1→25.7%,D20.2→19.5%. Do not claim the targeted Biomass outlet succeeded at30 from the training result. Default40 remains running;prices/policies stay frozen,no target-specific switch or follow-up tuning from partial results.
+
+
+### Fresh Monument confirmation complete:insufficient evidence to adopt
+
+All128 fresh games complete,with every paired published/instrumented engine matching the declared price-only change,all tooling hashes and opening maps verified. At40,control7/32wins,27.63 Prestige,6.88 purchases,7.97 Harvesters;candidate8/32,28.53,7.63,8.28. Win delta+3.125 percentage points,whole-galaxy interval[-15.625,+21.875];score+0.90625,[-0.5,+1.96875]. Thirty-point wins12/32→11/32 and uncertain score+0.97 remain mixed. Fresh results do not confirm the training win advantage reliably;do not turn the40-point difference into a target-specific adopted rule after seeing these maps. Reports `native/monument-resource-mix-40-fresh{,-paired}.json`.
+
+At40,subject Monument buys13→19,buyers11→14,but permanent card Prestige7.125→7.594;do not attribute every score change to those purchases. Overflow M20.0→18.9%,E18.9→19.1%,B27.8→28.3%,D21.8→20.9%;average rounds25.34→26.03. Targeted Biomass waste does not improve at either fresh target. Retain the candidate as an archived proposal,not an adopted price;restore6M2B2D and canonical row. This is inconclusive strength evidence and failed resource-balance confirmation,not proof the card design is intrinsically bad.
+
+Next return to the user's Harvester-planning priority. Audit actual paid Harvester decisions for stock,capacity,existing income and next production overflow using frozen-engine functions. Static income targets do not by themselves prove useful headroom. A full-resource stock is not automatically waste because remaining actions/Buy can spend it;distinguish markers from causal unused production. Do not change policy or cards until actual commands show the suspected mismatch. Use completed retained Market40 baseline `run-d3IPC8`,not select a favorable partial Monument trajectory.
+
+
+### Frozen-engine Harvester headroom audit
+
+New `audit-native-harvester-headroom.cjs` verifies original app/adapter hashes and only adds read-only aiIncome access in its query VM. It reconstructs actual private states/counters,prohibits RNG,checks state immutability,and records actual income/limits before/after each successful subject Harvester. Actual payment events distinguish paid/free;trace/final hashes and the independent Harvester metric match. It attaches the first later production event or null if none. Multiple builds may share one production,so markers are not additive lost-resource estimates.
+
+Retained fresh40 Market baseline `run-d3IPC8`:245 paid46free=291total. Paid at full stock25;post-build stock+existing income already fills the limit94;60 of241 with a later production then discard at least the measured Harvester income increment. By resource paid/no-headroom/next-overflow-at-least-increment:Data71/21/14,Biomass51/20/11,Matter60/31/21,Energy63/22/14. Four paid builds have no later production. Reports `native/retained-market-40-harvester-headroom.json` and `...-windows.json`.
+
+By fixed build-round windows:1–6 paid103,no-headroom10,next-overflow4,joint3;7–12 paid74,no-headroom35,next-overflow20,joint20;13+ paid68,no-headroom49,next-overflow36,joint36 (4without next production). These markers show a late planning question,not proof of causal waste:intervening purchases,ownership changes,temporary ship income and multiple builds matter. The analysis neither bans full-stock builds nor changes the engine.
+
+Prepare a separate default-off headroom-aware payback hypothesis:when the paid Harvester's projected stock after its actual construction payment plus existing income fills its track,count one additional production delay in the existing bounded payback test. Keep the3-resource profitability threshold,static income targets and race-horizon estimator otherwise unchanged. A longer horizon can still justify the build;this is not a blanket full-stock ban. Genuinely free builds and initial Data bootstrap remain considered. The assumption of no intervening stock-clearing spend can be wrong;measure that tradeoff rather than claim it is exact forecasting. Publish the actual public Harvester cost in observation metadata so the prediction accounts for discounts/payment freeing room,with no extra private information. Missing metadata/default-off/historical views must retain old scores.
+
+Only after meaningful unit/replay checks,train none versus subject at30/40,three610010-series seeds/all rotations,Market/Economy/Expansion/Military,common production discipline/protected budgets,market-filter off,all other optional skills off,retained price-v1/World-draw game. Identical frozen binaries/sources for both flags;48games. Evaluate paid/free Harvester counts,actual headroom/next-production markers,score/wins,market use and per-resource flows. Do not adopt from fewer builds/less overflow alone. No policy change or new match batch is implemented yet.

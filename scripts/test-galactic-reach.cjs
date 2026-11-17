@@ -109,7 +109,6 @@ require('./test-change-queue.cjs');
 
 require('./test-construct-iii-draw.cjs');
 require('./test-world-engine-draw.cjs');
-require('./test-monument-resource-mix.cjs');
 require('./test-public-card-metadata.cjs');
 
 require('./test-inward-worlds.cjs');
