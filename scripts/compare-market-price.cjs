@@ -4,8 +4,12 @@ const {compare}=require('./compare-world-engine-price.cjs'),{hash}=require('./li
 function validatePrice(left,right,key,from,to){
  assert(/^[A-Za-z][A-Za-z0-9]*$/.test(key),'Simple card key required');
  const line=new RegExp('^    '+key+': \\{[^\\n]+','m'),a=left.match(line),b=right.match(line);assert(a&&b,'Card definition missing');
- const price=/cost: (\{[^}]*\})/,ac=a[0].match(price),bc=b[0].match(price);assert(ac&&bc,'Printed price missing');
- assert.deepEqual(JSON.parse(ac[1]),from,'Unexpected control cost');assert.deepEqual(JSON.parse(bc[1]),to,'Unexpected candidate cost');
+ const price=/cost:\s*(\{[^}]*\})/,ac=a[0].match(price),bc=b[0].match(price);assert(ac&&bc,'Printed price missing');
+ const parseCost=text=>{
+  const parsed=JSON.parse(text.replace(/([{,]\s*)([A-Za-z_]\w*)\s*:/g,'$1"$2":'));
+  assert(Object.entries(parsed).every(([k,v])=>['matter','energy','biomass','data'].includes(k)&&Number.isInteger(v)&&v>=0),'Invalid resource cost');return parsed;
+ };
+ assert.deepEqual(parseCost(ac[1]),from,'Unexpected control cost');assert.deepEqual(parseCost(bc[1]),to,'Unexpected candidate cost');
  assert.equal(b[0],a[0].replace(ac[0],bc[0]),'Non-price card change');assert.equal(right,left.replace(a[0],b[0]),'Unrelated app change');
 }
 function comparePrice(left,right,key,from,to){

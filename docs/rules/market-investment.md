@@ -4,7 +4,7 @@ The round-16 human report on 38.43 ended 33–19–15–14 at a target of 30. Th
 
 ## Current research decisions
 
-This is local research, not a release. The retained baseline keeps the eight price-v1 changes and World Engine draw; the two-Biomass Seed Ark proposal is also rejected after training; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
+This is local research, not a release. The retained baseline keeps the eight price-v1 changes and World Engine draw; the current working tree tentatively tests Survey Network2B1E,not yet adopted; the two-Biomass Seed Ark proposal is also rejected after training; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
 
 | Candidate | Current disposition | Evidence boundary |
 | --- | --- | --- |
@@ -12,8 +12,9 @@ This is local research, not a release. The retained baseline keeps the eight pri
 | Paid Harvester discipline | Retain for evaluation | Fresh 12/32 to15/32 wins, fewer paid builds and lower overflow; not independently enabled in adapter |
 | Market access | Useful among tested bots | Fresh normal access beats points-only/no purchases at30 and40; not proof of every card or specialist dominance |
 | Named-order trimming correction | Retain | Actual command defect corrected; no claim of uniform win improvement |
-| Colony execution-only preference | Fresh validation planned | Training30 unchanged;40 wins5/12→6/12,+0.42 Prestige; small sample |
+| Colony execution-only preference | Opt-in only | Fresh30 wins10/32→9/32;40 wins10/32→12/32; no clear universal score/strength benefit |
 | Range/Industry valuation | Opt-in only | Training regression at30, provisional improvement at40 |
+| Survey Network2B1E | Training running | Same total cost/tier/draw effect; test resource mix rather than a discount |
 | Seed Ark at2 Biomass | Reject adoption | Earlier acquisition/use, but wins4/12→2/12 at30 and5/12→2/12 at40 |
 | Cheaper World Engine | Reject adoption | Corrected-policy Market wins6/12 to4/12 at30 and6/12 to5/12 at40 |
 | Optional paid Fleet discipline | Off | Training4/12 versus6/12 at30,7/12 versus6/12 at40; no consistent purchase/score benefit |
@@ -628,3 +629,35 @@ Fresh execution validation active:30 control `native/run-M79s93`,subject `native
 
 
 Colony-payment audit regression tests now cover actual neutral payment,zero-cost capture with retained Settler,missing payment evidence,resource-gain payment,impossible Settler retention,corrupt trace/final hashes and independent Colony/capture counter mismatches. `test-native-colony-payments-audit.cjs` passes; the strengthened audit also revalidates the full completed fresh40 Market batch (`native/retained-market-40-colony-payments-guarded.json`). Only audit tooling changes during the fresh execution evaluation; frozen policies and declared price baseline remain untouched.
+
+
+### Resource-mix hypothesis prepared from completed strategy evidence
+
+Retained completed strategy results show Biomass overflow33.2–37.1% for Market versus22.8–27.9% for other resources across30/40; Economy Biomass34.5–36.9%. CSV and scope metadata: `native/retained-resource-overflow.csv`, `native/retained-resource-overflow-scope.json`. This is summed overflow/gross instrumented gains,not an intrinsic value estimate or production-only measure. Better40-point scores did not imply better resource balance.
+
+All three cheap draw-two cards currently use Data:Signal Relay2E1D,Survey Network1B2D,Tactical Briefing1M2D. Prepare a separate Survey Network cost-mix experiment after fresh execution validation finishes:2B1E instead of1B2D,total3 and Cheap tier unchanged,draw-two effect unchanged. This adds a non-Data route to an already-used draw effect and a larger Biomass outlet,without lowering total price or adding resources/conversion/scoring. It may instead shift overflow to Data or hurt early Settler funding; measure those possibilities,do not assume better balance. Two Biomass plus a2-Biomass Colony reserve fits starting limit4.
+
+Predeclare training with retained execution-none policy regardless of the pending execution-feature outcome:30/40,three610010-series seeds/four rotations,Market/Economy/Expansion/Military,common production/protected budgets,market-filter off,all other research flags off. Freeze identical policy binaries/source pairs except the declared Survey cost and meaningful canonical price prose. Verify same setup maps,market/tier-deck order and RNG,then compare acquisition/use,wins/scores and per-resource overflow/spending. Forty-eight games;no adoption from use alone. Reserve new1610010-series seeds for a promising candidate’s later confirmation;do not reuse the current1510010 feature evaluation as card-design confirmation. No Survey price change is implemented yet.
+
+The declared-price comparison now accepts the catalog's existing quoted or unquoted simple resource keys and compact whitespace,without evaluating JavaScript. Resource keys/amounts are validated;new compact-cost and invalid-negative-cost tests pass,as do earlier World-validator tests. No frozen fresh-study code or policies change during this analysis preparation.
+
+
+### Fresh Colony execution validation:30 complete
+
+All64 thirty-point games completed with paired opening-map/source/binary equality. Control10/32wins,22.63 Prestige,4.81 purchases,7.47 Harvesters;subject9/32,22.78,4.91,7.56. Paired win delta-3.125 percentage points,whole-galaxy bootstrap[-9.375,0];score+0.15625,[-0.28125,+0.75]. No demonstrated general strength improvement;do not globally enable from sensible local terms or the small training40 signal. Reports `native/colony-execution-30-fresh{,-paired}.json` and actual payment reports. Default40 fresh batch still pending. Survey cost-mix protocol was declared using older completed strategy resource evidence,not tuned to these partial validation outcomes;its retained-policy execution flag stays none.
+
+
+### Fresh execution validation complete:leave off by default
+
+All128 games complete. Default40 control10/32wins,29.41 Prestige,8.06 purchases,8.69 Harvesters;subject12/32,29.72,8.28,9.06. Win delta+6.25 percentage points,whole-galaxy interval[0,+15.625];score+0.3125,[-0.375,+1.3125]. Thirty-point wins fall10/32→9/32 with tiny uncertain score gain. Sensible local payment/retention choices do not establish a universal stronger default. Keep execution preference opt-in;do not gate it by target after looking at these maps without a new validation protocol. Reports `native/colony-execution-40-fresh{,-paired}.json` and actual payment reports. All64 paired openings and frozen sources/binaries match.
+
+Proceed with the previously declared Survey cost-mix test using retained execution-none policy,not the mixed-result execution preference. This keeps card-design evidence separate from skill selection. Other card prices/effects,market rows,count and RNG setup stay fixed;canonical Survey price is updated before the implementation.
+
+
+Survey cost-mix candidate frozen in `native/survey-resource-mix-clo8r23e`,with exact Survey-only app cost transformation and identical adapter/native source/executable from `run-M79s93/sources`. Full mechanics,tiered market and source rulebook checks pass. Focused test verifies same initial maps,market/tier-deck order and setup RNG,same total/tier,2B1E purchase with zero Data preserves2B,and unchanged draw-two/in-play commitment even on reshuffle. The test is included in the mechanic suite. No effect,score,card-count or ship rule change accompanies the price. Results pending;no adoption or deployment.
+
+
+Survey training active:30 control `native/run-JQmlOE`,candidate `native/run-Wl5dSH`;40 control `native/run-jft0uN`,candidate `native/run-hM1Lp6`,12games each. All new/unsuccessful research skills stay off,including Colony execution;retained production/protected budgets common to everyone. Keep price/effect coefficients fixed until both targets complete. Fresh execution40 terms audit:regular91orders/160B,Evergreen6uses/6retained→regular86/151B,Evergreen12/12retained;Seed1capture/1B both. These local changes do not overturn the mixed strength conclusion.
+
+
+Survey cost-mix preparation also passes web build,packaged canonical rulebook check and rules-contract tests. Pair protocol inspection verifies identical binary,profiles,target,seeds,rotations,cutoff and every research setting;adapter/native/bridge/lock hashes match. App/rulebook hashes intentionally differ for the declared cost mix and its canonical printed row. No browser/Render verification or deployment is claimed. The candidate remains temporary pending training outcomes.

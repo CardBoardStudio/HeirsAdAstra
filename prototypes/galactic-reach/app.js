@@ -180,7 +180,7 @@ function createGalacticReach(options = {}) {
     dysonLattice: { code: 'N25', name: 'Dyson Lattice', kind: 'Wonder', accent: 'var(--gold)', cost: { matter: 4, energy: 8, data: 2 }, gainPrestige: 5, text: 'When bought, gain 5 permanent Prestige. This card enters discard and has no effect in hand; trash it later to remove it from your deck.' },
     ascendancyCodex: { code: 'N26', name: 'Ascendancy Codex', kind: 'Prestige', accent: 'var(--gold)', cost: { energy: 2, biomass: 4, data: 8 }, order: 'special', tag: 'ascendancyCodex', effect: { prestige: 2, draw: 1 }, text: 'Gain 2 permanent Prestige, then draw one card.' },
     signalRelay: { code:'N27', name:'Signal Relay', kind:'Deckcraft', accent:'var(--data)', cost:{energy:2,data:1}, order:'special', effect:{draw:2}, text:'Draw two cards.' },
-    surveyNetwork: { code:'N28', name:'Survey Network', kind:'Deckcraft', accent:'var(--data)', cost:{biomass:1,data:2}, order:'special', effect:{draw:2}, text:'Draw two cards.' },
+    surveyNetwork: { code:'N28', name:'Survey Network', kind:'Deckcraft', accent:'var(--data)', cost:{biomass:2,energy:1}, order:'special', effect:{draw:2}, text:'Draw two cards.' },
     tacticalBriefing: { code:'N29', name:'Tactical Briefing', kind:'Deckcraft', accent:'var(--data)', cost:{matter:1,data:2}, order:'special', effect:{draw:2}, text:'Draw two cards.' }
   };
 
