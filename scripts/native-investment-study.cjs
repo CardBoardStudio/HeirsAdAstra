@@ -34,6 +34,7 @@ async function play(task,sources,directory,binary){
    if(task.protocol.militaryHorizon==='all'||task.protocol.militaryHorizon==='subject'&&actor===subjectSeat)observation.militaryHorizon=true;
    if(task.protocol.productionDiscipline==='all'||task.protocol.productionDiscipline==='subject'&&actor===subjectSeat)observation.productionDiscipline=true;
    if(task.protocol.harvesterHeadroom==='all'||task.protocol.harvesterHeadroom==='subject'&&actor===subjectSeat)observation.harvesterHeadroomPlanning=true;
+   if(task.protocol.optionalConstruction==='all'||task.protocol.optionalConstruction==='subject'&&actor===subjectSeat)observation.optionalConstructionPlanning=true;
    if(task.protocol.marketFilter==='off'&&task.profiles[actor]==='market')observation.marketOpportunityFilter=false;
    if(task.protocol.colonyPlanning==='all'||task.protocol.colonyPlanning==='subject'&&actor===subjectSeat)observation.colonyPlanning=true;
    if(task.protocol.colonyExecution==='all'||task.protocol.colonyExecution==='subject'&&actor===subjectSeat)observation.colonyExecutionPlanning=true;
@@ -78,7 +79,8 @@ else if(require.main===module){
  const fleetDiscipline=arg('fleet-discipline','none');if(!['none','subject','all'].includes(fleetDiscipline))throw Error('Invalid Fleet discipline mode');
  const colonyExecution=arg('colony-execution','none');if(!['none','subject','all'].includes(colonyExecution))throw Error('Invalid Colony execution mode');
  const harvesterHeadroom=arg('harvester-headroom','none');if(!['none','subject','all'].includes(harvesterHeadroom))throw Error('Invalid Harvester headroom mode');
- const protocol={kind:'native-investment',variant,mode,fleetDiscipline,colonyExecution,harvesterHeadroom,tacticalForecast,militaryHorizon,productionDiscipline,marketFilter,colonyPlanning,protectedMarketBudget,subjectMarket,orderBenefits,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
+ const optionalConstruction=arg('optional-construction','none');if(!['none','subject','all'].includes(optionalConstruction))throw Error('Invalid optional construction mode');
+ const protocol={kind:'native-investment',variant,mode,optionalConstruction,fleetDiscipline,colonyExecution,harvesterHeadroom,tacticalForecast,militaryHorizon,productionDiscipline,marketFilter,colonyPlanning,protectedMarketBudget,subjectMarket,orderBenefits,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
  fs.writeFileSync(path.join(out,'protocol.json'),JSON.stringify(protocol,null,2));console.log('Study output: '+out);
  const tasks=[];for(let i=0;i<seeds;i++)for(const rotation of rotations)tasks.push({id:tasks.length,variant,mode,seed:seedStart+7919*i,rotation,target,profiles:profiles.map((_,j)=>profiles[(j+rotation)%4]),maxRound,maxSteps:18000,protocol});
  let next=0,failures=0;const games=[];

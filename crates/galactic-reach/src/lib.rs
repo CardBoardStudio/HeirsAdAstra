@@ -2459,7 +2459,15 @@ impl BuiltinAgent {
                     -10.0
                 }
             }
-            "finish_construct" => -20.0,
+            "finish_construct" => {
+                if view["investmentPlanning"] == true
+                    && view["optionalConstructionPlanning"] == true
+                {
+                    0.0
+                } else {
+                    -20.0
+                }
+            }
             // 31.36: during Buy, raise the limits the best market card needs.
             "increase_storage" if view["phase"] == "buy" && capacity_need(view, seat).is_some() => {
                 let need = capacity_need(view, seat).unwrap();
@@ -3616,6 +3624,54 @@ mod tests {
         view["players"][0]["hand"] = json!([]);
         view["players"][0]["discard"] = surplus;
         assert_eq!(from_hand, agent.score(&view, &trash));
+    }
+
+    #[test]
+    fn optional_construction_can_finish_instead_of_paying_for_rejected_builds() {
+        let mut agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["productionDiscipline"] = json!(true);
+        view["round"] = json!(18);
+        view["players"][0]["prestige"] = json!(40);
+        view["planets"]["1,0"] = json!({"type":"biomass","owner":0});
+        let finish = json!({"type":"finish_construct"});
+        let paid = json!({"type":"second_build","kind":"harvester","coord":"1,0"});
+        let original = agent.score(&view, &paid);
+        assert!(original < 0.0);
+        assert!(
+            agent.score(&view, &finish) < original,
+            "Existing pending choice still buys the rejected Harvester"
+        );
+        view["optionalConstructionPlanning"] = json!(true);
+        assert_eq!(
+            agent.select_action(&view, &[paid.clone(), finish.clone()]),
+            1
+        );
+        assert_eq!(
+            agent.score(&view, &paid),
+            original,
+            "Only the finish alternative changes"
+        );
+        let yard = json!({"type":"second_build","kind":"starbase","coord":"1,0"});
+        view["planets"]["0,0"]["upgrade"] = json!("starbase");
+        assert_eq!(agent.select_action(&view, &[yard, finish.clone()]), 1);
+        let free =
+            json!({"type":"build","kind":"harvester","coord":"1,0","discountResource":"free"});
+        assert!(agent.score(&view, &free) > agent.score(&view, &finish));
+        view["round"] = json!(2);
+        view["players"][0]["prestige"] = json!(3);
+        assert_eq!(
+            agent.select_action(&view, &[finish.clone(), paid]),
+            1,
+            "Profitable construction still wins"
+        );
+        view["investmentPlanning"] = json!(false);
+        assert_eq!(
+            agent.score(&view, &finish),
+            -20.0,
+            "Archived policy stays unchanged"
+        );
     }
 
     #[test]

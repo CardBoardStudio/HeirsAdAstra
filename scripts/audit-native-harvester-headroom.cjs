@@ -5,8 +5,8 @@ const RES=['matter','energy','biomass','data'],zero=()=>Object.fromEntries(RES.m
 function audit(directory){
  const protocol=JSON.parse(fs.readFileSync(path.join(directory,'protocol.json'))),app=fs.readFileSync(path.join(directory,'sources/app.js'),'utf8'),adapter=fs.readFileSync(path.join(directory,'sources/adapter.js'),'utf8');assert.equal(hash(app),protocol.sourceHashes.app);assert.equal(hash(adapter),protocol.sourceHashes.adapter);
  const anchor='      clone, deckContents,';assert.equal(app.split(anchor).length,2);const exposed=app.replace(anchor,'      aiIncome, clone, deckContents,');
- const context=vm.createContext({});vm.runInContext(adapter+'\n'+exposed,context);let port;const original=context.createGalacticAdapter;context.createGalacticAdapter=e=>{port=e;return original(e);};
- const inspect=(state,counters,seat)=>{context.createGalacticReach({headless:true,resume:{state,...counters},random:()=>{throw Error('Headroom query must not draw RNG');}});const before=hash(port.state),income=JSON.parse(JSON.stringify(port.aiIncome(seat))),limits=JSON.parse(JSON.stringify(port.resourceLimits(seat)));assert.equal(hash(port.state),before,'Income/limit query mutated state');return {income,limits};};
+ const context=vm.createContext({});vm.runInContext(adapter+'\n'+exposed,context);let port,observer;const original=context.createGalacticAdapter;context.createGalacticAdapter=e=>{port=e;observer=original(e);return observer;};
+ const inspect=(state,counters,seat)=>{context.createGalacticReach({headless:true,resume:{state,...counters},random:()=>{throw Error('Headroom query must not draw RNG');}});const before=hash(port.state),income=JSON.parse(JSON.stringify(port.aiIncome(seat))),limits=JSON.parse(JSON.stringify(port.resourceLimits(seat))),view=observer.observe(seat),leader=Math.max(0,...view.players.map(p=>p.prestige)),pace=Math.max(2,(leader-3)/Math.max(1,view.round-1)),investmentHorizon=Math.max(0,Math.min(6,Math.ceil((view.victoryTarget-leader)/pace)));assert(Number.isFinite(investmentHorizon));assert.equal(hash(port.state),before,'Income/limit/observer query mutated state');return {income,limits,investmentHorizon};};
  const rows=fs.readFileSync(path.join(directory,'results.jsonl'),'utf8').trim().split('\n').filter(Boolean).map(JSON.parse),games=[],resources={};
  for(const g of rows){
   const seat=g.subjectSeat??(4-g.rotation)%4,m=JSON.parse(fs.readFileSync(path.join(g.archive,'manifest.json'))),bytes=fs.readFileSync(path.join(g.archive,m.trace));assert.equal(hash(bytes),m.traceHash);let state=null,active=null;const builds=[];
@@ -15,7 +15,7 @@ function audit(directory){
    if(r.type==='before-decision'){
     assert.equal(active,null);
     if(c?.method==='applyAction'&&c.actor===seat&&['build','second_build','colony_build'].includes(a?.type)&&a.kind==='harvester'){
-     const resource=state.planets[a.coord].type,q=inspect(state,r.counters,seat);assert(RES.includes(resource));active={command:c,round:state.round,coord:a.coord,key:a.key||a.type,resource,stockBefore:state.players[seat].resources[resource],incomeBefore:q.income[resource],limitBefore:q.limits[resource],paid:zero(),paymentEvents:0,nextProduction:null};
+     const resource=state.planets[a.coord].type,q=inspect(state,r.counters,seat);assert(RES.includes(resource));active={command:c,round:state.round,coord:a.coord,key:a.key||a.type,resource,investmentHorizon:q.investmentHorizon,stockBefore:state.players[seat].resources[resource],incomeBefore:q.income[resource],limitBefore:q.limits[resource],paid:zero(),paymentEvents:0,nextProduction:null};
     }
    }
    if(active&&r.type==='event'&&r.event.player===seat){const cost=payment(r.event);if(cost){active.paymentEvents++;for(const k of RES)active.paid[k]+=cost[k];}}
