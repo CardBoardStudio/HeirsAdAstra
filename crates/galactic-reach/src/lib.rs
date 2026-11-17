@@ -793,6 +793,7 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
     if military
         && view["investmentPlanning"] == true
         && view["_rival_market_focus"] == true
+        && view["marketOpportunityFilter"] != false
         && view["_rival_market_combat_opportunity"] != true
     {
         return None;
@@ -2882,6 +2883,13 @@ mod tests {
             0,
             "A remote army does not justify this military purchase yet"
         );
+        view["marketOpportunityFilter"] = json!(false);
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "Disabling the research filter restores the ordinary purchase ranking"
+        );
+        view["marketOpportunityFilter"] = Value::Null;
         view["players"][1]["hand"] = json!([{"key":"novaBarrage"}]);
         assert_eq!(
             market.select_action(&view, &legal),

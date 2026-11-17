@@ -33,6 +33,7 @@ async function play(task,sources,directory,binary){
    if(task.protocol.tacticalForecast==='all'||task.protocol.tacticalForecast==='subject'&&actor===subjectSeat)observation.singleFleetForecast=true;
    if(task.protocol.militaryHorizon==='all'||task.protocol.militaryHorizon==='subject'&&actor===subjectSeat)observation.militaryHorizon=true;
    if(task.protocol.productionDiscipline==='all'||task.protocol.productionDiscipline==='subject'&&actor===subjectSeat)observation.productionDiscipline=true;
+   if(task.protocol.marketFilter==='off'&&task.profiles[actor]==='market')observation.marketOpportunityFilter=false;
    const buyKey=e.state.round+':'+actor;if(e.state.phase==='buy'&&!buyStarts.has(buyKey)){buyStarts.add(buyKey);market[actor].buyTurns++;}
    const response=await native.choose(task.profiles[actor],observation,legal);
    if(response.nativeRandomDraws!==0||!Number.isInteger(response.index)||!legal[response.index])throw Error('Invalid native policy result');
@@ -57,7 +58,8 @@ else if(require.main===module){
  const tacticalForecast=arg('tactical-forecast','none');if(!['none','subject','all'].includes(tacticalForecast))throw Error('Invalid tactical forecast mode');
  const militaryHorizon=arg('military-horizon','none');if(!['none','subject','all'].includes(militaryHorizon))throw Error('Invalid military horizon mode');
  const productionDiscipline=arg('production-discipline','none');if(!['none','subject','all'].includes(productionDiscipline))throw Error('Invalid production discipline mode');
- const protocol={kind:'native-investment',variant,mode,tacticalForecast,militaryHorizon,productionDiscipline,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
+ const marketFilter=arg('market-filter','on');if(!['on','off'].includes(marketFilter))throw Error('Invalid market filter mode');
+ const protocol={kind:'native-investment',variant,mode,tacticalForecast,militaryHorizon,productionDiscipline,marketFilter,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
  fs.writeFileSync(path.join(out,'protocol.json'),JSON.stringify(protocol,null,2));console.log('Study output: '+out);
  const tasks=[];for(let i=0;i<seeds;i++)for(const rotation of rotations)tasks.push({id:tasks.length,variant,mode,seed:seedStart+7919*i,rotation,target,profiles:profiles.map((_,j)=>profiles[(j+rotation)%4]),maxRound,maxSteps:18000,protocol});
  let next=0,failures=0;const games=[];
