@@ -77,7 +77,7 @@ function summarize(games) {
   return out;
 }
 
-if (!isMainThread) {
+if (!isMainThread && require.main === module) {
   parentPort.on('message', task => { try { parentPort.postMessage({ game: play(task, workerData.sources, workerData.archiveRoot) }); } catch (error) { parentPort.postMessage({ error: error.stack, task }); } });
 } else if (require.main === module) {
   const args = process.argv.slice(2), arg = (k, fallback) => { const i = args.indexOf('--' + k); return i < 0 ? fallback : args[i + 1]; };
