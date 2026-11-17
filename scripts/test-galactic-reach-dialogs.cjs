@@ -937,16 +937,16 @@ test('history is uncapped, persists resource transactions, and marks unavailable
  assert(fresh.coverage.complete);assert(fresh.coverage.events<20);assert(!fresh.logText.includes('exchanged 4 Matter'));
 });
 
-// 31.36 #victory: the Prestige target is chosen when a game is created; 40 by default.
+// 31.36 #victory: the Prestige target is chosen when a game is created; 30 by default.
 test('New game asks for the Prestige target; Cancel keeps the current game', () => {
  const storage=createStorage(),game=boot(storage),before=game.saved();
- assert.equal(before.victoryTarget,40);assert.equal(game.dom.element('victory-target-text').textContent,'40 Prestige');
+ assert.equal(before.victoryTarget,30);assert.equal(game.dom.element('victory-target-text').textContent,'30 Prestige');
  game.click('new-game-button');assert(game.dialog('new-game').open);
- assert.match(game.dom.element('new-game-target').innerHTML,/value="30"/);assert.match(game.dom.element('new-game-target').innerHTML,/40 Prestige \(default\)/);
+ assert.match(game.dom.element('new-game-target').innerHTML,/value="30"/);assert.match(game.dom.element('new-game-target').innerHTML,/30 Prestige \(default\)/);
  game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();game.settle();assert.deepEqual(game.saved(),before,'Cancel changes nothing');
- game.click('new-game-button');game.dom.element('new-game-target').value='30';game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
- assert.equal(game.saved().victoryTarget,30);assert.equal(game.saved().round,1);assert.equal(game.dom.element('victory-target-text').textContent,'30 Prestige');
- assert.equal(boot(storage).saved().victoryTarget,30,'The chosen target is saved with the game');
+ game.click('new-game-button');game.dom.element('new-game-target').value='40';game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
+ assert.equal(game.saved().victoryTarget,40);assert.equal(game.saved().round,1);assert.equal(game.dom.element('victory-target-text').textContent,'40 Prestige');
+ assert.equal(boot(storage).saved().victoryTarget,40,'The chosen target is saved with the game');
 });
 
 // 34.39 #setup: solo rivals are dealt to seats at random; New game names your neighbor (seat 1).

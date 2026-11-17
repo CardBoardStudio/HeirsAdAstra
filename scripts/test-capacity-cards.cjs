@@ -37,13 +37,14 @@ assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
 assert.equal(prices.reduce((n, p) => n + p, 0), 219, 'Price v1 reduces the eight selected designs by eleven resources total');
 assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
 
-// Setup: nine face-up cards (three per price tier) from 68 cards that mix both decks; target defaults to 40.
+// Setup: nine face-up cards (three per price tier) from 68 cards that mix both decks; target defaults to 30.
 {
   const g = game(), { s } = g, decks = Object.values(s.marketDecks).flat();
-  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 68); assert.equal(s.victoryTarget, 40);
+  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 68); assert.equal(s.victoryTarget, 30);
+  delete s.victoryTarget; assert.equal(g.e.victoryTarget(),40,'Legacy targetless saves retain40');
   const supply = [...s.market, ...decks].map(c => c.key);
   for (const key of Object.keys(cards)) assert.equal(supply.filter(k => k === key).length, 2, `${key} has two copies`);
-  assert.equal(game({ victoryTarget: 30 }).s.victoryTarget, 30); assert.equal(game({ victoryTarget: 35 }).s.victoryTarget, 40, 'Unlisted targets fall back to 40');
+  assert.equal(game({ victoryTarget: 40 }).s.victoryTarget, 40, 'Explicit40-point games retain their chosen target'); assert.equal(game({ victoryTarget: 35 }).s.victoryTarget, 30, 'Unlisted targets fall back to 30');
   assert.equal(game({ newGameSettings: { victoryTarget: 60 } }).s.victoryTarget, 60, 'Table settings choose the target');
 }
 // Starting limits can hold the specified entry cards; higher-cost cards still need capacity.
@@ -171,11 +172,11 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
     if(state.phase==='operations')runAiOperation();else if(state.phase==='buy')runAiBuy(); }, prestige:id=>calculatePrestige(id)};
 }`);
   vm.runInContext(src, c);
-  const sim = c.createGalacticReach({ headless: true, random: rng(20261114) });
+  const sim = c.createGalacticReach({ headless: true, victoryTarget: 40, random: rng(20261114) });
   let steps = 0; while (sim.state().winner === null && steps++ < 20000) sim.step();
   const st = sim.state();
   assert.notEqual(st.winner, null, 'Rivals finish a 40-point game');
-  assert(sim.prestige(st.winner) >= 40); assert(st.round > 10, 'A 40-point game takes many rounds');
+  assert(sim.prestige(st.winner) >= st.victoryTarget); assert(st.round > 10, 'A 40-point game takes many rounds');
   assert(st.players.some(p => p.cardsPurchased >= 3), 'Rivals buy market cards'); assert(st.players.every(p => (p.storagePurchases || 0) >= 1), 'Every rival buys a Capacity Module'); assert(st.players.every(p => (p.storageUpgrades || 0) >= 1), 'Every rival plays a Capacity Module');
 }
 console.log('Capacity Cards: 34 retained stable ids including three draw-two cards within starting limits, nine-card tiered market, military deck purchases, Buy cards and Wonders, one-step orders, printed Construct discounts, Capacity Module purchase and play, rival capacity targeting and a full 40-point rival game passed.');

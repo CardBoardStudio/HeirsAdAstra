@@ -151,7 +151,7 @@ function createGalacticReach(options = {}) {
   const MARKET_SIZE = MARKET_TIERS.length * MARKET_TIER_SLOTS;
   const MARKET_COPIES = 2;
   const STARTING_LIMIT = 4;
-  const DEFAULT_VICTORY_TARGET = 40;
+  const DEFAULT_VICTORY_TARGET = 30;
   const VICTORY_TARGET_CHOICES = [20, 30, 40, 50, 60];
 
   // Normal-deck market cards (codes N01-N29). Field meanings:
@@ -1441,7 +1441,7 @@ function createGalacticReach(options = {}) {
   }
 
   function victoryTarget(position = state) {
-    return position?.victoryTarget || DEFAULT_VICTORY_TARGET;
+    return position?.victoryTarget || 40; // Legacy saves without a target retain their original goal.
   }
 
   // A purchase's price after this Buy turn's discounts: Trade Syndicate's, plus one
