@@ -201,6 +201,8 @@ const CASES = [
   { name: 'operations, drag a card by its Convert button onto your reserves', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-resource-card]', dropOn: '.resource-box.cf-drop-yield', expect: 'converted' },
   { name: 'operations, drag Construct by its Use order button onto a hex', save: operationsState(['construct', 'move']), drag: '#hand-row .game-card[data-order="construct"]', grab: '[data-order-card]', expect: 'built' },
   // Use order aims the card exactly as starting a drag does; clicking a lit hex plays it there.
+  // The reverse: pointing at a hex raises the hand card that can start an order there.
+  { name: 'operations, pointing at a hex raises its playable card', save: operationsState(['construct', 'move']), playsHere: 'construct', devices: 'tablet' },
   { name: 'operations, Use order aims like a drag', save: operationsState(['construct', 'move']), click: ['#hand-row .game-card[data-order="construct"] [data-order-card]'], expect: 'aimed', devices: 'tablet' },
   { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
   { name: 'map pieces on every terrain', save: piecesState() },
@@ -531,6 +533,40 @@ async function runCase(browser, origin, testCase, viewport) {
     await browser.evaluate('new Promise(r => setTimeout(r, 450))');
   }
   const problems0 = [];
+  // The board teaches what to play: pointing at a hex where a hand card's order can start raises
+  // that card (as Use order does); a hex where nothing can start raises nothing. Choosing the hex
+  // (a tap on touch) opens the Sector Scan beside it, never over it, with the card's picture.
+  if (testCase.playsHere) {
+    // The map refits as the table settles: wait until the hexes stand still.
+    await browser.evaluate(`new Promise(done => { let last = '', calm = 0; const look = () => { const r = document.querySelector('.hex')?.getBoundingClientRect(), now = r ? [r.left, r.top, r.width].map(Math.round).join() : ''; calm = now === last ? calm + 1 : 0; last = now; if (calm >= 5) done(); else requestAnimationFrame(look); }; look(); setTimeout(done, 2000); })`);
+    const hexes = await browser.evaluate(`(() => {
+      const c = globalThis.galacticReachGuide.context(), card = c.playable.find(p => p.def.order === ${JSON.stringify(testCase.playsHere)});
+      const live = new Set(c.playable.flatMap(p => p.targets)), box = h => { const r = h.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+      const inside = h => { const r = h.getBoundingClientRect(); return r.width > 0 && r.left >= 0 && r.top >= 0 && r.right <= innerWidth && r.bottom <= innerHeight; };
+      const hit = h => inside(h) && document.elementFromPoint(box(h).x, box(h).y)?.closest('.hex') === h;
+      const valid = card && [...document.querySelectorAll('.hex')].find(h => card.targets.includes(h.dataset.coord) && hit(h));
+      const idle = [...document.querySelectorAll('.hex')].find(h => !live.has(h.dataset.coord) && hit(h));
+      return valid && idle ? { card: card.card.id, coord: valid.dataset.coord, valid: box(valid), idle: box(idle) } : null;
+    })()`);
+    if (!hexes) return [`no visible hex where ${testCase.playsHere} can start`];
+    const raised = () => browser.evaluate('[...document.querySelectorAll("#hand-row > .game-card.cf-plays-here")].map(e => e.dataset.cardId)');
+    if (!testCase.device) {
+      await mouse('mouseMoved', hexes.valid.x, hexes.valid.y);
+      await browser.evaluate('new Promise(r => setTimeout(r, 200))');
+      const lit = await raised();
+      if (!lit.includes(hexes.card)) problems0.push('pointing at a valid hex did not raise its card');
+      if (!(await browser.evaluate(`getComputedStyle(document.querySelector('#hand-row [data-card-id="${hexes.card}"]')).getPropertyValue('--cf-lift').trim() === '-14px'`))) problems0.push('the raised card does not lift like an aimed card');
+      await mouse('mouseMoved', hexes.idle.x, hexes.idle.y);
+      await browser.evaluate('new Promise(r => setTimeout(r, 200))');
+      if ((await raised()).length) problems0.push('pointing at a hex where nothing can start raised a card');
+      await mouse('mouseMoved', hexes.valid.x, hexes.valid.y);
+    }
+    await mouse('mousePressed', hexes.valid.x, hexes.valid.y); await mouse('mouseReleased', hexes.valid.x, hexes.valid.y);
+    // Move the pointer off the map, as a player reaching for the scan does: the choice keeps the card raised.
+    if (!testCase.device) await mouse('mouseMoved', 4, 4);
+    await browser.evaluate('new Promise(r => setTimeout(r, 450))');
+    steps.playsHere = hexes;
+  }
   // A real click on a raised card's button (press and release without moving) is still a click.
   if (testCase.tap) {
     // Point at the card's visible strip first (a held hand fans its cards), so it lifts.
@@ -634,6 +670,23 @@ async function runCase(browser, origin, testCase, viewport) {
     if (card.scrollHeight > card.clientHeight + 2) problems.push('raised card text cut');
     const strip = document.querySelector('#hand-row').getBoundingClientRect();
     if (Math.abs(r.bottom - strip.bottom) > 24) problems.push('raised card does not rise from the hand');
+    return problems;
+  })()`));
+  if (steps.playsHere) problems.push(...await browser.evaluate(`(() => {
+    const problems = [], { card, coord } = ${JSON.stringify(steps.playsHere)};
+    const scan = document.querySelector('#sector-popover'), hex = document.querySelector('.hex[data-coord="' + coord + '"]');
+    if (!scan.matches(':popover-open')) return ['choosing a valid hex did not open the Sector Scan'];
+    if (!document.querySelector('#hand-row [data-card-id="' + card + '"].cf-plays-here')) problems.push('the chosen hex does not keep its card raised');
+    const s = scan.getBoundingClientRect(), h = hex.getBoundingClientRect();
+    if (s.left < h.right - 2 && s.right > h.left + 2 && s.top < h.bottom - 2 && s.bottom > h.top + 2) problems.push('the Sector Scan covers the hex it describes');
+    const raisedCard = document.querySelector('#hand-row [data-card-id="' + card + '"]').getBoundingClientRect();
+    if (s.left < raisedCard.right && s.right > raisedCard.left && s.top < raisedCard.bottom && s.bottom > raisedCard.top) problems.push('the Sector Scan covers the raised card');
+    const order = scan.querySelector('.scan-order[data-scan-order-card="' + card + '"]');
+    if (!order || !order.querySelector('.scan-order-art .card-art')) return [...problems, 'the Sector Scan does not list the card with its picture'];
+    const arrow = scan.querySelector('.gr-coach-arrow');
+    if (innerWidth >= 600 && innerHeight >= 500 && (!['top', 'bottom', 'left', 'right'].includes(scan.dataset.side) || getComputedStyle(arrow).display === 'none')) problems.push('the Sector Scan has no arrow at its hex');
+    order.click();
+    if (!document.querySelector('#hand-row [data-card-id="' + card + '"].order-selected')) problems.push('choosing the order in the Sector Scan did not start it');
     return problems;
   })()`));
   if (testCase.expect === 'aimed') problems.push(...await browser.evaluate(`(() => {

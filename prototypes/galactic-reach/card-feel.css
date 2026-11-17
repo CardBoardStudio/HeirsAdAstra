@@ -133,6 +133,8 @@
 .pile-stats > button[data-empty="true"] .pile-card::after { display: none; }
 
 /* Use order aims the card like a drag: it stays raised and glowing, marked as in play, while the
-   hexes where its order can start light up (see syncAim). */
-#hand-row > .game-card.cf-aiming { --cf-lift: -14px; --cf-ring: 0 0 0 2.5px #f2d488, 0 0 18px #f2d488aa; }
+   hexes where its order can start light up (see syncAim). The reverse uses the same look: pointing
+   at (or focusing, or choosing) a hex raises the hand cards whose order can start there (app.js
+   syncPlaysHere). */
+#hand-row > .game-card:is(.cf-aiming, .cf-plays-here) {--cf-lift: -14px; --cf-ring: 0 0 0 2.5px #f2d488, 0 0 18px #f2d488aa; }
 .cf-aim-active .hex:not(.cf-drop-target)::before { filter: brightness(.55) saturate(.6); }
