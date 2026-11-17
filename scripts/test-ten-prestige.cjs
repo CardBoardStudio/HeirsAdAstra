@@ -35,10 +35,10 @@ for(let id=0;id<4;id++){
  const{e,s}=game(),p=s.players[1];s.round=3;p.strategy='expansion';p.hand=[{key:'construct',id:'order'}];p.resources={matter:1,energy:1,biomass:1,data:0};
  assert.equal(e.chooseAiBuild(1).kind,'starbase');
  p.resources={...resource};assert(e.constructAt(1,yardFor[1],'starbase'));
- p.resources={matter:1,energy:1,biomass:0,data:0};assert.equal(e.chooseAiBuild(1).kind,'settler','Affordable Settler replaces unfundable Explorer');
- p.resources={matter:0,energy:1,biomass:0,data:0};p.hand[0].upgraded=true;const b=e.chooseAiBuild(1);assert.equal(b.kind,'settler','Fallback uses the same selected-resource discount as Construct II');
+ p.resources={matter:1,energy:1,biomass:1,data:0};assert.equal(e.chooseAiBuild(1).kind,'settler','A fully funded Settler replaces an unfundable Explorer');
+ p.resources={matter:0,energy:1,biomass:0,data:0};p.hand[0].upgraded=true;const b=e.chooseAiBuild(1);assert.deepEqual(plain(b.cost),plain(e.constructionCost(1,b.coord,b.kind)),'Construct II planning uses the full printed cost');
  assert(!e.constructAt(1,b.coord,b.kind,'matter',true),'Construct II offers no discount');
- p.hand[0].upgraded=false;p.resources={matter:0,energy:0,biomass:0,data:0};assert.equal(e.chooseAiBuild(1).kind,'settler','If nothing is affordable retain the scoring plan instead of discretionary infrastructure');
+ p.hand[0].upgraded=false;p.resources={matter:0,energy:0,biomass:0,data:0};const unfunded=e.chooseAiBuild(1);assert(!unfunded.funding,'An empty reserve does not invent a funded plan');assert(!e.constructAt(1,unfunded.coord,unfunded.kind,null,true),'An unfunded proposal cannot execute for free');
  s.planets[yardFor[1]].upgrade=null;p.resources={matter:1,energy:1,biomass:1,data:0};assert.equal(e.chooseAiBuild(1).kind,'starbase','Destroyed yard does not activate fallback');
 }
 function target(s,coord){const i=s.clusters.length,[q,r]=coord.split(',').map(Number);s.clusters.push({id:i,center:coord,coords:[coord],kind:'world',revealedBy:[],scannedBy:[]});s.planets[coord]={q,r,cluster:i,type:'matter',owner:null,occupiedBy:null,hasColony:false,upgrade:null};}
