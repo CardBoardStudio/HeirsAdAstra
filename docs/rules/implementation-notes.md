@@ -1,6 +1,6 @@
 # 6.11 baseline: decisions still to make
 
-This is a maintainer audit, not additional player rules. The initial rulebook described `main` at `dd3cd49`. The [current rulebook](../../prototypes/galactic-reach/rulebook.html#clarifications) now also records the 7.12 Pass & Buy experiment. The 6.11 engine and manual are archived unchanged. Older quick help, the prototype README, and several printed cards did not match that implementation.
+This is a maintainer audit, not additional player rules. The initial rulebook described `main` at `7b3ead4`. The [current rulebook](../../prototypes/galactic-reach/rulebook.html#clarifications) now also records the 7.12 Pass & Buy experiment. The 6.11 engine and manual are archived unchanged. Older quick help, the prototype README, and several printed cards did not match that implementation.
 
 Before declaring the rules ready for tutorial production, review the following with the game designer. For each, either accept and clarify the behavior or propose a separate rules experiment with paired code, rulebook, card-text, and regression updates. Do not make those decisions implicitly in a docs PR.
 

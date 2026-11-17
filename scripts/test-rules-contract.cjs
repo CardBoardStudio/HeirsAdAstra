@@ -53,15 +53,15 @@ const RULEBOOK = 'prototypes/galactic-reach/rulebook.html';
   assert.deepEqual(repoRules(tick(template, 'playtest-safe') + '\n## Gameplay impact\nChanged: Harbors refit Fleets at the start of a turn.'), ['changes-entry'], 'Changed gameplay needs an entry');
   assert.deepEqual(repoRules(tick(template, 'playtest-safe') + '\n## Gameplay impact\nChanged: Harbors refit Fleets at the start of a turn.', [`changes/${safeEntry}`]), []);
   // With the PR's revisions, only entries the PR adds count (as in release.cjs check).
-  const revs = { base: '2f0ec85', head: 'c8b61ec' }; // adds changes/stars-around-map.md (compat: safe)
+  const revs = { base: 'bc96345', head: 'bcb713e' }; // adds changes/stars-around-map.md (compat: safe)
   const withRevs = text => checkBody({ body: text, files: [], ...revs }, advisory).map(f => f.rule).filter(r => r === 'changes-entry');
   assert.deepEqual(withRevs(tick(template, 'playtest-safe')), []);
   assert.deepEqual(withRevs(tick(template, 'playtest-breaking')), ['changes-entry']);
   // A commit over 30 changed lines needs a body; its size comes from its SHA.
   const sized = (message, sha) => checkCommitMessage(message, advisory, { sha }).map(f => f.rule);
-  assert.deepEqual(sized('Review guidance: split the shared core', '1bc2136'), ['commit-body'], 'A large subject-only commit is reported');
-  assert.deepEqual(sized('Review guidance: split the shared core\n\nWhy: two repositories share it.', '1bc2136'), []);
-  assert.deepEqual(sized('Galactic Reach: align the relics item', '913872d'), [], 'A small commit needs only its subject');
+  assert.deepEqual(sized('Review guidance: split the shared core', '34b65ac'), ['commit-body'], 'A large subject-only commit is reported');
+  assert.deepEqual(sized('Review guidance: split the shared core\n\nWhy: two repositories share it.', '34b65ac'), []);
+  assert.deepEqual(sized('Galactic Reach: align the relics item', 'bbc7c0e'), [], 'A small commit needs only its subject');
   assert.deepEqual(sized('Review guidance: split the shared core'), [], 'An unknown commit is skipped');
 
   // One pinned ref of the shared validator, everywhere it is named.

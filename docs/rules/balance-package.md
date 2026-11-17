@@ -13,7 +13,7 @@
 
 **Rivals.** Browser rivals send a Settler to an enemy center only with a Fleet in its group or already there. A rival keeps one Fleet with a Settler that can capture where it stands, including under split moves. For Archive Purge, rivals keep at least 3 Move-order and 2 Construct-order cards and trash only the surplus. Native policy 26 does the same. It reads `captureNeedsFleet`, `marketPrestige` and `tacticStats` from the observation, so 31.36–33.38 tables, which publish none of them, play exactly as before.
 
-**Evidence (AI only).** The scout's paired harness from the review: browser rivals in all four seats, 32 map seeds × 12 mixed lineups = 384 games per side, target 40, up to 120 rounds. Both sides use the same seeds, so the games are paired. Base is 32.37 (`main` at `0659abf`), the ruleset the review measured. Variant is this branch's final tree. CIs resample whole seeds. The only harness edit is one anchor, because #47 moved the headless port into `headlessPort()`.
+**Evidence (AI only).** The scout's paired harness from the review: browser rivals in all four seats, 32 map seeds × 12 mixed lineups = 384 games per side, target 40, up to 120 rounds. Both sides use the same seeds, so the games are paired. Base is 32.37 (`main` at `7191605`), the ruleset the review measured. Variant is this branch's final tree. CIs resample whole seeds. The only harness edit is one anchor, because #47 moved the headless port into `headlessPort()`.
 
 | Paired, target 40 | 32.37 | 34.39 | 95% CI of diff |
 | --- | ---: | ---: | --- |

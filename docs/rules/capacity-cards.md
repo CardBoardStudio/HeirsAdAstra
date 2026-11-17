@@ -41,7 +41,7 @@ Native policy 26, which plays shared-table rivals (#45) and arena seats, gains a
 **Versioning.** This is `playtest-breaking`: card contents, market, combat tactics, scoring and saved state all change.
 
 - New games use **save format 31, rules 36** (`galactic-reach/31.36`, "Capacity Cards experiment") and `-v31` browser keys.
-- The exact 30.35 browser, manual and engine (base branch `c105bb3`) are archived as `crates/galactic-reach/rules/v30-*`, served at `/galactic-reach/rules/30.35/` and pinned in `scripts/capacity-cards-archive-hashes.json`.
+- The exact 30.35 browser, manual and engine (base branch `3b8be36`) are archived as `crates/galactic-reach/rules/v30-*`, served at `/galactic-reach/rules/30.35/` and pinned in `scripts/capacity-cards-archive-hashes.json`.
 - 30.35 tables, replays and `with_rules` use that archive. There is no migration.
 
 **Feedback.** `/galactic-reach/cards.html` lists every card with its id, price, the limit it needs, conversion and effect. A like/dislike/neutral vote and note per card save in the browser and, when the host sets `CARD_FEEDBACK_PATH`, are appended as JSON lines to that file (`crates/server/src/card_feedback.rs`, `POST /api/galactic-reach/card-feedback`). A copy-all text export covers hosts without storage. Public previews store nothing server-side.

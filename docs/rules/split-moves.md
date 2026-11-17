@@ -21,7 +21,7 @@
 **Versioning.** This is `playtest-breaking`: legal decisions and the meaning of a Move change.
 
 - New games use **save format 33, rules 38** (`galactic-reach/33.38`, "Split Moves playtest") and `-v33` browser keys.
-- The exact 32.37 browser, manual, engine, card gallery and shared-table client (main at `0659abf`) are archived as `crates/galactic-reach/rules/v32-*`, served at `/galactic-reach/rules/32.37/` and pinned in `scripts/split-moves-archive-hashes.json`.
+- The exact 32.37 browser, manual, engine, card gallery and shared-table client (main at `7191605`) are archived as `crates/galactic-reach/rules/v32-*`, served at `/galactic-reach/rules/32.37/` and pinned in `scripts/split-moves-archive-hashes.json`.
 - 32.37 tables, replays and `with_rules` use that archive. Shared tables keep their dealt rules: the existing 30.35, 31.36 and 32.37 engines retain snapshot and Undo support after this cutover.
 
 **Checks.**

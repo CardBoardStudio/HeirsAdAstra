@@ -4,7 +4,7 @@ Newest first. Each section is written by `node scripts/release.cjs cut` from the
 
 ## 38.43 · Construct III Playtest
 
-<!-- release after 9c969f6 -->
+<!-- release after bb5bbd1 -->
 Rules-changing release: start a new game. Unfinished 37.42 games and tables keep the archived 37.42 Integrated Playtest engine.
 - **Construct III can draw without building** (rules change): Play Construct III to draw one card without building, or build normally and draw once. Rivals use the draw-only choice and prefer Construct III over equivalent Construct II orders. [Construct III](rulebook.html#construct-three-draw).
 - **Draw your next hand at cleanup** (rules change): You now draw your opening five cards at setup, and each later hand at the end of the round, after everyone finishes Buy and nobody has won. The round reads Production, Operations, Buy, Cleanup & draw, so you can plan your next hand while the round wraps up. [A round of play](rulebook.html#round).
@@ -18,7 +18,7 @@ Rules-changing release: start a new game. Unfinished 37.42 games and tables keep
 
 ## 37.42 · Integrated Playtest
 
-<!-- release after 4b7cfc7 -->
+<!-- release after 156f1e1 -->
 Rules-changing release: start a new game. Unfinished 34.39 games and tables keep the archived 34.39 Balance Package playtest engine.
 - **Commissioning battles and human Undo** (rules change) (#54): Commissioning onto enemy ships starts combat; a stationary Move can fight again. Rival turns continue after the fight. Build Shipyards on surveyed moons with your ship present. Humans may undo their latest turn and later bot turns until another human acts. [Combat](rulebook.html#combat), [shared tables](rulebook.html#shared-tables).
 - **Flexible resources and new relic orders** (rules change) (#54): Convert cards, bank and buy capacity off turn. One Probe / Excavate card locates the closest relic or excavates and is trashed. The center world has a relic; try 23 rewards, three affordable draw-two cards and level III starters. Cargo Expansion raises each limit by 2 once. [Orders](rulebook.html#orders), [resources](rulebook.html#free-economy).

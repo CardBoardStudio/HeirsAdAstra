@@ -5,7 +5,7 @@ const {Worker,isMainThread,parentPort,workerData}=require('node:worker_threads')
 const {SimulationArchive,instrumentSource,hash,resultDirectory}=require('./lib/simulation-archive.cjs');
 const RUNNER_SOURCE=fs.readFileSync(__filename,'utf8');
 const root=path.resolve(__dirname,'..'),profiles=['military','economy','expansion'];
-const baseDefault='d3e3ab6a672e330aa3a69eddd9c2d5b537ab76fa';
+const baseDefault='88400a286f9fc911a638db22c88dfa5948217dca';
 const plain=v=>JSON.parse(JSON.stringify(v));
 function factory(app,adapter) {
   const guard="if (state.pendingCombat || state.phase !== 'operations' || state.activePlayer === ME || state.winner !== null) return;";

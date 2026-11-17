@@ -36,7 +36,7 @@ node scripts/profile-bot-search.cjs --mode compare --games 8 --out /tmp/gr-searc
 ```
 
 The baseline defaults to the worktree's `HEAD` app; optimized uses its working-tree app.
-Pass `--baseline 9178a09ecc94b8c58959e2839d2d8a33ff9445fd` to reproduce this
+Pass `--baseline ae116eccb72e763ba5ab4d5d42850c85f3df8c0c` to reproduce this
 change's original baseline after committing the optimization. This harness drives the
 ordinary browser policy headlessly in every seat and does not replace legal
 actions, game rules, combat outcomes or random number generation.

@@ -8,7 +8,7 @@ Browser bots keep useful builds and scoring actions ahead of the fallback. They 
 
 ## Fresh 30-point evaluation
 
-The protocol was fixed before evaluation. Both arms use latest main `677efeb` plus behavior-preserving cache commit `f5620e8`. Candidate implementation is `2ce0c32`; later Rust formatting and compatibility-test changes do not change its JavaScript source.
+The protocol was fixed before evaluation. Both arms use latest main `7af442f` plus behavior-preserving cache commit `d1dd782`. Candidate implementation is `1a5dc7b`; later Rust formatting and compatibility-test changes do not change its JavaScript source.
 
 Each arm has 384 fresh games: 16 new holdout setup seeds times every permutation of Military Builder, Military, Economy and Expansion across four seats. All 48 games for a setup seed use an identical map; there are 16 distinct maps. The bots know the target is 30 from setup. Military Builder retains the same construction/storage policy weights in both arms. This measures the combined new order and bot-support change, rather than a rule change with bots unaware of it.
 
