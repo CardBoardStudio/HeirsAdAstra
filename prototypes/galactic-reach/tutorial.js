@@ -158,6 +158,12 @@
         anchor: scanButton(/Harvester/), done: state => Boolean(harvester(state)) },
     ] },
     { id: 'round', title: 'The round', steps: [
+      { id: 'convert-rest', title: 'Convert first', rule: 'resources',
+        text: () => 'Unused cards are discarded at round end: convert your leftover cards to resources first.',
+        show: state => ({ ghost: { from: $('#hand-row .game-card'), to: matRow('matter') }, callouts: [{ el: $('#hand-row'), label: 'Discarded at round end if unused' }] }),
+        anchor: () => $('#convert-all-button:not([hidden])') || $('#hand-row .game-card'),
+        // Done when nothing convertible is left, or when converting would only waste resources at their limit.
+        done: (state, base, port) => { const lim = port.limits(); return !me(state).hand.some(c => port.canConvertCard(c) && Object.keys(port.cards[c.key].resource || {}).some(r => me(state).resources[r] < lim[r])); } },
       { id: 'pass', title: 'Pass & buy', rule: 'round',
         text: () => 'Nothing else to afford: choose Pass & buy.',
         show: () => ({ spotlight: [$('#hand-row'), globalThis.galacticReachGuide.turnButton()], callouts: [{ el: $('#hand-row'), label: 'Left in hand = discarded at round end' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Ends your turns this round', side: 'left' }] }),
@@ -292,7 +298,7 @@
         ensure: s => { setResources(s, { matter: 4, energy: 4, biomass: 4, data: 4 }); return 'Supplied: 4 of each resource.'; },
         needsEnsure: (state, port) => myBuy(state) && !state.market.some(c => port.canAfford(port.purchaseCost(c.key))),
         start: state => ({ bought: purchases(me(state)) }),
-        text: () => 'Buy any gold-outlined market card. It goes to your discard pile.',
+        text: () => 'Buy the ringed card: like every card with a gold outline, you can afford it. It goes to your discard pile.',
         show: () => ({ spotlight: [$('#market-row')], callouts: [{ el: $('[data-buy-market]:not([disabled])'), label: 'You can afford this' }, { el: $('[data-market-tier="expensive"]'), label: 'Expensive', side: 'left' }, { el: $('[data-market-tier="cheap"]'), label: 'Cheap', side: 'left' }] }),
         anchor: (state, port) => $(`[data-buy-market]:not([disabled])`), done: (state, base) => purchases(me(state)) > base.bought },
       { id: 'upgrade', buy: true, title: 'Upgrade a starter', rule: 'buy',

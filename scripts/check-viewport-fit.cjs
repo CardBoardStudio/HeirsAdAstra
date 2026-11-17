@@ -384,6 +384,13 @@ const MEASURE = `(() => {
       const overlap = Math.max(0, Math.min(n.right, t.right) - Math.max(n.left, t.left)) * Math.max(0, Math.min(n.bottom, t.bottom) - Math.max(n.top, t.top));
       if (overlap > 0.15 * t.width * t.height) problems.push('guidance note covers its own target: ' + label(target));
       const pointer = document.querySelector('.gr-coach-pointer:not([hidden])');
+      const textual = [...document.querySelectorAll('.game-card, .panel, #fleet-glance, .log-panel, .relic-row, .resource-box, #prestige-track, .phase-stepper, .pile-stats > button, #map-legend-corner, .board-heading, .console-tab, #board-primary, #open-trade, #convert-all-button')]
+        .filter(e => shown(e) && !e.contains(target) && !target.contains(e) && !e.closest('#gr-coach'))
+        .find(e => { const r = e.getBoundingClientRect(); return Math.max(0, Math.min(n.right, r.right) - Math.max(n.left, r.left)) * Math.max(0, Math.min(n.bottom, r.bottom) - Math.max(n.top, r.top)) > 0.08 * n.width * n.height; });
+      // While a card is being dragged, or a Sector Scan offers its choices, the table is crowded with
+      // lit hexes and that panel: the note stays beside its target and may overlap other text briefly.
+      const transient = document.body.classList.contains('cf-drag-active') || document.querySelector('#sector-popover:popover-open');
+      if (textual && !transient) problems.push('guidance note lies over other text: ' + label(textual));
       if (!['top', 'bottom', 'left', 'right'].includes(note.dataset.side) && !pointer) problems.push('guidance note does not point at its target: ' + label(target));
     }
   }
@@ -596,6 +603,19 @@ async function runCase(browser, origin, testCase, viewport) {
     if (!seen.finish) problems.push('Finish Buy not visible in Buy');
   }
   problems.push(...problems0);
+  if (!touch && !isPhone([width, height]) && !testCase.hover && !testCase.tap && !testCase.drag && /^(1280x720|1440x900)$/.test(`${width}x${height}`) && scale === 1) {
+    const noteShown = 'getComputedStyle(document.querySelector("#gr-coach") || document.body).display !== "none" && !document.querySelector("#gr-coach")?.hidden && getComputedStyle(document.querySelector("#gr-coach") || document.body).visibility !== "hidden" && !document.querySelector("#gr-coach")?.closest("dialog")';
+    if (await browser.evaluate(`(() => !!document.querySelector('#gr-coach') && (${noteShown}))()`)) {
+      const cards = await browser.evaluate(`[...document.querySelectorAll('#hand-row > .game-card')].slice(0, 3).concat([...document.querySelectorAll('[data-buy-market]')].slice(0, 2)).map(e => { const r = e.getBoundingClientRect(), next = e.nextElementSibling?.getBoundingClientRect(); const right = e.closest('#hand-row') && next && next.left > r.left ? Math.min(r.right, next.left) : r.right; return { x: (r.left + right) / 2, y: r.top + Math.min(24, r.height / 2) }; })`);
+      for (const card of cards) {
+        await mouse('mouseMoved', card.x, card.y);
+        await browser.evaluate('new Promise(r => setTimeout(r, 200))');
+        const ok = await browser.evaluate(`(() => { if (!(${noteShown})) return 'the guidance note vanished'; const n = document.querySelector('#gr-coach').getBoundingClientRect(); const card = document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus-within)'); if (!card) return ''; const r = card.getBoundingClientRect(); const overlap = Math.max(0, Math.min(n.right, r.right) - Math.max(n.left, r.left)) * Math.max(0, Math.min(n.bottom, r.bottom) - Math.max(n.top, r.top)); return overlap > 0.04 * r.width * r.height ? 'the guidance note lies over the raised card' : ''; })()`);
+        if (ok) { problems.push(`${ok} while pointing at a card at ${Math.round(card.x)},${Math.round(card.y)}`); break; }
+      }
+      await mouse('mouseMoved', 4, 4);
+    }
+  }
   if (testCase.expect === 'converted') {
     if (!steps[0]?.arrow || !steps[0]?.zone || !/^\+\d/.test(steps[0]?.gain)) problems.push('drag did not light your reserves and the gain');
     const after = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');

@@ -100,8 +100,8 @@
       text: () => 'Your deck ran out, so your discard pile was shuffled into a new deck.',
       anchor: () => firstShown('#deck-button'), show: () => ({ ghost: { from: firstShown('#discard-button'), to: firstShown('#deck-button') }, callouts: [{ el: firstShown('#deck-button'), label: 'New deck' }] }) },
     { id: 'buy-turn', when: c => c.buy, title: 'Your Buy turn', rule: 'buy',
-      text: () => 'Gold-outlined supply cards are ones you can afford now.',
-      anchor: () => firstShown('[data-buy-market]:not([disabled])', '#market-row'), show: () => ({ callouts: [{ el: firstShown('#market-row'), label: 'The market', side: 'left' }] }) },
+      text: () => 'Cards with a gold outline are ones you can afford now.',
+      anchor: () => firstShown('[data-buy-market]:not([disabled])', '#market-row'), show: () => ({ callouts: [{ el: firstShown('[data-buy-market]:not([disabled])'), label: 'Gold outline = you can afford it' }] }) },
     { id: 'upgrade-offer', when: c => c.buy && c.upgrades.length > 0, title: 'Upgrades', rule: 'buy',
       text: () => 'Pay 2 of one resource to make a Move or Construct card stronger.',
       anchor: () => firstShown('[data-upgrade-offer]:not([disabled])'), show: () => ({ callouts: [{ el: firstShown('[data-upgrade-offer]:not([disabled])'), label: 'Stronger order' }] }) },
@@ -183,6 +183,7 @@
           return { title: `First goal: a ${goal.name}`, text: `Short of ${short.map(r => RESOURCE_NAMES[r]).join(' and ')}: drag this ${port.cards[convert.key].name} card onto your mat for ${costText(port.cards[convert.key].resource)}.`,
             anchor: handCard(convert.id), marks: siteHex ? [siteHex] : [], avoid: siteHex ? [siteHex] : [], show: show({ from: handCard(convert.id), to: matRow(gets) }) };
         }
+        if (!reachable && convertFirst(c) && !c.playable.length) return convertFirst(c);
         if (!reachable) return { title: `Next: a ${goal.name}`, text: `Not affordable this round. Use your other cards, or Pass & buy.`,
           anchor: turnButton(), marks: siteHex ? [siteHex] : [], show: { callouts: [...short.map(r => ({ el: matRow(r), label: `Need more ${RESOURCE_NAMES[r]}`, side: 'left' })), ...(siteHex ? [{ el: siteHex, label: `${goal.name} here` }] : [])] } };
       }
@@ -231,13 +232,15 @@
       }
       if (c.playable.length) {
         const first = c.playable[0];
-        return { title: 'Your turn', text: `Gold-outlined cards have an order you can use now; this one is a good start. Drag it onto a lit hex, or point at it and choose Use order.${fullWarning(c)}`, anchor: handCard(first.card.id) };
+        return { title: 'Your turn', text: `This card has an order you can use now (cards with a gold outline do). Drag it onto a lit hex, or point at it and choose Use order.${fullWarning(c)}`, anchor: handCard(first.card.id) };
       }
+      const first = convertFirst(c);
+      if (first) return first;
       return { title: 'Nothing left to play', text: 'No order can be used now: choose Pass & buy.', anchor: turnButton(), show: { callouts: [{ el: turnButton(), label: 'Ends your turns this round', side: 'left' }] } };
     }
     if (c.buy) {
       const market = c.marketBuys[0];
-      if (market) return { title: 'Buy cards', text: 'Gold-outlined supply cards are ones you can afford. Choose one to buy it. It goes to your discard pile. Finish Buy when you are done.', anchor: firstShown(`[data-buy-market][data-card-id="${CSS.escape(market.id)}"]`) };
+      if (market) return { title: 'Buy cards', text: 'You can afford this card (gold outline). Choose it to buy it. It goes to your discard pile. Finish Buy when you are done.', anchor: firstShown(`[data-buy-market][data-card-id="${CSS.escape(market.id)}"]`) };
       if (port.canBuyCapacity()) return { title: 'Raise your limits', text: `A Capacity Module costs ${port.capacityCost()} of each resource. It lets you hold enough to buy bigger cards later. Or choose Finish Buy.`, anchor: firstShown('[data-capacity-offer]:not([disabled])') };
       if (c.upgrades.length && port.resources.some(r => c.player.resources[r] >= 3)) return { title: 'Upgrade a starter', text: 'Upgrade a Move or Construct card for a stronger order: pay 2 of your most plentiful resource. Or choose Finish Buy.', anchor: firstShown('#upgrade-market .game-card:not([disabled])') };
       return { title: 'Finish Buy', text: 'Nothing here is affordable yet. Choose Finish Buy. Your resources carry over to the next round.', anchor: turnButton() };
@@ -267,6 +270,19 @@
   }
 
   // Converting into a full resource wastes it: say so before the player does it.
+  // Before any "Pass & buy": leftover level I starters are discarded at round end, so convert them
+  // first, unless every resource they would give is already full (then say so and pass).
+  function convertFirst(c) {
+    if (!c.canConvert || !c.convertible.length) return null;
+    const limits = port.limits();
+    const useful = c.convertible.filter(card => Object.keys(port.cards[card.key].resource || {}).some(r => c.player.resources[r] < limits[r]));
+    const button = firstShown('#convert-all-button:not([hidden])');
+    if (!useful.length) return { title: 'Pass & buy', text: 'Your leftover cards would only give resources you are full of. Choose Pass & buy.', anchor: turnButton(), show: { callouts: [{ el: turnButton(), label: 'Converting now would be wasted', side: 'left' }] } };
+    const card = useful[0], gets = Object.keys(port.cards[card.key].resource)[0];
+    return { title: 'Convert first', text: 'Unused cards are discarded at round end: convert them to resources first.',
+      anchor: button || handCard(card.id), show: { ghost: { from: handCard(card.id), to: firstShown(`#resource-grid .resource-box[data-resource="${gets}"]`) }, callouts: [{ el: firstShown('#hand-row'), label: 'Discarded at round end if unused' }] } };
+  }
+
   function fullWarning(c) {
     const limits = port.limits();
     const wasted = [...new Set(c.convertible.flatMap(card => Object.keys(port.cards[card.key].resource || {}).filter(r => c.player.resources[r] >= limits[r])))];
@@ -449,6 +465,8 @@
   let stage = null, currentShow = null, showKey = '', activeCallout = 0, ghostAnimation = null, ghostKey = '';
   const reducedMotion = () => Boolean(matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   const SVG = 'http://www.w3.org/2000/svg';
+  // Parts of the table that carry text: a note avoids lying over them, preferring empty felt or the map.
+  const TEXTY = '.game-card, .panel, #fleet-glance, .log-panel, .relic-row, .resource-box, #prestige-track, .phase-stepper, .pile-stats > button, #map-legend-corner, .map-tools, .board-heading, .console-tab, #board-primary, #open-trade, #convert-all-button';
   function ensureStage() {
     if (stage) return stage;
     stage = document.createElement('div');
@@ -581,20 +599,39 @@
     const levelY = (b => b.top + b.height / 2)(anchor.getBoundingClientRect());
     const clampX = x => Math.max(margin, Math.min(vw - width - margin, x));
     const clampY = y => Math.max(margin, Math.min(vh - height - margin, y));
-    const options = [
-      { side: 'top', left: clampX(a.left + a.width / 2 - width / 2), top: a.top - gap - height, fits: a.top - gap - height >= margin },
-      { side: 'bottom', left: clampX(a.left + a.width / 2 - width / 2), top: a.bottom + gap, fits: a.bottom + gap + height <= vh - margin },
-      { side: 'right', left: a.right + gap, top: clampY(levelY - height / 2), fits: a.right + gap + width <= vw - margin },
-      { side: 'left', left: a.left - gap - width, top: clampY(levelY - height / 2), fits: a.left - gap - width >= margin },
-    ];
+    // Each side, slid along it at a few offsets, so the note can find empty felt beside its target
+    // (the arrow still aims at the target from wherever the note lands on that side).
+    const ax = aimX(anchor), slides = [0, -0.35, 0.35, -0.7, 0.7];
+    const options = [];
+    for (const k of slides) {
+      options.push(
+        { side: 'top', left: clampX(ax - width / 2 + k * width), top: a.top - gap - height, fits: a.top - gap - height >= margin, slide: Math.abs(k) },
+        { side: 'bottom', left: clampX(ax - width / 2 + k * width), top: a.bottom + gap, fits: a.bottom + gap + height <= vh - margin, slide: Math.abs(k) },
+        { side: 'right', left: a.right + gap, top: clampY(levelY - height / 2 + k * height), fits: a.right + gap + width <= vw - margin, slide: Math.abs(k) },
+        { side: 'left', left: a.left - gap - width, top: clampY(levelY - height / 2 + k * height), fits: a.left - gap - width >= margin, slide: Math.abs(k) });
+    }
+    // A crowded corner (the discard pile, the turn button): the nearest open stretch of the map,
+    // with the separate arrow on the target. Chosen only when every side would cover text.
+    const map = $('.board-map-region')?.getBoundingClientRect();
+    if (map?.width > width && map.height > height) {
+      options.push({ side: 'none', left: Math.max(map.left, Math.min(map.right - width, ax - width / 2)), top: Math.max(map.top, Math.min(map.bottom - height, a.top - gap - height)), fits: true, slide: 1.5 });
+      // While a raised card fills part of the map, any open stretch of it (nearer is better).
+      for (const fx of [0, 0.5, 1]) for (const fy of [0, 0.5, 1]) {
+        const left = map.left + (map.width - width) * fx, top = map.top + (map.height - height) * fy;
+        options.push({ side: 'none', left, top, fits: true, slide: 2 + Math.hypot(left + width / 2 - ax, top + height / 2 - (a.top + a.height / 2)) / 150 });
+      }
+    }
     // Of the sides that fit, prefer the one that hides least of what you may need next: the lit
     // hexes of an aimed order and an open Sector Scan.
     const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...currentAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden]), #resource-grid, #open-trade, #convert-all-button:not([hidden]), #prestige-track')].filter((el, i) => i === 0 || (el !== around && !around.contains(el))).map(el => el.getBoundingClientRect());
     const covered = o => avoid.reduce((sum, r) => sum + Math.max(0, Math.min(o.left + width, r.right) - Math.max(o.left, r.left)) * Math.max(0, Math.min(o.top + height, r.bottom) - Math.max(o.top, r.top)), 0);
+    const raised = $$(':is(#hand-row, .market-cards, .relic-row) .game-card:is(:hover, :focus-within), .toast').map(el => el.getBoundingClientRect());
+    const texty = $$(TEXTY).filter(el => el !== around && !el.contains(around) && !around.contains(el) && shown(el)).map(el => el.getBoundingClientRect());
+    const area = (o, r) => Math.max(0, Math.min(o.left + width, r.right) - Math.max(o.left, r.left)) * Math.max(0, Math.min(o.top + height, r.bottom) - Math.max(o.top, r.top));
     const hexRects = $$('.hex').map(h => h.getBoundingClientRect());
     const overHexes = o => hexRects.reduce((n, r) => n + (r.right > o.left && r.left < o.left + width && r.bottom > o.top && r.top < o.top + height ? 1 : 0), 0);
-    options.forEach(o => { o.cost = Math.round(covered(o) / 100) * 10 + overHexes(o); });
-    options.sort((x, y) => x.cost - y.cost || sides.indexOf(x.side) - sides.indexOf(y.side));
+    options.forEach(o => { o.cost = Math.round(covered(o) / 100) * 10 + raised.reduce((n, r) => n + area(o, r), 0) / 10 + texty.reduce((n, r) => n + area(o, r), 0) / 15 + overHexes(o); });
+    options.sort((x, y) => (x.cost + x.slide * 3) - (y.cost + y.slide * 3) || sides.indexOf(x.side) - sides.indexOf(y.side));
     const choice = options.find(o => o.fits) || { side: 'none', left: clampX(a.left), top: clampY(a.top - height - gap) };
     box.style.left = `${Math.round(choice.left)}px`;
     box.style.top = `${Math.round(choice.top)}px`;
@@ -699,6 +736,9 @@
     document.addEventListener('click', () => setTimeout(schedule, 0), true);
     document.addEventListener('keydown', () => setTimeout(schedule, 0), true);
     document.addEventListener('pointerup', () => setTimeout(schedule, 0), true);
+    for (const type of ['pointerover', 'pointerout', 'focusin']) document.addEventListener(type, event => {
+      if (coach && !coach.hidden && event.target.closest?.('.game-card')) requestAnimationFrame(() => position(coach, currentAnchor && shown(currentAnchor) ? currentAnchor : null));
+    }, true);
     for (const dialog of $$('dialog')) dialog.addEventListener('close', () => setTimeout(schedule, 0));
     addEventListener('resize', schedule);
     // Cards animate between piles after a render, and a raised hand card moves: follow the anchor,
