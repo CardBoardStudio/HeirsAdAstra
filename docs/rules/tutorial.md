@@ -6,16 +6,18 @@ Status: **implemented for 38.43** (`prototypes/galactic-reach/tutorial.js`, `gui
 
 **Guidance** runs in every solo and shared game unless the player switches it off (Guidance in the game menu; stored in `localStorage` `galactic-reach-guide-v1`). On each of your turns it shows one note about one element: the card to use, the lit hex, the affordable supply card, or Pass & buy / Finish Buy. That element gets a cyan ring, a gentle bounce (a still glow for reduced motion) and an arrow; a destination the note names (the Data hex, the nearest free world) gets a dashed ring. Notes call cards cards ("Construct card") and say what to do this turn: cards left in hand are discarded at Cleanup, only resources carry over. The opening it suggests is a Data Harvester, then a Shipyard. The first time a mechanic matters (first Operations turn, Buy turn, Shipyard, Colonize or Probe card, located relic, full resource, Capacity Module, battle, half the Prestige goal), it explains that rule once, with a rulebook link, and remembers that it did. It reads the table through `guidePort()` in `app.js`: the same questions the hand, Sector Scan and market ask (`availableContextOrders`, `canAfford`, `purchaseCost`, …). It never changes the game.
 
-**Learn to play** (`index.html?tutorial=1`) is a seeded game in which the three rivals pass every turn. It drives the same coach mark through fixed lessons. Each step names its anchor element, its rulebook section and a predicate on the game state. The tutorial advances only when the player's own action has made that predicate true, never on a Next click. Alternative solutions count when they meet the objective (for example, dragging the card instead of choosing Use order).
+**Learn to play** (`index.html?tutorial=1`) is a seeded game in which the three rivals pass every turn. It drives the same coach mark through fixed lessons. Each step names its anchor element, its rulebook section and either a predicate on the game state or `info: true`. A step that teaches an action advances only when the player's own action has made its predicate true (alternative solutions count, for example dragging the card instead of choosing Use order); its Next stays disabled until then. A reading step (the score track, your home world, the new round, how to win) asks for no click on the table and goes on with **Next**.
+
+**Show, don't tell.** Each step's text is one or two short sentences. The rest is shown on the real table by the stage layer in `guide.js`: a spotlight dims everything but the parts the step is about, callout labels name those parts one at a time (the mat's Now row, Rate row and limit pip; the Colony hex that produces), and a ghost card glides along a dashed path from the marked card to where it should be dropped. Hexes are ringed with their own hexagonal ring. With reduced motion the ghost, pulses and bounce stop; the dashed path, rings and labels stay. Own-game guidance uses the same callouts and ghost drag, without the spotlight.
 
 ## Lessons
 
 | Lesson | The player does | Rulebook | Advances when |
 | --- | --- | --- | --- |
-| Read the table | Opens their score breakdown, selects their Colony, closes the Sector Scan | `#shared-board`, `#victory` | Breakdown opened and closed; Sector Scan opened and closed |
+| Read the table | Reads the score track and their home world (spotlit and labelled) | `#shared-board`, `#victory` | Next |
 | Resources | Converts a Construct, then a Move | `#player-mat`, `#resources` | Matter, then Energy, rose |
 | Orders | Uses a Construct card's order on the Data hex next to the Colony and builds a Data Harvester (2 Data a round: Explorers, excavation, upgrades) | `#orders`, `#building` | A Harvester exists |
-| The round | Passes, finishes Buy, inspects the deck after Cleanup & draw; is told that unused cards are discarded and resources carry over | `#round`, `#buy`, `#cleanup-draw`, `#deck-inspection` | Passed; the round advanced; deck window opened and closed |
+| The round | Passes and finishes Buy; then reads the new round (new hand, deck, discard and production labelled): unused cards were discarded, resources carried over | `#round`, `#buy`, `#cleanup-draw`, `#deck-inspection` | Passed; the round advanced; Next |
 | Ships | Builds a Shipyard, then commissions a Settler and an Explorer (one Construct card each, one per turn) | `#building` | A Shipyard, then each unit, exists |
 | Movement | Splits a move (Fleet without the Settler), then moves the Explorer alone; a Fleet is supplied, with its price | `#split-moves`, `#movement` | The Fleet, then the Explorer, left the Shipyard |
 | Relics | Probes, flies to the ◈, excavates and chooses a relic card | `#movement`, `#excavation`, `#alien-relics` | A relic is located, reached, then excavated |
@@ -24,7 +26,7 @@ Status: **implemented for 38.43** (`prototypes/galactic-reach/tutorial.js`, `gui
 | Your Buy turn | Passes; buys a market card; upgrades a starter; buys a Capacity Module; trashes a card; finishes Buy | `#buy`, `#market-tiers`, `#capacity-module` | Each purchase, upgrade or trash is seen; the round advanced |
 | Capacity | Plays the Capacity Module and splits its 4 points | `#storage-allocation` | The Storage pile holds a module |
 | Combat | Moves the Fleet onto a stray rival Explorer and picks tactics | `#combat`, `#combat-tactics` | A decisive victory is recorded and its report closed |
-| Winning | Opens the score breakdown | `#victory`, `#victory-target` | Breakdown opened and closed |
+| Winning | Reads their score and the goal on the score track | `#victory`, `#victory-target` | Next |
 
 ## Staged positions
 
@@ -37,7 +39,7 @@ Staging edits the tutorial's own saved state only. The tutorial saves under `gal
 
 ## Controls
 
-Back reviews earlier steps (with Next to return), Skip lesson stages the next lesson's position, Exit returns to the normal game, and the menu's Restart tutorial deals the practice game again. Inside a battle or a choice window, the note sits at the top of that window. If another window is open, the note says to close it first.
+Every note has Back, Next (primary) and a quieter Exit tutorial, with Skip lesson as a small link. Back reviews earlier steps (Next returns), Skip lesson stages the next lesson's position, Exit returns to the normal game, and the menu's Restart tutorial deals the practice game again. Inside a battle or a choice window, the note sits at the top of that window. If another window is open, the note says to close it first.
 
 ## Keeping it true
 

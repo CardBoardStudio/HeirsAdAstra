@@ -77,48 +77,71 @@
   const firstShown = (...selectors) => selectors.flatMap(s => typeof s === 'string' ? $$(s) : [s]).find(shown) || null;
 
   // ---- First-time explanations: each shown once, remembered in this browser. ----
+  // One short line each, shown at the moment the thing happens and anchored to what it is about.
+  const anyHand = c => c.player.hand.find(card => port.cards[card.key].order === 'colonize');
   const EXPLAINERS = [
-    { id: 'welcome', when: c => c.ops && c.state.round === 1 && c.state.turnStage === 'prep',
-      title: 'Welcome, commander', rule: 'start',
-      text: () => `Race to ${port.victoryTarget()} Prestige (★). Each turn you take one action: play a card's order, or pass. Your Colony is worth 3★. More Colonies, relics and battles score more. Point at a card to raise it and see its buttons, or drag it where it should go. These notes point at what you can do; turn them off in the menu. New here? Learn to play teaches the game step by step.`,
-      anchor: () => firstShown('#hand-row'), buttons: [{ action: 'learn', label: walkthroughInProgress() ? 'Continue Learn to play' : 'Learn to play', primary: true }] },
-    { id: 'hand-lifetime', when: c => c.ops && prefs.seen.welcome, title: 'Your hand lasts one round', rule: 'cleanup-draw',
-      text: () => 'Use or convert your cards this round. At the end of every round (Cleanup & draw) every card left in your hand is discarded, and you draw five new cards. Resources carry over to the next round, up to your limits; cards do not.',
-      anchor: () => firstShown('#hand-row') },
+    { id: 'welcome', when: c => c.ops && c.state.round === 1 && c.state.turnStage === 'prep', title: 'Welcome, commander', rule: 'start',
+      text: () => `Race to ${port.victoryTarget()}★. Each turn, play one card's order or pass.`,
+      anchor: () => firstShown('[data-score-player="0"]'), show: () => ({ callouts: [{ el: firstShown('[data-score-player="0"]'), label: 'You: 3★ from your Colony', side: 'right' }] }),
+      buttons: [{ action: 'learn', label: walkthroughInProgress() ? 'Continue Learn to play' : 'Learn to play', primary: true }] },
+    { id: 'hand-lifetime', when: c => c.ops && prefs.seen.welcome, title: 'This round’s hand', rule: 'cleanup-draw',
+      text: () => 'Cards you don’t use this round are discarded at its end; resources stay.',
+      anchor: () => firstShown('#hand-row'), show: () => ({ callouts: [{ el: firstShown('#hand-row'), label: 'Use or convert these this round' }] }) },
+    // Cleanup & draw, the moment a new round's hand has been dealt.
+    { id: 'cleanup', when: c => c.ops && c.state.round >= 2, title: 'A new hand', rule: 'cleanup-draw',
+      text: () => 'Last round’s cards went to your discard pile; you drew five new ones.',
+      anchor: () => firstShown('#discard-button'), show: () => ({ ghost: { from: firstShown('#hand-row'), to: firstShown('#discard-button') }, callouts: [{ el: firstShown('#discard-button'), label: 'Last round’s cards', side: 'left' }, { el: firstShown('#hand-row'), label: 'Five new cards' }] }) },
+    // Production, the moment the mat has filled: the hexes that paid flash.
+    { id: 'production', when: c => c.ops && c.state.round >= 2 && prefs.seen.cleanup, title: 'Production', rule: 'resources',
+      text: () => 'Each hex you own paid out: your mat filled up.',
+      anchor: () => firstShown('#resource-grid'), show: c => ({ callouts: [{ el: firstShown('#resource-grid'), label: 'New resources', side: 'left' }, ...producers(c).slice(0, 3).map(coord => ({ el: hex(coord), label: `+${RESOURCE_NAMES[c.state.planets[coord].type]}` }))] }) },
+    // Reshuffle, only when the deck has actually run out and the discard was shuffled in.
+    { id: 'reshuffle', when: c => c.ops && reshuffled, title: 'Reshuffle', rule: 'round',
+      text: () => 'Your deck ran out, so your discard pile was shuffled into a new deck.',
+      anchor: () => firstShown('#deck-button'), show: () => ({ ghost: { from: firstShown('#discard-button'), to: firstShown('#deck-button') }, callouts: [{ el: firstShown('#deck-button'), label: 'New deck' }] }) },
     { id: 'buy-turn', when: c => c.buy, title: 'Your Buy turn', rule: 'buy',
-      text: () => 'Passing ended your Operations for this round. Now buy any supply cards (the cards on the right) you can afford: those are outlined in gold. You can also upgrade a starter, buy a Capacity Module card or trash a card. Bought cards go to your discard pile. Finish Buy when you are done.',
-      anchor: () => turnButton() },
-    { id: 'cleanup-draw', when: c => c.state.round === 2 && c.ops, title: 'A new round', rule: 'round',
-      text: () => 'At the end of every round, everyone discards what is left and draws five new cards (Cleanup & draw). Then each faction collects production: one resource for each hex it owns. When your deck runs out, your discard pile is shuffled to make a new deck.',
-      anchor: () => firstShown('#phase-stepper') },
+      text: () => 'Gold-outlined supply cards are ones you can afford now.',
+      anchor: () => firstShown('[data-buy-market]:not([disabled])', '#market-row'), show: () => ({ callouts: [{ el: firstShown('#market-row'), label: 'The market', side: 'left' }] }) },
+    { id: 'upgrade-offer', when: c => c.buy && c.upgrades.length > 0, title: 'Upgrades', rule: 'buy',
+      text: () => 'Pay 2 of one resource to make a Move or Construct card stronger.',
+      anchor: () => firstShown('[data-upgrade-offer]:not([disabled])'), show: () => ({ callouts: [{ el: firstShown('[data-upgrade-offer]:not([disabled])'), label: 'Stronger order' }] }) },
+    { id: 'capacity-offer', when: c => c.buy && port.canBuyCapacity(), title: 'Capacity Module', rule: 'capacity-module',
+      text: () => 'A Capacity Module card raises your resource limits once you play it.',
+      anchor: () => firstShown('[data-capacity-offer]:not([disabled])'), show: () => ({ callouts: [{ el: firstShown('#resource-grid .mat-pips.now i.cap'), label: 'Your limit', side: 'left' }] }) },
     { id: 'shipyard', when: c => c.ops && c.shipyards.length > 0, title: 'Your Shipyard', rule: 'building',
-      text: () => 'When a Construct card is in your hand, use its order on your Shipyard (that turn) to commission a unit. A Settler (1 Matter, 1 Energy, 1 Biomass) founds Colonies, worth 3★ each. An Explorer (1 Energy, 2 Data) finds relics, worth 2★ each. A Fleet (2 Matter, 1 Energy, 1 Biomass) fights. Settlers and Explorers bring a free order card. Like every new card it goes to your discard pile, and reaches your hand after your deck runs out and the discard is shuffled in.',
-      anchor: c => hex(c.shipyards[0]) },
+      text: () => 'Use a Construct card’s order here to commission ships.',
+      anchor: c => hex(c.shipyards[0]), show: c => ({ callouts: [{ el: hex(c.shipyards[0]), label: 'Your Shipyard' }] }) },
     { id: 'settler', when: c => c.ops && c.myUnits.settler.length > 0, title: 'Your Settler', rule: 'orders',
-      text: c => `A Settler founds a Colony on the center hex of a world nobody holds (the middle of its seven hexes).${(g => g ? ` The nearest is ${g.name}, ${g.distance} hex${g.distance === 1 ? '' : 'es'} away (dashed ring on the map).` : '')(nearestFreeWorld(c, c.myUnits.settler))} Move it there with Move cards, 1 hex per card. Then use a Colonize card’s order on it: your Settler brought one, which went to your discard pile and reaches your hand after your deck runs out and the discard is shuffled in.`,
-      anchor: c => hex(c.myUnits.settler[0]), marks: c => { const g = nearestFreeWorld(c, c.myUnits.settler); return g ? [hex(g.center)] : []; } },
-    { id: 'colonize-card', when: c => c.ops && c.player.hand.some(card => port.cards[card.key].order === 'colonize'), title: 'Colonize', rule: 'orders',
-      text: () => 'Move a Settler onto the center hex of a neutral world, then use this Colonize card’s order there and pay 2 Biomass. The new Colony scores 3★. The Settler and this card are used up. Settlers move 1 hex per Move card. Biomass comes from Biomass hexes you own, or from the bank (4 of another resource for 1).',
-      anchor: c => handCard(c.player.hand.find(card => port.cards[card.key].order === 'colonize').id) },
-    { id: 'probe-card', when: c => c.ops && c.player.hand.some(card => card.key === 'probe'), title: 'Probe / Excavate', rule: 'movement',
-      text: () => `Probe from your Explorer, anywhere, to locate the nearest hidden relic (◈). Move the Explorer onto that hex, then use the same card again and choose Excavate. It costs ${costText(port.excavationCost)}, scores 2★ and gives you a relic card.`,
+      text: c => { const g = nearestFreeWorld(c, c.myUnits.settler); return g ? `It founds a Colony on a world’s center: ${g.name} is nearest, ${g.distance} hexes away.` : 'It founds a Colony on the center hex of a world nobody holds.'; },
+      anchor: c => hex(c.myUnits.settler[0]), marks: c => { const g = nearestFreeWorld(c, c.myUnits.settler); return g ? [hex(g.center)] : []; },
+      show: c => { const g = nearestFreeWorld(c, c.myUnits.settler); return { callouts: [{ el: hex(c.myUnits.settler[0]), label: 'Your Settler' }, ...(g ? [{ el: hex(g.center), label: `${g.name}’s center` }] : [])] }; } },
+    { id: 'colonize-card', when: c => c.ops && Boolean(anyHand(c)), title: 'Colonize card', rule: 'orders',
+      text: () => 'Play it on a Settler standing on a world’s center: 2 Biomass, +3★.',
+      anchor: c => handCard(anyHand(c).id) },
+    { id: 'probe-card', when: c => c.ops && c.player.hand.some(card => card.key === 'probe'), title: 'Probe / Excavate card', rule: 'movement',
+      text: () => 'From your Explorer, Probe finds the nearest hidden relic (◈).',
       anchor: c => handCard(c.player.hand.find(card => card.key === 'probe').id) },
-    { id: 'relic-located', when: c => Object.values(c.state.planets).some(p => p.special === 'relic' && !p.relicClaimed && port.relicKnown(c.state.clusters[p.cluster])),
-      title: 'Relic located', rule: 'building',
-      text: () => `The ◈ marks a relic only you have located. Move an Explorer onto that exact hex, then use your Probe / Excavate card and choose Excavate (${costText(port.excavationCost)}): you choose one of the three face-up relic cards and gain 2★.`,
+    { id: 'relic-located', when: c => Object.values(c.state.planets).some(p => p.special === 'relic' && !p.relicClaimed && port.relicKnown(c.state.clusters[p.cluster])), title: 'Relic located', rule: 'excavation',
+      text: () => `On the ◈, the same card excavates it: ${costText(port.excavationCost)}, +2★.`,
       anchor: c => { const [coord] = Object.entries(c.state.planets).find(([, p]) => p.special === 'relic' && !p.relicClaimed && port.relicKnown(c.state.clusters[p.cluster])) || []; return coord && hex(coord); } },
     { id: 'capacity-full', when: c => c.myTurn && port.resources.some(r => c.player.resources[r] >= port.limits()[r]), title: 'A full resource', rule: 'resources',
-      text: () => { const r = port.resources.find(x => port.state.players[port.me].resources[x] >= port.limits()[x]); return `Your ${RESOURCE_NAMES[r]} is at its limit, shown by the gold pip on your mat. Anything above a limit is lost straight away. Spend it, trade 4 of it for 1 of another at the bank (drag from its Now row), or raise your limits with a Capacity Module.`; },
-      anchor: () => firstShown('#resource-grid') },
-    { id: 'capacity-module', when: c => c.ops && c.player.hand.some(card => card.key === 'capacityModule'), title: 'Capacity Module', rule: 'resources',
-      text: () => 'Play it as your action to add 4 points to your resource limits, split however you like. It then moves to your Storage pile for good. Most market cards cost more than 4 of one resource, so you need raised limits to buy them.',
+      text: () => { const r = port.resources.find(x => port.state.players[port.me].resources[x] >= port.limits()[x]); return `Your ${RESOURCE_NAMES[r]} is at its limit: any more is lost.`; },
+      anchor: () => { const r = port.resources.find(x => port.state.players[port.me].resources[x] >= port.limits()[x]); return firstShown(`#resource-grid .resource-box[data-resource="${r}"]`); },
+      show: () => { const r = port.resources.find(x => port.state.players[port.me].resources[x] >= port.limits()[x]); return { callouts: [{ el: firstShown(`#resource-grid .resource-box[data-resource="${r}"] i.cap`), label: 'Limit', side: 'left' }] }; } },
+    { id: 'capacity-module', when: c => c.ops && c.player.hand.some(card => card.key === 'capacityModule'), title: 'Capacity Module card', rule: 'storage-allocation',
+      text: () => 'Play it to add 4 points to your limits, for good.',
       anchor: c => handCard(c.player.hand.find(card => card.key === 'capacityModule').id) },
     { id: 'combat', when: c => Boolean(c.state.pendingCombat), inDialog: '#combat-dialog', title: 'Battle', rule: 'combat',
-      text: () => 'Each side secretly picks one tactic per volley, for up to three volleys. Concentrated Fire adds 1 hit. Defensive Screen prevents 2 hits. Each tactic can be used once per battle. Destroy every enemy unit for a decisive victory, worth 2★.' },
+      text: () => 'Each volley, pick one tactic: Fire adds a hit, Screen blocks 2.' },
     { id: 'halfway', when: c => port.prestige(c.me) >= port.victoryTarget() / 2, title: 'Halfway there', rule: 'victory',
-      text: () => `You have ${port.prestige(port.me)}★. The game ends when a round finishes with someone at ${port.victoryTarget()} or more, and the highest total wins. Select your marker on the score track for your breakdown.`,
-      anchor: () => firstShown('#prestige-track') },
+      text: () => `You have ${port.prestige(port.me)}★; the goal is ${port.victoryTarget()}★ at a round’s end.`,
+      anchor: () => firstShown('[data-score-player="0"]') },
   ];
+
+  // Your hexes that produce, for the Production moment.
+  function producers(c) {
+    return Object.entries(c.state.planets).filter(([, p]) => p.owner === c.me && port.resources.includes(p.type) && (p.hasColony || p.upgrade)).map(([k]) => k);
+  }
 
   // ---- The per-turn hint: the one most useful next step. ----
   function hint(c) {
@@ -142,49 +165,74 @@
       if (!c.shipyards.length) goals.push({ kind: 'starbase', name: 'Shipyard', button: 'Build Shipyard', cost: port.structures.starbase.cost, site: null,
         why: 'You need a Shipyard to commission ships: Settlers found Colonies (3★ each).' });
       const goal = goals[0];
+      const matRow = r => firstShown(`#resource-grid .resource-box[data-resource="${r}"]`);
       if (goal) {
         const construct = card('construct');
-        const where = goal.site ? 'the Data hex next to your Colony (dashed ring)' : 'an empty hex next to your Colony';
-        const marks = goal.site ? [hex(goal.site)] : [];
+        const siteHex = goal.site ? hex(goal.site) : null;
+        const show = target => ({ ghost: target, callouts: siteHex ? [{ el: siteHex, label: `${goal.name} here` }] : [] });
         if (construct && port.canAfford(goal.cost))
-          return { title: `Build a ${goal.name}`, text: `This turn: pick up this Construct card and drop it on ${where} (the hexes light up while you hold it), or point at it and choose Use order. Then choose ${goal.button}. It costs ${costText(goal.cost)}. ${goal.why}`, anchor: handCard(construct.card.id), marks, avoid: marks };
+          return { title: `Build a ${goal.name}`, text: `Drag this Construct card onto ${goal.site ? 'the ringed Data hex' : 'an empty hex next to your Colony'}, then choose ${goal.button}. ${goal.why}`,
+            anchor: handCard(construct.card.id), marks: siteHex ? [siteHex] : [], avoid: siteHex ? [siteHex] : [], show: show(siteHex ? { from: handCard(construct.card.id), to: siteHex } : null) };
         const short = Object.entries(goal.cost).filter(([r, n]) => c.player.resources[r] < n).map(([r]) => r);
-        const convert = c.canConvert && c.convertible.find(cardItem => short.some(r => (port.cards[cardItem.key].resource || {})[r]));
-        if (convert && construct && (convert.key !== 'construct' || c.player.hand.filter(x => x.key === 'construct').length >= 2))
-          return { title: `First goal: a ${goal.name}`, text: `A ${goal.name} costs ${costText(goal.cost)}; you are short of ${short.map(r => RESOURCE_NAMES[r]).join(' and ')}. This turn: drag this one ${port.cards[convert.key].name} card (marked with the arrow) onto your mat to convert it into ${costText(port.cards[convert.key].resource)}. Then use one of your other Construct cards, also this turn, to build the ${goal.name} on ${where}. ${goal.why}`, anchor: handCard(convert.id), marks, avoid: marks };
+        // Only suggest converting when it really pays for the build this turn (keeping a Construct card to build with).
+        const spare = [...c.convertible]; const keep = spare.findIndex(x => x.key === 'construct'); if (keep >= 0) spare.splice(keep, 1);
+        const gains = {}; for (const x of (c.canConvert ? spare : [])) for (const [r, n] of Object.entries(port.cards[x.key].resource || {})) gains[r] = (gains[r] || 0) + n;
+        const reachable = Object.entries(goal.cost).every(([r, n]) => c.player.resources[r] + (gains[r] || 0) >= n);
+        const convert = reachable && construct && spare.find(x => short.some(r => (port.cards[x.key].resource || {})[r]));
+        if (convert) {
+          const gets = Object.keys(port.cards[convert.key].resource)[0];
+          return { title: `First goal: a ${goal.name}`, text: `Short of ${short.map(r => RESOURCE_NAMES[r]).join(' and ')}. Drag this ${port.cards[convert.key].name} card onto your mat for ${costText(port.cards[convert.key].resource)}, then build with a Construct card this turn.`,
+            anchor: handCard(convert.id), marks: siteHex ? [siteHex] : [], avoid: siteHex ? [siteHex] : [], show: show({ from: handCard(convert.id), to: matRow(gets) }) };
+        }
+        if (!reachable) return { title: `Next: a ${goal.name}`, text: `A ${goal.name} costs ${costText(goal.cost)}: more than you can raise this turn. Production adds resources each round; use this round's cards on other orders, or Pass & buy.`,
+          anchor: turnButton(), marks: siteHex ? [siteHex] : [], show: { callouts: [...short.map(r => ({ el: matRow(r), label: `Need more ${RESOURCE_NAMES[r]}`, side: 'left' })), ...(siteHex ? [{ el: siteHex, label: `${goal.name} here` }] : [])] } };
       }
       const colonize = card('colonize');
       if (colonize) {
         const short = c.player.resources.biomass < 2;
-        return { title: 'Found a Colony', text: short ? `Your Settler is on a world center. Founding the Colony costs 2 Biomass and you have ${c.player.resources.biomass}. ${SOURCES.biomass}` : 'Your Settler is on a world center. Drag this Colonize card onto it and choose Found Colony (2 Biomass) to found a Colony (+3★).', anchor: short ? firstShown('#resource-grid') : handCard(colonize.card.id) };
+        const target = colonize.targets[0] && hex(colonize.targets[0]);
+        return short
+          ? { title: 'Found a Colony', text: `Your Settler is on a world center. A Colony costs 2 Biomass; you have ${c.player.resources.biomass}. ${SOURCES.biomass}`, anchor: matRow('biomass'), show: { callouts: [{ el: matRow('biomass'), label: 'Need 2 Biomass', side: 'left' }] } }
+          : { title: 'Found a Colony', text: 'Drag this Colonize card onto your Settler and choose Found Colony (2 Biomass, +3★).', anchor: handCard(colonize.card.id), show: { ghost: target ? { from: handCard(colonize.card.id), to: target } : null, callouts: target ? [{ el: target, label: 'Your Settler' }] : [] } };
       }
       const excavate = c.playable.find(p => p.kind === 'excavate');
-      if (excavate) return { title: 'Excavate the relic', text: `Your Explorer is on a located relic. Drag this Probe / Excavate card onto it and choose Excavate (${costText(port.excavationCost)}, +2★).`, anchor: handCard(excavate.card.id) };
+      if (excavate) { const at = hex(excavate.targets[0]); return { title: 'Excavate the relic', text: `Drag this Probe / Excavate card onto your Explorer and choose Excavate (${costText(port.excavationCost)}, +2★).`, anchor: handCard(excavate.card.id), show: { ghost: { from: handCard(excavate.card.id), to: at }, callouts: [{ el: at, label: 'Explorer on the ◈' }] } }; }
       const special = c.playable.find(p => p.kind === 'special');
-      if (special) return { title: `Play ${special.def.name}`, text: `${special.def.name} needs no hex: choose Use order, or drag it onto the map.`, anchor: handCard(special.card.id) };
+      if (special) return { title: `Play ${special.def.name}`, text: `This card needs no hex: point at it and choose Use order.`, anchor: handCard(special.card.id) };
       const construct = card('construct');
-      if (construct && c.shipyards.length && !c.myUnits.settler.length && !c.myUnits.explorer.length) {
-        const settler = port.canAfford(port.ships.settler.cost), explorer = port.canAfford(port.ships.explorer.cost);
-        if (settler || explorer) return { title: 'Commission a unit', text: `Drag this Construct card onto your Shipyard and choose ${settler ? 'a Settler (founds Colonies, 3★ each)' : ''}${settler && explorer ? ' or ' : ''}${explorer ? 'an Explorer (finds relics, 2★ each)' : ''}.`, anchor: handCard(construct.card.id) };
+      const yardHex = c.shipyards[0] && hex(c.shipyards[0]);
+      if (construct && c.shipyards.length && !c.myUnits.settler.length) {
+        const settler = port.canAfford(port.ships.settler.cost), explorer = !c.myUnits.explorer.length && port.canAfford(port.ships.explorer.cost);
+        if (settler || explorer) return { title: settler ? 'Commission a Settler' : 'Commission an Explorer', text: `Drag this Construct card onto your Shipyard and choose ${settler ? 'Settler: it founds Colonies (3★ each)' : 'Explorer: it finds relics (2★ each)'}.`,
+          anchor: handCard(construct.card.id), show: { ghost: { from: handCard(construct.card.id), to: yardHex }, callouts: [{ el: yardHex, label: 'Your Shipyard' }] } };
         const short = Object.entries(port.ships.settler.cost).filter(([r, n]) => c.player.resources[r] < n).map(([r]) => r);
-        return { title: 'Next: a Settler', text: `A Settler costs ${costText(port.ships.settler.cost)}; this turn you are short of ${short.map(r => RESOURCE_NAMES[r]).join(' and ')}. ${short.map(r => SOURCES[r]).join(' ')} Resources carry over to the next round, cards do not: every card left in your hand is discarded at Cleanup. So use this round's cards now, by converting them or using their orders, and commission the Settler with a Construct card from a later hand once you can pay.${fullWarning(c)}`, anchor: (c.canConvert ? handCard(c.convertible.find(card => short.some(r => (port.cards[card.key].resource || {})[r]))?.id || '') : null) || firstShown(`#resource-grid .resource-box[data-resource="${short[0]}"]`) };
+        const conv = c.canConvert ? c.convertible.find(card => short.some(r => (port.cards[card.key].resource || {})[r])) : null;
+        return { title: 'Next: a Settler', text: `A Settler costs ${costText(port.ships.settler.cost)}; short of ${short.map(r => RESOURCE_NAMES[r]).join(' and ')}. ${short.map(r => SOURCES[r]).join(' ')} Resources carry over; cards left in hand are discarded at round end, so use them now.${fullWarning(c)}`,
+          anchor: (conv ? handCard(conv.id) : null) || matRow(short[0]), show: { ghost: conv ? { from: handCard(conv.id), to: matRow(Object.keys(port.cards[conv.key].resource)[0]) } : null, callouts: short.map(r => ({ el: matRow(r), label: `Need ${RESOURCE_NAMES[r]}`, side: 'left' })) } };
       }
       // A Settler waiting on a free world's center, but its Colonize card has not come round yet.
       const waiting = c.myUnits.settler.find(coord => port.ordersAt(coord).length === 0 && c.state.planets[coord] && c.state.clusters[c.state.planets[coord].cluster]?.center === coord && c.state.planets[coord].owner === null);
       if (waiting && !c.player.hand.some(card => port.cards[card.key].order === 'colonize'))
-        return { title: 'Waiting for Colonize', text: 'Your Settler is on a free world’s center. Found the Colony with a Colonize card: it is in your deck or discard pile, and reaches your hand after a reshuffle. Keep the Settler there; meanwhile use your other cards, or Pass & buy.', anchor: hex(waiting) };
-      const probe = c.playable.find(p => p.kind === 'probe');
-      if (probe) return { title: 'Probe for a relic', text: 'Drag this Probe / Excavate card onto your Explorer and choose Probe to locate the nearest relic.', anchor: handCard(probe.card.id) };
+        return { title: 'Waiting for Colonize', text: 'Your Settler is on a free world center. Its Colonize card comes back in a later hand; leave the Settler there and use your other cards.', anchor: hex(waiting), show: { callouts: [{ el: hex(waiting), label: 'Settler: waiting here' }, { el: firstShown('#discard-button'), label: 'Colonize card: in here', side: 'left' }] } };
+      // A relic already located: fly there rather than Probe again.
+      const relicCoord = Object.keys(c.state.planets).find(k => { const p = c.state.planets[k]; return p.special === 'relic' && !p.relicClaimed && port.relicKnown(c.state.clusters[p.cluster]); });
       const move = card('move');
+      if (relicCoord && c.myUnits.explorer.length && move && !c.myUnits.explorer.includes(relicCoord)) {
+        const from = hex(c.myUnits.explorer[0]);
+        return { title: 'Fly to the relic', text: 'Drag this Move card onto your Explorer and fly toward the ◈ (3 hexes per card).', anchor: handCard(move.card.id), marks: [hex(relicCoord)], show: { ghost: { from: handCard(move.card.id), to: from }, callouts: [{ el: hex(relicCoord), label: '◈ the relic' }, { el: from, label: 'Your Explorer' }] } };
+      }
+      const probe = c.playable.find(p => p.kind === 'probe');
+      if (probe && !relicCoord) { const at = hex(probe.targets[0]); return { title: 'Probe for a relic', text: 'Drag this Probe / Excavate card onto your Explorer and choose Probe: it finds the nearest relic.', anchor: handCard(probe.card.id), show: { ghost: { from: handCard(probe.card.id), to: at }, callouts: [{ el: at, label: 'Your Explorer' }] } }; }
       if (move && c.myUnits.settler.length) {
-        // Name the goal: the nearest free world center, and how many hexes (Move cards) away it is.
+        // Name the goal: the nearest free world center, and how far it is.
         const goal = nearestFreeWorld(c, c.myUnits.settler);
-        const where = goal ? ` The nearest free world center is ${goal.name}, ${goal.distance} hex${goal.distance === 1 ? '' : 'es'} from your Settler (marked on the map): about ${goal.distance} Move card${goal.distance === 1 ? '' : 's'}.` : ' Head for the center of a world nobody holds to found a Colony there.';
-        return { title: 'Move your Settler', text: `Drag this Move card onto your Settler (a lit hex), choose who goes, then choose where. Settlers move 1 hex per card, Fleets 2, Explorers 3.${where}`, anchor: handCard(move.card.id), avoid: goal ? [hex(goal.center)] : [], marks: goal ? [hex(goal.center)] : [] };
+        const from = hex(c.myUnits.settler[0]);
+        return { title: 'Move your Settler', text: `Drag this Move card onto your Settler and step toward ${goal ? `${goal.name}’s center (${goal.distance} hex${goal.distance === 1 ? '' : 'es'} away, dashed ring)` : 'a world nobody holds'}. Settlers move 1 hex per card, so this takes a few rounds.`,
+          anchor: handCard(move.card.id), avoid: goal ? [hex(goal.center)] : [], marks: goal ? [hex(goal.center)] : [], show: { ghost: { from: handCard(move.card.id), to: from }, callouts: [{ el: from, label: 'Your Settler' }, ...(goal ? [{ el: hex(goal.center), label: `${goal.name}: found a Colony here` }] : [])] } };
       }
       if (c.playable.length) {
         const first = c.playable[0];
-        return { title: 'Your turn', text: `Cards outlined in gold have an order you can use now; this one is a good start. Drag a card onto a lit hex, or point at it and choose Use order. You can also convert level I starters into resources. When you are done, choose Pass & buy.${fullWarning(c)}`, anchor: handCard(first.card.id) };
+        return { title: 'Your turn', text: `Gold-outlined cards have an order you can use now; this one is a good start. Drag it onto a lit hex, or point at it and choose Use order.${fullWarning(c)}`, anchor: handCard(first.card.id) };
       }
       return { title: 'Nothing left to play', text: c.canConvert ? `No order can be used now. Convert spare starters if they help you buy something, then choose Pass & buy. Passing ends your Operations for this round and starts your Buy turn; cards left in your hand are discarded when the round ends.${fullWarning(c)}` : 'No order can be used now. Choose Pass & buy: it ends your Operations for this round and starts your Buy turn.', anchor: turnButton() };
     }
@@ -192,7 +240,7 @@
       const market = c.marketBuys[0];
       if (market) return { title: 'Buy cards', text: 'Gold-outlined supply cards are ones you can afford. Choose one to buy it. It goes to your discard pile. Finish Buy when you are done.', anchor: firstShown(`[data-buy-market][data-card-id="${CSS.escape(market.id)}"]`) };
       if (port.canBuyCapacity()) return { title: 'Raise your limits', text: `A Capacity Module costs ${port.capacityCost()} of each resource. It lets you hold enough to buy bigger cards later. Or choose Finish Buy.`, anchor: firstShown('[data-capacity-offer]:not([disabled])') };
-      if (c.upgrades.length) return { title: 'Upgrade a starter', text: 'Upgrade a Move or Construct card in the Upgrades rows: pay 2 of one resource for level II (a stronger order, but no more converting). Or choose Finish Buy.', anchor: firstShown('#upgrade-market .game-card:not([disabled])') };
+      if (c.upgrades.length && port.resources.some(r => c.player.resources[r] >= 3)) return { title: 'Upgrade a starter', text: 'Upgrade a Move or Construct card for a stronger order: pay 2 of your most plentiful resource. Or choose Finish Buy.', anchor: firstShown('#upgrade-market .game-card:not([disabled])') };
       return { title: 'Finish Buy', text: 'Nothing here is affordable yet. Choose Finish Buy. Your resources carry over to the next round.', anchor: turnButton() };
     }
     if (!c.myTurn && s.winner === null && ['operations', 'buy'].includes(s.phase)) return { title: 'Rivals are acting', text: `${s.players[s.activePlayer].name} is taking its ${s.phase === 'buy' ? 'Buy' : 'Operations'} turn. Your turn comes round again shortly.${s.phase === 'operations' && !c.player.passed ? ' Meanwhile you can still convert starters or trade with the bank.' : ''}`, anchor: null, quiet: true };
@@ -311,7 +359,7 @@
       delete box.dataset.full; delete box.dataset.fit;
       const buttons = [...(tip.buttons || []), { action: 'more', label: 'More' }];
       const bar = tip.progress ? `<ol class="gr-coach-progress" aria-hidden="true">${Array.from({ length: tip.progress.lessons }, (_, i) => `<li class="${i < tip.progress.finishedLessons ? 'done' : ''}${i === tip.progress.current ? ' current' : ''}"></li>`).join('')}</ol>` : '';
-      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}" data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.aria ? ` aria-label="${esc(b.aria)}"` : ''}${b.action === 'more' ? ' hidden' : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
+      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}${b.quiet ? ' gr-coach-quiet' : ''}${b.link ? ' gr-coach-link' : ''}"${b.title ? ` title="${esc(b.title)}"` : ''} data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.aria ? ` aria-label="${esc(b.aria)}"` : ''}${b.action === 'more' ? ' hidden' : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
       if (!tip.quiet && tip.text !== lastAnnounced) lastAnnounced = tip.text;
     }
     box.hidden = false;
@@ -328,9 +376,10 @@
     if (anchor && !tip.noPulse) { anchor.classList.add('gr-coach-target'); targeted.push(anchor); }
     currentAnchor = anchor;
     currentAvoid = (tip.avoid || []).filter(Boolean);
+    pendingShow = host === document.body ? tip.show || null : null;
     // A destination the note names (a world to reach) gets a quieter dashed ring of its own.
     if (host === document.body) for (const mark of (tip.marks || []).filter(Boolean)) { mark.classList.add('gr-coach-goal'); targeted.push(mark); }
-    box.classList.toggle('free', Boolean(tip.dock));
+    box.classList.toggle('free', Boolean(tip.free || tip.dock));
     if (host !== document.body) {
       box.style.left = box.style.top = box.style.width = ''; box.dataset.side = 'inline'; box.classList.remove('docked'); placePointer(null);
       // A note must not push the window's own buttons (a battle's tactics) off screen: shorten it.
@@ -342,6 +391,7 @@
       if (more) { more.hidden = !cut; more.textContent = 'More'; }
       return;
     }
+    currentDock = Boolean(tip.dock);
     box.classList.toggle('docked', Boolean(tip.dock && dockRect()));
     position(box, anchor);
   }
@@ -391,10 +441,96 @@
   }
 
   // Beside the anchor, never over it and never off screen (the table does not scroll).
+  // ---- Show, don't tell: a spotlight, labelled callouts and a ghost drag, drawn over the real
+  // table (never intercepting a click). A step names the parts it talks about; the stage lights
+  // them, labels them one at a time, and shows the drag it asks for. Reduced motion: all still. ----
+  let pendingShow = null, currentDock = false;
+  let following = false;
+  let stage = null, currentShow = null, showKey = '', activeCallout = 0, ghostAnimation = null, ghostKey = '';
+  const reducedMotion = () => Boolean(matchMedia?.('(prefers-reduced-motion: reduce)').matches);
+  const SVG = 'http://www.w3.org/2000/svg';
+  function ensureStage() {
+    if (stage) return stage;
+    stage = document.createElement('div');
+    stage.className = 'gr-stage';
+    stage.setAttribute('aria-hidden', 'true');
+    stage.setAttribute('popover', 'manual');
+    stage.innerHTML = `<svg class="gr-stage-svg" xmlns="${SVG}"><defs><mask id="gr-stage-mask" maskUnits="userSpaceOnUse"><rect class="gr-stage-all" x="0" y="0" fill="white"></rect><g class="gr-stage-holes"></g></mask><marker id="gr-stage-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#6ff3ff"></path></marker></defs><rect class="gr-stage-dim" x="0" y="0" mask="url(#gr-stage-mask)"></rect><g class="gr-stage-rings"></g><path class="gr-stage-path" marker-end="url(#gr-stage-head)"></path></svg><div class="gr-stage-labels"></div><div class="gr-stage-ghost"><span>↓</span></div>`;
+    document.body.appendChild(stage);
+    // One callout at a time, in the order the step names them.
+    // (A still change, not an animation: it also runs under reduced motion.)
+    setInterval(() => { if (currentShow?.callouts?.length > 1) { activeCallout = (activeCallout + 1) % currentShow.callouts.length; if (following) schedule(); else drawStage(); } }, 2400);
+    return stage;
+  }
+  function setShow(show) {
+    const callouts = (show?.callouts || []).filter(c => c?.el && shown(c.el));
+    const spotlight = (show?.spotlight || []).filter(el => el && shown(el));
+    const ghost = show?.ghost?.from && show.ghost.to && shown(show.ghost.from) && shown(show.ghost.to) ? show.ghost : null;
+    currentShow = callouts.length || spotlight.length || ghost ? { callouts, spotlight, ghost, noLabels: Boolean(show?.noLabels) } : null;
+    const key = currentShow ? JSON.stringify([callouts.map(c => c.label), spotlight.length, Boolean(ghost)]) : '';
+    if (key !== showKey) { showKey = key; activeCallout = 0; }
+    drawStage();
+  }
+  function hideStage() {
+    if (!stage) return;
+    if (stage.matches(':popover-open')) stage.hidePopover();
+    ghostAnimation?.cancel(); ghostAnimation = null; ghostKey = '';
+  }
+  const pad = (r, n) => ({ left: r.left - n, top: r.top - n, right: r.right + n, bottom: r.bottom + n, width: r.width + 2 * n, height: r.height + 2 * n });
+  function drawStage() {
+    const visibleNote = coach && !coach.hidden && !coach.classList.contains('in-dialog') && getComputedStyle(coach).display !== 'none' && getComputedStyle(coach).visibility !== 'hidden';
+    if (!currentShow || !visibleNote) { hideStage(); return; }
+    ensureStage();
+    if (!stage.matches(':popover-open')) {
+      stage.showPopover();
+      // The note and its arrow stay above the stage.
+      if (coach.matches(':popover-open')) { coach.hidePopover(); coach.showPopover(); }
+      if (pointer?.matches(':popover-open')) { pointer.hidePopover(); pointer.showPopover(); }
+    }
+    const W = innerWidth, H = innerHeight, svg = stage.querySelector('svg');
+    svg.setAttribute('width', W); svg.setAttribute('height', H); svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    for (const r of stage.querySelectorAll('.gr-stage-all, .gr-stage-dim')) { r.setAttribute('width', W); r.setAttribute('height', H); }
+    // Spotlight: dim everything except the named parts, the note and what it points at.
+    const lit = currentShow.spotlight.length ? [...currentShow.spotlight, ...currentShow.callouts.map(c => c.el), coach, currentAnchor].filter(el => el && shown(el)) : [];
+    stage.classList.toggle('dimmed', lit.length > 0);
+    stage.querySelector('.gr-stage-holes').innerHTML = lit.map(el => { const r = pad(el.getBoundingClientRect(), 6); return `<rect x="${r.left}" y="${r.top}" width="${r.width}" height="${r.height}" rx="10" fill="black"></rect>`; }).join('');
+    // Callouts: a ring around each part and a short label; the current one is lit.
+    const rings = [], labels = [];
+    currentShow.callouts.forEach((c, i) => {
+      const r = pad(c.el.getBoundingClientRect(), 3), active = i === activeCallout % currentShow.callouts.length;
+      rings.push(`<rect class="gr-stage-ring${active ? ' active' : ''}" x="${r.left}" y="${r.top}" width="${r.width}" height="${r.height}" rx="8"></rect>`);
+      const side = c.side || (r.top < 34 ? 'bottom' : 'top');
+      const style = side === 'left' ? `right:${Math.round(W - r.left + 6)}px;top:${Math.round(r.top + r.height / 2)}px;transform:translateY(-50%)`
+        : side === 'right' ? `left:${Math.round(r.right + 6)}px;top:${Math.round(r.top + r.height / 2)}px;transform:translateY(-50%)`
+        : side === 'bottom' ? `left:${Math.round(r.left + r.width / 2)}px;top:${Math.round(r.bottom + 6)}px;transform:translateX(-50%)`
+        : `left:${Math.round(r.left + r.width / 2)}px;top:${Math.round(r.top - 6)}px;transform:translate(-50%,-100%)`;
+      // One label at a time (neighbouring parts' labels would overlap); every part keeps its ring.
+      if (active && !currentShow.noLabels) labels.push(`<span class="gr-stage-label active" style="${style}">${esc(c.label)}</span>`);
+    });
+    stage.querySelector('.gr-stage-rings').innerHTML = rings.join('');
+    stage.querySelector('.gr-stage-labels').innerHTML = labels.join('');
+    // Ghost drag: a dashed arrow from the card to where it goes, and a card gliding along it.
+    const path = stage.querySelector('.gr-stage-path'), ghostEl = stage.querySelector('.gr-stage-ghost');
+    const g = currentShow.ghost;
+    if (!g) { path.setAttribute('d', ''); ghostEl.hidden = true; ghostAnimation?.cancel(); ghostAnimation = null; ghostKey = ''; return; }
+    const a = g.from.getBoundingClientRect(), b = g.to.getBoundingClientRect();
+    const x1 = aimX(g.from), y1 = a.top + Math.min(30, a.height / 2), x2 = b.left + b.width / 2, y2 = b.top + b.height / 2;
+    const cx = (x1 + x2) / 2, cy = Math.min(y1, y2) - Math.max(40, Math.abs(x2 - x1) * 0.18);
+    path.setAttribute('d', `M${x1} ${y1} Q${cx} ${cy} ${x2} ${y2}`);
+    ghostEl.hidden = reducedMotion();
+    const key = [x1, y1, x2, y2].map(Math.round).join(',');
+    if (!reducedMotion() && key !== ghostKey) {
+      ghostKey = key; ghostAnimation?.cancel();
+      const at = t => { const u = 1 - t; return [u * u * x1 + 2 * u * t * cx + t * t * x2, u * u * y1 + 2 * u * t * cy + t * t * y2]; };
+      const frames = [0, .25, .5, .75, 1].map(t => { const [x, y] = at(t); return { transform: `translate(${x - 22}px, ${y - 30}px)`, opacity: t === 0 ? 0 : t === 1 ? .2 : .9 }; });
+      ghostAnimation = ghostEl.animate(frames, { duration: 1700, iterations: Infinity, easing: 'ease-in-out', endDelay: 500 });
+    }
+  }
+
   function position(box, anchor) {
     // Your own games' notes dock whenever the map key has room, decided again as the table settles.
-    if (box.classList.contains('free') && !box.classList.contains('in-dialog')) box.classList.toggle('docked', Boolean(dockRect()));
-    positionBox(box, anchor); placePointer(anchor);
+    if (box.classList.contains('free') && !box.classList.contains('in-dialog')) box.classList.toggle('docked', Boolean(currentDock && dockRect()));
+    positionBox(box, anchor); placePointer(anchor); drawStage();
   }
   function positionBox(box, anchor) {
     const margin = 10, gap = 14, vw = innerWidth, vh = innerHeight;
@@ -451,9 +587,11 @@
     ];
     // Of the sides that fit, prefer the one that hides least of what you may need next: the lit
     // hexes of an aimed order and an open Sector Scan.
-    const avoid = [...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...currentAvoid].filter(el => el !== around && !around.contains(el)).map(el => el.getBoundingClientRect());
+    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...currentAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden])')].filter((el, i) => i === 0 || (el !== around && !around.contains(el))).map(el => el.getBoundingClientRect());
     const covered = o => avoid.reduce((sum, r) => sum + Math.max(0, Math.min(o.left + width, r.right) - Math.max(o.left, r.left)) * Math.max(0, Math.min(o.top + height, r.bottom) - Math.max(o.top, r.top)), 0);
-    options.forEach(o => { o.cost = Math.round(covered(o) / 100); });
+    const hexRects = $$('.hex').map(h => h.getBoundingClientRect());
+    const overHexes = o => hexRects.reduce((n, r) => n + (r.right > o.left && r.left < o.left + width && r.bottom > o.top && r.top < o.top + height ? 1 : 0), 0);
+    options.forEach(o => { o.cost = Math.round(covered(o) / 100) * 10 + overHexes(o); });
     options.sort((x, y) => x.cost - y.cost || sides.indexOf(x.side) - sides.indexOf(y.side));
     const choice = options.find(o => o.fits) || { side: 'none', left: clampX(a.left), top: clampY(a.top - height - gap) };
     box.style.left = `${Math.round(choice.left)}px`;
@@ -469,7 +607,15 @@
     }
   }
 
-  function hide() { if (coach) { if (coach.matches(':popover-open')) coach.hidePopover(); coach.hidden = true; } clearTargets(); lastKey = ''; raisedOver = null; currentAnchor = null; placePointer(null); }
+  function hide() { if (coach) { if (coach.matches(':popover-open')) coach.hidePopover(); coach.hidden = true; } clearTargets(); lastKey = ''; raisedOver = null; currentAnchor = null; placePointer(null); currentShow = null; hideStage(); }
+
+  // A reshuffle happened when, between two looks, the deck grew and the discard pile emptied.
+  let lastPiles = null, reshuffled = false;
+  function watchPiles() {
+    const p = port.state.players[port.me], now = { deck: p.deck.length, discard: p.discard.length };
+    if (lastPiles && now.deck > lastPiles.deck && lastPiles.discard > 0 && now.discard < lastPiles.discard && !prefs.seen.reshuffle) reshuffled = true;
+    lastPiles = now;
+  }
 
   function update() {
     frame = 0;
@@ -479,6 +625,7 @@
       const tutorial = globalThis.galacticReachTutorial;
       if (tutorial?.active) tip = tutorial.tip(port, api);
       else if (prefs.enabled) {
+        watchPiles();
         const c = context();
         let explainer = EXPLAINERS.find(e => !prefs.seen[e.id] && e.when(c));
         // Shown for the turn it became relevant: once that turn has passed it is remembered as read,
@@ -488,15 +635,21 @@
           if (!(explainer.id in shownAt)) shownAt[explainer.id] = turn;
           else if (shownAt[explainer.id] !== turn) { prefs.seen[explainer.id] = true; savePrefs(); explainer = EXPLAINERS.find(e => !prefs.seen[e.id] && e.when(c)); if (explainer) shownAt[explainer.id] = turn; }
         }
-        if (explainer) tip = { dock: true, id: explainer.id, eyebrow: 'New to you', title: explainer.title, text: explainer.text(c), rule: explainer.rule, inDialog: explainer.inDialog,
-          anchor: explainer.anchor?.(c) || null, marks: explainer.marks?.(c) || [], buttons: [...(explainer.buttons || []), { action: 'got-it', id: explainer.id, label: 'Got it', primary: !explainer.buttons }, { action: 'hide', label: 'Turn off guidance', aria: 'Turn off guidance (Guidance in the menu turns it back on)' }] };
+        if (explainer) tip = { free: true, id: explainer.id, eyebrow: 'New to you', title: explainer.title, text: explainer.text(c), rule: explainer.rule, inDialog: explainer.inDialog,
+          anchor: explainer.anchor?.(c) || null, marks: explainer.marks?.(c) || [], show: explainer.show?.(c) || null, buttons: [...(explainer.buttons || []), { action: 'got-it', id: explainer.id, label: 'Got it', primary: !explainer.buttons }] };
         else {
           tip = hint(c);
-          if (tip) tip = { ...tip, dock: true, eyebrow: tip.quiet ? 'Guide' : 'You can', buttons: tip.quiet ? [] : [{ action: 'hide', label: 'Turn off guidance', aria: 'Turn off guidance (Guidance in the menu turns it back on)' }] };
+          if (tip) tip = { ...tip, free: true, eyebrow: tip.quiet ? 'Guide' : 'You can', buttons: [] };
         }
       }
     } catch (error) { console.error('Guidance could not read the table.', error); tip = null; }
-    if (tip) { place(tip); settle(); } else hide();
+    if (tip?.followCallouts && tip.show?.callouts?.length) {
+      const live = tip.show.callouts.filter(c => c?.el && shown(c.el));
+      // The note itself names the lit part (it moves with it), so the stage draws rings without labels.
+      if (live.length) { const part = live[activeCallout % live.length]; tip = { ...tip, anchor: part.el, text: `${part.label}. ${tip.text}`, step: `${tip.step}:${activeCallout % live.length}`, show: { ...tip.show, noLabels: true } }; }
+    }
+    following = Boolean(tip?.followCallouts);
+    if (tip) { pendingShow = null; place(tip); setShow(pendingShow); settle(); } else hide();
     syncMenu();
   }
 

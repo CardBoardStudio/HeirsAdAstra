@@ -3,8 +3,8 @@
 //   chrome-devtools-axi open 'http://127.0.0.1:3117/galactic-reach/?tutorial=1'
 //   TUTORIAL_URL=... chrome-devtools-axi run < scripts/tutorial-walkthrough.axi.js
 //
-// It starts a fresh tutorial and, step by step, does what the coach mark asks: it clicks the
-// pulsing element (a hand card's own Use order or Convert button, a lit hex, a Sector Scan
+// It starts a fresh tutorial and, step by step, does what the coach mark asks: Next on a
+// reading step, otherwise it clicks the pulsing element (a hand card's own Use order or Convert button, a lit hex, a Sector Scan
 // choice, a dialog's control) with real pointer clicks, never by calling the game. It fails
 // when a step does not advance, and prints each step it completed.
 const url = globalThis.process?.env?.TUTORIAL_URL || 'http://127.0.0.1:3117/galactic-reach/?tutorial=1';
@@ -17,7 +17,7 @@ const read = () => page.eval(() => {
   const step = tutorial.steps[progress.step];
   const dialog = [...document.querySelectorAll('dialog[open]')].find(d => d.matches(':modal'));
   return {
-    step: progress.step, total: tutorial.steps.length, id: step?.id || 'finished', title: coach?.querySelector('.gr-coach-title')?.textContent || '',
+    step: progress.step, total: tutorial.steps.length, id: step?.id || 'finished', info: Boolean(step?.info), title: coach?.querySelector('.gr-coach-title')?.textContent || '',
     text: coach?.querySelector('.gr-coach-text')?.textContent || '', dialog: dialog?.id || null,
     scan: Boolean(document.querySelector('#sector-popover')?.matches(':popover-open')),
     target: target ? { tag: target.tagName, id: target.id, card: target.closest('#hand-row') ? target.dataset.cardId : null, coord: target.dataset.coord || null,
@@ -31,6 +31,8 @@ const q = value => JSON.stringify(value);
 
 const CLOSE = { 'prestige-dialog': '#close-prestige', 'deck-dialog': '#close-deck', 'trash-dialog': '#close-trash', 'upgrade-dialog': '#close-upgrade', 'message-dialog': '#message-continue' };
 async function act(s) {
+  // A reading step goes on with the note's own Next button.
+  if (s.info && !s.dialog) return page.click('#gr-coach [data-coach="next"]');
   // A window the coach asks you to close first (it says "Close this window").
   if (s.dialog && /^Close this window/.test(s.text)) return CLOSE[s.dialog] ? page.click(CLOSE[s.dialog]) : page.press('Escape');
   // Dialog steps: use the dialog's own controls.

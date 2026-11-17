@@ -371,6 +371,22 @@ const MEASURE = `(() => {
       .find(e => !raised.contains(e) && !e.closest(own) && !e.closest('.hex') && home && shown(e) && (() => { const c = e.getBoundingClientRect(); return c.width > 1 && c.height > 1 && c.left < r.right - 1 && c.right > r.left + 1 && c.top < r.bottom - 1 && c.bottom > r.top + 1; })());
     if (under) problems.push('raised card ' + label(raised).slice(0, 60) + ' overlaps ' + label(under));
   }
+  // A guidance note (guide.js) may lie over the map, beside what it describes: it must be wholly
+  // on screen, never cover the element it points at, and point at it with its arrow.
+  for (const note of document.querySelectorAll('#gr-coach')) {
+    const style = getComputedStyle(note);
+    if (note.hidden || style.display === 'none' || style.visibility === 'hidden' || note.closest('dialog')) continue;
+    const n = note.getBoundingClientRect();
+    if (!phone && (n.left < -1 || n.top < -1 || n.right > W + 1 || n.bottom > H + 1)) problems.push('guidance note outside viewport: ' + [n.left, n.top, n.right, n.bottom].map(Math.round));
+    const target = document.querySelector('.gr-coach-target');
+    if (target && !phone) {
+      const t = target.getBoundingClientRect();
+      const overlap = Math.max(0, Math.min(n.right, t.right) - Math.max(n.left, t.left)) * Math.max(0, Math.min(n.bottom, t.bottom) - Math.max(n.top, t.top));
+      if (overlap > 0.15 * t.width * t.height) problems.push('guidance note covers its own target: ' + label(target));
+      const pointer = document.querySelector('.gr-coach-pointer:not([hidden])');
+      if (!['top', 'bottom', 'left', 'right'].includes(note.dataset.side) && !pointer) problems.push('guidance note does not point at its target: ' + label(target));
+    }
+  }
   // A toast may lie over reference text, never over a card, a control or the map.
   for (const toast of document.querySelectorAll('.toast')) {
     const t = toast.getBoundingClientRect();
@@ -381,7 +397,7 @@ const MEASURE = `(() => {
   if (!phone && !modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
     // The centre and both side edges of every hex must be clickable.
     const r = hex.getBoundingClientRect(), y = r.top + r.height / 2;
-    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open'); });
+    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open, #gr-coach, .gr-coach-pointer, .gr-stage'); });
     if (blocked) { const hit = document.elementFromPoint(...blocked); problems.push('hex covered at ' + Math.round(blocked[0]) + ',' + Math.round(y) + ' by ' + (hit ? label(hit) : 'nothing')); break; }
   }
   // The map fills the space left to it. On a landscape table it reaches between the left-hand

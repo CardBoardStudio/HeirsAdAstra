@@ -40,6 +40,10 @@
   // The empty Data hex next to your home Colony: the tutorial's first build.
   const dataSite = state => { const home = colony(state); return Object.keys(state.planets).find(c => state.planets[c].cluster === state.planets[home]?.cluster && distance(c, home) === 1 && state.planets[c].type === 'data' && !state.planets[c].upgrade) || null; };
   const shipyardSite = state => { const home = colony(state); return Object.keys(state.planets).find(c => state.planets[c].cluster === state.planets[home]?.cluster && distance(c, home) === 1 && !state.planets[c].upgrade && state.planets[c].type !== 'data') || null; };
+  // Parts of the mat and the home world a step can light or label.
+  const matRow = resource => $(`#resource-grid .resource-box[data-resource="${resource}"]`);
+  const matPart = (resource, part) => matRow(resource)?.querySelector(part) || null;
+  const homeHexes = state => { const home = colony(state); const cluster = state.planets[home]?.cluster; return Object.keys(state.planets).filter(c => state.planets[c].cluster === cluster).map(hexAt); };
   const yard = state => Object.keys(state.planets).find(c => state.planets[c].owner === 0 && state.planets[c].upgrade === 'starbase') || null;
   const unitsAt = (state, type, player = 0) => Object.entries(state.fleets || {}).filter(([, f]) => f?.[player]?.[type] > 0).map(([c]) => c);
   const unitCount = (state, type) => Object.values(state.fleets || {}).reduce((n, f) => n + (f?.[0]?.[type] || 0), 0);
@@ -111,27 +115,29 @@
 
   const LESSONS = [
     { id: 'table', title: 'Read the table', steps: [
-      { id: 'track', title: 'The score track', rule: 'shared-board',
-        text: s => `This practice game is kept apart from your own game, which stays saved. Top left is the score track. Every faction races to ${s.victoryTarget || 40} Prestige (★). The first round that ends with someone at the goal decides the winner. Select your marker, “You”, to see where your points come from.`,
-        anchor: () => $('[data-score-player="0"]'), done: () => modalOpen('#prestige-dialog') },
-      { id: 'track-close', title: 'Your points', rule: 'victory', dialog: '#prestige-dialog',
-        text: () => 'This window breaks down a faction’s Prestige. A home Colony is worth 3★; each new Colony adds 3★, each excavated relic 2★ and each decisive battle 2★. Close this window to go on.',
-        done: () => !modalOpen('#prestige-dialog') },
-      { id: 'home', title: 'Your home world', rule: 'shared-board',
-        text: () => 'This is your home world. Your Colony (the house) sits on its center hex, and the cyan ring shows the world is yours. Select your Colony.',
-        anchor: state => hexAt(colony(state)), done: state => state.selected === colony(state) },
-      { id: 'scan-close', title: 'The Sector Scan', rule: 'shared-board',
-        text: () => 'The Sector Scan lists what is on a hex and which orders you could start there. It is your magnifying glass for the map. Close it with Close or Escape.',
-        anchor: () => $('#sector-popover'), done: () => !scanOpen() },
+      { id: 'track', title: 'The score track', rule: 'shared-board', info: true, followCallouts: true,
+        text: s => `Race to ${s.victoryTarget || 40}★ on the score track. Your Colony already scores 3★.`,
+        show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'You: 3★', side: 'right' }, { el: $('.prestige-track-goal'), label: 'First to the goal wins', side: 'bottom' }] }),
+        anchor: () => $('[data-score-player="0"]') },
+      { id: 'home', title: 'Your home world', rule: 'shared-board', info: true, followCallouts: true,
+        text: () => 'Your home world. Select any hex to see what is on it.',
+        show: state => ({ spotlight: homeHexes(state), callouts: [{ el: hexAt(colony(state)), label: 'Your Colony (3★)' }] }),
+        anchor: state => hexAt(colony(state)) },
     ] },
     { id: 'resources', title: 'Resources', steps: [
-      { id: 'convert-construct', title: 'Your resources', rule: 'player-mat',
+      { id: 'mat', title: 'Your mat', rule: 'player-mat', info: true, followCallouts: true,
         prepare: s => { ensureHand(s, ['move', 'move', 'construct', 'construct', 'construct'], true); },
-        text: () => 'Bottom right is your mat, one row per resource: Matter, Energy, Biomass, Data. The big pips show what you hold now, the small pips what you produce each round (your Colony makes 1 Matter), and the gold pip your limit of 4. Get more Matter: drag the Construct card marked with the arrow onto your mat, or point at it and choose Convert.',
+        text: () => 'Your mat has one row per resource.',
+        show: state => ({ spotlight: [$('#resource-grid'), hexAt(colony(state))], callouts: [{ el: matPart('matter', '.mat-pips.now'), label: 'Now: the Matter you hold' }, { el: matPart('matter', '.mat-pips.rate'), label: 'Rate: Matter made each round' }, { el: matPart('matter', '.mat-pips.now i.cap'), label: 'Limit: 4 at most' }, { el: hexAt(colony(state)), label: 'Your Colony makes that +1' }] }),
+        anchor: () => $('#resource-grid') },
+      { id: 'convert-construct', title: 'Convert a card', rule: 'resources',
+        text: () => 'Drag the marked Construct card onto your mat: +1 Matter.',
+        show: state => ({ spotlight: [$('#resource-grid'), lastHand('construct')(state)], ghost: { from: lastHand('construct')(state), to: matRow('matter') }, callouts: [{ el: matPart('matter', '.mat-pips.now'), label: 'Lands here' }] }),
         anchor: lastHand('construct'), start: state => ({ matter: me(state).resources.matter }),
         done: (state, base) => me(state).resources.matter > base.matter },
       { id: 'convert-move', title: 'Convert a Move', rule: 'resources',
-        text: () => 'A level I starter card converts once: a Construct card gives 1 Matter and a Move card 1 Energy, and the card is used for this round. Now drag the Move card marked with the arrow onto your mat for 1 Energy.',
+        text: () => 'Now drag the marked Move card onto the mat: +1 Energy.',
+        show: state => ({ spotlight: [$('#resource-grid'), hand('move')(state)], ghost: { from: hand('move')(state), to: matRow('energy') }, callouts: [{ el: matPart('energy', '.mat-pips.now'), label: 'Energy: +1' }] }),
         anchor: hand('move'), start: state => ({ energy: me(state).resources.energy }),
         done: (state, base) => me(state).resources.energy > base.energy },
     ] },
@@ -139,51 +145,57 @@
       { id: 'harvester-aim', title: 'Use an order', rule: 'orders', aimAt: state => dataSite(state),
         ensure: s => { if (harvester(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, { matter: 1, energy: 1, data: 1 }); return 'Tutorial supply: a Construct card and the price of a Harvester.'; },
         needsEnsure: state => myOps(state) && !harvester(state) && (!handHas(state, 'construct') || RES.some(r => me(state).resources[r] < ({ matter: 1, energy: 1, data: 1 })[r])),
-        text: () => 'Instead of converting a card you can use its order. Your first build: a Data Harvester. It costs 1 Matter, 1 Energy and 1 Data, which you now have. Pick up the Construct card marked with the arrow: the hexes where it can build light up. Drop it on the Data hex next to your Colony (the purple hex with the dashed ring), or point at the card, choose Use order, then that hex.',
+        text: () => 'Drag the marked Construct card onto the ringed Data hex: build a Data Harvester.',
+        show: state => ({ spotlight: [hand('construct')(state), hexAt(dataSite(state)), $('#resource-grid')], ghost: { from: hand('construct')(state), to: hexAt(dataSite(state)) }, callouts: [{ el: hexAt(dataSite(state)), label: '+2 Data every round' }, { el: $('#resource-grid'), label: 'Costs 1 Matter, 1 Energy, 1 Data', side: 'left' }] }),
         anchor: hand('construct'), marks: state => [hexAt(dataSite(state))],
         done: state => Boolean(harvester(state)) || (scanOpen() && Boolean(scanButton(/Harvester/)())) },
       { id: 'harvester-build', title: 'Build a Harvester', rule: 'building',
         // Closed the Sector Scan, or built something else instead: go back to choosing the hex.
         fallback: state => !harvester(state) && !(scanOpen() && scanButton(/Harvester/)()),
-        text: () => 'Choose Build Harvester. A Harvester makes 2 of its hex’s resource every round, so this one gives you 2 Data a round. Data pays for Explorers (who find relics, 2★ each), for excavating relics and for upgrading your cards. If the hex is not Data, use Back and choose the purple Data hex.',
+        text: () => 'Choose Build Harvester. Data pays for Explorers, relics and upgrades.',
+        show: () => ({ callouts: [{ el: scanButton(/Harvester/)(), label: 'This one' }] }),
         anchor: scanButton(/Harvester/), done: state => Boolean(harvester(state)) },
     ] },
     { id: 'round', title: 'The round', steps: [
       { id: 'pass', title: 'Pass & buy', rule: 'round',
-        text: () => 'You get one order per turn, then your rivals take theirs (in this tutorial they just pass). Nothing else is affordable this round, so choose Pass & buy. That ends your Operations for this round and starts your Buy turn. Cards still in your hand do not wait for next round: at Cleanup they go to your discard pile.',
+        text: () => 'Nothing else to afford: choose Pass & buy.',
+        show: () => ({ spotlight: [$('#hand-row'), globalThis.galacticReachGuide.turnButton()], callouts: [{ el: $('#hand-row'), label: 'Left in hand = discarded at round end' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Ends your turns this round', side: 'left' }] }),
         anchor: () => globalThis.galacticReachGuide.turnButton(), start: state => ({ round: state.round }), done: (state, base) => me(state).passed || state.round > base.round },
       { id: 'buy-empty', buy: true, title: 'Finish Buy', rule: 'buy',
-        text: () => 'This is your Buy turn: the market (right) sells cards for resources. You have nothing to spend yet, so choose Finish Buy. The round then ends for everyone.',
+        text: () => 'Your Buy turn. Nothing to buy yet: choose Finish Buy.',
+        show: () => ({ callouts: [{ el: $('#market-row'), label: 'The market: buy cards here', side: 'left' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Finish Buy', side: 'left' }] }),
         anchor: () => globalThis.galacticReachGuide.turnButton(), start: state => ({ round: state.round }), done: (state, base) => state.round > base.round },
-      { id: 'deck', title: 'A new round', rule: 'cleanup-draw', wait: state => !myOps(state),
-        text: state => `When everyone finished Buy, the round ended (Cleanup & draw). Every card left in a hand, and every card used, went to the discard pile, and everyone drew five new cards. Your hand lasts one round; your resources carry over. Then Production paid out: 1 Matter from your Colony${harvester(state) ? ' and 2 Data from your Harvester' : ''}. Select your Deck (bottom left) to see what is left in it.`,
-        anchor: () => $('#deck-button'), done: () => modalOpen('#deck-dialog') },
-      { id: 'deck-close', title: 'Your deck', rule: 'deck-inspection', dialog: '#deck-dialog',
-        text: () => 'These are the cards left to draw (their order stays hidden). When the deck runs out, your discard pile is shuffled into a new deck. Close this window.',
-        done: () => !modalOpen('#deck-dialog') },
+      { id: 'deck', title: 'A new round', rule: 'cleanup-draw', info: true, followCallouts: true, wait: state => !myOps(state),
+        text: () => 'A new round: a new hand. Your resources stayed; last round’s cards went to the discard pile.',
+        show: state => ({ spotlight: [$('#hand-row'), $('#deck-button'), $('#discard-button'), $('#resource-grid')], callouts: [{ el: $('#hand-row'), label: 'New hand of 5' }, { el: $('#deck-button'), label: 'Cards left to draw' }, { el: $('#discard-button'), label: 'Last round’s cards', side: 'left' }, ...(harvester(state) ? [{ el: matPart('data', '.mat-pips.now'), label: '+2 Data from the Harvester', side: 'left' }] : [])] }),
+        anchor: () => $('#deck-button') },
     ] },
     { id: 'units', title: 'Ships', steps: [
-      { id: 'shipyard-aim', title: 'Build a Shipyard', rule: 'building', aimAt: state => shipyardSite(state),
+      { id: 'shipyard-aim', title: 'Build a Shipyard', rule: 'building', aimAt: state => shipyardSite(state), marks: state => [hexAt(shipyardSite(state))],
         prepare: s => { ensureHand(s, ['construct', 'construct', 'construct', 'move', 'move'], true); ensureResources(s, { matter: 3, energy: 3, biomass: 2, data: 3 }); return 'Tutorial supply: resources for a Shipyard, a Settler and an Explorer.'; },
         ensure: s => { if (yard(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, { matter: 2, energy: 1, biomass: 1, data: 1 }); return 'Tutorial supply: the cards and resources for a Shipyard.'; },
         needsEnsure: state => !yard(state) && (!handHas(state, 'construct') || RES.some(r => me(state).resources[r] < ({ matter: 2, energy: 1, biomass: 1, data: 1 })[r])),
-        text: () => 'Ships come from a Shipyard (2 Matter, 1 Energy, 1 Biomass, 1 Data). The tutorial gave you enough for a Shipyard and two ships. This turn, pick up the Construct card marked with the arrow and drop it on an empty hex next to your Colony (lit while you hold the card), or choose Use order and then the hex. One order per turn: the next ships come on your next turns.',
+        text: () => 'Drag the marked Construct card onto the ringed hex: build a Shipyard, which builds ships.',
+        show: state => ({ spotlight: [hand('construct')(state), hexAt(shipyardSite(state))], ghost: { from: hand('construct')(state), to: hexAt(shipyardSite(state)) }, callouts: [{ el: hexAt(shipyardSite(state)), label: 'Shipyard here' }] }),
         anchor: hand('construct'), done: state => Boolean(yard(state)) || (scanOpen() && Boolean(scanButton(/Shipyard/)())) },
       { id: 'shipyard-build', title: 'Build a Shipyard', rule: 'building',
         // Closed the Sector Scan, or built something else instead: go back to choosing the hex.
         fallback: state => !yard(state) && !(scanOpen() && scanButton(/Shipyard/)()),
-        text: () => 'Choose Build Shipyard. A Shipyard lets you commission ships, and it defends its own hex.',
+        text: () => 'Choose Build Shipyard.',
+        show: () => ({ callouts: [{ el: scanButton(/Shipyard/)(), label: 'This one' }] }),
         anchor: scanButton(/Shipyard/), done: state => Boolean(yard(state)) },
       { id: 'settler', title: 'Commission a Settler', rule: 'building',
         prepare: s => { if (yard(s.state)) return null; ensureShipyard(s); return 'Tutorial supply: a Shipyard next to your Colony.'; },
         ensure: s => { ensureHand(s, ['construct']); ensureResources(s, { matter: 1, energy: 1, biomass: 1 }); return 'Tutorial supply: a Construct card and the price of a Settler.'; },
         needsEnsure: state => myOps(state) && (!handHas(state, 'construct') || !(me(state).resources.matter >= 1 && me(state).resources.energy >= 1 && me(state).resources.biomass >= 1)),
-        text: () => 'Drag a Construct card onto your Shipyard and choose Commission Settler (1 Matter, 1 Energy, 1 Biomass). Settlers found Colonies.',
+        text: () => 'Drag a Construct card onto your Shipyard and choose Settler. Settlers found Colonies.',
+        show: state => ({ ghost: scanOpen() ? null : { from: hand('construct')(state), to: hexAt(yard(state)) }, callouts: [{ el: scanButton(/Settler/)() || hexAt(yard(state)), label: scanOpen() ? 'This one' : 'Your Shipyard' }] }),
         anchor: state => scanButton(/Settler/)() || hand('construct')(state), aimAt: state => yard(state), done: state => unitCount(state, 'settler') > 0 },
       { id: 'explorer', title: 'Commission an Explorer', rule: 'building', aimAt: state => yard(state),
         ensure: s => { ensureHand(s, ['construct']); ensureResources(s, { energy: 1, data: 2 }); return 'Tutorial supply: a Construct card and the price of an Explorer.'; },
         needsEnsure: state => myOps(state) && (!handHas(state, 'construct') || !(me(state).resources.energy >= 1 && me(state).resources.data >= 2)),
-        text: () => 'Your Settler stands on the Shipyard, and a Colonize card went to your discard pile: a ship that needs a card brings it along. Now use another Construct card on the Shipyard to commission an Explorer (1 Energy, 2 Data). Explorers find relics.',
+        text: () => 'Again, for an Explorer: it finds relics. Your Settler’s Colonize card went to the discard pile.',
+        show: state => ({ ghost: scanOpen() ? null : { from: hand('construct')(state), to: hexAt(yard(state)) }, callouts: [{ el: scanButton(/Explorer/)() || $('#discard-button'), label: scanOpen() ? 'This one' : 'Colonize card: drawn later', side: 'left' }] }),
         anchor: state => scanButton(/Explorer/)() || hand('construct')(state), done: state => unitCount(state, 'explorer') > 0 },
     ] },
     { id: 'movement', title: 'Movement', steps: [
@@ -192,14 +204,16 @@
         ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         start: state => ({ fleets: unitsAt(state, 'fleet').join('|') }),
-        text: () => 'A Move card’s order moves one group from one hex. Drag a Move card onto your Shipyard. The Fleet and the Settler are both ticked, so they would go together at the Settler’s speed: 1 hex. In the Sector Scan, untick the Settler so the Fleet can go 2, then choose a lit hex two steps away. (Choosing the hex you start on spends the Move card to stay put.)',
+        text: () => 'Drag a Move card onto your Shipyard. Untick the slow Settler, then fly the Fleet 2 hexes.',
+        show: state => ({ ghost: state.moveSource || scanOpen() ? null : { from: hand('move')(state), to: hexAt(yard(state)) }, callouts: [{ el: $('#sector-popover [data-move-unit="settler"]')?.closest('label') || hexAt(yard(state)), label: scanOpen() ? 'Untick: Settlers move 1' : 'Fleet + Settler here' }] }),
         anchor: state => scanOpen() && $('#sector-popover [data-move-unit="settler"]')?.checked ? $('#sector-popover [data-move-unit="settler"]').closest('label') : hand('move')(state),
         done: (state, base) => unitsAt(state, 'fleet').join('|') !== base.fleets && !state.pendingMove },
       { id: 'move-explorer', title: 'Explorers fly alone', rule: 'movement', aimAt: state => state.moveSource ? null : unitsAt(state, 'explorer')[0],
         ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         start: state => ({ explorers: unitsAt(state, 'explorer').join('|') }),
-        text: () => 'Explorers never move with warships. Drag your other Move card onto the Explorer (choose Move Explorers if asked) and pick a lit hex away from the Shipyard: Explorers fly 3 hexes.',
+        text: () => 'Drag your other Move card onto the Explorer. Explorers fly 3 hexes on their own.',
+        show: state => ({ ghost: state.moveSource ? null : { from: hand('move')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(unitsAt(state, 'explorer')[0]), label: 'Explorer' }] }),
         anchor: hand('move'), done: (state, base) => unitsAt(state, 'explorer').join('|') !== base.explorers },
     ] },
     { id: 'relics', title: 'Relics', steps: [
@@ -207,26 +221,28 @@
         prepare: s => { ensureUnits(s, { explorer: 1 }); ensureOwned(s, 'probe'); ensureHand(s, ['probe', 'move', 'move']); },
         ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); return 'Tutorial supply: your Probe / Excavate card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'probe') && !me(state).inPlay.some(c => c.key === 'probe'),
-        text: () => 'Relics (◈) hide on the worlds and moons. Drag your Probe / Excavate card onto your Explorer and choose Probe: it locates the nearest hidden relic, from anywhere. Only you learn where it is.',
+        text: () => 'Drag the Probe / Excavate card onto your Explorer and choose Probe: it finds the nearest hidden relic.',
+        show: state => ({ ghost: { from: hand('probe')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(unitsAt(state, 'explorer')[0]), label: 'Explorer' }] }),
         anchor: hand('probe'), done: (state, base, port) => Boolean(knownRelic(state, port)) },
       { id: 'reach-relic', title: 'Fly to the relic', rule: 'excavation', aimAt: (state, port) => state.moveSource ? knownRelic(state, port) : unitsAt(state, 'explorer')[0],
         ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
-        text: (state, port) => `The ◈ marks the relic you located. Move your Explorer onto that exact hex: drag a Move card onto the Explorer and choose a lit hex. If the ◈ is not lit yet, fly as close as you can and finish with another Move card.`,
+        text: () => 'Fly your Explorer onto the ◈ with a Move card. Far away? Get close, then use another.',
+        show: (state, port) => ({ ghost: state.moveSource ? null : { from: hand('move')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(knownRelic(state, port)), label: '◈ the relic' }] }),
         anchor: (state, port) => (myOps(state) ? hand('move')(state) : null) || hexAt(knownRelic(state, port)),
         done: (state, base, port) => { const site = knownRelic(state, port); return !site || unitsAt(state, 'explorer').includes(site); } },
       { id: 'excavate', title: 'Excavate', rule: 'excavation', aimAt: state => unitsAt(state, 'explorer')[0],
         ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); ensureResources(s, { matter: 1, energy: 1, data: 2 }); return 'Tutorial supply: your Probe / Excavate card and the excavation cost (1 Matter, 1 Energy, 2 Data).'; },
         needsEnsure: state => myOps(state) && !me(state).inPlay.some(c => c.key === 'probe') && (!handHas(state, 'probe') || !(me(state).resources.matter >= 1 && me(state).resources.energy >= 1 && me(state).resources.data >= 2)),
-        text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe')
-          ? 'Your Explorer is on the relic. Your Probe / Excavate card stays in play until this round ends, so excavate next round. Finish this round: choose Pass & buy, then Finish Buy.'
-          : 'Drag your Probe / Excavate card onto your Explorer (on the ◈) and choose Excavate. It costs 1 Matter, 1 Energy and 2 Data.',
+        text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? 'Your Probe / Excavate card is in play until the round ends. Finish this round: Pass & buy, then Finish Buy.' : 'Drag Probe / Excavate onto your Explorer on the ◈ and choose Excavate (1 Matter, 1 Energy, 2 Data).',
+        show: state => handHas(state, 'probe') ? { ghost: { from: hand('probe')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(unitsAt(state, 'explorer')[0]), label: 'Explorer on the ◈' }] } : { callouts: [{ el: $('#in-play-button'), label: 'Probe / Excavate: in play' }] },
         anchor: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? globalThis.galacticReachGuide.turnButton() : (scanButton(/Excavate/)() || hand('probe')(state)),
         done: state => me(state).relicsExcavated > 0 || state.actionMode === 'excavate' },
       { id: 'choose-relic', title: 'Choose a relic card', rule: 'alien-relics',
         // Cancelled Excavate (or never chose a card): go back and play it again.
         fallback: state => me(state).relicsExcavated === 0 && state.actionMode !== 'excavate',
-        text: () => 'Choose one of the three face-up relic cards. It goes to your discard pile, you gain 2★, and the Explorer is used up. (Cancel Excavate, above the relics, backs out without paying.)',
+        text: () => 'Pick a relic card: +2★. It goes to your discard pile.',
+        show: () => ({ callouts: [{ el: $('[data-excavate-relic]:not([disabled])'), label: 'Pick one' }] }),
         anchor: () => $('[data-excavate-relic]:not([disabled])') || $('#relic-row'), done: state => me(state).relicsExcavated > 0 },
     ] },
     { id: 'colonies', title: 'Colonies', steps: [
@@ -243,14 +259,16 @@
         },
         ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
-        text: state => `Your Settler waits beside the center of ${targetWorld(state)?.name || 'a neutral world'}. Drag a Move card onto your Settler and move it 1 hex onto the world’s center (the middle hex).`,
+        text: state => `Move your Settler 1 hex onto the ringed center of ${targetWorld(state)?.name || 'the world'}.`,
+        show: state => ({ ghost: state.moveSource ? null : { from: hand('move')(state), to: hexAt(unitsAt(state, 'settler')[0]) }, callouts: [{ el: hexAt(targetWorld(state)?.center), label: 'World center' }] }),
         anchor: state => (myOps(state) ? hand('move')(state) : null) || hexAt(targetWorld(state)?.center),
         done: state => { const w = targetWorld(state); return !w || unitsAt(state, 'settler').includes(w.center); } },
       { id: 'colonize', title: 'Found a Colony', rule: 'orders', aimAt: state => targetWorld(state)?.center,
         ensure: s => { ensureOwned(s, 'colonize'); ensureHand(s, ['colonize']); ensureResources(s, { biomass: 2 }); return 'Tutorial supply: a Colonize card and 2 Biomass.'; },
         needsEnsure: state => myOps(state) && (!handHas(state, 'colonize') || me(state).resources.biomass < 2),
         start: state => ({ colonies: coloniesOf(state) }),
-        text: () => 'Drag your Colonize card onto your Settler and choose Found Colony (2 Biomass). The Settler and the card are used up, and the new Colony scores 3★.',
+        text: () => 'Drag the Colonize card onto your Settler and choose Found Colony: 2 Biomass, +3★.',
+        show: state => ({ ghost: scanOpen() ? null : { from: hand('colonize')(state), to: hexAt(targetWorld(state)?.center) }, callouts: [{ el: scanButton(/Found Colony/)() || hexAt(targetWorld(state)?.center), label: scanOpen() ? 'This one' : 'Your Settler' }] }),
         anchor: state => scanButton(/Found Colony/)() || hand('colonize')(state), done: (state, base) => coloniesOf(state) > base.colonies },
     ] },
     { id: 'bank', title: 'The bank', steps: [
@@ -259,43 +277,50 @@
         ensure: s => { ensureResources(s, { energy: 4 }); return 'Tutorial supply: 4 Energy.'; },
         needsEnsure: state => (myOps(state) || myBuy(state)) && me(state).resources.energy < 4,
         start: state => ({ data: me(state).resources.data }),
-        text: () => 'Short of one resource? Trade 4 of another at the bank, free, during Operations or Buy, even on a rival’s turn. Drag from your Energy row’s big pips onto your Data row (or select the Energy row, then Data).',
+        text: () => 'Trade at the bank: drag from your Energy row onto your Data row. 4 Energy become 1 Data.',
+        show: () => ({ spotlight: [$('#resource-grid')], ghost: { from: matPart('energy', '.mat-pips.now'), to: matPart('data', '.mat-pips.now') }, callouts: [{ el: matPart('energy', '.mat-pips.now'), label: 'Give 4', side: 'left' }, { el: matPart('data', '.mat-pips.now'), label: 'Get 1', side: 'left' }] }),
         anchor: () => $('#resource-grid'), done: (state, base) => me(state).resources.data > base.data },
     ] },
     { id: 'buy', title: 'Your Buy turn', steps: [
       { id: 'pass-buy', buy: true, title: 'Start your Buy turn', rule: 'buy',
         prepare: s => { setResources(s, { matter: 4, energy: 4, biomass: 4, data: 4 }); return 'Tutorial supply: 4 of each resource to spend in the market.'; },
-        text: () => 'The tutorial filled your mat with 4 of each resource. Choose Pass & buy to start your Buy turn.',
+        text: () => 'The tutorial filled your mat. Choose Pass & buy to shop.',
+        show: () => ({ callouts: [{ el: globalThis.galacticReachGuide.turnButton(), label: 'Pass & buy', side: 'left' }, { el: $('#resource-grid'), label: '4 of each', side: 'left' }] }),
         anchor: () => globalThis.galacticReachGuide.turnButton(), done: state => myBuy(state) },
       { id: 'buy-card', buy: true, title: 'Buy a card', rule: 'market-tiers',
         ensure: s => { setResources(s, { matter: 4, energy: 4, biomass: 4, data: 4 }); return 'Tutorial supply: 4 of each resource.'; },
         needsEnsure: (state, port) => myBuy(state) && !state.market.some(c => port.canAfford(port.purchaseCost(c.key))),
         start: state => ({ bought: purchases(me(state)) }),
-        text: () => 'The market (right) has three rows by price: Expensive, Medium and Cheap. Cards you can afford now are outlined in gold. Choose one to buy it. It goes to your discard pile, and the slot refills from the same row.',
+        text: () => 'Buy any gold-outlined market card. It goes to your discard pile.',
+        show: () => ({ spotlight: [$('#market-row')], callouts: [{ el: $('[data-buy-market]:not([disabled])'), label: 'You can afford this' }, { el: $('[data-market-tier="expensive"]'), label: 'Expensive', side: 'left' }, { el: $('[data-market-tier="cheap"]'), label: 'Cheap', side: 'left' }] }),
         anchor: (state, port) => $(`[data-buy-market]:not([disabled])`), done: (state, base) => purchases(me(state)) > base.bought },
       { id: 'upgrade', buy: true, title: 'Upgrade a starter', rule: 'buy',
         ensure: s => { ensureResources(s, { energy: 2 }); return 'Tutorial supply: 2 Energy.'; },
         needsEnsure: state => myBuy(state) && !RES.some(r => me(state).resources[r] >= 2),
         start: state => ({ upgraded: upgradedCount(me(state)) }),
-        dialogs: { '#upgrade-dialog': 'Pick any copy to upgrade (in hand, in play or in discard: they are the same card) and the resource that pays (2 of one kind). Level II gives a stronger order but can no longer convert.' },
-        text: () => 'Below the market are the Upgrades. Choose Move II (or Construct II) to upgrade one of your Move (or Construct) cards for 2 of one resource.',
+        dialogs: { '#upgrade-dialog': 'Pick any copy (they are the same card), and the resource that pays 2.' },
+        text: () => 'Upgrade a starter card: choose Move II and pay 2 of one resource.',
+        show: () => ({ callouts: [{ el: $('[data-upgrade-offer]:not([disabled])'), label: 'Stronger order, no converting' }] }),
         anchor: () => $('[data-upgrade-offer]:not([disabled])'), done: (state, base) => upgradedCount(me(state)) > base.upgraded },
       { id: 'capacity', title: 'A Capacity Module', buy: true, rule: 'capacity-module',
         ensure: s => { ensureResources(s, { matter: 1, energy: 1, biomass: 1, data: 1 }); return 'Tutorial supply: 1 of each resource.'; },
         needsEnsure: (state, port) => myBuy(state) && !port.canBuyCapacity(),
         start: state => ({ modules: modules(me(state)) }),
-        text: () => 'Most market cards cost more than 4 of one resource, more than you can hold. Buy a Capacity Module from its pile (1 of each resource for your first). You will play it on a later turn to raise your limits.',
+        text: () => 'Buy a Capacity Module card. Played later, it raises your limits.',
+        show: () => ({ callouts: [{ el: $('[data-capacity-offer]'), label: 'Raises limits by 4' }, { el: matPart('matter', '.mat-pips.now i.cap'), label: 'Limit', side: 'left' }] }),
         anchor: () => $('[data-capacity-offer]'), done: (state, base) => modules(me(state)) > base.modules },
       { id: 'trash', buy: true, title: 'Trash a card', rule: 'buy',
         ensure: s => { ensureResources(s, { biomass: 3 }); return 'Tutorial supply: 3 Biomass.'; },
         needsEnsure: state => myBuy(state) && !RES.some(r => me(state).resources[r] >= 3),
         start: state => ({ cards: allCards(me(state)).length }),
-        dialogs: { '#trash-dialog': 'Choose the resource that pays (3 of one kind), then the card to remove for good. A thinner deck draws your best cards more often.' },
-        text: () => 'Choose the Trash pile to remove a card from your deck for 3 of one resource.',
+        dialogs: { '#trash-dialog': 'Pick the resource that pays 3, then the card to remove for good.' },
+        text: () => 'Remove a card for good: choose the Trash pile.',
+        show: () => ({ callouts: [{ el: $('[data-trash-pile]:not([disabled])') || $('#open-trash'), label: '3 of one resource per card' }] }),
         anchor: () => $('[data-trash-pile]:not([disabled])') || $('#open-trash'), done: (state, base) => allCards(me(state)).length < base.cards },
       { id: 'finish-buy', buy: true, title: 'Finish Buy', rule: 'round',
         start: state => ({ round: state.round }),
-        text: () => 'Choose Finish Buy. Unspent resources carry over to the next round (up to your limits).',
+        text: () => 'Choose Finish Buy. The next round brings a new hand.',
+        show: () => ({ callouts: [{ el: globalThis.galacticReachGuide.turnButton(), label: 'Finish Buy', side: 'left' }] }),
         anchor: () => globalThis.galacticReachGuide.turnButton(), done: (state, base) => state.round > base.round },
     ] },
     { id: 'capacity', title: 'Capacity', steps: [
@@ -303,8 +328,9 @@
         prepare: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); },
         ensure: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); return 'Tutorial supply: your Capacity Module card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'capacityModule') && !(me(state).storage || []).length,
-        dialogs: { '#storage-allocation-dialog': 'It starts with 1 point on each resource. Move them as you like (for example 2 Energy and 2 Data), then choose Play Capacity Module at the bottom. Each point raises that limit by 1, for good.' },
-        text: () => 'Your Capacity Module card came round in your new hand. Point at it and choose Use order.',
+        dialogs: { '#storage-allocation-dialog': 'Split the 4 points as you like, then choose Play Capacity Module. Each point raises that limit by 1, for good.' },
+        text: () => 'Play your Capacity Module card: point at it and choose Use order.',
+        show: state => ({ callouts: [{ el: hand('capacityModule')(state), label: 'Capacity Module' }, { el: $('#storage-pile'), label: 'It ends up here', side: 'left' }] }),
         anchor: hand('capacityModule'), done: state => (me(state).storage || []).length > 0 },
     ] },
     { id: 'combat', title: 'Combat', steps: [
@@ -321,24 +347,23 @@
         ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         start: state => ({ wins: me(state).combatVictories || 0 }),
-        text: state => `An enemy Explorer (in ${state.players[1].name}’s colour) sits 2 hexes from your Fleet. Drag a Move card onto your Fleet and move onto the enemy’s hex. Entering it starts a battle.`,
+        text: state => `Drag a Move card onto your Fleet and fly onto the enemy Explorer.`,
+        show: state => ({ ghost: state.moveSource ? null : { from: hand('move')(state), to: hexAt(unitsAt(state, 'fleet')[0]) }, callouts: [{ el: hexAt(unitsAt(state, 'explorer', 1)[0]), label: 'Enemy Explorer' }, { el: hexAt(unitsAt(state, 'fleet')[0]), label: 'Your Fleet' }] }),
         anchor: state => { const enemy = unitsAt(state, 'explorer', 1)[0]; return (myOps(state) ? hand('move')(state) : null) || hexAt(enemy); },
         done: (state, base) => Boolean(state.pendingCombat) || (me(state).combatVictories || 0) > base.wins },
       { id: 'tactics', title: 'Choose tactics', rule: 'combat-tactics', dialog: '#combat-dialog',
-        text: () => 'If the battle first asks about escaping, choose Stay and fight. Then, each volley, both sides pick a tactic in secret and reveal together. Concentrated Fire adds 1 hit; Defensive Screen prevents 2. Your Fleet deals 3 hits and the Explorer has 1 hull. Pick a tactic.',
+        text: () => 'If asked, choose Stay and fight. Then pick a tactic: Fire adds 1 hit; Screen blocks 2.',
         done: state => !state.pendingCombat },
       { id: 'report', title: 'Victory', rule: 'combat', dialog: '#message-dialog',
         start: state => ({ wins: me(state).combatVictories || 0 }),
-        text: () => 'You destroyed every enemy unit in the battle: a decisive victory, worth 2★. Read the report, then close it.',
+        text: () => 'Every enemy unit destroyed: a decisive victory, +2★. Choose Continue.',
         done: state => !state.pendingCombatReport && !modalOpen('#message-dialog') },
     ] },
     { id: 'victory', title: 'Winning', steps: [
-      { id: 'final-track', title: 'Your score', rule: 'victory',
-        text: (state, port) => `You have ${port.prestige(0)}★. Select your marker on the score track to see where they came from.`,
-        anchor: () => $('[data-score-player="0"]'), done: () => modalOpen('#prestige-dialog') },
-      { id: 'final-close', title: 'How to win', rule: 'victory-target', dialog: '#prestige-dialog',
-        text: (state, port) => `Score from Colonies (3★ each), relics (2★), decisive battles (2★) and some cards. When a round ends with anyone at ${port.victoryTarget()}★ or more, the highest score wins. Close this window.`,
-        done: () => !modalOpen('#prestige-dialog') },
+      { id: 'final-track', title: 'How to win', rule: 'victory', info: true, followCallouts: true,
+        text: (state, port) => `You have ${port.prestige(0)}★. When a round ends with anyone at ${port.victoryTarget()}★ or more, the highest score wins.`,
+        show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'Your score', side: 'right' }, { el: $('.prestige-track-goal'), label: 'The goal', side: 'bottom' }] }),
+        anchor: () => $('[data-score-player="0"]') },
     ] },
   ];
   const STEPS = LESSONS.flatMap((lesson, lessonIndex) => lesson.steps.map((step, index) => ({ ...step, lesson, lessonIndex, index })));
@@ -381,7 +406,7 @@
         stage(step.prepare);
       }
       if (!progress.base && step.start) { progress.base = step.start(port.state); saveProgress(); }
-      if (step.done(port.state, progress.base || {}, port)) { enter(progress.step + 1); continue; }
+      if (!step.info && step.done(port.state, progress.base || {}, port)) { enter(progress.step + 1); continue; }
       // A choice the player abandoned (closed it, cancelled, or did something else) returns to the
       // step that opens it, with that step's top-up if the resources were spent elsewhere.
       if (step.fallback?.(port.state, port) && progress.step > 0) { enter(progress.step - 1); continue; }
@@ -424,7 +449,7 @@
     };
     const openDialog = Object.keys(step.dialogs || {}).find(modalOpen);
     const lesson = step.lesson;
-    const eyebrow = `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${lesson.title}${reviewing ? ' · done' : ''}`;
+    const eyebrow = `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${lesson.title} · step ${step.index + 1} of ${lesson.steps.length}${reviewing ? ' · done' : ''}`;
     let text = openDialog ? step.dialogs[openDialog] : typeof step.text === 'function' ? step.text(state, port) : step.text;
     if (!reviewing && note && !openDialog) text = `${note} ${text}`;
     if (!reviewing && !openDialog && !step.dialog && state.activePlayer !== 0 && state.phase === 'operations' && !state.pendingCombat) text = `Rivals are taking their turns… ${text}`;
@@ -432,6 +457,9 @@
     let anchor = null;
     try { anchor = openDialog || step.dialog ? null : step.anchor?.(state, port) || null; } catch { anchor = null; }
     // This step needs an Operations turn, but you are in Buy: finish it, then carry on next round.
+    // The Sector Scan stays open after a build; when this step's control is elsewhere, close it first.
+    if (!reviewing && !openDialog && scanOpen() && !buyDetour && !(anchor && anchor.closest?.('#sector-popover')) && !['scan-close'].includes(step.id) && !(['move', 'construct', 'colonize', 'excavate'].includes(state.actionMode)))
+      text = `First close the Sector Scan (its Close button, or Escape). ${text}`;
     if (buyDetour) { anchor = globalThis.galacticReachGuide.turnButton(); if (!/Finish Buy/.test(text)) text = `You are in your Buy turn. Choose Finish Buy; the next round brings a new hand. Then: ${text}`; }
     // A card aimed with Use order waits for its hex: point at the lit hexes, whatever the step.
     const lit = coord => coord && $(`.hex.cf-drop-target[data-coord="${coord}"], .hex.target[data-coord="${coord}"]`);
@@ -441,19 +469,24 @@
     if (aimed) { anchor = aimed; text = `${state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.) ${text}`; }
     return {
       id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: step.title, text, rule: step.rule,
-      inDialog: openDialog || step.dialog || null, anchor, avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return step.marks?.(state, port) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
+      inDialog: openDialog || step.dialog || null, anchor, followCallouts: Boolean(step.followCallouts) && !reviewing, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return step.marks?.(state, port) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
       buttons: [
         { action: 'back', label: 'Back', disabled: progress.view === 0 },
-        ...(reviewing ? [{ action: 'next', label: 'Next', primary: true }] : []),
-        { action: 'skip', label: 'Skip lesson', disabled: step.lessonIndex >= LESSONS.length - 1 && !reviewing },
-        { action: 'exit', label: 'Exit tutorial' },
+        // Reading steps go on with Next; a "do it yourself" step goes on once you have done it.
+        { action: 'next', label: 'Next', primary: true, disabled: !(reviewing || step.info), title: reviewing || step.info ? '' : 'Do this step on the table first' },
+        { action: 'exit', label: 'Exit tutorial', quiet: true },
+        ...(step.lessonIndex < LESSONS.length - 1 || reviewing ? [{ action: 'skip', label: 'Skip lesson', link: true }] : []),
       ]
     };
   }
 
   function coachAction(action) {
     if (action === 'back') { if (progress.step >= STEPS.length) progress.view = STEPS.length - 1; else progress.view = Math.max(0, progress.view - 1); saveProgress(); }
-    else if (action === 'next') { progress.view = Math.min(progress.step, progress.view + 1); saveProgress(); }
+    else if (action === 'next') {
+      if (progress.view < progress.step) progress.view = Math.min(progress.step, progress.view + 1);
+      else if (STEPS[progress.step]?.info) enter(progress.step + 1);
+      saveProgress();
+    }
     else if (action === 'skip') {
       const current = STEPS[progress.view]?.lessonIndex ?? 0;
       const next = STEPS.findIndex(s => s.lessonIndex > current);
