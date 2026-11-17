@@ -1,6 +1,8 @@
 const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),assert=require('node:assert/strict');
 const read=n=>fs.readFileSync(path.join(__dirname,'../prototypes/galactic-reach',n),'utf8'),plain=x=>JSON.parse(JSON.stringify(x));
-const app=read('app.js'),line=app.split('\n').find(s=>s.includes('surveyNetwork: { code:'));assert(line.includes('cost:{biomass:2,energy:1}'));
+// Reproduce the rejected cost mix without adopting it in current sources.
+const baseline=read('app.js'),baselineLine=baseline.split('\n').find(s=>s.includes('surveyNetwork: { code:'));assert(baselineLine.includes('cost:{biomass:1,data:2}'));
+const app=baseline.replace(baselineLine,baselineLine.replace('cost:{biomass:1,data:2}','cost:{biomass:2,energy:1}')),line=app.split('\n').find(s=>s.includes('surveyNetwork: { code:'));
 function game(source){let seed=610010,calls=0;const c=vm.createContext({});vm.runInContext(read('adapter.js')+source,c);let e;const original=c.createGalacticAdapter;c.createGalacticAdapter=port=>{e=port;return original(port);};const a=c.createGalacticReach({headless:true,random:()=>{calls++;return ((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}});return {a,e,s:e.state,calls};}
 const control=game(app.replace(line,line.replace('cost:{biomass:2,energy:1}','cost:{biomass:1,data:2}'))),initial=game(app);assert.equal(initial.calls,control.calls);
 for(const k of ['planets','clusters','market','marketDecks'])assert.equal(JSON.stringify(initial.s[k]),JSON.stringify(control.s[k]),'Same initial '+k);

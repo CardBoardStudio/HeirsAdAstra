@@ -4,7 +4,7 @@ The round-16 human report on 38.43 ended 33–19–15–14 at a target of 30. Th
 
 ## Current research decisions
 
-This is local research, not a release. The retained baseline keeps the eight price-v1 changes and World Engine draw; the current working tree tentatively tests Survey Network2B1E,not yet adopted; the two-Biomass Seed Ark proposal is also rejected after training; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
+This is local research, not a release. The retained baseline keeps the eight price-v1 changes and World Engine draw; the current working tree tentatively tests Monument2M6B2D;Survey Network’s2B1E cost mix is rejected; the two-Biomass Seed Ark proposal is also rejected after training; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
 
 | Candidate | Current disposition | Evidence boundary |
 | --- | --- | --- |
@@ -14,7 +14,8 @@ This is local research, not a release. The retained baseline keeps the eight pri
 | Named-order trimming correction | Retain | Actual command defect corrected; no claim of uniform win improvement |
 | Colony execution-only preference | Opt-in only | Fresh30 wins10/32→9/32;40 wins10/32→12/32; no clear universal score/strength benefit |
 | Range/Industry valuation | Opt-in only | Training regression at30, provisional improvement at40 |
-| Survey Network2B1E | Training running | Same total cost/tier/draw effect; test resource mix rather than a discount |
+| Monument2M6B2D | Fresh confirmation planned | Training wins4/12→5/12 at30,5/12→6/12 at40;resource effects mixed |
+| Survey Network2B1E | Reject adoption | Thirty-point regression;only small40-point signal;restore early draw pricing |
 | Seed Ark at2 Biomass | Reject adoption | Earlier acquisition/use, but wins4/12→2/12 at30 and5/12→2/12 at40 |
 | Cheaper World Engine | Reject adoption | Corrected-policy Market wins6/12 to4/12 at30 and6/12 to5/12 at40 |
 | Optional paid Fleet discipline | Off | Training4/12 versus6/12 at30,7/12 versus6/12 at40; no consistent purchase/score benefit |
@@ -661,3 +662,34 @@ Survey training active:30 control `native/run-JQmlOE`,candidate `native/run-Wl5d
 
 
 Survey cost-mix preparation also passes web build,packaged canonical rulebook check and rules-contract tests. Pair protocol inspection verifies identical binary,profiles,target,seeds,rotations,cutoff and every research setting;adapter/native/bridge/lock hashes match. App/rulebook hashes intentionally differ for the declared cost mix and its canonical printed row. No browser/Render verification or deployment is claimed. The candidate remains temporary pending training outcomes.
+
+
+### Survey resource-mix training complete:reject the uniform price change
+
+All48 games complete with exact declared cost-only app transformation,identical policies/native/adapter sources,binary and paired maps. At30,control4/12wins,21.67 Prestige,5.00 purchases;candidate3/12,20.42,4.67. Survey buys/plays5/49→3/26;Biomass overflow26.7→30.2%. At40,control5/12,29.67,8.25;candidate6/12,30.08,7.33. Survey4/52→5/55;Biomass overflow32.9→31.1%,Energy18.9→20.0%. Small three-galaxy training evidence is mixed;do not average away the30-point regression or adopt from the40-point win alone. Reports `native/survey-resource-mix-{30,40}-{paired,training}.json`. Restore Survey1B2D and canonical row/release entry;retain frozen candidate and standalone reproduction test outside the default mechanic suite. No fresh confirmation for this failed uniform candidate.
+
+### Production timing changes the resource diagnosis
+
+`analyze-native-production-flow.cjs` reads actual production events,checks per-event stock conservation and independent gross-gain/overflow bounds,and exposes before/gross/lost/after stocks with cohort counts. Post-production stock means beginning Operations,not round end. Completed fresh40 Market production overflow in rounds1–6:Matter0.36%,Energy3.29%,Biomass0%,Data2.75%;rounds7–12:17.9%,18.7%,11.3%,20.4%;rounds13+:32.0%,32.5%,46.4%,32.6%. Later means condition on surviving games,not a causal time effect. Report `native/retained-market-40-production-flow.json` retains every round/window/game count. Biomass surplus is mainly late in these games;aggregate overflow did not justify making early draw purchases more Biomass-intensive.
+
+Predeclare next independent price-mix hypothesis:Monument of Accord2M6B2D versus6M2B2D,total10/Expensive,unchanged3Prestige and inert card gained to discard. No added points,resource conversion or card effect. It targets later Biomass spending without competing for early draw/Settler payments. Test both30/40 on three610010-series maps/all rotations,Market/Economy/Expansion/Military,retained production/protected budgets,market-filter off,all optional research skills off. Same frozen policies/sources except declared Monument price and canonical prose;verify setup/market/RNG equality. Evaluate actual Wonder acquisition,card Prestige,total score/wins and per-resource production/overflow/spending. Forty-eight training games;fresh1710010-series confirmation only if promising. Do not infer phase-specific value merely from a new cost vector or force a market specialist to dominate.
+
+
+Monument preparation passes full mechanics,source rulebook and focused exact-payment/setup checks. Candidate `native/monument-resource-mix-6p7i2bg5` freezes only the declared Monument cost transformation with identical native/adapter sources/binary. The full mechanic suite includes the focused test. Reuse the already completed `run-JQmlOE`30 and `run-jft0uN`40 control batches rather than rerun identical deterministic games:all source hashes,profile/research settings,seeds,rotations,target and cutoff match the declared baseline. This is24 retained control cases plus24 new candidates,not48 independent new samples or fresh confirmation;all three training galaxies are the same declared sample. No favorable subset of controls is selected.
+
+
+Monument candidate runs active:30 `native/run-W38GcQ`,40 `native/run-9hAdrn`,12cases each,versus the retained declared control batches. All private states/sources/RNG are retained. No parameters are tuned on partial results. No new default Colony execution,Fleet,or range/Industry skill is enabled by this card experiment.
+
+
+### Monument cost-mix training complete:promising,not adopted
+
+All24 new candidates complete against the24 retained matching controls. Exact price-only checks pass on both published app sources and every paired archived instrumented engine;adapter/factory/recorder/native-runner sources and hashes match. At30,control4/12wins,21.67 Prestige,5.00 purchases,7.50 Harvesters;candidate5/12,22.33,4.75,7.58. At40,control5/12,29.67,8.25,9.75;candidate6/12,32.83,8.75,11.67. Both win deltas+8.33 percentage points;three-galaxy bootstrap[0,+25] is training-only. Score deltas+0.67 at30,[0,+1.25];+3.17 at40,[-0.25,+10],so the larger40 score signal is concentrated and uncertain. Reports `native/monument-resource-mix-{30,40}-{paired,training}.json`.
+
+Subject Monument buys1→3 at30,9→12 at40;inert cards have0plays as intended. Permanent card Prestige4.42→4.83 and11→12.58 is descriptive,not causal mediation. Overflow30 M24.7→27.0%,E21.6→22.5%,B26.7→25.8%,D23.0→25.2%;40 M27.6→28.8%,E18.9→23.1%,B32.9→30.6%,D23.7→26.3%. Do not claim a uniform resource balance improvement or equate more Harvesters with better investment;payment/round-normalized analysis remains needed.
+
+Predeclare fresh Monument confirmation at30/40,eight previously unused1710010+7919*i seeds,all four rotations,cutoff80,128games. Old6M2B2D versuscandidate2M6B2D,both total10/Expensive/3Prestige;all actors use the same frozen retained-policy binary/sources from `run-M79s93/sources`,with common production/protected budgets,market-filter off,all other research skills off. Only declared Monument cost/canonical row differs. Primary subject wins and score by target;secondary actual purchases,card Prestige,spending,overflow and production-window patterns. No partial-outcome tuning,no aggregation to hide a target regression,no adoption from just card use or Biomass overflow. This is card-design evidence for the fixed Market lineup,not Market superiority over equally skilled Economy.
+
+Price analysis provenance now verifies every paired game's archived instrumented engine admits only the declared price transformation and that adapter,factory,recorder/native-runner sources match with valid hashes. New tests reject hidden effect/adapter/factory/runner changes or corruption;the completed Survey40 reanalysis retains identical deltas in `native/survey-resource-mix-40-provenance-checked.json`. Focused Monument,full mechanic,web build,source/packaged canonical rulebook and rules-contract checks pass. No browser/Render validation is claimed.
+
+
+Fresh Monument runs active:30 control `native/run-BuLQSJ`,candidate `native/run-4DVPFU`;40 control `native/run-zPgLgh`,candidate `native/run-Yc5253`. All new games/sources/states/RNG remain retained;no policy/price tuning during the comparison.

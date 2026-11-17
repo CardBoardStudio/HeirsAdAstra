@@ -31,7 +31,17 @@ function compare(left,right,validateApp=validateSources,changeText='World Engine
  for(const key of ['target','mode','tacticalForecast','militaryHorizon','productionDiscipline','marketFilter','colonyPlanning','colonyExecution','protectedMarketBudget','subjectMarket','orderBenefits','fleetDiscipline','seedStart','seeds','rotations','profiles','maxRound','binaryHash'])assert.deepEqual(a.protocol[key],b.protocol[key],'Protocol mismatch: '+key);
  for(const key of ['adapter','rust','bridge','lock'])assert.equal(a.sources[key],b.sources[key],'Unrelated source mismatch: '+key);
  validateApp(a.sources.app,b.sources.app);
- return {left,right,change:changeText,analysisSourceHash:hash(fs.readFileSync(__filename)),leftResultsHash:hash(a.raw),rightResultsHash:hash(b.raw),protocols:{left:a.protocol,right:b.protocol},...compareRows(a.rows,b.rows)};
+ const runnerA=fs.readFileSync(path.join(left,'sources/runner.cjs'),'utf8'),runnerB=fs.readFileSync(path.join(right,'sources/runner.cjs'),'utf8');
+ assert.equal(runnerA,runnerB,'Native runner differs');
+ const archived=g=>{
+  const m=JSON.parse(fs.readFileSync(path.join(g.archive,'manifest.json')));
+  const readSource=name=>{const content=fs.readFileSync(path.join(g.archive,'sources',name),'utf8');assert.equal(hash(content),m.sourceHashes[name],'Archive source hash mismatch: '+name);return content;};
+  const one=prefix=>{const names=Object.keys(m.sourceHashes).filter(n=>n.startsWith(prefix)&&n.endsWith('.js'));assert.equal(names.length,1,'Expected one archived '+prefix);return readSource(names[0]);};
+  return {engine:one('engine-'),adapter:one('adapter-'),factory:readSource('study-runner.cjs'),recorder:readSource('recorder.cjs'),runner:readSource('native-study.cjs')};
+ };
+ const cases=new Map(a.rows.map(g=>[`${g.seed}/${g.rotation}`,g]));
+ for(const g of b.rows){const x=cases.get(`${g.seed}/${g.rotation}`);assert(x,'Missing archive pair');const aa=archived(x),bb=archived(g);validateApp(aa.engine,bb.engine);for(const key of ['adapter','factory','recorder','runner'])assert.equal(aa[key],bb[key],'Archived tooling differs: '+key);assert.equal(aa.runner,runnerA,'Archive and run runner differ');}
+ return {left,right,archiveProvenance:{pairedCases:b.rows.length,nativeRunnerHash:hash(runnerA),scope:'Every paired archived instrumented engine matches the declared price-only transformation; adapter,factory,recorder,native runner match and source hashes verify.'},change:changeText,analysisSourceHash:hash(fs.readFileSync(__filename)),leftResultsHash:hash(a.raw),rightResultsHash:hash(b.raw),protocols:{left:a.protocol,right:b.protocol},...compareRows(a.rows,b.rows)};
 }
 if(require.main===module){const[out,left,right]=process.argv.slice(2);const result=compare(left,right);fs.writeFileSync(out,JSON.stringify(result,null,2));console.log(JSON.stringify({delta:result.delta,seedBootstrap95:result.seedBootstrap95,galaxies:result.galaxies}));}
 module.exports={validateSources,compare};
