@@ -1953,6 +1953,11 @@ impl BuiltinAgent {
                                 < (colony_defense(view, seat).len() as f64).min(3.0)
                         {
                             80.0
+                        } else if view["investmentPlanning"] == true
+                            && view["fleetInvestmentDiscipline"] == true
+                            && !(action["type"] == "build" && action["discountResource"] == "free")
+                        {
+                            -1.0
                         } else {
                             8.0
                         }
@@ -3560,6 +3565,48 @@ mod tests {
         view["players"][0]["hand"] = json!([]);
         view["players"][0]["discard"] = surplus;
         assert_eq!(from_hand, agent.score(&view, &trash));
+    }
+
+    #[test]
+    fn optional_fleet_discipline_keeps_defense_military_and_free_builds() {
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["fleetInvestmentDiscipline"] = json!(true);
+        view["fleets"] = json!({"-1,0":{"0":{"fleet":5}}});
+        let paid = json!({"type":"build","kind":"fleet","coord":"-1,0"});
+        let free = json!({"type":"build","kind":"fleet","coord":"-1,0","discountResource":"free"});
+        let discounted =
+            json!({"type":"build","kind":"fleet","coord":"-1,0","discountResource":"each"});
+        for strategy in [Strategy::Economy, Strategy::Expansion, Strategy::Military] {
+            let agent = BuiltinAgent::new(strategy, [17; 32]);
+            assert!(agent.score(&view, &paid) < agent.score(&view, &json!({"type":"pass"})));
+            assert!(
+                agent.score(&view, &discounted) < 0.0,
+                "Fleet each-discount still costs Matter"
+            );
+            assert!(agent.score(&view, &free) > 0.0);
+            view["fleetInvestmentDiscipline"] = json!(false);
+            assert_eq!(agent.score(&view, &paid), 8.0);
+            view["fleetInvestmentDiscipline"] = json!(true);
+            view["investmentPlanning"] = json!(false);
+            assert_eq!(agent.score(&view, &paid), 8.0);
+            view["investmentPlanning"] = json!(true);
+        }
+        let military = BuiltinAgent::new(Strategy::Military, [17; 32]);
+        view["fleets"] = json!({"-1,0":{"0":{"fleet":4}}});
+        assert_eq!(military.score(&view, &paid), 81.0);
+        let economy = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        view["fleets"] = json!({"8,0":{"1":{"fleet":1}}});
+        assert_eq!(
+            economy.score(&view, &paid),
+            80.0,
+            "Keep ordinary defensive coverage"
+        );
+        view["fleets"] = json!({"1,0":{"1":{"fleet":2}}});
+        assert!(
+            economy.score(&view, &paid) > 110.0,
+            "Keep urgent Colony defense"
+        );
     }
 
     #[test]
