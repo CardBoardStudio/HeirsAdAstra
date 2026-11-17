@@ -19,6 +19,7 @@ This is local research, not a release. The retained baseline keeps the eight pri
 | Seed Ark at2 Biomass | Reject adoption | Earlier acquisition/use, but wins4/12→2/12 at30 and5/12→2/12 at40 |
 | Cheaper World Engine | Reject adoption | Corrected-policy Market wins6/12 to4/12 at30 and6/12 to5/12 at40 |
 | Optional paid Fleet discipline | Off | Training4/12 versus6/12 at30,7/12 versus6/12 at40; no consistent purchase/score benefit |
+| Buy-discount valuation | Opt-in; fresh confirmation running | Training30 unchanged;40 one Trade Syndicate buyer saves15nominal resources,6/12 versus5/12wins,+0.083meanPrestige |
 | Neutral optional-construction finish | Opt-in only | Fresh30 wins6/32both;40 wins10/32→11/32,but average scores lower at both targets |
 | Harvester one-round headroom delay | Off; no observed decision effect | All48 training trajectories identical; not evidence of strength improvement |
 | Market-priority versus equally skilled Economy | Viable, target-dependent evidence | Fresh30 wins13/32both;40 Market11/32 versus9/32 and +2.97 mean Prestige; win-rate uncertainty remains |
@@ -801,3 +802,15 @@ Next independently test the already prepared Buy-discount valuation. Predeclare4
 
 
 Buy-discount valuation training launched: at30,control `native/run-VnEYbE`,subject `native/run-K4xxeA`; at40,control `native/run-fvBnqp`,subject `native/run-OHUH3d`;12cases per arm,48total,with all declared optional skills off apart from the subject Buy valuation. Within-target frozen files/binary match exactly and protocols differ only by variant/path and buyDiscount mode. Provenance `native/buy-discount-training-provenance.json`. No card change or partial-result tuning.
+
+
+### Buy-discount valuation training complete: small,real use witness
+
+All48 games finish without failures/cutoffs. Thirty-point arms are4/12wins,21.67Prestige,5.00market buys,7.50Harvesters;no Buy-card plays or discounted purchases. Forty-point control5/12wins,29.67Prestige,8.25buys,9.75Harvesters;variant6/12,29.75,8.42,9.83. Paired win delta+8.33percentage points,three-galaxy interval[0,+25];score+0.0833,[0,+0.25]. All score/win change is one case(seed625848/rotation3) going39→40Prestige;do not claim a reliable general strength gain. Reports `native/buy-discount-{30,40}-{training,paired}.json`.
+
+Actual discount audit shows one Trade Syndicate buyer at40,10plays,6discounted purchases,15printed-minus-paid resources saved(4M6E1B4D),four played rounds without a discounted market purchase. Control has0Buy-card plays/discounted purchases. This case buys eleven market cards versus nine and plays Ascendancy Codex8times,Command Nexus12,Hyperspace Vaults7,versus a control with only Cargo Expansion played among ordinary market cards. Those downstream differences do not prove the coupon caused the whole score/engine change. The actual5-resource card saves15nominal resources on the chosen later purchases,but that is not an opportunity-cost-adjusted causal profit estimate. Artifact `native/buy-discount-40-{control,subject}-actual-discounts.json`. This is stronger usefulness evidence than counting nominal coupon plays,still only one buyer.
+
+Predeclare fresh confirmation before any price/effect change:targets30/40,eight previously unused1910010+7919*i seeds,all rotations,cutoff80,128games;absence checked across retained native run protocols. Freeze exact game/native/adapter/binary sources from `run-VnEYbE`;all actors use common production discipline/protected budgets,market-filter off,all other optional skillsnone. Only buyDiscount none versus subject differs by arm. Primary subject wins and score by target;secondary actual discount-card purchases/plays,discounted purchases and printed-minus-paid savings,allmarket use and resource overflow/spending. No partial-result tuning,no target-specific adoption from the single training success,and no assumption all Buy-card purchases are beneficial. Current default remains off.
+
+
+Fresh Buy-discount confirmation launched: at30,control `native/run-vnDmrZ`,subject `native/run-OUY2cS`; at40,control `native/run-31H89B`,subject `native/run-0oQSw3`;32cases per arm,128total. All frozen files/binary match the declared training sources;within-target protocols differ only in variant/path and buyDiscount mode. Provenance `native/buy-discount-fresh-provenance.json`. No partial-outcome tuning or card price/effect change.
