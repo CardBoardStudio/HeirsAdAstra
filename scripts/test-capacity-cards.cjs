@@ -37,13 +37,13 @@ assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
 assert.equal(prices.reduce((n, p) => n + p, 0), 219, 'Price v1 reduces the eight selected designs by eleven resources total');
 assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
 
-// Setup: nine face-up cards (three per price tier) from 68 cards that mix both decks; target defaults to 30.
+// Setup: nine face-up cards (three per price tier) from 56 cards that mix both decks; target defaults to 30.
 {
   const g = game(), { s } = g, decks = Object.values(s.marketDecks).flat();
-  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 68); assert.equal(s.victoryTarget, 30);
+  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 56); assert.equal(s.victoryTarget, 30);
   delete s.victoryTarget; assert.equal(g.e.victoryTarget(),40,'Legacy targetless saves retain40');
   const supply = [...s.market, ...decks].map(c => c.key);
-  for (const key of Object.keys(cards)) assert.equal(supply.filter(k => k === key).length, 2, `${key} has two copies`);
+  for (const key of Object.keys(catalog.MARKET_CARDS)) assert.equal(supply.filter(k => k === key).length, 2, `${key} has two copies`);
   assert.equal(game({ victoryTarget: 40 }).s.victoryTarget, 40, 'Explicit40-point games retain their chosen target'); assert.equal(game({ victoryTarget: 35 }).s.victoryTarget, 30, 'Unlisted targets fall back to 30');
   assert.equal(game({ newGameSettings: { victoryTarget: 60 } }).s.victoryTarget, 60, 'Table settings choose the target');
 }

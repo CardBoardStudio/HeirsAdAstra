@@ -144,8 +144,7 @@ function createGalacticReach(options = {}) {
     excavate: { name: 'Excavate', kind: 'Basic', accent: 'var(--data)', order: 'excavate', text: 'At your Explorer’s located relic, pay 1 Matter, 1 Energy, and 2 Data. Choose a relic card into discard and gain 2 Prestige. Remove the relic and trash this card; consume one Explorer.' }
   };
 
-  // 31.36 Capacity Cards: the basic cards are no longer for sale. Every market card
-  // costs more of at least one resource than a starting limit of 4 can hold.
+  // Basic cards are not for sale. Cheap supplies draw-two and exchange designs.
   // Tiered market (rules #market): three decks by a card's total price, each with three
   // face-up slots, listed in table order (the relic row lies above Expensive).
   const MARKET_TIERS = [
@@ -207,10 +206,12 @@ function createGalacticReach(options = {}) {
     aegisLattice: { code: 'M09', name: 'Aegis Lattice', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 7, energy: 2 }, attack: 0, shield: 8, text: 'Prevent 8 hits this volley.' },
     victoryDoctrine: { code: 'M10', name: 'Victory Doctrine', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 1, energy: 2, data: 6 }, attack: 2, shield: 0, victoryPrestige: 2, text: '+2 hits this volley. If your side wins a decisive combat victory, gain 2 more permanent Prestige.' }
   };
-  const MARKET_CARDS = { ...ADVANCED_CARDS, ...MARKET_MILITARY };
-  // A market card's tier follows its printed price: the sum of every resource in it.
+  const RETIRED_MARKET_KEYS = ['strikeVector', 'prefabYards', 'seedArk', 'colonyPods', 'procurementHub', 'tradeSyndicate'];
+  const MARKET_CARDS = Object.fromEntries(Object.entries({ ...ADVANCED_CARDS, ...MARKET_MILITARY }).filter(([key]) => !RETIRED_MARKET_KEYS.includes(key)));
+  // Expensive wins at total 8+; requiring five of one resource raises a card to Medium.
   function marketTier(key) {
     const price = Object.values(MARKET_CARDS[key]?.cost || {}).reduce((sum, n) => sum + n, 0);
+    if (price < 8 && Object.values(MARKET_CARDS[key]?.cost || {}).some(n => n >= 5)) return 'medium';
     return MARKET_TIERS.find(tier => price >= tier.minPrice).id;
   }
   const MILITARY_CARDS = { ...BASIC_TACTICS, ...MARKET_MILITARY };
@@ -407,7 +408,7 @@ function createGalacticReach(options = {}) {
 
   // Card data only, for the card gallery page: no galaxy, state, timers or storage.
   if (options.catalog === true) return {
-    rulesVersion: `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`, ADVANCED_CARDS, MARKET_MILITARY, BASIC_TACTICS, BASIC_CARDS, RELIC_CARDS,
+    rulesVersion: `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`, MARKET_CARDS, ADVANCED_CARDS, MARKET_MILITARY, BASIC_TACTICS, BASIC_CARDS, RELIC_CARDS,
     MARKET_SIZE, MARKET_COPIES, MARKET_TIERS, MARKET_TIER_SLOTS, marketTier, STARTING_LIMIT, DEFAULT_VICTORY_TARGET, VICTORY_TARGET_CHOICES, RESOURCES, RESOURCE_NAMES
   };
 

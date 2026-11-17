@@ -20,14 +20,14 @@ function play(g,key,resource,id='exchange'){g.s.phase='operations';g.s.activePla
  const g=game();rich(g.p);g.s.phase='buy';const before=JSON.stringify(g.a.snapshotState());assert(!g.a.legalActions(0).some(a=>a.source==='catalog'));assert.throws(()=>g.a.applyAction(0,{type:'buy',source:'catalog',key:'strategyCore'}),/Illegal/);assert.equal(JSON.stringify(g.a.snapshotState()),before);assert.equal(g.a.observe(0).market.length,9,'Ordinary games retain three rows');
 }
 {
- const g=game({simulationCatalogMarket:true});rich(g.p);g.s.phase='buy';const obs=g.a.observe(0);assert.equal(obs.market.length,34);assert.equal(g.s.market.length,9);assert.equal(obs.marketCosts.length,34);assert.equal(obs.marketPaymentCosts.length,34);assert(Object.values(obs.catalogCounts).every(n=>n===2));
+ const g=game({simulationCatalogMarket:true});rich(g.p);g.s.phase='buy';const obs=g.a.observe(0);assert.equal(obs.market.length,28);assert.equal(g.s.market.length,9);assert.equal(obs.marketCosts.length,28);assert.equal(obs.marketPaymentCosts.length,28);assert(Object.values(obs.catalogCounts).every(n=>n===2));
  const key=Object.keys(g.e.MARKET_CARDS).find(k=>!g.s.market.some(c=>c.key===k));assert(key);const cost=g.e.ALL_CARDS[key].cost,stock={...g.p.resources};
  g.a.applyAction(0,{type:'buy',source:'catalog',key});for(const r of g.e.RESOURCES)assert.equal(g.p.resources[r],stock[r]-(cost[r]||0));assert.equal(g.e.marketCopiesRemaining(key),1);
  const p1=g.s.players[1];rich(p1);g.s.activePlayer=1;g.a.applyAction(1,{type:'buy',source:'catalog',key});assert.equal(g.e.marketCopiesRemaining(key),0);assert(!g.a.observe(1).market.some(c=>c.key===key));
  const before=JSON.stringify(g.a.snapshotState());assert.throws(()=>g.a.applyAction(1,{type:'buy',source:'catalog',key}),/Illegal/);assert.equal(JSON.stringify(g.a.snapshotState()),before);
  for(const card of g.a.observe(1).market)assert(!('position'in card)&&!('deckIndex'in card));
  assert(Object.values(g.a.privateState(0).marketDecks).flat().every(c=>c.hidden===true),'Catalog permission never exposes shuffled deck order');
- const resumed=game({resume:g.a.snapshotState(),simulationCatalogMarket:true});assert.equal(resumed.e.marketCopiesRemaining(key),0);assert.equal(resumed.a.observe(0).market.length,33);
+ const resumed=game({resume:g.a.snapshotState(),simulationCatalogMarket:true});assert.equal(resumed.e.marketCopiesRemaining(key),0);assert.equal(resumed.a.observe(0).market.length,27);
 }
 {
  const g=game({simulationCatalogMarket:true});rich(g.p);g.s.phase='buy';g.p.hand=[{id:'coupon',key:'tradeSyndicate'}];g.a.applyAction(0,{type:'buy_effect',card:'coupon'});const before={...g.p.resources};g.a.applyAction(0,{type:'buy',source:'catalog',key:'exchangeProtocol'});assert.equal(g.p.resources.energy,before.energy-1);assert.equal(g.p.resources.data,before.data);assert(g.p.discard.some(c=>c.key==='exchangeProtocol'),'Catalog normal card enters discard');
