@@ -1,5 +1,6 @@
 mod access;
 mod accounts;
+mod admin;
 mod arena;
 mod card_feedback;
 mod change_queue;
@@ -567,6 +568,7 @@ fn router(app: App) -> Router {
             get(invites::list).post(invites::create),
         )
         .route("/api/admin/invites/{id}/revoke", post(invites::revoke))
+        .route("/api/admin/overview", get(admin::overview))
         .route("/api/invites/inspect", post(invites::inspect))
         .route("/api/invites/accept", post(invites::accept))
         .route("/api/tables", get(tables::list).post(tables::create))

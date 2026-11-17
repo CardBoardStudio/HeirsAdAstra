@@ -15,6 +15,11 @@ let session,
   matches = {matches:[]},
   tables = [],
   invitations = [],
+  overview,
+  overviewError,
+  // Members dashboard search, filter and sort, kept across refreshes.
+  people = { q: "", filter: "all", sort: "newest" },
+  links = { q: "", filter: "all", sort: "newest" },
   invitation,
   inviteError,
   lobby,
@@ -32,7 +37,7 @@ const returnPath = (() => {
 const arenaInfo = () => catalog?.games.find(g => g.id === arenaGame);
 const arenaPolicies = () => catalog.policies.filter(p => p.game === arenaGame);
 const page = () =>
-  ["arena", "account", "tables", "admin"].includes(location.hash.slice(1))
+  ["arena", "account", "tables", "admin", "members"].includes(location.hash.slice(1))
     ? location.hash.slice(1)
     : location.hash.startsWith("#invite/") ? "invite" : location.hash.startsWith("#lobby/") ? "lobby" : "library";
 const inviteToken = () => /^#invite\/([a-f0-9]{64})$/.exec(location.hash)?.[1];
@@ -103,6 +108,10 @@ async function refresh() {
     tables = []; matches={matches:[]};
   }
   invitations = profile?.is_admin ? (await api("/api/admin/invites")).invitations : [];
+  overview = null; overviewError = null;
+  if (profile?.is_admin && page() === "members") {
+    try { overview = await api("/api/admin/overview"); } catch (e) { overviewError = e.message; }
+  }
   if (inviteToken()) {
     try { invitation = await api("/api/invites/inspect", {token:inviteToken()}); inviteError = null; }
     catch (e) { invitation = null; inviteError = e.message; }
@@ -253,6 +262,85 @@ function adminView() {
   return head("BRING PEOPLE TO THE TABLE", "Invite your next player.", "Create a link, share it privately, and keep track of the seats you’ve offered.") +
     `<div class="split"><section class="panel"><h2>Create an invitation</h2><form id="invite-form"><label for="invite-label">Who is it for?</label><input id="invite-label" name="label" maxlength="80" required placeholder="Friday game night"><label for="invite-days">Expires in</label><select id="invite-days" name="days"><option value="1">24 hours</option><option value="7" selected>7 days</option><option value="30">30 days</option></select><label for="invite-uses">Number of people</label><input id="invite-uses" name="max_uses" type="number" min="1" max="20" value="1" required><button class="primary">Create invite link →</button><p class="form-note">Invites create player accounts. They never grant administrator access. Copy the link when it appears; it is shown once.</p></form></section><section class="panel"><h2>Your invitations</h2>${invitations.length ? invitations.map(i => `<article class="invitation-row"><strong>${esc(i.label)}</strong><p>${i.uses}/${i.max_uses} people · ${status(i)}<br>Expires ${new Date(i.expires*1000).toLocaleDateString()} · Created by ${esc(i.created_by)}</p>${status(i)==="Active" ? `<button class="secondary" data-revoke-invite="${esc(i.id)}">Revoke link</button>` : ""}</article>`).join("") : '<p>No invitations yet. Create your first link.</p>'}</section></div>`;
 }
+// Members dashboard (docs/invite-only.md#admin-dashboard): read-only; invitations
+// are still created and revoked on the Invitations page.
+const day = (t) => t ? new Date(t * 1000).toLocaleDateString(undefined, {year:"numeric",month:"short",day:"numeric"}) : "—";
+const stamp = (t) => t ? new Date(t * 1000).toLocaleString(undefined, {month:"short",day:"numeric",hour:"numeric",minute:"2-digit"}) : "—";
+function ago(t) {
+  if (!t) return "—";
+  const s = Math.max(0, Date.now() / 1000 - t);
+  return s < 90 ? "just now" : s < 5400 ? `${Math.round(s / 60)} min ago` : s < 129600 ? `${Math.round(s / 3600)} h ago` : `${Math.round(s / 86400)} days ago`;
+}
+const shortId = (id) => { const [kind, rest = ""] = id.split(/:(.*)/s); return rest.length > 14 ? `${kind}:${rest.slice(0, 6)}…${rest.slice(-4)}` : id; };
+const JOINED = {invitation:"Invitation link", "admin-grant":"Admin grant (host CLI)", bootstrap:"Setup link", direct:"Direct sign-in", temporary:"Temporary identity"};
+const SIGN_IN = {nido:"Nido wallet", "recovery-key":"Recovery key", preview:"Preview", development:"Development"};
+const LINK_STATUS = {active:"Active", "used-up":"Used up", expired:"Expired", revoked:"Revoked"};
+const PEOPLE_FILTERS = {all:"All accounts", admin:"Administrators", invitation:"Joined by invitation", "admin-grant":"Admin grant", "no-access":"No access", "signed-in":"Signed in now"};
+const PEOPLE_SORTS = {newest:"Newest first", oldest:"Oldest first", name:"Name", seen:"Last seen", tables:"Most tables"};
+const LINK_FILTERS = {all:"All links", active:"Active", "used-up":"Used up", expired:"Expired", revoked:"Revoked"};
+const LINK_SORTS = {newest:"Newest first", oldest:"Oldest first", accepted:"Most accepted", expires:"Expires soonest"};
+const options = (all, chosen) => Object.entries(all).map(([v, t]) => `<option value="${v}"${v === chosen ? " selected" : ""}>${t}</option>`).join("");
+const has = (q, ...fields) => !q || fields.some(f => String(f ?? "").toLowerCase().includes(q));
+function peopleRows() {
+  const q = people.q.trim().toLowerCase();
+  const rows = overview.accounts.filter(a =>
+    has(q, a.name, a.id, ...a.invitations.map(i => i.label)) &&
+    ({all:true, admin:a.admin, invitation:a.joined === "invitation", "admin-grant":a.joined === "admin-grant", "no-access":!a.has_access, "signed-in":a.active_sessions > 0})[people.filter]);
+  const by = {newest:(x, y) => y.created - x.created, oldest:(x, y) => x.created - y.created, name:(x, y) => x.name.localeCompare(y.name), seen:(x, y) => (y.last_seen ?? 0) - (x.last_seen ?? 0) || y.active_sessions - x.active_sessions, tables:(x, y) => (y.solo_tables + y.shared_tables) - (x.solo_tables + x.shared_tables)}[people.sort];
+  rows.sort(by);
+  if (!rows.length) return `<tr><td colspan="6" class="dash-empty">No accounts match.</td></tr>`;
+  return rows.map(a => {
+    const via = a.invitations[0];
+    return `<tr><td><div class="dash-who"><strong>${esc(a.name)}</strong><span class="dash-id"><code title="${esc(a.id)}">${esc(shortId(a.id))}</code><button class="dash-copy" type="button" data-copy="${esc(a.id)}" aria-label="Copy account id for ${esc(a.name)}">Copy</button></span></div></td>` +
+      `<td>${esc(JOINED[a.joined] ?? a.joined)}<small>${via ? `${esc(via.label)} · ${stamp(via.claimed)}` : esc(SIGN_IN[a.sign_in] ?? a.sign_in)}</small></td>` +
+      `<td>${day(a.created)}<small>${esc(SIGN_IN[a.sign_in] ?? a.sign_in)}</small></td>` +
+      `<td>${a.last_seen ? ago(a.last_seen) : a.active_sessions ? "Signed in" : "—"}<small>${a.active_sessions} active session${a.active_sessions === 1 ? "" : "s"}</small></td>` +
+      `<td>${a.solo_tables} own<small>${a.shared_tables} shared</small></td>` +
+      `<td>${a.admin ? '<span class="dash-pill admin">Admin</span>' : '<span class="dash-pill">Player</span>'}${a.has_access ? "" : '<small class="dash-warn">No access</small>'}</td></tr>`;
+  }).join("");
+}
+function linkRows() {
+  const q = links.q.trim().toLowerCase();
+  const rows = overview.invitations.filter(i =>
+    has(q, i.label, i.created_by?.name, ...i.claims.map(c => c.name)) && (links.filter === "all" || i.status === links.filter));
+  const by = {newest:(x, y) => y.created - x.created, oldest:(x, y) => x.created - y.created, accepted:(x, y) => y.uses - x.uses, expires:(x, y) => x.expires - y.expires}[links.sort];
+  rows.sort(by);
+  if (!rows.length) return `<tr><td colspan="5" class="dash-empty">No invitation links match.</td></tr>`;
+  return rows.map(i => `<tr><td><strong>${esc(i.label)}</strong><small>${i.role === "admin" ? "Administrator setup link · host" : `By ${esc(i.created_by?.name ?? "Host")}`}</small></td>` +
+    `<td>${day(i.created)}<small>${i.expires * 1000 <= Date.now() ? "Expired" : "Expires"} ${day(i.expires)}</small></td>` +
+    `<td><span class="dash-uses">${i.uses}/${i.max_uses}</span><span class="dash-meter" aria-hidden="true"><i style="width:${Math.round(100 * i.uses / Math.max(1, i.max_uses))}%"></i></span></td>` +
+    `<td><span class="dash-pill ${i.status}">${LINK_STATUS[i.status] ?? esc(i.status)}</span></td>` +
+    `<td>${i.claims.length ? `<ul class="dash-claims">${i.claims.map(c => `<li>${esc(c.name ?? shortId(c.account_id))} <small>${stamp(c.claimed)}</small></li>`).join("")}</ul>` : '<span class="muted">Not claimed yet</span>'}</td></tr>`).join("");
+}
+function membersView() {
+  if (!profile?.is_admin) return head("HOST TOOLS", "Administrator access", "Sign in with the administrator account to see members and invitation links.");
+  const intro = head("HOST TOOLS", "Members and invitation links.", "Who has joined, how they got in, and how your links are being used.", overview?.invite_only ? "INVITE-ONLY HOST" : "");
+  if (!overview) return intro + `<section class="panel"><p class="hint">${esc(overviewError || "Loading…")}</p></section>`;
+  const t = overview.totals;
+  const stat = (label, value, note) => `<div class="stat"><span>${label}</span><strong>${value}</strong><small>${note}</small></div>`;
+  const tools = (key, state, filters, sorts, label) => `<div class="dash-tools"><div><label for="${key}-q">Search ${label}</label><input id="${key}-q" type="search" data-dash="${key}" data-field="q" value="${esc(state.q)}" placeholder="Name, id or link"></div><div><label for="${key}-filter">Show</label><select id="${key}-filter" data-dash="${key}" data-field="filter">${options(filters, state.filter)}</select></div><div><label for="${key}-sort">Sort</label><select id="${key}-sort" data-dash="${key}" data-field="sort">${options(sorts, state.sort)}</select></div></div>`;
+  return intro +
+    `<div class="stat-grid dash-stats">${stat("LINKS CREATED", t.links_created, `${t.links_active} active now`)}${stat("ACCEPTED", t.links_accepted, `of ${t.seats_offered} seats offered`)}${stat("ACCOUNTS", t.accounts, `${t.admins} administrator${t.admins === 1 ? "" : "s"} · ${t.signed_in} signed in`)}</div>` +
+    `<section class="panel dash-panel"><div class="panel-heading"><h2>Accounts</h2><small class="muted">Updated ${stamp(overview.generated)}</small></div>${tools("people", people, PEOPLE_FILTERS, PEOPLE_SORTS, "accounts")}<div class="table-wrap"><table class="dash-table"><thead><tr><th scope="col">PLAYER</th><th scope="col">JOINED VIA</th><th scope="col">CREATED</th><th scope="col">LAST SEEN</th><th scope="col">TABLES</th><th scope="col">ROLE</th></tr></thead><tbody id="people-rows">${peopleRows()}</tbody></table></div>${overview.accounts_truncated ? '<p class="form-note">Showing the newest 1,000 accounts.</p>' : ""}<p class="form-note">Last seen comes from Nido sessions, which the server rechecks at most once a minute. Other sign-ins show only their active session count.</p></section>` +
+    `<section class="panel dash-panel"><div class="panel-heading"><h2>Invitation links</h2><a class="text-link" href="#admin">Create or revoke links →</a></div>${tools("links", links, LINK_FILTERS, LINK_SORTS, "links")}<div class="table-wrap"><table class="dash-table"><thead><tr><th scope="col">LINK</th><th scope="col">CREATED</th><th scope="col">ACCEPTED</th><th scope="col">STATUS</th><th scope="col">CLAIMED BY</th></tr></thead><tbody id="links-rows">${linkRows()}</tbody></table></div>${overview.invitations_truncated ? '<p class="form-note">Showing the newest 1,000 links.</p>' : ""}</section>`;
+}
+function bindCopies(root) {
+  root.querySelectorAll("[data-copy]").forEach(b => b.addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copied"; }
+    catch { b.textContent = "Copy failed"; }
+    setTimeout(() => { if (b.isConnected) b.textContent = "Copy"; }, 1500);
+  }));
+}
+function bindMembers() {
+  if (!overview) return;
+  bindCopies($("#main"));
+  document.querySelectorAll("[data-dash]").forEach(el => el.addEventListener(el.tagName === "INPUT" ? "input" : "change", () => {
+    const [state, body, rows] = el.dataset.dash === "people" ? [people, "#people-rows", peopleRows] : [links, "#links-rows", linkRows];
+    state[el.dataset.field] = el.value;
+    $(body).innerHTML = rows();
+    bindCopies($(body));
+  }));
+}
 function gateView() {
   const here = location.pathname + location.search + location.hash;
   const signIn = `<a class="primary" href="/api/auth/nido?return_to=${encodeURIComponent(here)}">Continue with Nido ↗</a>`;
@@ -289,11 +377,13 @@ function render() {
     arena: "AI arena",
     account: "Your account",
     admin: "Invitations",
+    members: "Members",
     tables: "Your tables",
     invite: "Your invitation",
     lobby: "Waiting room",
   }[current];
   $("#admin-nav").hidden = !profile?.is_admin;
+  $("#members-nav").hidden = !profile?.is_admin;
   // A gated visitor has no profile yet, but may already be signed in.
   const who = profile ?? (gated() ? session.user : null);
   $("#account-link").innerHTML = who
@@ -305,7 +395,7 @@ function render() {
     bind();
     return;
   }
-  $("#main").innerHTML = ({arena:arenaView,account:accountView,library:libraryView,admin:adminView,invite:inviteView,tables:tablesView,lobby:lobbyView}[current])();
+  $("#main").innerHTML = ({arena:arenaView,account:accountView,library:libraryView,admin:adminView,members:membersView,invite:inviteView,tables:tablesView,lobby:lobbyView}[current])();
   bind();
   pollLobby();
 }
@@ -320,6 +410,7 @@ function onClick(id, work) {
   $(id)?.addEventListener("click", () => action(work));
 }
 function bind() {
+  bindMembers();
   bindReplays(api,async()=>{matches=await api("/api/arena/matches");});
   onForm("#table-form", async body => {
     const table = await api("/api/tables", {game:arenaGame,name:body.name,practice:false,round_limit:20,lobby:true});
@@ -466,7 +557,7 @@ $(".skip").addEventListener("click", (event) => {
   $("#main").scrollIntoView();
 });
 window.addEventListener("hashchange", () => {
-  if (gated() || page() === "invite" || page() === "lobby") { refresh().catch(e => notice(e.message, true)); return; }
+  if (gated() || page() === "invite" || page() === "lobby" || page() === "members") { refresh().catch(e => notice(e.message, true)); return; }
   if (catalog) {
     render();
     $("#main").focus();
