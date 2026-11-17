@@ -10,6 +10,7 @@
   font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 .gr-coach[hidden] { display: none; }
+.gr-coach { user-select: none; -webkit-user-select: none; }
 .gr-coach[popover] { inset: auto; margin: 0; overflow: visible; }
 .gr-coach.quiet { width: min(260px, calc(100vw - 20px)); padding: 7px 11px; opacity: .92; box-shadow: 0 6px 16px #0008; }
 .gr-coach.quiet .gr-coach-text { font-size: 12px; }

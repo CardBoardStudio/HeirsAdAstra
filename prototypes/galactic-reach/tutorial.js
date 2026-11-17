@@ -108,10 +108,10 @@
   const LESSONS = [
     { id: 'table', title: 'Read the table', steps: [
       { id: 'track', title: 'The score track', rule: 'shared-board',
-        text: s => `Top left is the score track. Every faction races to ${s.victoryTarget || 40} Prestige (★). The first round that ends with someone at the goal decides the winner. Select your marker, “You”, to see where your points come from.`,
+        text: s => `This practice game is kept apart from your own game, which stays saved. Top left is the score track. Every faction races to ${s.victoryTarget || 40} Prestige (★). The first round that ends with someone at the goal decides the winner. Select your marker, “You”, to see where your points come from.`,
         anchor: () => $('[data-score-player="0"]'), done: () => modalOpen('#prestige-dialog') },
       { id: 'track-close', title: 'Your points', rule: 'victory', dialog: '#prestige-dialog',
-        text: () => 'Your home Colony is worth 3★. Each new Colony adds 3★, each excavated relic 2★ and each decisive battle 2★. Close this window to go on.',
+        text: () => 'This window breaks down a faction’s Prestige. A home Colony is worth 3★; each new Colony adds 3★, each excavated relic 2★ and each decisive battle 2★. Close this window to go on.',
         done: () => !modalOpen('#prestige-dialog') },
       { id: 'home', title: 'Your home world', rule: 'shared-board',
         text: () => 'This is your home world. Your Colony (the house) sits on its center hex, and the cyan ring shows the world is yours. Select your Colony.',
@@ -215,7 +215,7 @@
       { id: 'choose-relic', title: 'Choose a relic card', rule: 'alien-relics',
         // Cancelled Excavate (or never chose a card): go back and play it again.
         fallback: state => me(state).relicsExcavated === 0 && state.actionMode !== 'excavate',
-        text: () => 'Choose one of the three face-up relic cards. It goes to your discard pile, you gain 2★, and the Explorer is used up.',
+        text: () => 'Choose one of the three face-up relic cards. It goes to your discard pile, you gain 2★, and the Explorer is used up. (Cancel Excavate, above the relics, backs out without paying.)',
         anchor: () => $('[data-excavate-relic]:not([disabled])') || $('#relic-row'), done: state => me(state).relicsExcavated > 0 },
     ] },
     { id: 'colonies', title: 'Colonies', steps: [
@@ -266,7 +266,7 @@
         ensure: s => { ensureResources(s, { energy: 2 }); return 'Tutorial supply: 2 Energy.'; },
         needsEnsure: state => myBuy(state) && !RES.some(r => me(state).resources[r] >= 2),
         start: state => ({ upgraded: upgradedCount(me(state)) }),
-        dialogs: { '#upgrade-dialog': 'Pick which copy to upgrade and the resource that pays (2 of one kind). Level II gives a stronger order but can no longer convert.' },
+        dialogs: { '#upgrade-dialog': 'Pick any copy to upgrade (in hand, in play or in discard: they are the same card) and the resource that pays (2 of one kind). Level II gives a stronger order but can no longer convert.' },
         text: () => 'Below the market are the Upgrades. Choose Move II (or Construct II) to upgrade one of your starters for 2 of one resource.',
         anchor: () => $('[data-upgrade-offer]:not([disabled])'), done: (state, base) => upgradedCount(me(state)) > base.upgraded },
       { id: 'capacity', title: 'A Capacity Module', buy: true, rule: 'capacity-module',
@@ -292,7 +292,7 @@
         prepare: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); },
         ensure: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); return 'Tutorial supply: your Capacity Module.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'capacityModule') && !(me(state).storage || []).length,
-        dialogs: { '#storage-allocation-dialog': 'Split 4 points among your limits, for example 2 Energy and 2 Data, then choose Play Capacity Module at the bottom. Each point raises that limit by 1, for good.' },
+        dialogs: { '#storage-allocation-dialog': 'It starts with 1 point on each resource. Move them as you like (for example 2 Energy and 2 Data), then choose Play Capacity Module at the bottom. Each point raises that limit by 1, for good.' },
         text: () => 'Your Capacity Module came round in your new hand. Choose Use order on it.',
         anchor: hand('capacityModule'), done: state => (me(state).storage || []).length > 0 },
     ] },
@@ -421,7 +421,7 @@
     let anchor = null;
     try { anchor = openDialog || step.dialog ? null : step.anchor?.(state, port) || null; } catch { anchor = null; }
     // This step needs an Operations turn, but you are in Buy: finish it, then carry on next round.
-    if (buyDetour) { anchor = globalThis.galacticReachGuide.turnButton(); text = `You are in your Buy turn. Choose Finish Buy; the next round brings a new hand. Then: ${text}`; }
+    if (buyDetour) { anchor = globalThis.galacticReachGuide.turnButton(); if (!/Finish Buy/.test(text)) text = `You are in your Buy turn. Choose Finish Buy; the next round brings a new hand. Then: ${text}`; }
     // A card aimed with Use order waits for its hex: point at the lit hexes, whatever the step.
     const lit = coord => coord && $(`.hex.cf-drop-target[data-coord="${coord}"], .hex.target[data-coord="${coord}"]`);
     const choiceInScan = anchor?.closest?.('#sector-popover') && scanOpen();

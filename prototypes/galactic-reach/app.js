@@ -5171,6 +5171,8 @@ function createGalacticReach(options = {}) {
 
   function showSectorScan(keyboard=false) {
     const panel=$('#sector-popover');
+    // A move that started a battle opens the battle window: the scan must not reopen over it.
+    if (document.querySelector('dialog[open]:modal')) return;
     if (!panel.matches(':popover-open')) panel.showPopover();
     positionSectorScan();
     if (keyboard) $('#close-sector-scan').focus();

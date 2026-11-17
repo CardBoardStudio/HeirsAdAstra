@@ -30,6 +30,7 @@
   const prefs = loadPrefs();
   function savePrefs() { try { localStorage.setItem(STORE, JSON.stringify(prefs)); } catch { /* not saved */ } }
 
+  const shownAt = {};
   let port = null, frame = 0, coach = null, targeted = [], lastKey = '', lastAnnounced = '', raisedOver = null, currentAnchor = null, currentAvoid = [];
 
   // ---- Reading the table: what the player can do right now. ----
@@ -76,8 +77,8 @@
   const EXPLAINERS = [
     { id: 'welcome', when: c => c.ops && c.state.round === 1 && c.state.turnStage === 'prep',
       title: 'Welcome, commander', rule: 'start',
-      text: () => `Race to ${port.victoryTarget()} Prestige (★). Each turn you take one action: play a card's order, or pass. Your Colony is worth 3★. More Colonies, relics and battles score more. These notes point at what you can do; turn them off in the menu. New here? Learn to play teaches the game step by step.`,
-      anchor: () => firstShown('#hand-row'), buttons: [{ action: 'learn', label: 'Learn to play', primary: true }] },
+      text: () => `Race to ${port.victoryTarget()} Prestige (★). Each turn you take one action: play a card's order, or pass. Your Colony is worth 3★. More Colonies, relics and battles score more. Point at a card to raise it and see its buttons, or drag it where it should go. These notes point at what you can do; turn them off in the menu. New here? Learn to play teaches the game step by step.`,
+      anchor: () => firstShown('#hand-row'), buttons: [{ action: 'learn', label: walkthroughInProgress() ? 'Continue Learn to play' : 'Learn to play', primary: true }] },
     { id: 'buy-turn', when: c => c.buy, title: 'Your Buy turn', rule: 'buy',
       text: () => 'Passing ended your Operations for this round. Now buy any supply cards you can afford (outlined in gold), upgrade a starter, buy a Capacity Module or trash a card. Bought cards go to your discard pile. Finish Buy when you are done.',
       anchor: () => turnButton() },
@@ -87,6 +88,9 @@
     { id: 'shipyard', when: c => c.ops && c.shipyards.length > 0, title: 'Your Shipyard', rule: 'building',
       text: () => 'A Construct played on your Shipyard commissions a unit. A Settler (1 Matter, 1 Energy, 1 Biomass) founds Colonies, worth 3★ each. An Explorer (1 Energy, 2 Data) finds relics, worth 2★ each. A Fleet (2 Matter, 1 Energy, 1 Biomass) fights. Settlers and Explorers bring a free order card. Like every new card it goes to your discard pile, and reaches your hand after your deck runs out and the discard is shuffled in.',
       anchor: c => hex(c.shipyards[0]) },
+    { id: 'settler', when: c => c.ops && c.myUnits.settler.length > 0, title: 'Your Settler', rule: 'orders',
+      text: () => 'A Settler founds a Colony on the center hex of a world nobody holds (the middle of its seven hexes). Move it there with Move cards, 1 hex at a time. Then play a Colonize card on it: your Settler brought one, which went to your discard pile and reaches your hand after your deck runs out and the discard is shuffled in.',
+      anchor: c => hex(c.myUnits.settler[0]) },
     { id: 'colonize-card', when: c => c.ops && c.player.hand.some(card => port.cards[card.key].order === 'colonize'), title: 'Colonize', rule: 'orders',
       text: () => 'Move a Settler onto the center hex of a neutral world, then play Colonize there and pay 2 Biomass. The new Colony scores 3★. The Settler and this card are used up. Settlers move 1 hex per Move order. Biomass comes from Biomass hexes you own, or from the bank (4 of another resource for 1).',
       anchor: c => handCard(c.player.hand.find(card => port.cards[card.key].order === 'colonize').id) },
@@ -119,7 +123,7 @@
       if (s.pendingConstruct) return { title: 'Build again?', text: 'You may pay for a second build now: choose a lit hex. Or choose Finish to end your turn.', anchor: firstShown('#finish-construct') };
       if (s.actionMode && ['move', 'construct', 'colonize'].includes(s.actionMode)) {
         const target = firstShown('.hex.cf-drop-target', '.hex.target');
-        return { title: 'Choose a lit hex', text: s.moveSource ? 'Choose a lit hex to move there. Choosing the hex you start on spends the Move to stay put. Press Escape to cancel.' : 'Choose one of the lit hexes for this order. Press Escape (or Cancel order) to choose a different card.', anchor: target };
+        return { title: 'Choose a lit hex', text: !target ? 'No hex can take this order right now. Point at the card and choose Cancel order to pick another one.' : s.moveSource ? 'Choose a lit hex to move there. Choosing the hex you start on spends the Move to stay put. To change your mind, point at the card and choose Cancel order.' : 'Choose one of the lit hexes for this order. Escape, or Cancel order on the card, lets you choose a different card.', anchor: target };
       }
       if (s.actionMode === 'excavate') return { title: 'Choose your relic', text: 'Choose one of the three relic cards. You pay the excavation cost and gain 2★.', anchor: firstShown('#relic-row .game-card') };
       const card = kind => c.playable.find(p => p.kind === kind || p.def.order === kind);
@@ -134,7 +138,10 @@
           return { title: 'First goal: a Shipyard', text: `A Shipyard costs ${costText(yardCost)}. You are short of ${short.map(r => RESOURCE_NAMES[r]).join(' and ')}. Drag this ${port.cards[convert.key].name} onto your mat to convert it into ${costText(port.cards[convert.key].resource)}. Keep one Construct to build with.`, anchor: handCard(convert.id) };
       }
       const colonize = card('colonize');
-      if (colonize) return { title: 'Found a Colony', text: 'Your Settler is on a world center. Drag Colonize onto it to found a Colony (+3★).', anchor: handCard(colonize.card.id) };
+      if (colonize) {
+        const short = c.player.resources.biomass < 2;
+        return { title: 'Found a Colony', text: short ? `Your Settler is on a world center. Founding the Colony costs 2 Biomass and you have ${c.player.resources.biomass}. ${SOURCES.biomass}` : 'Your Settler is on a world center. Drag Colonize onto it and choose Found Colony (2 Biomass) to found a Colony (+3★).', anchor: short ? firstShown('#resource-grid') : handCard(colonize.card.id) };
+      }
       const excavate = c.playable.find(p => p.kind === 'excavate');
       if (excavate) return { title: 'Excavate the relic', text: `Your Explorer is on a located relic. Drag Probe / Excavate onto it and choose Excavate (${costText(port.excavationCost)}, +2★).`, anchor: handCard(excavate.card.id) };
       const special = c.playable.find(p => p.kind === 'special');
@@ -158,7 +165,7 @@
         const first = c.playable[0];
         return { title: 'Your turn', text: `Cards outlined in gold have an order you can use now. Drag one onto a lit hex, or point at it and choose Use order. You can also convert level I starters into resources. When you are done, choose Pass & buy.${fullWarning(c)}`, anchor: handCard(first.card.id) };
       }
-      return { title: 'Nothing left to play', text: c.canConvert ? `No order can be used now. Convert spare starters if they help you buy something, then choose Pass & buy to start your Buy turn.${fullWarning(c)}` : 'No order can be used now. Choose Pass & buy to start your Buy turn.', anchor: turnButton() };
+      return { title: 'Nothing left to play', text: c.canConvert ? `No order can be used now. Convert spare starters if they help you buy something, then choose Pass & buy. Passing ends your Operations for this round and starts your Buy turn; cards left in your hand are discarded when the round ends.${fullWarning(c)}` : 'No order can be used now. Choose Pass & buy: it ends your Operations for this round and starts your Buy turn.', anchor: turnButton() };
     }
     if (c.buy) {
       const market = c.marketBuys[0];
@@ -169,6 +176,11 @@
     }
     if (!c.myTurn && s.winner === null && ['operations', 'buy'].includes(s.phase)) return { title: 'Rivals are acting', text: `${s.players[s.activePlayer].name} is taking its ${s.phase === 'buy' ? 'Buy' : 'Operations'} turn. Your turn comes round again shortly.${s.phase === 'operations' && !c.player.passed ? ' Meanwhile you can still convert starters or trade with the bank.' : ''}`, anchor: null, quiet: true };
     return null;
+  }
+
+  // A Learn to play walkthrough saved part-way: offer to continue it.
+  function walkthroughInProgress() {
+    try { const saved = JSON.parse(localStorage.getItem('galactic-reach-tutorial-progress-v1') || 'null'); return Boolean(saved?.step > 0 && saved.stepId !== 'finished'); } catch { return false; }
   }
 
   // Converting into a full resource wastes it: say so before the player does it.
@@ -195,7 +207,7 @@
       if (action === 'got-it') { prefs.seen[button.dataset.id] = true; savePrefs(); }
       if (action === 'hide') setEnabled(false);
       if (action === 'learn') { prefs.seen.welcome = true; savePrefs(); location.href = `${location.pathname}?tutorial=1`; return; }
-      if (action === 'more') { coach.dataset.expanded = String(coach.dataset.expanded !== 'true'); position(coach, currentAnchor); return; }
+      if (action === 'more') { coach.dataset.expanded = String(coach.dataset.expanded !== 'true'); schedule(); return; }
       globalThis.galacticReachTutorial?.coachAction?.(action, button.dataset);
       schedule();
     });
@@ -225,9 +237,9 @@
       lastKey = key;
       box.dataset.expanded = 'false';
       delete box.dataset.full; delete box.dataset.fit;
-      const buttons = [...(tip.buttons || []), ...(tip.dock ? [{ action: 'more', label: 'More' }] : [])];
+      const buttons = [...(tip.buttons || []), { action: 'more', label: 'More' }];
       const bar = tip.progress ? `<ol class="gr-coach-progress" aria-hidden="true">${Array.from({ length: tip.progress.lessons }, (_, i) => `<li class="${i < tip.progress.finishedLessons ? 'done' : ''}${i === tip.progress.current ? ' current' : ''}"></li>`).join('')}</ol>` : '';
-      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}" data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.aria ? ` aria-label="${esc(b.aria)}"` : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
+      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}" data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.aria ? ` aria-label="${esc(b.aria)}"` : ''}${b.action === 'more' ? ' hidden' : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
       if (!tip.quiet && tip.text !== lastAnnounced) lastAnnounced = tip.text;
     }
     box.hidden = false;
@@ -247,7 +259,10 @@
       // A note must not push the window's own buttons (a battle's tactics) off screen: shorten it.
       const text = box.querySelector('.gr-coach-text');
       const over = Math.max(host.getBoundingClientRect().bottom - innerHeight + 8, host.scrollHeight - host.clientHeight);
-      if (text && over > 0 && !box.dataset.full) fitText(box, text, Math.max(60, box.offsetHeight - over));
+      const more = box.querySelector('[data-coach="more"]');
+      if (box.dataset.expanded === 'true') { if (text && box.dataset.full) text.textContent = box.dataset.full; if (more) { more.hidden = false; more.textContent = 'Less'; } return; }
+      const cut = text && over > 0 && !box.dataset.full ? fitText(box, text, Math.max(60, box.offsetHeight - over)) : Boolean(box.dataset.full && text?.textContent !== box.dataset.full);
+      if (more) { more.hidden = !cut; more.textContent = 'More'; }
       return;
     }
     box.classList.toggle('docked', Boolean(tip.dock && dockRect()));
@@ -377,7 +392,14 @@
       if (tutorial?.active) tip = tutorial.tip(port, api);
       else if (prefs.enabled) {
         const c = context();
-        const explainer = EXPLAINERS.find(e => !prefs.seen[e.id] && e.when(c));
+        let explainer = EXPLAINERS.find(e => !prefs.seen[e.id] && e.when(c));
+        // Shown for the turn it became relevant: once that turn has passed it is remembered as read,
+        // so the next turn's hint takes its place even if Got it was never chosen.
+        if (explainer && !c.state.pendingCombat) {
+          const turn = port.turnSerial();
+          if (!(explainer.id in shownAt)) shownAt[explainer.id] = turn;
+          else if (shownAt[explainer.id] !== turn) { prefs.seen[explainer.id] = true; savePrefs(); explainer = EXPLAINERS.find(e => !prefs.seen[e.id] && e.when(c)); if (explainer) shownAt[explainer.id] = turn; }
+        }
         if (explainer) tip = { dock: true, id: explainer.id, eyebrow: 'New to you', title: explainer.title, text: explainer.text(c), rule: explainer.rule, inDialog: explainer.inDialog,
           anchor: explainer.anchor?.(c) || null, buttons: [...(explainer.buttons || []), { action: 'got-it', id: explainer.id, label: 'Got it', primary: !explainer.buttons }, { action: 'hide', label: 'Hide', aria: 'Hide guidance' }] };
         else {
@@ -412,7 +434,7 @@
     try {
       const tutorial = JSON.parse(localStorage.getItem('galactic-reach-tutorial-progress-v1') || 'null');
       const learn = $('#learn-to-play');
-      if (learn && !globalThis.galacticReachTutorial?.active && tutorial?.step > 0 && tutorial.stepId !== 'finished') learn.textContent = 'Continue Learn to play';
+      if (learn && !globalThis.galacticReachTutorial?.active && walkthroughInProgress()) learn.textContent = 'Continue Learn to play';
     } catch { /* no saved walkthrough */ }
     $('#guide-reset')?.addEventListener('click', () => { prefs.seen = {}; prefs.enabled = true; savePrefs(); schedule(); });
     // A click can open a dialog or popover without a render: look again afterwards.
