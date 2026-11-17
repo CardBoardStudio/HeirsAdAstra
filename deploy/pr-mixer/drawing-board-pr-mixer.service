@@ -1,0 +1,17 @@
+[Unit]
+Description=Drawing Board PR mixer: main plus chosen PRs, for admins (docs/pr-mixer.md)
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+User=@USER@
+EnvironmentFile=@ROOT@/mixer.env
+ExecStart=/usr/bin/env node @ROOT@/app/pr-mixer.mjs
+Restart=on-failure
+RestartSec=5
+# A build is a child process; stopping the unit must not orphan it.
+KillMode=control-group
+TimeoutStopSec=30
+
+[Install]
+WantedBy=multi-user.target
