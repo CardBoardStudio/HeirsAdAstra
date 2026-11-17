@@ -856,6 +856,31 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
     let draw = number(&stats["draw"]);
     let mut value = 6.0 + prestige * 9.0 + number(&stats["prestige"]) * horizon.min(4.0) * 8.0;
     value += draw * (7.0 + size.min(18.0) * 0.25) * (horizon / 2.0).min(1.0);
+    // Research only: printed one-less-of-each coupons need a later purchase to pay off.
+    // Face-up prices bound possible savings; this is not a promise of future spending.
+    if view["investmentPlanning"] == true
+        && view["buyDiscountPlanning"] == true
+        && horizon > 1.0
+        && matches!(
+            stats["buyEffect"].as_str(),
+            Some("hubDiscount" | "discountEach")
+        )
+    {
+        let saving = view["market"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|card| card["key"].as_str())
+            .filter(|other| {
+                view["cardStats"][*other].is_object()
+                    && view["cardStats"][*other]["buyEffect"].as_str().is_none()
+            })
+            .filter_map(|other| observed_cost(view, other))
+            .map(|cost| cost.iter().filter(|n| **n > 0.0).count() as f64)
+            .fold(0.0_f64, f64::max);
+        let uses = ((horizon - 1.0) * 5.0 / size.max(5.0)).min(3.0);
+        value += saving * uses * 2.0;
+    }
     if military {
         let power = |s: &Value| {
             number(&s["attack"])
@@ -3139,6 +3164,61 @@ mod tests {
             "Market profile can fund capacity before another starter upgrade"
         );
     }
+    #[test]
+    fn buy_discount_planning_values_future_visible_purchases_without_inventing_savings() {
+        let mut agent = BuiltinAgent::new(Strategy::Market, [8; 32]);
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":4,"phase":"buy","victoryTarget":30,"players":[{"prestige":6,"resources":{"matter":4,"energy":4,"biomass":4,"data":4},"resourceLimits":{"matter":4,"energy":4,"biomass":4,"data":4},"hand":[{"id":"c","key":"construct","starter":true,"upgraded":true,"level":2}],"handCount":1,"deckCount":9,"deckContents":[{"key":"move","count":9}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"}},"fleets":{},"clusters":[],"market":[{"key":"procurementHub"},{"key":"surveyNetwork"}],"marketCosts":[{"biomass":1,"data":4},{"biomass":1,"data":2,"matter":0}],"cardStats":{"procurementHub":{"buyEffect":"hubDiscount"},"surveyNetwork":{"draw":2,"order":"special"}}});
+        let buy = json!({"type":"buy","source":"market","key":"procurementHub"});
+        let finish = json!({"type":"finish_buy"});
+        let baseline = capacity_value(&view, 0, "procurementHub").unwrap();
+        let other = capacity_value(&view, 0, "surveyNetwork").unwrap();
+        assert_eq!(
+            agent.select_action(&view, &[buy.clone(), finish.clone()]),
+            1
+        );
+        view["buyDiscountPlanning"] = json!(true);
+        assert!(capacity_value(&view, 0, "procurementHub").unwrap() > baseline);
+        assert_eq!(agent.select_action(&view, &[buy, finish]), 0);
+        assert_eq!(capacity_value(&view, 0, "surveyNetwork").unwrap(), other);
+        view["marketCosts"][1] = json!({"matter":0,"energy":0,"biomass":0,"data":0});
+        assert_eq!(
+            capacity_value(&view, 0, "procurementHub").unwrap(),
+            baseline,
+            "Free offers save nothing"
+        );
+        view["market"] = json!([{"key":"procurementHub"},{"key":"tradeSyndicate"}]);
+        view["marketCosts"][1] = json!({"energy":4,"data":1});
+        view["cardStats"]["tradeSyndicate"] = json!({"buyEffect":"discountEach"});
+        assert_eq!(
+            capacity_value(&view, 0, "procurementHub").unwrap(),
+            baseline,
+            "Coupons are not their own purchase plan"
+        );
+        view["market"][1]["key"] = json!("surveyNetwork");
+        view["marketCosts"][1] = json!({"biomass":1,"data":2});
+        view["cardStats"]["procurementHub"]["buyEffect"] = json!("unknown");
+        assert_eq!(
+            capacity_value(&view, 0, "procurementHub").unwrap(),
+            baseline
+        );
+        view["cardStats"]["procurementHub"]["buyEffect"] = json!("hubDiscount");
+        view["investmentPlanning"] = json!(false);
+        assert_eq!(
+            capacity_value(&view, 0, "procurementHub").unwrap(),
+            baseline,
+            "Historical views keep existing valuation"
+        );
+        view["investmentPlanning"] = json!(true);
+        view["players"][0]["prestige"] = json!(29);
+        let late = capacity_value(&view, 0, "procurementHub").unwrap();
+        view["buyDiscountPlanning"] = json!(false);
+        assert_eq!(
+            capacity_value(&view, 0, "procurementHub").unwrap(),
+            late,
+            "No future-use bonus in the last horizon"
+        );
+    }
+
     #[test]
     fn military_purchase_horizon_discounts_only_late_opt_in_investments() {
         let mut view = json!({"seat":0,"victoryTarget":30,"players":[{"prestige":26,"resources":{},"resourceLimits":{"matter":10,"energy":10,"biomass":10,"data":10},"military":[]}],"fleets":{"0,0":{"0":{"fleet":1}}},"planets":{},"market":[{"key":"aegisLattice"}],"marketCosts":[{"matter":7,"energy":2}],"cardStats":{"aegisLattice":{"shield":8}}});
