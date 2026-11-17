@@ -15,7 +15,7 @@ This is local research, not a release. The current experiment keeps the eight pr
 | Range/Industry valuation | Opt-in only | Training regression at30, provisional improvement at40 |
 | Cheaper World Engine | Reject adoption | Corrected-policy Market wins6/12 to4/12 at30 and6/12 to5/12 at40 |
 | Optional paid Fleet discipline | Off | Training4/12 versus6/12 at30,7/12 versus6/12 at40; no consistent purchase/score benefit |
-| Market-priority versus equally skilled Economy | Fresh evaluation running | 128 games, unseen1410010-series maps, unsuccessful/unproven extra skills off |
+| Market-priority versus equally skilled Economy | Viable, target-dependent evidence | Fresh30 wins13/32both;40 Market11/32 versus9/32 and +2.97 mean Prestige; win-rate uncertainty remains |
 
 See the experiment entries below and immutable output artifacts for protocols, scope, intervals and exceptions. Browser and native evidence are separate. Do not infer a stronger default from increased purchases or a favorable small training batch.
 
@@ -540,3 +540,28 @@ Independent resource-accounting preparation while fresh strategy matches run: in
 
 
 Fleet-payment audit regression coverage now constructs paid/free Fleet commands and final survivors, then rejects missing payment evidence (rather than calling it free), a resource-gain payment, corrupt trace/final hashes and inconsistent independent build counters. `test-native-fleet-spending-audit.cjs` passes. This analysis-only preparation does not change the frozen fresh-study policies or use their partial outcomes for tuning.
+
+
+### Fresh retained-policy evaluation:30 complete
+
+All64 thirty-point games complete with matched32 opening maps and identical frozen game/native sources/binary. Designated Economy subject13/32 wins,22.25 Prestige,3.81 market purchases,7.22 Harvesters; Market subject13/32,22.91,4.53,7.38. Paired win delta0,whole-galaxy bootstrap interval[-18.75,+18.75] percentage points; score+0.65625,interval[-1.4375,+2.75]. Eight independent galaxies,not32 independent maps; no clear priority advantage. More purchases do not establish superiority.
+
+Overflow fractions Economy→Market: Matter23.6→23.4%,Energy24.3→22.8%,Biomass34.5→33.2%,Data26.5→27.9%. Effects are small/mixed; do not call resources equally useful or a uniform efficiency gain. Mean Colony points10.6875both,relic points6.9375→7.375,combat victories0.6875→0.71875,permanent card Prestige3.25→3.40625. This descriptive decomposition is not causal mediation. Reports `native/retained-priority-30-fresh.json`, `native/retained-priority-30-fresh-paired.json`. Default40 evaluation remains pending; no design or coefficient changes have been made during either fresh batch.
+
+
+### Fresh retained-policy evaluation:40 complete
+
+All128 games complete across both targets, no failed/cutoff cases. Default40 Economy9/32 wins,26.69 Prestige,6.16 purchases,8.38 Harvesters; Market11/32,29.66,6.75,9.09. Paired win delta+6.25 percentage points,whole-galaxy interval[-9.375,+21.875]; mean score+2.96875,interval[+0.40625,+5.8125]. This supports a score benefit at40 within these policies/maps, not a certain win advantage or universal priority superiority. Fresh30 remains a win tie and uncertain score difference. Reports `native/retained-priority-40-fresh.json`, `native/retained-priority-40-fresh-paired.json`. All64 opening map pairs/source/binary checks pass.
+
+Default40 overflow Economy→Market: Matter24.4→25.2%,Energy25.7→25.2%,Biomass36.9→37.1%,Data23.5→27.2%; no uniform resource-efficiency gain. The Market subject buys/plays Signal Relay9/146 versus Economy3/41,Survey Network6/63 versus4/39,World Engine8/33 versus7/29. Both buy2 Seed Arks and play none; neither buys Colony Pods or Genesis Charter. Thirty-point Market Seed Ark1/0,Colony Pods0/0,Genesis0/0 despite100/96/13 raw-fundable opening offers respectively. These offers ignore protected payments/held effects and are not complete legal purchase tests. Four exposure reports `native/retained-{market,economy}-{30,40}-exposure.json` verify trace/metric purchase counts.
+
+Next audit owned Colony cards at actual Operations decisions against authoritative legal actions, not just market availability. Distinguish never drawn, no Settler/world/payment opportunity, and a legal Colony order skipped in favor of another card/action. Do not buff effects or prices solely from zero plays until this timing/choice diagnosis is complete. Current fresh evaluation ends here without tuning on its partial outcomes; any follow-up is a newly declared training hypothesis, with fresh seeds reserved for subsequent confirmation.
+
+
+### Owned Colony-card legality audit: opportunity mismatch dominates
+
+`scripts/audit-native-colony-use.cjs` loads each batch's frozen app/adapter, verifies source/trace/final-state hashes, reconstructs the recorded private position, and queries authoritative legal actions without applying any action or allowing RNG. It verifies the query does not mutate state and compares selected own orders with the independent played-card metric. Counts are decisions while a card is held, not independent rounds/opportunities. Only games where the designated subject purchased a Colony design are included.
+
+Fresh30 Market:one Seed Ark,drawn twice,19 normal-order decisions,no legal use; all19 lack a Settler on a non-owned world center. Economy:one,drawn five times,46 normal decisions,one legal opportunity used and45 without an available center. Fresh40 Market:two,drawn nine times,85 normal decisions,one legal opportunity skipped for another Colonize card and84 without an available center. Economy:two,drawn eight times,54 normal decisions,no legal opportunity,all54 without an available center. Every purchased card was drawn. Thus deck access is not the main observed obstruction and choosing a competing Colony order accounts for only one missed opportunity in these samples. Colony Pods/Genesis have no bought-card sample; no claim about their hypothetical execution is possible.
+
+Retained reports `native/retained-{market,economy}-{30,40}-colony-use-v2.json`; initial audit reports are also preserved. The next hypothesis should address the spatial timing of reusable Colony purchases or their coordination with Settler routes, rather than blindly lower a price or claim zero plays proves a weak printed effect. Existing opt-in Colony planning only tests a global public prospect and a Settler, which is looser than having a near-term route. A separate execution preference for printed Colony terms can address the lone tie-choice defect but should not be credited with solving the much larger missing-center mismatch. No policy/card change is made by this analysis.
