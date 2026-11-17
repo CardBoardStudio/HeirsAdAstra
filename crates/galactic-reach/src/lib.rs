@@ -782,6 +782,20 @@ fn market_combat_opportunity(view: &Value, seat: usize) -> bool {
             .any(|b| travel_distance(view, a, b) <= 3.0)
     })
 }
+fn public_colony_opportunity(view: &Value, seat: usize) -> bool {
+    view["clusters"].as_array().into_iter().flatten().any(|c| {
+        let Some(center) = c["center"].as_str() else {
+            return false;
+        };
+        let planet = &view["planets"][center];
+        c["kind"] == "world"
+            && planet.is_object()
+            && planet["owner"] != json!(seat)
+            && (planet["owner"].is_null()
+                || view["captureNeedsFleet"] != true
+                || bot_units(view, seat, "fleet") > 0.0)
+    })
+}
 fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
     let (table_cost, table_prestige, military) = capacity_card(key)?;
     let cost = observed_cost(view, key).unwrap_or(table_cost);
@@ -871,10 +885,24 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
                 }
             }
             "colonize" => {
-                value += if bot_units(view, seat, "settler") > 0.0 {
+                let printed = view["colonyPlanning"] == true && view["investmentPlanning"] == true;
+                let useful = bot_units(view, seat, "settler") > 0.0
+                    && (!printed || public_colony_opportunity(view, seat));
+                value += if useful {
                     (16.0 - bot_cards(me, "colonize") * 8.0).max(0.0)
                 } else {
                     -15.0
+                };
+                if printed && useful {
+                    let uses = (horizon * 5.0 / size.max(5.0)).min(3.0);
+                    value += ((if stats["keepSettler"] == true {
+                        6.0
+                    } else {
+                        0.0
+                    }) + (2.0 - stats["colonyCost"].as_f64().unwrap_or(2.0)).max(0.0)
+                        * 2.0
+                        + number(&stats["colonyPrestige"]) * 6.0)
+                        * uses;
                 }
             }
             _ => {}
@@ -1731,7 +1759,28 @@ impl BuiltinAgent {
                     -10.0
                 }
             }
-            "colonize" => 160.0,
+            "colonize" => {
+                if view["colonyPlanning"] == true && view["investmentPlanning"] == true {
+                    let stats = &view["cardStats"][action["key"].as_str().unwrap_or("")];
+                    let owner = &view["planets"][action["coord"].as_str().unwrap_or("")]["owner"];
+                    let capture = owner.as_u64().is_some_and(|id| id as usize != seat);
+                    let cost = stats["colonyCost"].as_f64().unwrap_or(2.0).min(if capture {
+                        1.0
+                    } else {
+                        2.0
+                    });
+                    160.0
+                        + (if stats["keepSettler"] == true {
+                            10.0
+                        } else {
+                            0.0
+                        })
+                        + number(&stats["colonyPrestige"]) * 3.0
+                        - cost
+                } else {
+                    160.0
+                }
+            }
             "build" | "second_build" | "colony_build" => {
                 let value = match action["kind"].as_str().unwrap_or("") {
                     "starbase" => {
@@ -2608,6 +2657,61 @@ mod tests {
         );
         view.as_object_mut().unwrap().remove("investmentPlanning");
         assert_eq!(agent.score(&view, &action), archived);
+    }
+    #[test]
+    fn colony_planning_values_printed_terms_and_chooses_the_better_legal_order() {
+        let mut agent = BuiltinAgent::new(Strategy::Market, [5; 32]);
+        let mut view = json!({"investmentPlanning":true,"captureNeedsFleet":true,"seat":0,"round":5,"phase":"buy","victoryTarget":40,"players":[{"prestige":10,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":10,"energy":10,"biomass":10,"data":10},"hand":[{"id":"c","key":"construct","starter":true,"level":2,"upgraded":true}],"handCount":1,"deckCount":9,"deckContents":[{"key":"move","count":9}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase","cluster":0},"3,0":{"owner":null,"type":"biomass","cluster":1}},"clusters":[{"kind":"world","center":"0,0"},{"kind":"world","center":"3,0"}],"fleets":{"0,0":{"0":{"settler":1}}},"market":[{"key":"seedArk"},{"key":"colonyPods"},{"key":"genesisCharter"}],"marketCosts":[{"biomass":4},{"energy":1,"biomass":4},{"matter":2,"biomass":8,"data":1}],"cardStats":{"seedArk":{"order":"colonize","colonyCost":1},"colonyPods":{"order":"colonize","colonyCost":1,"keepSettler":true},"genesisCharter":{"order":"colonize","colonyCost":0,"keepSettler":true,"colonyPrestige":2}}});
+        assert!(
+            capacity_value(&view, 0, "seedArk") > capacity_value(&view, 0, "colonyPods"),
+            "Old generic-order valuation misses the retained Settler"
+        );
+        view["colonyPlanning"] = json!(true);
+        assert!(capacity_value(&view, 0, "colonyPods") > capacity_value(&view, 0, "seedArk"));
+        assert_eq!(
+            agent.select_action(
+                &view,
+                &[
+                    json!({"type":"buy","source":"market","key":"seedArk"}),
+                    json!({"type":"buy","source":"market","key":"colonyPods"})
+                ]
+            ),
+            1
+        );
+        let useful = capacity_value(&view, 0, "colonyPods").unwrap();
+        view["planets"]["3,0"]["owner"] = json!(1);
+        assert!(
+            !public_colony_opportunity(&view, 0),
+            "Enemy worlds still need a Fleet"
+        );
+        assert!(capacity_value(&view, 0, "colonyPods").unwrap() < useful);
+        view["fleets"]["0,0"]["0"]["fleet"] = json!(1);
+        assert!(public_colony_opportunity(&view, 0));
+        let a = |key| json!({"type":"colonize","key":key,"coord":"3,0"});
+        assert!(agent.score(&view, &a("colonyPods")) > agent.score(&view, &a("seedArk")));
+        assert!(
+            agent.score(&view, &a("genesisCharter")) > agent.score(&view, &a("colonyPods")),
+            "Zero cost and bonus Prestige remain distinct"
+        );
+        let charter = agent.score(&view, &a("genesisCharter"));
+        view["planets"]["3,0"]["owner"] = Value::Null;
+        assert_eq!(
+            agent.score(&view, &a("genesisCharter")),
+            charter,
+            "Zero cost stays zero for founding and capture"
+        );
+        view["fleets"]["0,0"]["0"]["settler"] = json!(0);
+        assert!(
+            capacity_value(&view, 0, "colonyPods").unwrap() < useful,
+            "A card never supplies its own Settler"
+        );
+        view["colonyPlanning"] = json!(false);
+        assert_eq!(agent.score(&view, &a("seedArk")), 160.0);
+        assert_eq!(
+            agent.score(&view, &a("colonyPods")),
+            160.0,
+            "Unflagged decision ranking is unchanged"
+        );
     }
     #[test]
     fn production_discipline_prefers_pass_to_unprofitable_paid_harvesters() {
