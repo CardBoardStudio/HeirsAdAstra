@@ -570,8 +570,8 @@ function productionNumbers(game) {
 test('Resource counters show starting production separately from available stock',()=>{
  const game=boot(createStorage());assert.deepEqual(productionNumbers(game),{matter:1,energy:0,biomass:0,data:0});
  const html=game.dom.element('resource-grid').innerHTML;
- assert(!html.includes('mat-pips rate'),'No separate square production row');
- assert(!html.includes('mat-key cap'),'No separate capacity marker');
+ assert(html.includes('mat-pips rate mat-classic'),'Green background retains production squares');
+ assert(html.includes('mat-key cap'),'Green background retains its capacity marker');
  for(const resource of ['matter','energy','biomass','data']){
   const article=html.match(new RegExp('<article class="resource-box '+resource+'[^"]*"[\\s\\S]*?</article>'))[0];
   const pips=[...article.matchAll(/<i aria-hidden="true" class="([^"]*)"><\/i>/g)].map(m=>m[1].trim().split(/\s+/));
