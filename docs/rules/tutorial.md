@@ -1,37 +1,44 @@
-# Tutorial brief: your first expedition
+# Tutorial: Learn to play, and on-table guidance
 
-Status: **planned, not implemented**. First review the canonical rules and decide the [known 6.11 discrepancies](implementation-notes.md). This PR establishes that foundation; tutorial implementation follows once the rules are ready.
+Status: **implemented for 38.43** (`prototypes/galactic-reach/tutorial.js`, `guide.js`, `guide.css`). Players read about both in the rulebook's [Learn to play](../../prototypes/galactic-reach/rulebook.html#learn-to-play) and [Guidance](../../prototypes/galactic-reach/rulebook.html#guidance) sections.
 
-## The experience
+## Two layers
 
-Give a new commander a small, friendly expedition with a clear destination. Let them discover one decision at a time, see its consequence on the real board, and celebrate progress with short mission messages. Keep explanations beside the action, offer a hint when needed, and let players skip or replay any lesson.
+**Guidance** runs in every solo and shared game unless the player switches it off (Guidance in the game menu; stored in `localStorage` `galactic-reach-guide-v1`). On each of your turns it shows one note beside the element it is about: the card to use, the lit hex, the affordable supply card, or Pass & buy / Finish Buy. The first time a mechanic matters (first Operations turn, Buy turn, Shipyard, Colonize or Probe card, located relic, full resource, Capacity Module, battle, half the Prestige goal), it explains that rule once, with a rulebook link, and remembers that it did. It reads the table through `guidePort()` in `app.js`: the same questions the hand, Sector Scan and market ask (`availableContextOrders`, `canAfford`, `purchaseCost`, …). It never changes the game.
 
-| Mission | Player does | Rulebook source | Completion evidence |
+**Learn to play** (`index.html?tutorial=1`) is a seeded game in which the three rivals pass every turn. It drives the same coach mark through fixed lessons. Each step names its anchor element, its rulebook section and a predicate on the game state. The tutorial advances only when the player's own action has made that predicate true, never on a Next click. Alternative solutions count when they meet the objective (for example, dragging the card instead of choosing Use order).
+
+## Lessons
+
+| Lesson | The player does | Rulebook | Advances when |
 | --- | --- | --- | --- |
-| Power up | Compare a card's resource and order uses, then try individual and batch conversion | `#resources`, `#orders` | Resource and discard changes; full-card storage limit, cards left in hand, and discarding stored resources to make room |
-| First flight | Select a Scout, choose a Move card from its popup, and reveal a world | `#movement` | Legal movement and shared world reveal |
-| A place to call home | Reserve Biomass and found a Colony | `#orders`, `#building` | Cost paid, Scout consumed, ownership and Prestige updated |
-| Build an engine | Build a structure and observe next-round production | `#building`, `#round` | Production and storage demonstrated, including overflow |
-| Make a deal | Exchange four of one resource at the bank, compare player trading, then pass | `#trade`, `#round` | The bank’s fixed 4:1 payment and lack of Culture; player settlement, Culture gain, and passing directly into the learner’s Buy turn |
-| Make the deck yours | Buy a card, upgrade a starter, and trash multiple eligible discarded cards at 1 Data each | `#buy` | Discard destination, costs, Technology gain; Finish Buy resumes remaining factions |
-| Choose your future | Choose a round-end resource directive | `#politics` | Primary and secondary resource benefits distributed |
-| Beyond the frontier | Optional Researcher/relic and combat practice | `#building`, `#combat`, `#cards` | Real engine outcome with an explanation |
-| Your next goal | Inspect scoring and play a staged final round | `#victory` | Victory checked only after the directive |
+| Read the table | Opens their score breakdown, selects their Colony, closes the Sector Scan | `#shared-board`, `#victory` | Breakdown opened and closed; Sector Scan opened and closed |
+| Resources | Converts a Construct, then a Move | `#player-mat`, `#resources` | Matter, then Energy, rose |
+| Orders | Uses Construct next to the Colony and builds a Shipyard | `#orders`, `#building` | A Shipyard exists |
+| The round | Passes, finishes Buy, inspects the deck after Cleanup & draw | `#round`, `#buy`, `#cleanup-draw`, `#deck-inspection` | Passed; the round advanced; deck window opened and closed |
+| Ships | Commissions a Settler, an Explorer and a Fleet | `#building`, `#combat` | Each unit exists |
+| Movement | Splits a move (Fleet without the Settler), then moves the Explorer alone | `#split-moves`, `#movement` | The Fleet, then the Explorer, left the Shipyard |
+| Relics | Probes, flies to the ◈, excavates and chooses a relic card | `#movement`, `#excavation`, `#alien-relics` | A relic is located, reached, then excavated |
+| Colonies | Moves the Settler onto a neutral world's center and founds a Colony | `#orders` | The Settler is on the center; one more Colony |
+| The bank | Trades 4 Energy for 1 of another resource on the mat | `#trade` | That resource rose |
+| Your Buy turn | Passes; buys a market card; upgrades a starter; buys a Capacity Module; trashes a card; finishes Buy | `#buy`, `#market-tiers`, `#capacity-module` | Each purchase, upgrade or trash is seen; the round advanced |
+| Capacity | Plays the Capacity Module and splits its 4 points | `#storage-allocation` | The Storage pile holds a module |
+| Combat | Moves the Fleet onto a stray rival Explorer and picks tactics | `#combat`, `#combat-tactics` | A decisive victory is recorded and its report closed |
+| Winning | Opens the score breakdown | `#victory`, `#victory-target` | Breakdown opened and closed |
 
-## Implementation boundaries
+## Staged positions
 
-- Pin the tutorial scenario to a declared rules version. Use deterministic setup/fixtures and the real legal-action and resolution APIs; do not implement simplified duplicate game rules. Explain any staged starting position.
-- Give tutorial progress its own storage namespace and isolated state. Never reset, migrate, or overwrite a guest save or saved table to start a lesson. Reset/replay affects the lesson only.
-- Each step stores its canonical section anchor and version. When a PR changes a taught rule, update that step and its behavior test in the same PR. Fail clearly if a scenario's rules version is unsupported.
-- Advance from observed game state after the learner's action, not from clicking Next. Accept alternative legal solutions when they meet the objective. Let players retry safely.
-- Keep keyboard access, visible focus, reduced-motion support, readable mobile layouts, and screen-reader announcements. Do not rely on color, animation, hover, or timed responses to teach a rule.
+Real play would take many rounds to reach some lessons, so the walkthrough stages them through `guidePort().stage`, which exists only in tutorial mode. Each staging step is said in the coach mark and the game log ("Tutorial supply: …", "Tutorial fast-forward: …"):
 
-## Ready-to-ship evidence
+- At a lesson's start: a hand of named cards (brought from deck or discard, never invented while a copy exists), resources for that lesson's purchases, a missing Shipyard or unit placed at the Shipyard, the Settler moved to the edge of the nearest neutral world, and a rival Explorer with no Energy placed two hexes from the Fleet.
+- During a step, once per turn and only when the step cannot otherwise be completed: one missing card or the resources the step needs.
 
-The approved rulebook and tutorial agree on every demonstrated result. A new player can complete the core path without prior game knowledge; an experienced player can skip it. Test retry, reload, skip, alternative valid actions, and return to the existing game without save changes. Review the tutorial alongside the exact same version's rulebook on its Render PR preview before adoption.
+Staging edits the tutorial's own saved state only. The tutorial saves under `galactic-reach-tutorial-*` keys (the `TUTORIAL` save namespace in `app.js`) and its progress under `galactic-reach-tutorial-progress-v1`, so starting, replaying, skipping or leaving it never reads or writes a guest save. Progress names the current step, so editing the lesson list resumes at the same step. A tutorial save from other rules restarts the lessons.
 
-In 9.14, teach the three unit speeds (Settler 1, Frigate 2, Explorer 3), the Colony-and-Settler opening without a Shipyard, and construction of the first Shipyard. Influence tracks and policy voting are absent. Keep the explicit Trade Consortium resource choices in the trade step.
+## Controls
 
-In 10.15, use Fleet in place of Frigate. Teach the permanent +5 capacity purchase from the resource panel and direct relic recovery with Construct; omit Gates, Dreadnoughts, and Research Stations.
+Back reviews earlier steps (with Next to return), Skip lesson stages the next lesson's position, Exit returns to the normal game, and the menu's Restart tutorial deals the practice game again. Inside a battle or a choice window, the note sits at the top of that window. If another window is open, the note says to close it first.
 
-For 11.16, teach the Colony-only opening and early 4:1 bank use for Data. Commission a Settler/Colonize or Explorer/Probe at a Shipyard, then establish a Research Station for an immediate alien-card draw. Replace the 10.15 recovery/exchange step with the new alien deck.
+## Keeping it true
+
+When a PR changes a rule a lesson teaches, update that lesson's text, staging and predicate in `tutorial.js`, and the matching guidance note in `guide.js`, in the same PR. Run the walkthrough end to end: `chrome-devtools-axi open 'http://127.0.0.1:PORT/galactic-reach/?tutorial=1'`, then `chrome-devtools-axi run < scripts/tutorial-walkthrough.axi.js`. It completes every step with real pointer input and fails on a step that does not advance.

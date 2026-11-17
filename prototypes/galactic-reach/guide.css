@@ -1,0 +1,61 @@
+/* Guidance and Learn to play coach marks (guide.js): a printed note card laid beside the piece
+   of the table it is about. Fixed to the window, so it never makes the table scroll. */
+.gr-coach {
+  --coach-paper: #f7f0dd; --coach-ink: #253436; --coach-muted: #566461; --coach-edge: #c9a75a;
+  position: fixed; z-index: 60; left: 0; top: 0; box-sizing: border-box;
+  width: min(320px, calc(100vw - 20px));
+  padding: 11px 13px 10px; border: 1px solid var(--coach-edge); border-radius: 9px;
+  background: var(--coach-paper); color: var(--coach-ink);
+  box-shadow: 0 0 0 3px #ffc95e55, 0 10px 28px #000a;
+  font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+.gr-coach[hidden] { display: none; }
+.gr-coach[popover] { inset: auto; margin: 0; overflow: visible; }
+.gr-coach.quiet { width: min(260px, calc(100vw - 20px)); padding: 7px 11px; opacity: .92; box-shadow: 0 6px 16px #0008; }
+.gr-coach.quiet .gr-coach-text { font-size: 12px; }
+.gr-coach-eyebrow { color: #8a6a1f; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.gr-coach-title { display: block; margin: 1px 0 3px; font: 400 17px/1.2 Georgia, 'Times New Roman', serif; }
+.gr-coach-text { margin: 0; }
+.gr-coach-rule { display: inline-block; margin-top: 4px; color: #6b4f12; font-size: 12px; font-weight: 600; }
+.gr-coach-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.gr-coach-actions:empty { display: none; }
+.gr-coach .button { min-height: 30px; padding: 4px 10px; font-size: 12px; color: var(--coach-ink); border-color: #a89d83; }
+.gr-coach .button-primary { background: #253436; color: #f7f0dd; border-color: #253436; }
+.gr-coach .button:disabled { opacity: .45; }
+.gr-coach-progress { display: flex; gap: 3px; margin: 6px 0 0; padding: 0; list-style: none; }
+.gr-coach-progress li { flex: 1; height: 3px; border-radius: 2px; background: #d8ccb0; }
+.gr-coach-progress li.done { background: #8a6a1f; }
+.gr-coach-progress li.current { background: #e0a526; }
+
+/* The arrow points from the note at its anchor. */
+.gr-coach-arrow { position: absolute; width: 12px; height: 12px; background: var(--coach-paper); border: 1px solid var(--coach-edge); transform: rotate(45deg); }
+.gr-coach[data-side="none"] .gr-coach-arrow, .gr-coach[data-side="inline"] .gr-coach-arrow { display: none; }
+.gr-coach[data-side="top"] .gr-coach-arrow { bottom: -7px; left: calc(var(--along, 50%) - 6px); border-top: 0; border-left: 0; }
+.gr-coach[data-side="bottom"] .gr-coach-arrow { top: -7px; left: calc(var(--along, 50%) - 6px); border-bottom: 0; border-right: 0; }
+.gr-coach[data-side="right"] .gr-coach-arrow { left: -7px; top: calc(var(--along, 50%) - 6px); border-top: 0; border-right: 0; }
+.gr-coach[data-side="left"] .gr-coach-arrow { right: -7px; top: calc(var(--along, 50%) - 6px); border-bottom: 0; border-left: 0; }
+
+/* Inside a modal dialog (a battle, a choice), the note sits at the top of that dialog. */
+.gr-coach.in-dialog { position: static; width: auto; max-height: none; margin: 0 0 10px; box-shadow: 0 0 0 2px #ffc95e55; }
+
+/* The element to use pulses with a gold ring; still for reduced motion. */
+.gr-coach-target { outline: 3px solid #ffc95e !important; outline-offset: 3px; animation: gr-coach-pulse 1.6s ease-in-out infinite; }
+.hex.gr-coach-target { outline-offset: -2px; z-index: 3; }
+@keyframes gr-coach-pulse { 50% { outline-color: #ffc95e66; outline-offset: 6px; } }
+@media (prefers-reduced-motion: reduce) { .gr-coach-target { animation: none; } }
+
+/* Phones: the note docks across the top of the screen. */
+@media (max-width: 599px), (max-height: 499px) {
+  .gr-coach:not(.in-dialog) { left: 8px !important; right: 8px; top: 8px !important; width: auto; max-height: 40vh; }
+  .gr-coach-arrow { display: none; }
+}
+
+/* Docked over the map key (your own games): it steps aside while you raise a hand card, while a
+   notice (toast) shows there, and while the game menu is open. */
+.gr-coach.docked { box-shadow: 0 0 0 2px #ffc95e55, 0 8px 20px #0009; }
+body:has(#hand-row .game-card:is(:hover, :focus-within)) .gr-coach.docked,
+body:has(.toast) .gr-coach.docked,
+body.menu-open .gr-coach:not(.in-dialog) { display: none; }
+/* Floating beside its anchor (Learn to play): clicks pass through to the table, except its own controls. */
+.gr-coach:not(.docked):not(.in-dialog) { pointer-events: none; }
+.gr-coach:not(.docked):not(.in-dialog) :is(button, a) { pointer-events: auto; }
