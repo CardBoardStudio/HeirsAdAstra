@@ -931,56 +931,63 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
         .sum::<f64>();
     Some(value)
 }
-/// The resource limits a rival still needs for its best-valued market card.
+/// Market funding goal: the printed bill, optionally together with the same
+/// protected payment checked by the buyer. Kept funds are not part of the price.
 fn market_target_cost(view: &Value, seat: usize) -> Option<[f64; 4]> {
-    let target = view["market"]
+    let protection = (view["investmentPlanning"] == true && view["protectedMarketBudget"] == true)
+        .then(|| planning_protection(view, seat));
+    view["market"]
         .as_array()?
         .iter()
-        .filter_map(|c| {
-            let key = c["key"].as_str()?;
-            Some((
-                {
-                    let value = capacity_value(view, seat, key)?;
-                    if view["investmentPlanning"] == true {
-                        if value <= 0.0 {
-                            return None;
-                        }
-                        let cost = observed_payment_cost(view, key)
-                            .or_else(|| capacity_card(key).map(|c| c.0))?;
-                        let income = bot_income(view, seat);
-                        let room: f64 = RESOURCE_KEYS
-                            .iter()
-                            .enumerate()
-                            .map(|(i, r)| (cost[i] - bot_limit(view, seat, r)).max(0.0))
-                            .sum();
-                        let saving = RESOURCE_KEYS
-                            .iter()
-                            .enumerate()
-                            .map(|(i, r)| {
-                                (cost[i] - number(&view["players"][seat]["resources"][*r])).max(0.0)
-                                    / number(&income[*r]).max(0.5)
-                            })
-                            .fold(0.0_f64, f64::max);
-                        value
-                            / (1.0
-                                + 0.55
-                                    * (saving
-                                        + if room > 0.0 {
-                                            (room / 4.0).ceil() * 2.0
-                                        } else {
-                                            0.0
-                                        }))
+        .filter_map(|card| {
+            let key = card["key"].as_str()?;
+            let mut value = capacity_value(view, seat, key)?;
+            let bill =
+                observed_payment_cost(view, key).or_else(|| capacity_card(key).map(|c| c.0))?;
+            let budget = if let Some(keep) = protection {
+                std::array::from_fn(|i| {
+                    if bill[i] > 0.0 {
+                        bill[i] + keep[i]
                     } else {
-                        value
+                        0.0
                     }
-                },
-                observed_payment_cost(view, key).or_else(|| capacity_card(key).map(|c| c.0))?,
-            ))
+                })
+            } else {
+                bill
+            };
+            if view["investmentPlanning"] == true {
+                if value <= 0.0 {
+                    return None;
+                }
+                let income = bot_income(view, seat);
+                let room = RESOURCE_KEYS
+                    .iter()
+                    .enumerate()
+                    .map(|(i, r)| (budget[i] - bot_limit(view, seat, r)).max(0.0))
+                    .sum::<f64>();
+                let saving = RESOURCE_KEYS
+                    .iter()
+                    .enumerate()
+                    .map(|(i, r)| {
+                        (budget[i] - number(&view["players"][seat]["resources"][*r])).max(0.0)
+                            / number(&income[*r]).max(0.5)
+                    })
+                    .fold(0.0_f64, f64::max);
+                value /= 1.0
+                    + 0.55
+                        * (saving
+                            + if room > 0.0 {
+                                (room / 4.0).ceil() * 2.0
+                            } else {
+                                0.0
+                            });
+            }
+            Some((value, budget))
         })
-        .max_by(|a, b| a.0.total_cmp(&b.0))?
-        .1;
-    Some(target)
+        .max_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, budget)| budget)
 }
+
 fn capacity_need(view: &Value, seat: usize) -> Option<[f64; 4]> {
     let target = market_target_cost(view, seat)?;
     let need: [f64; 4] =
@@ -2657,6 +2664,44 @@ mod tests {
         );
         view.as_object_mut().unwrap().remove("investmentPlanning");
         assert_eq!(agent.score(&view, &action), archived);
+    }
+    #[test]
+    fn protected_market_budget_funds_the_bill_and_preserved_scoring_payment() {
+        let mut agent = BuiltinAgent::new(Strategy::Market, [5; 32]);
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":5,"phase":"buy","victoryTarget":40,"players":[{"prestige":10,"resources":{"matter":2,"energy":3,"biomass":1,"data":6},"resourceLimits":{"matter":4,"energy":4,"biomass":4,"data":6},"hand":[{"key":"construct","id":"c","starter":true,"upgraded":true,"level":2},{"key":"probe","id":"p"}],"handCount":2,"deckCount":8,"deckContents":[{"key":"move","count":8}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"data","upgrade":"starbase","cluster":0},"3,0":{"owner":null,"type":"moon","special":"relic","cluster":1}},"clusters":[{"center":"0,0","kind":"world"},{"center":"3,0","kind":"moon"}],"fleets":{"3,0":{"0":{"explorer":1}}},"market":[{"key":"commandNexus"}],"marketCosts":[{"energy":2,"data":6}],"cardStats":{"commandNexus":{"order":"special","draw":4}}});
+        let buy = json!({"type":"buy","source":"market","key":"commandNexus"});
+        assert_eq!(planning_protection(&view, 0), [1.0, 1.0, 0.0, 2.0]);
+        assert_eq!(market_target_cost(&view, 0), Some([0.0, 2.0, 0.0, 6.0]));
+        assert!(capacity_need(&view, 0).is_none());
+        assert!(
+            agent.score(&view, &buy) < 0.0,
+            "The printed price alone cannot preserve the excavation payment"
+        );
+        view["protectedMarketBudget"] = json!(true);
+        assert_eq!(market_target_cost(&view, 0), Some([0.0, 3.0, 0.0, 8.0]));
+        assert_eq!(capacity_need(&view, 0), Some([0.0, 0.0, 0.0, 2.0]));
+        assert!(
+            agent.score(&view, &buy) < 0.0,
+            "Planning does not waive the actual purchase guard"
+        );
+        view["players"][0]["resourceLimits"]["data"] = json!(8);
+        assert_eq!(
+            bot_storage_reserve(&view, 0)["data"],
+            8.0,
+            "Banking funds the whole budget once it fits"
+        );
+        view["players"][0]["resources"]["data"] = json!(8);
+        assert_eq!(
+            agent.select_action(&view, &[json!({"type":"finish_buy"}), buy.clone()]),
+            1
+        );
+        view["fleets"] = json!({});
+        view["players"][0]["hand"] = json!([]);
+        assert_eq!(
+            market_target_cost(&view, 0),
+            Some([0.0, 2.0, 0.0, 6.0]),
+            "Without a protected payment the target remains the printed bill"
+        );
     }
     #[test]
     fn colony_planning_values_printed_terms_and_chooses_the_better_legal_order() {
