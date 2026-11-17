@@ -798,8 +798,20 @@ fn public_colony_opportunity(view: &Value, seat: usize) -> bool {
 }
 fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
     let (table_cost, table_prestige, military) = capacity_card(key)?;
-    let cost = observed_cost(view, key).unwrap_or(table_cost);
     let prestige = observed_buy_prestige(view, key).unwrap_or(table_prestige);
+    let immediate_prestige = if view["cardStats"][key].is_object() {
+        number(&view["cardStats"][key]["gainPrestige"])
+    } else if military {
+        0.0
+    } else {
+        prestige
+    };
+    match view["marketPurchasePolicy"].as_str().unwrap_or("normal") {
+        "none" => return None,
+        "points-only" if immediate_prestige <= 0.0 => return None,
+        _ => {}
+    }
+    let cost = observed_cost(view, key).unwrap_or(table_cost);
     let me = &view["players"][seat];
     if military && bot_units(view, seat, "fleet") == 0.0 {
         return None;
@@ -2664,6 +2676,43 @@ mod tests {
         );
         view.as_object_mut().unwrap().remove("investmentPlanning");
         assert_eq!(agent.score(&view, &action), archived);
+    }
+    #[test]
+    fn market_purchase_ablation_changes_purchases_and_targets_not_order_legality() {
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":5,"victoryTarget":40,"players":[{"prestige":10,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":10,"energy":10,"biomass":10,"data":10},"hand":[],"discard":[],"inPlay":[],"military":[],"deckContents":[]}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"}},"fleets":{"0,0":{"0":{"fleet":1}}},"market":[{"key":"signalRelay"},{"key":"monumentOfAccord"},{"key":"victoryDoctrine"}],"marketCosts":[{"data":3},{"matter":6,"biomass":2,"data":2},{"matter":1,"energy":2,"data":6}],"marketPrestige":[0,3,0],"cardStats":{"signalRelay":{"order":"special","draw":2},"monumentOfAccord":{"gainPrestige":3},"victoryDoctrine":{"military":true,"attack":2,"victoryPrestige":2}}});
+        let normal = capacity_value(&view, 0, "signalRelay");
+        assert!(normal.is_some());
+        view["marketPurchasePolicy"] = json!("points-only");
+        assert!(capacity_value(&view, 0, "signalRelay").is_none());
+        assert!(
+            capacity_value(&view, 0, "victoryDoctrine").is_none(),
+            "Combat Prestige is not Prestige on purchase"
+        );
+        assert!(capacity_value(&view, 0, "monumentOfAccord").is_some());
+        assert_eq!(market_target_cost(&view, 0), Some([6.0, 0.0, 2.0, 2.0]));
+        view["marketPurchasePolicy"] = json!("none");
+        for key in ["signalRelay", "monumentOfAccord", "victoryDoctrine"] {
+            assert!(capacity_value(&view, 0, key).is_none());
+        }
+        assert!(market_target_cost(&view, 0).is_none());
+        assert!(
+            capacity_need(&view, 0).is_none(),
+            "Never fund cards the policy will not buy"
+        );
+        let agent = BuiltinAgent::new(Strategy::Economy, [5; 32]);
+        assert!(
+            agent.score(
+                &view,
+                &json!({"type":"buy","source":"market","key":"monumentOfAccord"})
+            ) < agent.score(&view, &json!({"type":"finish_buy"}))
+        );
+        assert_eq!(
+            agent.score(&view, &json!({"type":"colonize"})),
+            160.0,
+            "Already-held orders remain available"
+        );
+        view["marketPurchasePolicy"] = json!("normal");
+        assert_eq!(capacity_value(&view, 0, "signalRelay"), normal);
     }
     #[test]
     fn protected_market_budget_funds_the_bill_and_preserved_scoring_payment() {
