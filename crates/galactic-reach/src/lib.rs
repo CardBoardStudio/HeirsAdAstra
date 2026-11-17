@@ -1776,6 +1776,15 @@ impl BuiltinAgent {
                             && gain.min(shortage) * (investment_horizon(view) - 1.0).max(0.0) >= 3.0
                         {
                             10.0 + shortage * 7.0 + if economy { 4.0 } else { 0.0 }
+                        } else if view["productionDiscipline"] == true
+                            && !(action["type"] == "build"
+                                && matches!(
+                                    action["discountResource"].as_str(),
+                                    Some("free" | "each")
+                                ))
+                        {
+                            // Pass scores zero. Merely lowering this to +1 still pays for it.
+                            -1.0
                         } else {
                             1.0
                         }
@@ -2598,6 +2607,67 @@ mod tests {
         );
         view.as_object_mut().unwrap().remove("investmentPlanning");
         assert_eq!(agent.score(&view, &action), archived);
+    }
+    #[test]
+    fn production_discipline_prefers_pass_to_unprofitable_paid_harvesters() {
+        let mut agent = BuiltinAgent::new(Strategy::Economy, [5; 32]);
+        let mut view = json!({"investmentPlanning":true,"constructDrawOnly":true,"seat":0,"round":12,"victoryTarget":40,"players":[{"prestige":10,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":8,"energy":8,"biomass":8,"data":8},"hand":[{"key":"construct","id":"iii","starter":true,"level":3}],"deckContents":[],"inPlay":[],"discard":[]},{"prestige":39},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"},"1,0":{"owner":0,"type":"matter"},"2,0":{"owner":0,"type":"matter"}},"fleets":{},"harvesterYield":2,"relicRow":[{"key":"memoryPrism"}],"cardStats":{"prefabYards":{"buildDiscount":"each"},"worldEngine":{"buildDiscount":"free"}}});
+        let paid = json!({"type":"build","coord":"1,0","kind":"harvester","card":"iii","key":"construct","discountResource":null});
+        let pass = json!({"type":"pass"});
+        assert_eq!(
+            agent.select_action(&view, &[paid.clone(), pass.clone()]),
+            0,
+            "The existing positive fallback still builds"
+        );
+        view["productionDiscipline"] = json!(true);
+        assert_eq!(
+            agent.select_action(&view, &[paid.clone(), pass.clone()]),
+            1,
+            "Even the III build bonus must remain below Pass"
+        );
+        for (key, discount) in [("prefabYards", "each"), ("worldEngine", "free")] {
+            let mut free = paid.clone();
+            free["key"] = json!(key);
+            free["discountResource"] = json!(discount);
+            assert_eq!(
+                agent.select_action(&view, &[free, pass.clone()]),
+                0,
+                "A free first Harvester remains an option"
+            );
+        }
+        assert_eq!(
+            agent.select_action(
+                &view,
+                &[
+                    json!({"type":"second_build","coord":"1,0","kind":"harvester"}),
+                    pass.clone()
+                ]
+            ),
+            1,
+            "An optional second build pays full cost"
+        );
+        view["round"] = json!(4);
+        view["players"][1]["prestige"] = json!(3);
+        assert_eq!(
+            agent.select_action(&view, &[paid.clone(), pass.clone()]),
+            0,
+            "Profitable investment is unchanged"
+        );
+        view["planets"]["3,0"] = json!({"owner":0,"type":"matter"});
+        view["planets"]["4,0"] = json!({"owner":0,"type":"matter"});
+        assert_eq!(
+            agent.select_action(&view, &[paid.clone(), pass.clone()]),
+            1,
+            "Production already at the target need not grow"
+        );
+        view["round"] = json!(1);
+        view["planets"]["1,0"]["type"] = json!("data");
+        view["planets"]["1,0"]["owner"] = Value::Null;
+        assert_eq!(
+            agent.select_action(&view, &[paid, pass]),
+            0,
+            "Keep the zero-Data bootstrap"
+        );
     }
     #[test]
     fn investment_planning_values_reachable_targets_and_preserves_first_construct_upgrade() {
