@@ -148,7 +148,7 @@
     }
     // Market: your purchase flies to its pile, a rival's fades, the rest slide to their new
     // slots and the refill deals in.
-    const yours = after.discard > before.discard ? $('#discard-button') : after.military > before.military ? $('#fleet-tab') : null;
+    const yours = after.discard > before.discard ? $('#discard-button') : after.military > before.military ? $('#military-button') : null;
     for (const [id, card] of saved.market) {
       const now = market.get(id);
       if (!now) { ghost(card, yours && shown(yours) ? yours : null, { fade: !yours }); continue; }

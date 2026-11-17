@@ -3782,6 +3782,36 @@ function createGalacticReach(options = {}) {
     if (!dialog.open) dialog.showModal();
   }
 
+  // The standings beside the race (public information only, rules #shared-board): one row per
+  // faction, level with its lane, under one row of icon headings.
+  const STANDINGS_COLUMNS = [
+    ['settler', 'Settlers', 'Settlers on the map: move 1, colonize and capture', () => BOARD_ICONS.settler],
+    ['explorer', 'Explorers', 'Explorers on the map: move 3, probe and excavate relics', () => BOARD_ICONS.explorer],
+    ['fleet', 'Fleets', 'Fleets on the map: move 2, 3 attack and 7 hull each', () => BOARD_ICONS.fleet],
+    ['power', 'Strongest fleet power', 'Strongest fleet power: the most attack the faction has together on one hex', () => VOCAB_ICONS.hit],
+    ['colony', 'Colonies', 'Colonies: 3 Prestige each', () => BOARD_ICONS.colony],
+    ['harvester', 'Harvesters', 'Harvesters: each produces 2 of its hex’s resource per round', () => BOARD_ICONS.harvester],
+    ['starbase', 'Shipyards', 'Shipyards: commission ships and defend their hex', () => BOARD_ICONS.starbase],
+    ['relics', 'Excavated relics', 'Excavated relics: 2 Prestige each', () => '<span class="standings-glyph" aria-hidden="true">◈</span>'],
+    ['cards', 'Cards bought', 'Cards bought from the market (normal and military)', () => VOCAB_ICONS.draw],
+  ];
+  function standingsRow(id) {
+    const units = { settler: 0, explorer: 0, fleet: 0 };
+    Object.values(state.fleets).forEach(group => Object.keys(units).forEach(type => { units[type] += group[id]?.[type] || 0; }));
+    const owned = Object.values(state.planets).filter(planet => planet.owner === id);
+    return { ...units, power: strongestFleet(id), colony: owned.filter(planet => planet.hasColony).length,
+      harvester: owned.filter(planet => planet.upgrade === 'harvester').length, starbase: owned.filter(planet => planet.upgrade === 'starbase').length,
+      relics: excavatedRelicCount(id), cards: state.players[id].cardsPurchased || 0 };
+  }
+  function standingsTable(tag) {
+    const head = STANDINGS_COLUMNS.map(([key, label, help, icon]) => `<span role="columnheader" class="standings-head" data-col="${key}" title="${esc(help)}" aria-label="${esc(label)}">${icon()}</span>`).join('');
+    const rows = state.players.map((player, id) => {
+      const row = standingsRow(id);
+      return `<div role="row" class="standings-row" style="--player:${player.color}"><span role="rowheader" class="standings-faction" title="${esc(player.name)}"><span class="sr-only">${esc(player.name)}</span><b aria-hidden="true">${esc(tag(player, id))}</b></span>${STANDINGS_COLUMNS.map(([key, label]) => `<span role="cell" class="standings-cell${row[key] ? '' : ' zero'}" data-col="${key}" title="${esc(player.name)}: ${row[key]} ${esc(label.toLowerCase())}">${row[key]}</span>`).join('')}</div>`;
+    }).join('');
+    return `<div class="standings-stats" role="table" aria-label="Standings: units, worlds, relics and cards bought per faction" style="--stat-cols:${STANDINGS_COLUMNS.length}"><div role="row" class="standings-row standings-header"><span role="columnheader" class="standings-faction"><span class="sr-only">Faction</span></span>${head}</div>${rows}</div>`;
+  }
+
   // The race to the Prestige goal: one lane per faction, in seat order, so every marker sits exactly
   // at its score. Each marker opens that faction's point breakdown; pointing at it or focusing it
   // shows an overview of its points and stats. The acting faction's marker glows.
@@ -3800,7 +3830,10 @@ function createGalacticReach(options = {}) {
       const label = `${esc(player.name)}, ${status}: ${points} of ${target} Prestige. Show point breakdown`;
       return `<div class="prestige-lane${at>70?' flip':''}" style="--player:${player.color};--at:${at}%"><button type="button" class="prestige-marker${active?' acting':''}${replayMode&&id===viewSeat?' viewing':''}" data-score-player="${id}" aria-label="${label}" aria-describedby="score-overview-${id}" aria-haspopup="dialog"><b>${points}</b><span class="prestige-name">${esc(tag(player,id))}</span></button>${overview}</div>`;
     }).join('');
-    $('#prestige-track').innerHTML = `<span class="prestige-track-goal">${target}★</span><div class="prestige-line">${ticks}${lanes}</div>`;
+    // Each lane starts with its faction's name (the first word; the full name on hover and in the
+    // standings table's row header for screen readers).
+    const names = state.players.map((player,id) => `<span class="prestige-lane-name${state.activePlayer===id && state.winner===null?' acting':''}" style="--player:${player.color}" title="${esc(player.name)}">${esc(id===ME && !replayMode ? 'You' : player.name.split(/\s+/)[0])}</span>`).join('');
+    $('#prestige-track').innerHTML = `<span class="prestige-track-goal">${target}★</span><div class="prestige-names" aria-hidden="true">${names}</div><div class="prestige-line">${ticks}${lanes}</div>${standingsTable(tag)}`;
     $('.app-shell')?.style.setProperty('--lanes', state.players.length);
     $$('[data-score-player]').forEach(button=>button.addEventListener('click',()=>showPrestigeBreakdown(Number(button.dataset.scorePlayer))));
     renderHistoryStatus();
@@ -4063,7 +4096,8 @@ function createGalacticReach(options = {}) {
     let lastRound = null;
     state.log.slice(0,18).forEach((item,index) => {
       const match = /^R(\d+) · ([\s\S]*)$/.exec(item), round = match ? match[1] : null, text = match ? match[2] : item;
-      const recent = index < LOG_RECENT ? ' log-recent' : '';
+      // A wide table shows two more entries (log-more) on the comms card.
+      const recent = index < LOG_RECENT ? ' log-recent' : index < LOG_RECENT + 2 ? ' log-recent log-more' : '';
       if (round && round !== lastRound) { parts.push(`<li class="log-round${recent}" aria-hidden="true"><span>Round ${round}</span></li>`); lastRound = round; }
       const player = state.players.find(candidate => text.startsWith(candidate.name) && !/^[\p{L}\p{N}]/u.test(text.slice(candidate.name.length)));
       const [kind] = LOG_KINDS.find(([,pattern]) => pattern.test(text)) || ['event'];
@@ -4246,7 +4280,7 @@ function createGalacticReach(options = {}) {
     return amounts[0]>0 && amounts.every(amount=>amount===amounts[0]) ? amounts[0] : 0;
   }
   // Market prices mark each resource you cannot pay yet: a padlock where the price is above
-  // that resource's limit (raise capacity first), a dashed chip where you hold too little.
+  // that resource's limit (raise capacity first), a faded chip where you hold too little.
   const LOCK_ICON = '<svg class="chip-lock" viewBox="0 0 12 14" aria-hidden="true" focusable="false"><path d="M3 6V4.5a3 3 0 0 1 6 0V6" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="1" y="6" width="10" height="7.5" rx="1.6" fill="currentColor"/></svg>';
   function marketCostDots(player,cost) {
     const present=RESOURCES.filter(resource=>cost?.[resource]);
@@ -4351,26 +4385,39 @@ function createGalacticReach(options = {}) {
       if (upgradeStarter(ME,button.dataset.upgradeCard,$('#upgrade-resource').value)) { $('#upgrade-dialog').close(); render(); saveGame(); }
     }));
   }
-  function renderFleetSummary() {
-    const glance=$('#fleet-glance');
-    if (glance) glance.innerHTML=`<button type="button" class="fleet-glance-head" data-open-fleet aria-label="Fleets: open the full fleet manifest and your tactics">Fleets <small>Details ▸</small></button>`+state.players.map((player,id)=>{
-      const totals={settler:0,explorer:0,fleet:0};
-      Object.values(state.fleets).forEach(group=>Object.keys(totals).forEach(type=>{totals[type]+=group[id]?.[type]||0;}));
-      return `<span class="fleet-glance-row" style="--player:${player.color}"><b>${esc(player.name.split(/\s+/).filter(Boolean).map(word=>word[0]).join('').slice(0,3).toUpperCase())}</b><span>${BOARD_ICONS.settler}${totals.settler}</span><span>${BOARD_ICONS.explorer}${totals.explorer}</span><span>${BOARD_ICONS.fleet}${totals.fleet}</span></span>`;
-    }).join('');
-    $('[data-open-fleet]')?.addEventListener('click',()=>switchTab('fleet'));
-    $('#fleet-summary').innerHTML=state.players.map((player,id)=>{
-      const totals={settler:0,explorer:0,fleet:0};
-      Object.values(state.fleets).forEach(group=>Object.keys(totals).forEach(type=>{totals[type]+=group[id]?.[type]||0;}));
-      return `<div class="fleet-faction" style="--player:${player.color}"><strong>${esc(player.name)}</strong><span>${totals.settler} Settlers · ${totals.explorer} Explorers · ${totals.fleet} Fleets<br>${excavatedRelicCount(id)} excavated relics · ${strongestFleet(id)} strongest-fleet power</span></div>`;
-    }).join('');
-    if (replayMode) return;
-    const counts=tacticHand(ME),total=Object.values(counts).reduce((n,c)=>n+c,0),owned=state.players[ME].military?.length||0;
-    $('#military-deck-count').textContent=`${total} tactics each battle · ${owned} military card${owned===1?'':'s'} owned`;
-    $('#military-card-grid').innerHTML=Object.entries(counts).map(([key,count])=>{
-      const card=MILITARY_CARDS[key];
-      const stats=[card.attack?`Attack +${card.attack}`:'',card.shield?`Shield ${card.shield}`:'',card.pierce?'Ignores shields':'',card.loot?'Loot':'',card.victoryPrestige?`+${card.victoryPrestige} Prestige on decisive win`:''].filter(Boolean).join(' · ');
-      return `<article class="military-card"><strong>${count}× ${card.code?card.code+' · ':''}${card.name}</strong><span>${resourceText(card.text)}</span><small>${card.code?'Military deck':'Basic tactic'} · ${stats||'Tactical effect'}</small></article>`;
+  // Rules #military-deck: military cards you bought, a pile of their own beside Deck and In play.
+  // It is never drawn, shuffled or discarded; every battle each card is one extra tactic, used once
+  // and back for the next battle. During your battle the pile counts the military tactics still
+  // unused in it, and its inspect view marks the used ones.
+  function battleSideOf(playerId) {
+    const battle = state.pendingCombat;
+    if (!battle) return null;
+    return battle.attackerId === playerId ? 'attacker' : battle.defenderId === playerId ? 'defender' : null;
+  }
+  function renderMilitaryPile() {
+    const button = $('#military-button');
+    if (!button) return;
+    const player = state.players[viewSeat], owned = player.military || [];
+    const side = battleSideOf(viewSeat), left = side ? state.pendingCombat.hands?.[side] : null;
+    const counts = {};
+    for (const card of owned) counts[card.key] = (counts[card.key] || 0) + 1;
+    const unused = left ? Object.keys(counts).reduce((n, key) => n + Math.min(counts[key], left[key] ?? counts[key]), 0) : owned.length;
+    const total = Object.values(BASIC_TACTIC_HAND).reduce((n, c) => n + c, 0) + owned.length;
+    $('#military-count').textContent = unused;
+    renderPile('military', unused, null);
+    button.classList.toggle('in-battle', !!left);
+    const who = replayMode ? `${player.name}’s` : 'Your';
+    button.setAttribute('aria-label', `${who} military deck: ${owned.length} military card${owned.length === 1 ? '' : 's'}${left ? `, ${unused} unused in this battle` : ''}. Inspect`);
+    $('#military-dialog-count').textContent = owned.length;
+    $('#military-dialog-help').textContent = `${left ? `In this battle: ${Object.values(left).reduce((n, c) => n + c, 0)} of ${total} tactics left. ` : ''}Military cards you bought. They never enter your hand, draw pile or discard. Each battle you hold 2 Concentrated Fire, 2 Defensive Screen and every card here (${total} tactics), each usable once; used tactics return for the next battle.`;
+    const usedOf = key => left ? Math.max(0, (key in BASIC_TACTIC_HAND ? BASIC_TACTIC_HAND[key] : counts[key] || 0) - (left[key] || 0)) : 0;
+    const usedNote = key => usedOf(key) ? `<small class="military-used">${usedOf(key)} used this battle</small>` : '';
+    $('#military-row').innerHTML = Object.entries(counts).map(([key, count]) => `<div class="deck-card-group${left && !left[key] ? ' spent' : ''}"><strong class="deck-card-count">${count}×</strong>${cardMarkup({ key }, 'military')}${usedNote(key)}</div>`).join('')
+      || `<p class="muted discard-empty">${replayMode ? `${esc(player.name)} owns` : 'You own'} no military cards yet. Military cards bought from the market join this deck.</p>`;
+    $('#military-basic-row').innerHTML = Object.entries(BASIC_TACTIC_HAND).map(([key, count]) => {
+      const card = MILITARY_CARDS[key];
+      const stats = [card.attack ? `Attack +${card.attack}` : '', card.shield ? `Shield ${card.shield}` : ''].filter(Boolean).join(' · ');
+      return `<article class="military-card${left && !left[key] ? ' spent' : ''}"><strong>${count}× ${card.name}</strong><span>${resourceText(card.text)}</span><small>Basic tactic · ${stats}</small>${usedNote(key)}</article>`;
     }).join('');
   }
 
@@ -4686,8 +4733,9 @@ function createGalacticReach(options = {}) {
     $('#round-goal').textContent=`${victoryTarget()} Prestige`;
     // Each part of the table draws on its own: one failing part must never blank the market,
     // the relics or the turn's buttons. Failures are logged, shown once, and fail the checks.
-    drawEach({renderHeader, renderScoreboard, renderBoard, renderResources, renderInspector, positionSectorScan, renderLog, renderHand, renderMarket, renderFleetSummary, renderTrade, renderRelicRow, renderOverflow, renderCombat, renderCombatReport, renderBoardPrimary});
+    drawEach({renderHeader, renderScoreboard, renderBoard, renderResources, renderInspector, positionSectorScan, renderLog, renderHand, renderMarket, renderMilitaryPile, renderTrade, renderRelicRow, renderOverflow, renderCombat, renderCombatReport, renderBoardPrimary});
     drawEach({fitMarket, stackLeft, fitMap});
+    settleFit();
     drawEach({ 'card feel': () => cardFeel?.rendered?.(cardFeelView()), drawers: followTurnWithDrawer });
   }
 
@@ -4901,6 +4949,7 @@ function createGalacticReach(options = {}) {
   // Hex positions scale with the map's width, so they are measured once and the largest width
   // that clears every corner piece is found by scanning down from the largest.
   let fitMapLog = null;
+  let fitMapFrom = 0;
   function fitMap() {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
     const root = document.documentElement, region = $('.board-map-region'), board = $('#galaxy-board');
@@ -4915,14 +4964,14 @@ function createGalacticReach(options = {}) {
     hexes.sort((a, z) => Math.hypot(z[0] + z[2] - 1, (z[1] + z[3]) / 2 - b.height / b.width / 2) - Math.hypot(a[0] + a[2] - 1, (a[1] + a[3]) / 2 - b.height / b.width / 2));
     const ratio = b.height / b.width, gap = 6 * zoom;
     const rect = (element, [l, t, r, bottom] = [0, 0, 0, 0]) => { const e = element?.getBoundingClientRect?.(); return e && e.width ? [e.left - l * zoom, e.top - t * zoom, e.right + r * zoom, e.bottom + bottom * zoom] : null; };
-    const track = rect($('#prestige-track'), [6, 4, 38, 5]);
+    const track = rect($('#prestige-track'), [6, 4, 6, 5]);
 
     // An open comms log lies over the map on purpose; the map keeps clear of the closed card.
     if (!$('.log-panel.open')) fitMapLog = rect($('.log-panel'));
     const log = fitMapLog;
     // The bottom band's pieces too: the map reaches down between your hand, piles, buttons and mat.
     const band = [...document.querySelectorAll('#hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].map(e => rect(e));
-    const blocks = [track, log, rect($('.phase-stepper')), rect($('#fleet-glance')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
+    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
     const clear = (width, top) => {
       const left = box.right - width;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
@@ -4930,7 +4979,7 @@ function createGalacticReach(options = {}) {
     // The map lies against the supply. A map shorter than its space may also slide up or down
     // (centred first) so its empty corners take the panels above and below.
     const fits = width => {
-      const slack = box.height - width * ratio, tops = [slack / 2, ...Array.from({ length: 9 }, (_, i) => slack * i / 8)];
+      const slack = box.height - width * ratio, tops = [slack / 2, ...Array.from({ length: 33 }, (_, i) => slack * i / 32)];
       return tops.find(dy => clear(width, box.top + dy));
     };
     // Hexes are discrete, so a corner piece can clear a larger map and touch a smaller one: scan
@@ -4940,6 +4989,7 @@ function createGalacticReach(options = {}) {
     if (!width) { ['--map-w', '--map-top'].forEach(name => root.style.removeProperty(name)); return; }
     root.style.setProperty('--map-w', `${Math.floor(width / zoom)}px`);
     root.style.setProperty('--map-top', `${Math.floor(fits(width) / zoom)}px`);
+    fitMapFrom = b.width;
   }
 
   // On the table the supply is six rows of three cards, all one size: the relics, the market's
@@ -4959,7 +5009,7 @@ function createGalacticReach(options = {}) {
     const board = $('#galaxy-board')?.getBoundingClientRect?.();
     if (!board?.width) return;
     const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
-    const right = Math.max(0, ...['#prestige-track', '.phase-stepper', '.log-panel:not(.open)', '#fleet-glance', '#map-legend-corner'].map(sel => $(sel)?.getBoundingClientRect?.()).filter(r => r?.width).map(r => r.right));
+    const right = Math.max(0, ...['#prestige-track', '.phase-stepper', '.log-panel:not(.open)', '#map-legend-corner'].map(sel => $(sel)?.getBoundingClientRect?.()).filter(r => r?.width).map(r => r.right));
     const slack = (board.left - right) / zoom - 16;
     const next = Math.max(0, Math.min(supplyRoom, supplyExtra + Math.floor(slack / 3)));
     if (Math.abs(next - supplyExtra) < 3) return;
@@ -4997,9 +5047,16 @@ function createGalacticReach(options = {}) {
     if (height < 60) return;
     row.style.setProperty('--mrow-h', `${Math.floor((height - 2 * gap) / 3)}px`);
   }
-  // The left column: each piece lies under the one before it, in order (track, round, comms,
-  // fleets).
-  const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel', '#fleet-glance'];
+  // The map key's place follows the stack and can land a frame after a fit, so fit the map once
+  // more on the next frame (one pending pass at a time).
+  let settleFrame = 0;
+  function settleFit() {
+    if (typeof requestAnimationFrame !== 'function' || typeof document === 'undefined') return;
+    cancelAnimationFrame(settleFrame);
+    settleFrame = requestAnimationFrame(() => { stackLeft(); fitMap(); });
+  }
+  // The left column: each piece lies under the one before it, in order (standings, round, comms).
+  const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel'];
   function stackLeft(depth = 0) {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function' || !document.documentElement?.style) return;
     const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches;
@@ -5040,14 +5097,13 @@ function createGalacticReach(options = {}) {
       && stackEnd.bottom + 8 * zoom + keyNow.height > floor - 4 * zoom) { root.classList.add(step); stackLeft(depth + 1); }
   }
 
-  // On a desktop window the market and relics lie on the table together; Fleet opens over them.
+  // On a desktop window the market and relics lie on the table together.
   const tableLayout = () => typeof window !== 'undefined' && !!window.matchMedia?.('(min-width: 600px) and (min-height: 600px)').matches;
   function switchTab(name) {
     // The hand is always on the board and Trade is a dialog, so their old tabs show the market.
-    if (name==='hand' || name==='trade') name='market';
+    if (name==='hand' || name==='trade' || name==='fleet') name='market';
     $$('.console-tab[data-tab]').forEach(tab=>{const active=tab.dataset.tab===name;tab.classList.toggle('active',active);tab.setAttribute('aria-selected',String(active));tab.tabIndex=active?0:-1;});
     $$('.tab-panel').forEach(panel=>{const active=panel.dataset.panel===name;panel.classList.toggle('active',active);panel.hidden=!active;});
-    if (tableLayout()) { const fleet=$('#fleet-tab'); if (fleet) { fleet.tabIndex=0; fleet.setAttribute('aria-expanded',String(name==='fleet')); } }
   }
 
   function positionSectorScan() {
@@ -5132,16 +5188,21 @@ function createGalacticReach(options = {}) {
     window.addEventListener('resize',fitMarket);
     // A resized window starts the column untightened, so a window that grows gets it back.
     window.addEventListener('resize',() => { document.documentElement.classList.remove('left-tight', 'left-tighter'); stackLeft(); });
-    window.addEventListener('resize',fitMap);
+    window.addEventListener('resize',() => fitMap());
     // A resized window balances the supply afresh, from its narrowest cards.
     window.addEventListener('resize',() => { supplyExtra = 0; fitMarket(); stackLeft(); fitMap(); balanceSupply(); });
     // Late layout (web fonts, panels settling) re-fits the market and the map; their own sizing
     // does not change the panels' sizes, so this cannot loop.
     if (typeof ResizeObserver === 'function') {
-      const refit = new ResizeObserver(() => { fitMarket(); stackLeft(); fitMap(); balanceSupply(); });
+      const refit = new ResizeObserver(() => { fitMarket(); stackLeft(); fitMap(); balanceSupply(); settleFit(); });
       ['.app-shell', '#market-panel', '#relics-panel', '.board-map-region'].forEach(sel => { const el = $(sel); if (el) refit.observe(el); });
+      // Hex positions are measured as fractions of the board, and a hex's fixed-size parts shift
+      // those fractions a little with scale. When a fit has resized the board (a frame later), fit
+      // once more at the new size; a fit that keeps the size ends it, so this cannot loop.
+      const board = $('#galaxy-board');
+      if (board) new ResizeObserver(() => { const now = board.getBoundingClientRect().width; if (fitMapFrom && Math.abs(now - fitMapFrom) > 0.02 * fitMapFrom) { stackLeft(); fitMap(); } }).observe(board);
     }
-    document.fonts?.ready?.then?.(() => { fitMarket(); stackLeft(); fitMap(); balanceSupply(); });
+    document.fonts?.ready?.then?.(() => { fitMarket(); stackLeft(); fitMap(); balanceSupply(); settleFit(); });
     document.addEventListener('scroll',event=>{if(!$('#sector-popover').contains(event.target))positionSectorScan();},true);
     $('#open-map-key').addEventListener('click',()=>$('#map-key-dialog').showModal());
     $('#close-map-key').addEventListener('click',()=>$('#map-key-dialog').close());
@@ -5172,6 +5233,8 @@ function createGalacticReach(options = {}) {
     $('#discard-button').addEventListener('click',()=>$('#discard-dialog').showModal());
     $('#close-discard').addEventListener('click',()=>$('#discard-dialog').close());
     $('#in-play-button').addEventListener('click',()=>$('#in-play-dialog').showModal());
+    $('#military-button').addEventListener('click',()=>{renderMilitaryPile();$('#military-dialog').showModal();});
+    $('#close-military').addEventListener('click',()=>$('#military-dialog').close());
     $('#storage-pile').addEventListener('click',()=>toast($('#storage-pile').title));
     $('#close-in-play').addEventListener('click',()=>$('#in-play-dialog').close());
     $('#new-game-button').addEventListener('click',()=>{
@@ -5252,7 +5315,6 @@ function createGalacticReach(options = {}) {
     const setMenu=open=>{document.body.classList.toggle('menu-open',open);menuButton.setAttribute('aria-expanded',String(open));};
     menuButton.addEventListener('click',()=>setMenu(!document.body.classList.contains('menu-open')));
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('menu-open')){setMenu(false);menuButton.focus();}});
-    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&tableLayout()&&$('#fleet-panel')?.classList.contains('active')&&!document.querySelector('dialog[open]')){switchTab('market');$('#fleet-tab').focus();}});
     document.addEventListener('click',event=>{if(document.body.classList.contains('menu-open')&&!event.target.closest('.topbar, .playtest-changes, .personal-report, #table-menu-button'))setMenu(false);});
     $$('.topbar .header-actions').forEach(actions=>actions.addEventListener('click',event=>{if(event.target.closest('button, a'))setMenu(false);}));
     $('#close-trade').addEventListener('click',()=>$('#trade-dialog').close());
@@ -5262,7 +5324,7 @@ function createGalacticReach(options = {}) {
     $('#consortium-finish').addEventListener('click',()=>finishConsortium(ME));
     const consoleTabs=$$('.console-tab[data-tab]');
     consoleTabs.forEach((tab,index)=>{
-      tab.addEventListener('click',()=>switchTab(tableLayout()&&tab.dataset.tab==='fleet'&&tab.classList.contains('active')?'market':tab.dataset.tab));
+      tab.addEventListener('click',()=>switchTab(tab.dataset.tab));
       tab.addEventListener('keydown',event=>{
         if(tableLayout())return;
         let next=index;
@@ -5276,7 +5338,6 @@ function createGalacticReach(options = {}) {
         consoleTabs[next].focus();
       });
     });
-    if(tableLayout())$('#fleet-tab').tabIndex=0;
     // On a phone the map fills the screen and the rest of the table slides up in drawers.
     $$('.phone-drawers [data-drawer]').forEach(button=>button.addEventListener('click',()=>setDrawer(document.body.dataset.drawer===button.dataset.drawer?'':button.dataset.drawer)));
     setDrawer('hand');

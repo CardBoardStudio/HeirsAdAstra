@@ -116,7 +116,6 @@
           <button type="button" class="log-toggle" id="log-toggle" aria-expanded="false" aria-controls="game-log"><span>Comms</span><small>Show all</small></button>
           <ol id="game-log" tabindex="0" aria-label="Comms feed" class="game-log" aria-live="polite"></ol>
         </section>
-        <section class="fleet-glance" id="fleet-glance" aria-label="Fleets at a glance"></section>
         </div>
       </aside>
             <nav class="phase-stepper" id="phase-stepper" aria-label="Round phases"><strong id="stepper-round">Round 1</strong><ol id="phase-stepper-steps"></ol></nav>
@@ -151,6 +150,8 @@
           <button id="deck-button" type="button" title="Inspect remaining cards without revealing draw order"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Deck</span> <strong id="deck-count">0</strong></button>
           <span>Hand <strong id="hand-pile-count">0</strong></span>
           <button id="in-play-button" type="button" title="Inspect used cards held outside discard until shared cleanup"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">In play</span> <strong id="in-play-count">0</strong></button>
+          <!-- Rules #military-deck: owned military cards, a pile of their own that is never drawn or discarded. -->
+          <button id="military-button" type="button" title="Inspect your military deck: the tactics you add to every battle"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Military</span> <strong id="military-count">0</strong></button>
           <button id="discard-button" type="button" title="Browse your discard pile"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Discard</span> <strong id="discard-count">0</strong></button>
         </div>
         <!-- Rules #storage-pile: played Capacity Modules, on the mat where the +4 token was (its
@@ -181,7 +182,6 @@
         <div class="console-nav">
           <div class="console-tabs" role="tablist" aria-label="Player controls">
             <button class="console-tab active" id="market-tab" type="button" data-tab="market" role="tab" aria-selected="true" aria-controls="market-panel" tabindex="0">Market</button>
-            <button class="console-tab" id="fleet-tab" type="button" data-tab="fleet" role="tab" aria-selected="false" aria-controls="fleet-panel" tabindex="-1">Fleet</button>
             <button class="console-tab" id="relics-tab" type="button" data-tab="relics" role="tab" aria-selected="false" aria-controls="relics-panel" tabindex="-1">Relics</button>
           </div>
           <button class="console-tab trade-open" id="open-trade" type="button" aria-haspopup="dialog" aria-controls="trade-dialog">Trade</button>
@@ -218,12 +218,6 @@
             <p class="muted" id="relic-row-help">Browse rewards here. Use Excavate with your Explorer at a relic to choose one.</p>
             <p class="relic-payment">Excavation cost <span id="relic-cost"></span></p>
             <div class="relic-row" id="relic-row"></div>
-          </div>
-          <div class="tab-panel" id="fleet-panel" data-panel="fleet" role="tabpanel" aria-labelledby="fleet-tab" tabindex="0" hidden>
-            <div class="section-intro"><div><h2>Fleet manifest</h2><p>Settlers move 1 and colonize. Fleets move 2. Explorers move 3 and excavate relics.</p></div></div>
-            <div class="fleet-summary" id="fleet-summary"></div>
-            <div class="military-deck-heading"><div><h3>Your military deck &amp; tactic hand</h3><p>Privately choose, then reveal together. Each battle you hold two Fire, two Screen and every military card you bought, each usable once.</p></div><strong id="military-deck-count">4 tactics each battle</strong></div>
-            <div class="military-card-grid" id="military-card-grid"></div>
           </div>
         </div>
       </section>
@@ -356,6 +350,15 @@
   <dialog id="in-play-dialog" class="pile-dialog" aria-labelledby="in-play-title">
     <div class="panel-heading"><div><div class="eyebrow">USED THIS ROUND</div><h2 id="in-play-title">In play <span id="in-play-dialog-count">0</span></h2><p>These cards cannot be drawn or recovered from discard. They enter discard at the shared round cleanup.</p></div><button class="button button-ghost" id="close-in-play" type="button">Close</button></div>
     <div id="in-play-row" class="card-row"></div>
+  </dialog>
+
+  <dialog id="military-dialog" class="pile-dialog military-dialog" aria-labelledby="military-dialog-title">
+    <div class="dialog-heading">
+      <div><div class="eyebrow">YOUR TACTICS</div><h2 id="military-dialog-title">Military deck <span id="military-dialog-count">0</span></h2><p id="military-dialog-help"></p></div>
+      <button class="button button-ghost dialog-close" id="close-military" type="button" aria-label="Close military deck">Close</button>
+    </div>
+    <div class="discard-scroll"><div class="card-row discard-row" id="military-row"></div>
+      <h3 class="military-basic-title">Basic tactics in every battle</h3><div class="military-card-grid" id="military-basic-row"></div></div>
   </dialog>
 
   <dialog id="discard-dialog" class="pile-dialog" aria-labelledby="discard-title">
