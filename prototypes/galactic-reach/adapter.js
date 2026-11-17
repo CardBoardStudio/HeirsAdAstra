@@ -14,7 +14,7 @@ function createGalacticAdapter(e) {
     if (!Number.isInteger(seat) || seat < 0 || seat >= 4) return null;
     const state = s(),offers=e.marketOffers();
     return e.clone({
-      portalLinks: state.portalLinks, portalMovementCost: e.PORTAL_MOVEMENT_COST, combat: e.combatView(seat), combinedProbe:true, constructDrawOnly:true, investmentPlanning:true, cardPurchasePlanning:true, seat, round: state.round, victoryTarget: e.victoryTarget(),
+      portalLinks: state.portalLinks, portalMovementCost: e.PORTAL_MOVEMENT_COST, combat: e.combatView(seat), combinedProbe:true, constructDrawOnly:true, investmentPlanning:true, cardPurchasePlanning:true, goalDirectedTrading:true, tradeGoals:e.aiTradeGoals(seat), seat, round: state.round, victoryTarget: e.victoryTarget(),
       // 32.37: public card/build prices and Harvester yield, so server rivals need no rules-specific tables.
       shipCosts: Object.fromEntries(Object.entries(e.SHIP_STATS).map(([kind,stats])=>[kind,stats.cost])), harvesterYield: e.HARVESTER_YIELD, harvesterCost: e.STRUCTURES.harvester.cost, marketPaymentCosts: offers.map(card=>e.purchaseCost(state.players[seat],card.key)), marketCosts: offers.map(card => e.ALL_CARDS[card.key]?.cost || {}),
       // 34.39: printed Wonder Prestige, military card stats and the capture rule, published for the same reason.

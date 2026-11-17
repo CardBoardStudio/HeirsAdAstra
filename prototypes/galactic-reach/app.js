@@ -2926,12 +2926,65 @@ function createGalacticReach(options = {}) {
   }
 
   // A concrete trade from held stock; production arriving next round cannot fund it.
+  // Public/own information only. A goal is legal except for its payment; no state is changed.
+  function aiTradeGoals(playerId) {
+    const p=state.players[playerId],goals=[];
+    if(!p||state.activePlayer!==playerId||state.winner!==null||state.pendingCombat||state.pendingCombatReport||state.pendingMove||state.pendingColonyBuild||state.pendingConsortium)return goals;
+    if(state.phase==='operations'&&!p.passed&&!state.pendingConstruct){
+      for(const [coord,planet] of Object.entries(state.planets)){
+        const group=getFleet(coord,playerId);if(!group)continue;
+        const capture=planet.owner!==null&&planet.owner!==playerId&&!hostileAt(coord,playerId);
+        if(group.settler&&isColonySite(coord)&&(planet.owner===null&&!hasBuilding(planet)||capture&&captureFleetAt(coord,playerId))){
+          for(const card of p.hand.filter(c=>ALL_CARDS[c.key].order==='colonize')){
+            const terms=colonyTerms(ALL_CARDS[card.key].tag,capture);
+            goals.push({kind:'colonize',coord,key:card.key,cost:{biomass:terms.biomass},priority:150+terms.prestige*3});
+          }
+        }
+        if(group.explorer&&relicKnown(state.clusters[planet.cluster],playerId)&&planet.special==='relic'&&!planet.relicClaimed&&state.relicRow.length&&p.hand.some(c=>['probe','excavate'].includes(c.key)))goals.push({kind:'excavate',coord,cost:{...EXCAVATION_COST},priority:145});
+      }
+    }
+    if(state.phase==='operations'&&!p.passed&&(state.pendingConstruct||aiConstructCard(p))){
+      for(const build of chooseAiBuild(playerId,true).filter(b=>b.score>=28))goals.push({kind:'build',build:build.kind,coord:build.coord,cost:build.cost,priority:85+Math.min(85,build.score)*.3});
+    }
+    if(state.pendingConstruct)return goals;
+    if(controlledPlanets(playerId).some(([,planet])=>planet.upgrade==='starbase')){
+      const keep=aiImmediateProtection(playerId);
+      for(const card of marketOffers()){
+        const value=aiBuyValue(playerId,card.key),def=ALL_CARDS[card.key];
+        goals.push({kind:'market',key:card.key,utility:value,cost:purchaseCost(p,card.key),keep,priority:70+Math.min(60,value)*.25+(def.gainPrestige||0)*4});
+      }
+      if(state.capacitySupply>0&&!aiUnplayedModules(playerId)&&aiInvestmentHorizon()>=3&&(aiStorageBudget(playerId)||(()=>{const target=aiTargetCard(playerId);return target&&RESOURCES.some(r=>(purchaseCost(p,target.key)[r]||0)>resourceLimits(playerId)[r]);})()))goals.push({kind:'capacity',cost:storageUpgradeCost(playerId),keep,priority:80});
+    }
+    return goals;
+  }
+
+  function aiGoalTradePlan(playerId) {
+    const p=state.players[playerId],limits=resourceLimits(playerId),income=aiIncome(playerId),rates=Object.fromEntries(RESOURCES.map(r=>[r,bankTradeRate(playerId,r)]));
+    const canEnable=p.hand.some(c=>ALL_CARDS[c.key].effect?.bankRate)&&state.phase==='operations'&&!p.passed;
+    let best=null;
+    for(const goal of aiTradeGoals(playerId)){
+      if(goal.kind==='market'&&goal.utility<18)continue;
+      const budget=Object.fromEntries(RESOURCES.map(r=>[r,(goal.cost[r]||0)+((goal.cost[r]||0)>0?(goal.keep?.[r]||0):Math.min(goal.keep?.[r]||0,p.resources[r]))]));
+      if(RESOURCES.some(r=>budget[r]>limits[r]))continue;
+      for(const enable of [null,...(canEnable?RESOURCES.filter(r=>rates[r]>2):[])]){
+        const funds={...p.resources},plan=[],trial={...rates,...(enable?{[enable]:2}:{})};let lost=0;
+        for(const get of RESOURCES){
+          while(funds[get]<budget[get]){
+            const give=RESOURCES.filter(r=>r!==get&&funds[r]-budget[r]>=trial[r]).sort((a,b)=>trial[a]-trial[b]||Math.max(0,funds[b]+income[b]-limits[b])-Math.max(0,funds[a]+income[a]-limits[a])||funds[b]-budget[b]-(funds[a]-budget[a]))[0];
+            if(!give)break;
+            funds[give]-=trial[give];funds[get]++;lost+=trial[give]-1;plan.push({giveType:give,getType:get});
+          }
+        }
+        if(RESOURCES.some(r=>funds[r]<budget[r])||enable&&!plan.some(t=>t.giveType===enable))continue;
+        const score=goal.priority-lost*1.5-plan.length*2-(enable?3:0);
+        if(!best||score>best.score)best={goal,score,enable,steps:plan};
+      }
+    }
+    return best;
+  }
+
   function aiExchangeResource(playerId) {
-    const p=state.players[playerId],goal=aiReserves(playerId),limits=resourceLimits(playerId);
-    if(RESOURCES.some(give=>bankTradeRate(playerId,give)===2&&p.resources[give]-(goal[give]||0)>=2&&RESOURCES.some(get=>get!==give&&p.resources[get]<Math.min(goal[get]||0,limits[get]))))return null;
-    return RESOURCES.filter(give=>bankTradeRate(playerId,give)>2&&p.resources[give]-(goal[give]||0)>=2
-      &&RESOURCES.some(get=>get!==give&&p.resources[get]<Math.min(goal[get]||0,limits[get])))
-      .sort((a,b)=>(p.resources[b]-(goal[b]||0))-(p.resources[a]-(goal[a]||0)))[0]||null;
+    return aiGoalTradePlan(playerId)?.enable||null;
   }
   function aiTryExchange(playerId) {
     const card=state.players[playerId].hand.find(c=>ALL_CARDS[c.key].effect?.bankRate),resource=card&&aiExchangeResource(playerId);
@@ -3057,7 +3110,7 @@ function createGalacticReach(options = {}) {
     return player.hand.filter(c=>ALL_CARDS[c.key].order==='construct').sort((a,b)=>rank(b)-rank(a))[0]||null;
   }
 
-  function chooseAiBuild(playerId) {
+  function chooseAiBuild(playerId, goalsOnly = false) {
     const p=state.players[playerId],military=p.strategy==='military',economy=['economy','market'].includes(p.strategy),expansion=p.strategy==='expansion';
     const yards=controlledPlanets(playerId).filter(([,p])=>p.upgrade==='starbase'),income=aiIncome(playerId);
     const horizon=aiInvestmentHorizon(),limits=resourceLimits(playerId);
@@ -3083,6 +3136,7 @@ function createGalacticReach(options = {}) {
       if (canPlaceShip(playerId,'fleet') && (urgent&&!alreadyStaging||fleets<desired)) options.push({kind:'fleet',coord,score:urgent&&!alreadyStaging?85-travelDistance(coord,urgent.coord)*3:military?30:27});
     }
     const card=aiConstructCard(p),fundingByCost=new Map();
+    if(goalsOnly)return options.map(build=>({...build,cost:constructionCost(playerId,build.coord,build.kind,!state.pendingConstruct&&card?ALL_CARDS[card.key].buildDiscount||null:null)}));
     for (const build of options) {
       build.discount=!state.pendingConstruct&&card?ALL_CARDS[card.key].buildDiscount||null:null;build.cost=constructionCost(playerId,build.coord,build.kind,build.discount);
       // Player, hand, excluded order, stock and limits stay fixed in this decision.
@@ -5509,7 +5563,7 @@ function createGalacticReach(options = {}) {
   function headlessPort() {
     return {
       get state() { return state; }, get turnSerial() { return turnSerial; }, get cardSerial() { return cardSerial; },
-      clone, deckContents, aiExchangeResource, aiTryExchange, catalogMarketEnabled, marketOffers, marketCopiesRemaining, bankTradeRate, ALL_CARDS, MARKET_TIERS, marketTier, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, CAPACITY_SUPPLY, SUPPLY_CARDS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
+      clone, deckContents, aiTradeGoals, aiGoalTradePlan, aiExchangeResource, aiTryExchange, catalogMarketEnabled, marketOffers, marketCopiesRemaining, bankTradeRate, ALL_CARDS, MARKET_TIERS, marketTier, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, CAPACITY_SUPPLY, SUPPLY_CARDS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
       canAfford, canConvertCard, cardResources, resourceGainTotal, remainingResourceCapacity, addResources,
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
       decommission, trashEligibleCards, excavatedRelicCount, useBuyEffect, resolveHumanSpecial,

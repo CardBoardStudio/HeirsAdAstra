@@ -689,6 +689,111 @@ fn bank_rate(view: &Value, seat: usize, resource: &str) -> f64 {
         4.0
     }
 }
+/// Fund one concrete, currently reachable goal. Never borrow production or fill reserves alone.
+fn goal_trade_plan(view: &Value, seat: usize) -> Value {
+    let me = &view["players"][seat];
+    let Some(goals) = view["tradeGoals"].as_array() else {
+        return Value::Null;
+    };
+    let stock: [f64; 4] = std::array::from_fn(|i| number(&me["resources"][RESOURCE_KEYS[i]]));
+    let limits: [f64; 4] = std::array::from_fn(|i| bot_limit(view, seat, RESOURCE_KEYS[i]));
+    let rates: [f64; 4] = std::array::from_fn(|i| bank_rate(view, seat, RESOURCE_KEYS[i]));
+    let income = bot_income(view, seat);
+    let can_enable = view["phase"] == "operations"
+        && me["passed"] != true
+        && me["hand"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|c| view["cardStats"][c["key"].as_str().unwrap_or("")]["bankRate"] == 2);
+    let mut best = Value::Null;
+    let mut best_score = f64::NEG_INFINITY;
+    for goal in goals {
+        let mut priority = number(&goal["priority"]);
+        let mut cost: [f64; 4] = std::array::from_fn(|i| number(&goal["cost"][RESOURCE_KEYS[i]]));
+        let mut keep: [f64; 4] = std::array::from_fn(|i| number(&goal["keep"][RESOURCE_KEYS[i]]));
+        if goal["kind"] == "market" {
+            let key = goal["key"].as_str().unwrap_or("");
+            let Some(value) = capacity_value(view, seat, key) else {
+                continue;
+            };
+            if value < 18.0 {
+                continue;
+            }
+            let Some(bill) = observed_payment_cost(view, key) else {
+                continue;
+            };
+            cost = bill;
+            keep = planning_protection(view, seat);
+            priority = 70.0
+                + value.min(60.0) * 0.25
+                + observed_buy_prestige(view, key).unwrap_or(0.0) * 4.0;
+        }
+        let budget: [f64; 4] = std::array::from_fn(|i| {
+            cost[i]
+                + if cost[i] > 0.0 {
+                    keep[i]
+                } else {
+                    keep[i].min(stock[i])
+                }
+        });
+        if (0..4).any(|i| budget[i] > limits[i]) {
+            continue;
+        }
+        let enables =
+            std::iter::once(None).chain((0..4).filter(|i| can_enable && rates[*i] > 2.0).map(Some));
+        for enable in enables {
+            let mut funds = stock;
+            let mut trial = rates;
+            if let Some(i) = enable {
+                trial[i] = 2.0;
+            }
+            let mut steps = Vec::new();
+            let mut loss = 0.0;
+            for get in 0..4 {
+                while funds[get] < budget[get] {
+                    let give = (0..4)
+                        .filter(|i| *i != get && funds[*i] - budget[*i] >= trial[*i])
+                        .min_by(|a, b| {
+                            let overflow = |i: usize| {
+                                (funds[i] + number(&income[RESOURCE_KEYS[i]]) - limits[i]).max(0.0)
+                            };
+                            trial[*a]
+                                .total_cmp(&trial[*b])
+                                .then_with(|| overflow(*b).total_cmp(&overflow(*a)))
+                                .then_with(|| {
+                                    (funds[*b] - budget[*b]).total_cmp(&(funds[*a] - budget[*a]))
+                                })
+                                .then_with(|| a.cmp(b))
+                        });
+                    let Some(give) = give else {
+                        break;
+                    };
+                    funds[give] -= trial[give];
+                    funds[get] += 1.0;
+                    loss += trial[give] - 1.0;
+                    steps
+                        .push(json!({"giveType":RESOURCE_KEYS[give],"getType":RESOURCE_KEYS[get]}));
+                }
+            }
+            if (0..4).any(|i| funds[i] < budget[i])
+                || enable.is_some_and(|i| !steps.iter().any(|s| s["giveType"] == RESOURCE_KEYS[i]))
+            {
+                continue;
+            }
+            let score = priority
+                - loss * 1.5
+                - steps.len() as f64 * 2.0
+                - if enable.is_some() { 3.0 } else { 0.0 };
+            if score > best_score {
+                best_score = score;
+                best = json!({"goal":goal,"priority":priority,"score":score,"enable":enable.map(|i|RESOURCE_KEYS[i]),"steps":steps});
+            }
+        }
+    }
+    best
+}
+
 /// Current stock only: improve a rate when a useful trade can follow immediately.
 fn exchange_surplus(view: &Value, seat: usize, resource: &str) -> f64 {
     if bank_rate(view, seat, resource) <= 2.0 {
@@ -1891,6 +1996,34 @@ impl BuiltinAgent {
         let me = &view["players"][seat];
         let military = matches!(self.strategy, Strategy::Military);
         let economy = matches!(self.strategy, Strategy::Economy | Strategy::Market);
+        if view["goalDirectedTrading"] == true {
+            let bank = action["type"] == "bank_trade";
+            let exchange = action["type"] == "special"
+                && view["cardStats"][action["key"].as_str().unwrap_or("")]["bankRate"] == 2;
+            if bank || exchange {
+                let plan = view
+                    .get("_rival_goal_trade")
+                    .cloned()
+                    .unwrap_or_else(|| goal_trade_plan(view, seat));
+                if exchange {
+                    return if plan["enable"].is_string() && plan["enable"] == action["resource"] {
+                        130.0 + number(&plan["priority"]) * 0.02
+                    } else {
+                        -20.0
+                    };
+                }
+                let first = &plan["steps"][0];
+                return if plan["enable"].is_null()
+                    && first.is_object()
+                    && first["giveType"] == action["giveType"]
+                    && first["getType"] == action["getType"]
+                {
+                    125.0 + number(&plan["priority"]) * 0.02
+                } else {
+                    -20.0
+                };
+            }
+        }
         match action["type"].as_str().unwrap_or("") {
             "combat_stay" => 30.0,
             "combat_escape" => {
@@ -2830,6 +2963,10 @@ impl PlayerAgent<GalacticReach> for BuiltinAgent {
                 .map(|(at, a, g)| json!([at, a, g]))
                 .collect();
         planned["_rival_colony_defense"] = json!(defense);
+        if observation["goalDirectedTrading"] == true {
+            planned["_rival_goal_trade"] =
+                goal_trade_plan(&planned, observation["seat"].as_u64().unwrap() as usize);
+        }
         legal
             .iter()
             .enumerate()
@@ -4027,6 +4164,88 @@ mod tests {
         assert!(
             agent.score(&v, &play) < 0.0,
             "Use an existing useful discount before another card"
+        );
+    }
+
+    #[test]
+    fn goal_trades_require_a_complete_useful_payment_and_keep_ready_scoring() {
+        let mut v = strategic_view();
+        v["goalDirectedTrading"] = json!(true);
+        v["cardPurchasePlanning"] = json!(true);
+        v["investmentPlanning"] = json!(true);
+        v["phase"] = json!("operations");
+        v["players"][0]["resourceLimits"] = json!({"matter":12,"energy":12,"biomass":12,"data":12});
+        v["players"][0]["resources"] = json!({"matter":2,"energy":2,"biomass":8,"data":0});
+        v["players"][0]["hand"] = json!([{"key":"exchangeProtocol","id":"exchange"}]);
+        v["cardStats"]["exchangeProtocol"] = json!({"bankRate":2});
+        let activate = json!({"type":"special","key":"exchangeProtocol","resource":"biomass"});
+        let trade = json!({"type":"bank_trade","giveType":"biomass","getType":"data"});
+        let mut agent = BuiltinAgent::new(Strategy::Market, [7; 32]);
+        v["tradeGoals"] = json!([]);
+        assert!(
+            agent.score(&v, &activate) < 0.0,
+            "Reserve shortage alone cannot spend an exchange order"
+        );
+        assert!(
+            agent.score(&v, &trade) < 0.0,
+            "Nor cause a speculative bank trade"
+        );
+        v["tradeGoals"] =
+            json!([{"kind":"excavate","cost":{"matter":1,"energy":1,"data":2},"priority":145}]);
+        assert_eq!(
+            agent.select_action(&v, &[trade.clone(), activate.clone()]),
+            1,
+            "Improve the rate before paying four"
+        );
+        let plan = goal_trade_plan(&v, 0);
+        assert_eq!(
+            plan["steps"].as_array().unwrap().len(),
+            2,
+            "Fund the full payment,not merely the first deficit"
+        );
+        v["players"][0]["resources"]["biomass"] = json!(2);
+        assert!(
+            goal_trade_plan(&v, 0).is_null(),
+            "Do not trade when the rest of the payment remains unfunded"
+        );
+        v["players"][0]["resources"]["biomass"] = json!(8);
+        v["players"][0]["resources"]["data"] = json!(2);
+        assert!(
+            agent.score(&v, &activate) < 0.0,
+            "The goal is already affordable"
+        );
+        v["players"][0]["resources"]["data"] = json!(0);
+        v["players"][0]["bankTradeRates"] = json!({"biomass":2});
+        assert!(
+            goal_trade_plan(&v, 0)["enable"].is_null(),
+            "Use an existing useful rate"
+        );
+        assert!(agent.score(&v, &trade) > 0.0);
+        v["tradeGoals"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"kind":"colonize","cost":{"biomass":2},"priority":150}));
+        assert!(
+            agent.score(&v, &trade) < 0.0,
+            "Take the ready higher-priority Colony instead of funding an alternative"
+        );
+        v["tradeGoals"] = json!([{"kind":"excavate","cost":{"data":13},"priority":145}]);
+        assert!(
+            goal_trade_plan(&v, 0).is_null(),
+            "Never fund a goal above current limits"
+        );
+        v["market"] = json!([{"key":"strategyCore"}]);
+        v["marketCosts"] = json!([{"energy":2,"data":1}]);
+        v["cardStats"]["strategyCore"] = json!({"order":"special","draw":3});
+        v["tradeGoals"] = json!([{"kind":"market","key":"strategyCore","cost":{"energy":2,"data":1},"priority":80}]);
+        assert!(
+            goal_trade_plan(&v, 0).is_object(),
+            "A worthwhile available purchase is a concrete goal"
+        );
+        v["excludedMarketCards"] = json!(["strategyCore"]);
+        assert!(
+            goal_trade_plan(&v, 0).is_null(),
+            "Research purchase bans also remove funding goals"
         );
     }
 

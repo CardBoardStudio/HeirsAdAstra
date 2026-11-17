@@ -121,7 +121,19 @@ console.log('Strategic rivals: upgrades, scoring reserves, defense, useful cards
 
 {
  const g=game();g.p.resources={matter:2,energy:2,biomass:8,data:0};g.p.hand=[{id:'bank',key:'exchangeProtocol'}];
- assert.equal(g.e.aiExchangeResource(1),'biomass','A held surplus can fund a real missing-resource trade');
+ assert.equal(g.e.aiExchangeResource(1),null,'A reserve deficit without a concrete goal is insufficient');
+ g.p.hand.push({id:'probe-order',key:'probe'});g.s.fleets={[g.home]:{1:{explorer:1}}};
+ Object.assign(g.s.planets[g.home],{special:'relic',relicClaimed:false});g.s.clusters[g.s.planets[g.home].cluster].scannedBy=[1];
+ const before=JSON.stringify(g.a.snapshotState());const goal=g.e.aiGoalTradePlan(1);
+ assert.equal(JSON.stringify(g.a.snapshotState()),before,'Planning must not mutate state or RNG');
+ assert.equal(goal.goal.kind,'excavate');assert.equal(goal.steps.length,2,'Plan the entire two-Data payment');
+ assert.equal(g.e.aiExchangeResource(1),'biomass','A held surplus funds a ready scoring action');
+ g.s.clusters[g.s.planets[g.home].cluster].scannedBy=[];
+ assert(!g.a.observe(1).tradeGoals.some(x=>x.kind==='excavate'),'Unknown relics must not create a private planning signal');
+ g.s.clusters[g.s.planets[g.home].cluster].scannedBy=[1];
+ g.p.resources.biomass=2;assert.equal(g.e.aiGoalTradePlan(1),null,'A partial payment is not a funded scoring plan');
+ g.p.resources.biomass=8;
+
  g.p.resources.biomass=1;assert.equal(g.e.aiExchangeResource(1),null,'Next round production is not current stock');
  g.p.resources={matter:50,energy:50,biomass:50,data:50};assert.equal(g.e.aiExchangeResource(1),null,'No spending deficit means no wasted exchange order');
  g.p.resources={matter:2,energy:2,biomass:8,data:0};g.p.bankExchangeResources=['biomass'];assert.equal(g.e.aiExchangeResource(1),null,'Use the already active discount first');
