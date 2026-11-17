@@ -1,7 +1,11 @@
 const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/strict'),path=require('node:path');
 const read=n=>fs.readFileSync(path.join(__dirname,'../prototypes/galactic-reach',n),'utf8');
 function game(app){let seed=610010,calls=0;const c=vm.createContext({});vm.runInContext(read('adapter.js')+app,c);let e;const base=c.createGalacticAdapter;c.createGalacticAdapter=port=>{e=port;return base(port);};const a=c.createGalacticReach({headless:true,random:()=>{calls++;return ((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}});return {a,e,s:e.state,calls};}
-const app=read('app.js'),line=app.split('\n').find(x=>x.includes('seedArk: { code:'));assert(line.includes('cost: {"biomass": 2}'));
+// Reproduce the rejected two-Biomass proposal without adopting it in current sources.
+const baseline=read('app.js'),baselineLine=baseline.split('\n').find(x=>x.includes('seedArk: { code:'));
+assert(baselineLine.includes('cost: {"biomass": 4}'));
+const app=baseline.replace(baselineLine,baselineLine.replace('cost: {"biomass": 4}','cost: {"biomass": 2}'));
+const line=app.split('\n').find(x=>x.includes('seedArk: { code:'));
 const g=game(app),control=game(app.replace(line,line.replace('cost: {"biomass": 2}','cost: {"biomass": 4}')));
 assert.equal(g.calls,control.calls);for(const key of ['planets','clusters','market','marketDecks'])assert.equal(JSON.stringify(g.s[key]),JSON.stringify(control.s[key]),'Price stays Cheap and preserves initial '+key);
 const p=g.s.players[0];g.s.phase='buy';g.s.activePlayer=0;p.passed=true;p.resources={matter:0,energy:0,biomass:4,data:0};p.resourceLimits={matter:4,energy:4,biomass:4,data:4};

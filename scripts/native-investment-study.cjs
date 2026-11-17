@@ -35,6 +35,7 @@ async function play(task,sources,directory,binary){
    if(task.protocol.productionDiscipline==='all'||task.protocol.productionDiscipline==='subject'&&actor===subjectSeat)observation.productionDiscipline=true;
    if(task.protocol.marketFilter==='off'&&task.profiles[actor]==='market')observation.marketOpportunityFilter=false;
    if(task.protocol.colonyPlanning==='all'||task.protocol.colonyPlanning==='subject'&&actor===subjectSeat)observation.colonyPlanning=true;
+   if(task.protocol.colonyExecution==='all'||task.protocol.colonyExecution==='subject'&&actor===subjectSeat)observation.colonyExecutionPlanning=true;
    if(task.protocol.protectedMarketBudget==='all'||task.protocol.protectedMarketBudget==='subject'&&actor===subjectSeat)observation.protectedMarketBudget=true;
    if(actor===subjectSeat&&task.protocol.subjectMarket&&task.protocol.subjectMarket!=='normal')observation.marketPurchasePolicy=task.protocol.subjectMarket;
    if(task.protocol.orderBenefits==='all'||task.protocol.orderBenefits==='subject'&&actor===subjectSeat)observation.orderBenefitPlanning=true;
@@ -74,7 +75,8 @@ else if(require.main===module){
  const subjectMarket=arg('subject-market','normal');if(!['normal','points-only','none'].includes(subjectMarket))throw Error('Invalid subject market policy');
  const orderBenefits=arg('order-benefits','none');if(!['none','subject','all'].includes(orderBenefits))throw Error('Invalid order benefit mode');
  const fleetDiscipline=arg('fleet-discipline','none');if(!['none','subject','all'].includes(fleetDiscipline))throw Error('Invalid Fleet discipline mode');
- const protocol={kind:'native-investment',variant,mode,fleetDiscipline,tacticalForecast,militaryHorizon,productionDiscipline,marketFilter,colonyPlanning,protectedMarketBudget,subjectMarket,orderBenefits,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
+ const colonyExecution=arg('colony-execution','none');if(!['none','subject','all'].includes(colonyExecution))throw Error('Invalid Colony execution mode');
+ const protocol={kind:'native-investment',variant,mode,fleetDiscipline,colonyExecution,tacticalForecast,militaryHorizon,productionDiscipline,marketFilter,colonyPlanning,protectedMarketBudget,subjectMarket,orderBenefits,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
  fs.writeFileSync(path.join(out,'protocol.json'),JSON.stringify(protocol,null,2));console.log('Study output: '+out);
  const tasks=[];for(let i=0;i<seeds;i++)for(const rotation of rotations)tasks.push({id:tasks.length,variant,mode,seed:seedStart+7919*i,rotation,target,profiles:profiles.map((_,j)=>profiles[(j+rotation)%4]),maxRound,maxSteps:18000,protocol});
  let next=0,failures=0;const games=[];

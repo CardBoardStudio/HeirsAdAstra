@@ -1807,7 +1807,9 @@ impl BuiltinAgent {
                 }
             }
             "colonize" => {
-                if view["colonyPlanning"] == true && view["investmentPlanning"] == true {
+                if (view["colonyPlanning"] == true || view["colonyExecutionPlanning"] == true)
+                    && view["investmentPlanning"] == true
+                {
                     let stats = &view["cardStats"][action["key"].as_str().unwrap_or("")];
                     let owner = &view["planets"][action["coord"].as_str().unwrap_or("")]["owner"];
                     let capture = owner.as_u64().is_some_and(|id| id as usize != seat);
@@ -3565,6 +3567,43 @@ mod tests {
         view["players"][0]["hand"] = json!([]);
         view["players"][0]["discard"] = surplus;
         assert_eq!(from_hand, agent.score(&view, &trash));
+    }
+
+    #[test]
+    fn colony_execution_prefers_printed_terms_without_changing_purchase_values() {
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["colonyExecutionPlanning"] = json!(true);
+        view["planets"]["1,0"] = json!({"owner":null});
+        view["cardStats"] = json!({
+            "colonize":{"order":"colonize","colonyCost":2},
+            "seedArk":{"order":"colonize","colonyCost":1},
+            "colonyPods":{"order":"colonize","colonyCost":1,"keepSettler":true},
+            "genesisCharter":{"order":"colonize","colonyCost":0,"keepSettler":true,"colonyPrestige":2}
+        });
+        let agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let order = |key| json!({"type":"colonize","key":key,"coord":"1,0"});
+        assert!(agent.score(&view, &order("seedArk")) > agent.score(&view, &order("colonize")));
+        assert!(agent.score(&view, &order("colonyPods")) > agent.score(&view, &order("seedArk")));
+        assert!(
+            agent.score(&view, &order("genesisCharter")) > agent.score(&view, &order("colonyPods"))
+        );
+        let purchase = capacity_value(&view, 0, "seedArk");
+        view["colonyExecutionPlanning"] = json!(false);
+        assert_eq!(
+            purchase,
+            capacity_value(&view, 0, "seedArk"),
+            "Execution does not change valuation"
+        );
+        assert_eq!(agent.score(&view, &order("seedArk")), 160.0);
+        view["colonyExecutionPlanning"] = json!(true);
+        view["planets"]["1,0"]["owner"] = json!(1);
+        assert_eq!(
+            agent.score(&view, &order("seedArk")),
+            agent.score(&view, &order("colonize"))
+        );
+        view["investmentPlanning"] = json!(false);
+        assert_eq!(agent.score(&view, &order("genesisCharter")), 160.0);
     }
 
     #[test]

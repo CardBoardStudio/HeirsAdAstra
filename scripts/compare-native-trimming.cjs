@@ -13,7 +13,7 @@ function compare(left,right){
   return {protocol,raw,rows,sources};
  };
  const a=read(left),b=read(right);
- for(const k of ['target','mode','tacticalForecast','militaryHorizon','productionDiscipline','marketFilter','colonyPlanning','protectedMarketBudget','subjectMarket','orderBenefits','seedStart','seeds','rotations','profiles','maxRound'])assert.deepEqual(a.protocol[k],b.protocol[k],'Protocol mismatch: '+k);
+ for(const k of ['target','mode','tacticalForecast','militaryHorizon','productionDiscipline','marketFilter','colonyPlanning','colonyExecution','protectedMarketBudget','subjectMarket','orderBenefits','seedStart','seeds','rotations','profiles','maxRound'])assert.deepEqual(a.protocol[k],b.protocol[k],'Protocol mismatch: '+k);
  for(const k of ['app','adapter','bridge','lock'])assert.equal(a.sources[k],b.sources[k],'Unrelated source change: '+k);
  const production=s=>{assert(s.includes('#[cfg(test)]'));return s.split('#[cfg(test)]')[0];};
  const old='                if redundant\n                    && card["upgraded"] != true';

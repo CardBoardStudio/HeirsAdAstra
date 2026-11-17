@@ -4,7 +4,7 @@ The round-16 human report on 38.43 ended 33–19–15–14 at a target of 30. Th
 
 ## Current research decisions
 
-This is local research, not a release. The retained baseline keeps the eight price-v1 changes and World Engine draw; the current working tree temporarily tests Seed Ark at2 Biomass, pending results; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
+This is local research, not a release. The retained baseline keeps the eight price-v1 changes and World Engine draw; the two-Biomass Seed Ark proposal is also rejected after training; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
 
 | Candidate | Current disposition | Evidence boundary |
 | --- | --- | --- |
@@ -12,8 +12,9 @@ This is local research, not a release. The retained baseline keeps the eight pri
 | Paid Harvester discipline | Retain for evaluation | Fresh 12/32 to15/32 wins, fewer paid builds and lower overflow; not independently enabled in adapter |
 | Market access | Useful among tested bots | Fresh normal access beats points-only/no purchases at30 and40; not proof of every card or specialist dominance |
 | Named-order trimming correction | Retain | Actual command defect corrected; no claim of uniform win improvement |
+| Colony execution-only preference | Training running | Printed payments/retention/Prestige only; purchase valuation unchanged |
 | Range/Industry valuation | Opt-in only | Training regression at30, provisional improvement at40 |
-| Seed Ark at2 Biomass | Training running | Price-only change within Cheap tier; seek earlier acquisition and legal use |
+| Seed Ark at2 Biomass | Reject adoption | Earlier acquisition/use, but wins4/12→2/12 at30 and5/12→2/12 at40 |
 | Cheaper World Engine | Reject adoption | Corrected-policy Market wins6/12 to4/12 at30 and6/12 to5/12 at40 |
 | Optional paid Fleet discipline | Off | Training4/12 versus6/12 at30,7/12 versus6/12 at40; no consistent purchase/score benefit |
 | Market-priority versus equally skilled Economy | Viable, target-dependent evidence | Fresh30 wins13/32both;40 Market11/32 versus9/32 and +2.97 mean Prestige; win-rate uncertainty remains |
@@ -582,3 +583,29 @@ Seed Ark training runs active:30 control `native/run-T6brC0`,candidate `native/r
 
 
 Seed Ark preparation also passes web build, packaged canonical rulebook check and rules-contract tests. The price comparison helper now supports an explicitly declared single-card cost transformation while retaining identical native/adapter/source/protocol checks, including Fleet feature settings. Negative tests reject unrelated app/effect/other-price changes; the earlier World-specific validator regression still passes. These are local checks; no Render deployment or browser verification is claimed, and the pending Seed price is not adopted.
+
+
+### Seed Ark price training complete: useful mechanism, failed strength criterion
+
+All48 games complete with exact declared Seed-only price transformation, identical frozen policy/adapter/native sources and paired opening maps. At30:control4/12 wins,21.67 Prestige,5.00 purchases,7.50 Harvesters;candidate2/12,21.83,5.25,7.58. At40:control5/12,29.67,8.25,9.75;candidate2/12,26.50,7.17,8.42. Small three-galaxy training intervals are exploratory; do not substitute increased card use for the strength criterion. Reports `native/seed-ark-price-{30,40}-{paired,training}.json`.
+
+The intended timing mechanism does change:30 candidate buys3/plays3 versus0/0; first ownership rounds13/7/5 with3/7/8 neutral worlds left. At40 candidate3/3 versuscontrol1/0. But candidate30 has only6 legal decisions across218 normal held-card decisions (3uses,3 competing Colony choices);40 likewise6 across296 (3uses,3 competing choices). Cheap access alone does not make repeated Colony use common. Integrity-checked frozen-engine opportunity reports `native/seed-ark-price-{30,40}-{control,candidate}-use.json` retain every count/case.
+
+Reject price-only adoption and restore Seed Ark4B,canonical row,catalog expectations and release entry. Keep the frozen2B candidate,all private games,price-validator tools and standalone reproduction test. It is no longer part of the default mechanic suite. Next examine the specific competing-order choices and remaining printed-effect valuation gaps before another design change; do not lower the price again solely to force more purchases. No release,merge or remote deployment occurred.
+
+
+### Competing orders: capture tie versus neutral-world savings
+
+Expanded legal-case records distinguish a crucial edge case. The fresh40 skipped Seed Ark was an enemy capture: both it and ordinary Colonize cost1B, so a disposable Colonize also thins the deck and there is no missed resource discount. In each cheaper-price training target, the same625848/rotation0 trajectory instead chooses ordinary Colonize on neutral worlds at rounds12,14,17 while Seed Ark is legal, spending2B rather than1B. Other Seed uses include neutral and capture sites. Reports `native/seed-ark-competing-{30,40,fresh40}-use.json`. Do not call every alternative-card selection an error or every cost preference globally dominant; future deck-thinning value can matter.
+
+Intended separate research behavior, stated in canonical #rival-cards: `colonyExecutionPlanning` compares printed Colony payments/Settler retention/extra Prestige, using the already-tested scoring terms, without enabling the broader Colony purchase valuation. Capture clamps ordinary and Seed payments to1; observed zero costs stay zero. Default-off and pre-investment observations preserve160. Runner exposes `--colony-execution none|subject|all`; replay disables this alongside broader Colony planning when testing stripped metadata neutrality. This is a strategy experiment, not a new legal action or cost change. Seed Ark remains restored4B.
+
+Predeclare execution-only training at30/40 on three610010-series maps/all rotations, Market/Economy/Expansion/Military, common production discipline/protected budgets,market-filter off,all other research flags off. Compare execution none versus subject with identical fresh binary/sources,48games. Keep retained4B price rather than mix the rejected2B design into the primary test. Report all Colony plays (including relics), actual payment/retention effects and score/wins. A later2B interaction test requires a separate explicit protocol; do not silently rescue the rejected price by changing two factors.
+
+
+Execution-only training active:30 control `native/run-tpmyq6`,subject `native/run-zTUZVa`;40 control `native/run-yfRJ7g`,subject `native/run-CzwxF5`,12games each. Thirty-two fast native tests and Clippy pass. Replay preparation initially detected an observation hash mismatch from inserting the new research flag at a different object-key position than the runner; corrected the replay's insertion order rather than weakening exact hashes. Failed replay artifacts remain retained in `native/colony-execution-replay`; the corrected replay uses its own directory. No gameplay coefficients were altered by this correction.
+
+
+Execution-only preparation passes corrected exact forty-decision native replay,source/packaged rulebook checks,web build and rules-contract tests. Initial flag-off cases exactly reproduce prior4B control results on full player metrics,winner,rounds,steps,map (`native/colony-execution-default-off-interim-parity.json`). No default website flag is enabled.
+
+`audit-native-colony-payments.cjs` verifies actual successful subject Colony command/payment pairs,local Settler retention and immediate card Prestige,with trace/final-state hashes and independent colonization/capture counters. Applied to the completed fresh40 Market batch,it matches94 regular orders (68neutral26capture,162B paid,no Settler retained) and3 Evergreen Ark orders (1neutral2capture,0B paid,all3 Settlers retained). This illustrates why the execution comparison includes relic terms; it is not counterfactual strategic value or proof that more uses improve wins. Report `native/retained-market-40-colony-payments.json`.

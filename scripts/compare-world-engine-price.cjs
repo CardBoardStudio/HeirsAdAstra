@@ -28,7 +28,7 @@ function compare(left,right,validateApp=validateSources,changeText='World Engine
   return {protocol,raw,rows,sources};
  };
  const a=read(left),b=read(right);
- for(const key of ['target','mode','tacticalForecast','militaryHorizon','productionDiscipline','marketFilter','colonyPlanning','protectedMarketBudget','subjectMarket','orderBenefits','fleetDiscipline','seedStart','seeds','rotations','profiles','maxRound','binaryHash'])assert.deepEqual(a.protocol[key],b.protocol[key],'Protocol mismatch: '+key);
+ for(const key of ['target','mode','tacticalForecast','militaryHorizon','productionDiscipline','marketFilter','colonyPlanning','colonyExecution','protectedMarketBudget','subjectMarket','orderBenefits','fleetDiscipline','seedStart','seeds','rotations','profiles','maxRound','binaryHash'])assert.deepEqual(a.protocol[key],b.protocol[key],'Protocol mismatch: '+key);
  for(const key of ['adapter','rust','bridge','lock'])assert.equal(a.sources[key],b.sources[key],'Unrelated source mismatch: '+key);
  validateApp(a.sources.app,b.sources.app);
  return {left,right,change:changeText,analysisSourceHash:hash(fs.readFileSync(__filename)),leftResultsHash:hash(a.raw),rightResultsHash:hash(b.raw),protocols:{left:a.protocol,right:b.protocol},...compareRows(a.rows,b.rows)};
