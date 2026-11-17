@@ -24,6 +24,8 @@
   }
   let progress = loadProgress();
   function saveProgress() { try { localStorage.setItem(PROGRESS, JSON.stringify(progress)); } catch { /* not saved */ } }
+  // A guest game already saved in this browser: finishing returns to it rather than dealing a new one.
+  function guestGame() { try { return Object.keys(localStorage).some(key => /^galactic-reach-save-v\d+/.test(key)); } catch { return false; } }
   function clearTutorial() {
     try { for (const key of Object.keys(localStorage)) if (key.startsWith('galactic-reach-tutorial-')) localStorage.removeItem(key); } catch { /* nothing to clear */ }
   }
@@ -136,6 +138,8 @@
         text: () => 'Instead of converting a card you can use its order. You now have exactly what a Shipyard costs: 2 Matter, 1 Energy, 1 Biomass, 1 Data. Drag your Construct onto a lit hex next to your Colony, or choose Use order and then a lit hex.',
         anchor: hand('construct'), done: state => Boolean(yard(state)) || (scanOpen() && Boolean(scanButton(/Shipyard/)())) },
       { id: 'shipyard-build', title: 'Build a Shipyard', rule: 'building',
+        // Closed the Sector Scan, or built something else instead: go back to choosing the hex.
+        fallback: state => !yard(state) && !(scanOpen() && scanButton(/Shipyard/)()),
         text: () => 'Choose Build Shipyard. A Shipyard lets you commission ships, and it defends its own hex.',
         anchor: scanButton(/Shipyard/), done: state => Boolean(yard(state)) },
     ] },
@@ -204,11 +208,13 @@
         ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); ensureResources(s, { matter: 1, energy: 1, data: 2 }); return 'Tutorial supply: your Probe / Excavate card and the excavation cost (1 Matter, 1 Energy, 2 Data).'; },
         needsEnsure: state => myOps(state) && !me(state).inPlay.some(c => c.key === 'probe') && (!handHas(state, 'probe') || !(me(state).resources.matter >= 1 && me(state).resources.energy >= 1 && me(state).resources.data >= 2)),
         text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe')
-          ? 'Your Explorer is on the relic. Your Probe / Excavate card stays in play until this round ends, so excavate next round: choose Pass & buy now.'
+          ? 'Your Explorer is on the relic. Your Probe / Excavate card stays in play until this round ends, so excavate next round. Finish this round: choose Pass & buy, then Finish Buy.'
           : 'Drag Probe / Excavate onto your Explorer (on the ◈) and choose Excavate. It costs 1 Matter, 1 Energy and 2 Data.',
         anchor: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? globalThis.galacticReachGuide.turnButton() : (scanButton(/Excavate/)() || hand('probe')(state)),
         done: state => me(state).relicsExcavated > 0 || state.actionMode === 'excavate' },
       { id: 'choose-relic', title: 'Choose a relic card', rule: 'alien-relics',
+        // Cancelled Excavate (or never chose a card): go back and play it again.
+        fallback: state => me(state).relicsExcavated === 0 && state.actionMode !== 'excavate',
         text: () => 'Choose one of the three face-up relic cards. It goes to your discard pile, you gain 2★, and the Explorer is used up.',
         anchor: () => $('[data-excavate-relic]:not([disabled])') || $('#relic-row'), done: state => me(state).relicsExcavated > 0 },
     ] },
@@ -308,7 +314,7 @@
         anchor: state => { const enemy = unitsAt(state, 'explorer', 1)[0]; return (myOps(state) ? hand('move')(state) : null) || hexAt(enemy); },
         done: (state, base) => Boolean(state.pendingCombat) || (me(state).combatVictories || 0) > base.wins },
       { id: 'tactics', title: 'Choose tactics', rule: 'combat-tactics', dialog: '#combat-dialog',
-        text: () => 'Each volley, both sides pick a tactic in secret and reveal together. Concentrated Fire adds 1 hit; Defensive Screen prevents 2. Your Fleet deals 3 hits and the Explorer has 1 hull. Pick a tactic.',
+        text: () => 'If the battle first asks about escaping, choose Stay and fight. Then, each volley, both sides pick a tactic in secret and reveal together. Concentrated Fire adds 1 hit; Defensive Screen prevents 2. Your Fleet deals 3 hits and the Explorer has 1 hull. Pick a tactic.',
         done: state => !state.pendingCombat },
       { id: 'report', title: 'Victory', rule: 'combat', dialog: '#message-dialog',
         start: state => ({ wins: me(state).combatVictories || 0 }),
@@ -365,6 +371,9 @@
       }
       if (!progress.base && step.start) { progress.base = step.start(port.state); saveProgress(); }
       if (step.done(port.state, progress.base || {}, port)) { enter(progress.step + 1); continue; }
+      // A choice the player abandoned (closed it, cancelled, or did something else) returns to the
+      // step that opens it, with that step's top-up if the resources were spent elsewhere.
+      if (step.fallback?.(port.state, port) && progress.step > 0) { enter(progress.step - 1); continue; }
       // A missing card or resource (spent elsewhere, or a step reached by Skip) is topped up once per turn.
       if (step.ensure && step.needsEnsure?.(port.state, port)) {
         const key = `${step.id}@${port.turnSerial()}`;
@@ -389,7 +398,7 @@
       id: 'finished', eyebrow: 'Tutorial complete', title: 'You are ready',
       text: 'You have used every part of a turn: converting and orders, ships and movement, relics, Colonies, the bank, buying, capacity and combat. In a real game the three rivals play to win. Guidance stays on to help you.',
       rule: 'start', anchor: null,
-      buttons: [{ action: 'play', label: 'Play a real game', primary: true }, { action: 'restart', label: 'Replay tutorial' }, { action: 'back', label: 'Back' }]
+      buttons: [{ action: 'play', label: guestGame() ? 'Back to your game' : 'Play a real game', primary: true }, { action: 'restart', label: 'Replay tutorial' }, { action: 'back', label: 'Back' }]
     };
     const reviewing = progress.view < progress.step;
     const step = STEPS[reviewing ? progress.view : progress.step];

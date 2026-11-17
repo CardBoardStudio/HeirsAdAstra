@@ -11,6 +11,13 @@
   const shown = element => Boolean(element?.isConnected && element.getClientRects().length) && getComputedStyle(element).visibility !== 'hidden';
   const RESOURCE_NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Biomass', data: 'Data' };
   const esc = text => String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+  // Where each resource comes from, in the words of the rulebook's #resources and #trade.
+  const SOURCES = {
+    matter: 'Matter: convert a Construct, or own Matter hexes.',
+    energy: 'Energy: convert a Move, or own Energy hexes.',
+    biomass: 'Biomass: own Biomass hexes, or trade 4 of another resource for 1 at the bank on your mat.',
+    data: 'Data: own Data hexes, or trade 4 of another resource for 1 at the bank on your mat.',
+  };
   const costText = cost => Object.entries(cost || {}).filter(([, n]) => n > 0).map(([r, n]) => `${n} ${RESOURCE_NAMES[r]}`).join(', ');
 
   function loadPrefs() {
@@ -136,7 +143,13 @@
       if (construct && c.shipyards.length && !c.myUnits.settler.length && !c.myUnits.explorer.length) {
         const settler = port.canAfford(port.ships.settler.cost), explorer = port.canAfford(port.ships.explorer.cost);
         if (settler || explorer) return { title: 'Commission a unit', text: `Drag Construct onto your Shipyard and choose ${settler ? 'a Settler (founds Colonies, 3★ each)' : ''}${settler && explorer ? ' or ' : ''}${explorer ? 'an Explorer (finds relics, 2★ each)' : ''}.`, anchor: handCard(construct.card.id) };
+        const short = Object.entries(port.ships.settler.cost).filter(([r, n]) => c.player.resources[r] < n).map(([r]) => r);
+        return { title: 'Save up for a Settler', text: `A Settler costs ${costText(port.ships.settler.cost)}. You are short of ${short.map(r => RESOURCE_NAMES[r]).join(' and ')}. ${short.map(r => SOURCES[r]).join(' ')} Keep a Construct to commission it.${fullWarning(c)}`, anchor: c.canConvert ? handCard(c.convertible.find(card => short.some(r => (port.cards[card.key].resource || {})[r]))?.id || '') || turnButton() : turnButton() };
       }
+      // A Settler waiting on a free world's center, but its Colonize card has not come round yet.
+      const waiting = c.myUnits.settler.find(coord => port.ordersAt(coord).length === 0 && c.state.planets[coord] && c.state.clusters[c.state.planets[coord].cluster]?.center === coord && c.state.planets[coord].owner === null);
+      if (waiting && !c.player.hand.some(card => port.cards[card.key].order === 'colonize'))
+        return { title: 'Waiting for Colonize', text: 'Your Settler is on a free world’s center. Found the Colony with a Colonize card: it is in your deck or discard pile, and reaches your hand after a reshuffle. Keep the Settler there; meanwhile use your other cards, or Pass & buy.', anchor: hex(waiting) };
       const probe = c.playable.find(p => p.kind === 'probe');
       if (probe) return { title: 'Probe for a relic', text: 'Drag Probe / Excavate onto your Explorer to locate the nearest relic.', anchor: handCard(probe.card.id) };
       const move = card('move');
@@ -150,7 +163,7 @@
     if (c.buy) {
       const market = c.marketBuys[0];
       if (market) return { title: 'Buy cards', text: 'Gold-outlined supply cards are ones you can afford. Choose one to buy it. It goes to your discard pile. Finish Buy when you are done.', anchor: firstShown(`[data-buy-market][data-card-id="${CSS.escape(market.id)}"]`) };
-      if (port.canBuyCapacity()) return { title: 'Raise your limits', text: `A Capacity Module costs ${port.capacityCost()} of each resource. It lets you hold enough to buy bigger cards later. Or choose Finish Buy.`, anchor: firstShown('.upgrade-market [data-buy-capacity], #upgrade-market .game-card:not([disabled])') };
+      if (port.canBuyCapacity()) return { title: 'Raise your limits', text: `A Capacity Module costs ${port.capacityCost()} of each resource. It lets you hold enough to buy bigger cards later. Or choose Finish Buy.`, anchor: firstShown('[data-capacity-offer]:not([disabled])') };
       if (c.upgrades.length) return { title: 'Upgrade a starter', text: 'Upgrade a Move or Construct in the Upgrades rows: pay 2 of one resource for level II (a stronger order, but no more converting). Or choose Finish Buy.', anchor: firstShown('#upgrade-market .game-card:not([disabled])') };
       return { title: 'Finish Buy', text: 'Nothing here is affordable yet. Choose Finish Buy. Your resources carry over to the next round.', anchor: turnButton() };
     }
