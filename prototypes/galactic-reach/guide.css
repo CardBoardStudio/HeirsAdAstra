@@ -17,6 +17,7 @@
 .gr-coach-eyebrow { color: #8a6a1f; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
 .gr-coach-title { display: block; margin: 1px 0 3px; font: 400 17px/1.2 Georgia, 'Times New Roman', serif; }
 .gr-coach-text { margin: 0; }
+.gr-coach-aside { margin: 4px 0 0; color: var(--coach-muted); font-size: 11.5px; }
 .gr-coach-rule { display: inline-block; margin-top: 4px; color: #6b4f12; font-size: 12px; font-weight: 600; }
 .gr-coach-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .gr-coach-actions:empty { display: none; }
@@ -106,7 +107,7 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
 .gr-stage-path { fill: none; stroke: #6ff3ff; stroke-width: 2.5; stroke-dasharray: 7 6; animation: gr-dash 1s linear infinite; }
 @keyframes gr-dash { to { stroke-dashoffset: -26; } }
 .gr-stage-label { position: absolute; max-width: 180px; padding: 3px 8px; border-radius: 999px; background: #0c2a30; color: #bff8ff; border: 1px solid #6ff3ff88;
-  font: 600 12px/1.25 system-ui, -apple-system, 'Segoe UI', sans-serif; white-space: nowrap; opacity: .55; box-shadow: 0 3px 10px #000a; }
+  font: 600 12px/1.25 system-ui, -apple-system, 'Segoe UI', sans-serif; max-width: 220px; width: max-content; white-space: normal; text-align: center; opacity: .55; box-shadow: 0 3px 10px #000a; }
 .gr-stage-label.active { opacity: 1; background: #6ff3ff; color: #062026; border-color: #6ff3ff; }
 .gr-stage-ghost { position: absolute; left: 0; top: 0; width: 44px; height: 60px; border-radius: 6px; border: 2px solid #6ff3ff; background: #f7f0ddcc; box-shadow: 0 6px 16px #000a;
   display: grid; place-items: center; color: #062026; font: 700 18px/1 system-ui; opacity: 0; }

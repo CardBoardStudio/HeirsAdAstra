@@ -110,7 +110,8 @@
   // ---- The lessons, in rulebook order. ----
   const hand = key => state => globalThis.galacticReachGuide.handCard(handHas(state, key)?.id || '');
   const lastHand = key => state => { const cards = me(state).hand.filter(c => c.key === key); return globalThis.galacticReachGuide.handCard(cards.at(-1)?.id || ''); };
-  const scanButton = pattern => () => $$('#sector-popover button').find(b => !b.disabled && pattern.test(b.textContent.trim())) || null;
+  // Only an open Sector Scan offers a choice (a closed one keeps its last buttons in the page).
+  const scanButton = pattern => () => (scanOpen() && $$('#sector-popover button').find(b => !b.disabled && pattern.test(b.textContent.trim()))) || null;
   const hexAt = coord => coord && globalThis.galacticReachGuide.hex(coord);
 
   const LESSONS = [
@@ -143,7 +144,7 @@
     ] },
     { id: 'orders', title: 'Orders', steps: [
       { id: 'harvester-aim', title: 'Use an order', rule: 'orders', aimAt: state => dataSite(state),
-        ensure: s => { if (harvester(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, { matter: 1, energy: 1, data: 1 }); return 'Tutorial supply: a Construct card and the price of a Harvester.'; },
+        ensure: s => { if (harvester(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, { matter: 1, energy: 1, data: 1 }); return 'Supplied: a Construct card and the price of a Harvester.'; },
         needsEnsure: state => myOps(state) && !harvester(state) && (!handHas(state, 'construct') || RES.some(r => me(state).resources[r] < ({ matter: 1, energy: 1, data: 1 })[r])),
         text: () => 'Drag the marked Construct card onto the ringed Data hex: build a Data Harvester.',
         show: state => ({ spotlight: [hand('construct')(state), hexAt(dataSite(state)), $('#resource-grid')], ghost: { from: hand('construct')(state), to: hexAt(dataSite(state)) }, callouts: [{ el: hexAt(dataSite(state)), label: '+2 Data every round' }, { el: $('#resource-grid'), label: 'Costs 1 Matter, 1 Energy, 1 Data', side: 'left' }] }),
@@ -172,8 +173,8 @@
     ] },
     { id: 'units', title: 'Ships', steps: [
       { id: 'shipyard-aim', title: 'Build a Shipyard', rule: 'building', aimAt: state => shipyardSite(state), marks: state => [hexAt(shipyardSite(state))],
-        prepare: s => { ensureHand(s, ['construct', 'construct', 'construct', 'move', 'move'], true); ensureResources(s, { matter: 3, energy: 3, biomass: 2, data: 3 }); return 'Tutorial supply: resources for a Shipyard, a Settler and an Explorer.'; },
-        ensure: s => { if (yard(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, { matter: 2, energy: 1, biomass: 1, data: 1 }); return 'Tutorial supply: the cards and resources for a Shipyard.'; },
+        prepare: s => { ensureHand(s, ['construct', 'construct', 'construct', 'move', 'move'], true); ensureResources(s, { matter: 3, energy: 3, biomass: 2, data: 3 }); return 'Supplied: resources for a Shipyard, a Settler and an Explorer.'; },
+        ensure: s => { if (yard(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, { matter: 2, energy: 1, biomass: 1, data: 1 }); return 'Supplied: the cards and resources for a Shipyard.'; },
         needsEnsure: state => !yard(state) && (!handHas(state, 'construct') || RES.some(r => me(state).resources[r] < ({ matter: 2, energy: 1, biomass: 1, data: 1 })[r])),
         text: () => 'Drag the marked Construct card onto the ringed hex: build a Shipyard, which builds ships.',
         show: state => ({ spotlight: [hand('construct')(state), hexAt(shipyardSite(state))], ghost: { from: hand('construct')(state), to: hexAt(shipyardSite(state)) }, callouts: [{ el: hexAt(shipyardSite(state)), label: 'Shipyard here' }] }),
@@ -185,14 +186,14 @@
         show: () => ({ callouts: [{ el: scanButton(/Shipyard/)(), label: 'This one' }] }),
         anchor: scanButton(/Shipyard/), done: state => Boolean(yard(state)) },
       { id: 'settler', title: 'Commission a Settler', rule: 'building',
-        prepare: s => { if (yard(s.state)) return null; ensureShipyard(s); return 'Tutorial supply: a Shipyard next to your Colony.'; },
-        ensure: s => { ensureHand(s, ['construct']); ensureResources(s, { matter: 1, energy: 1, biomass: 1 }); return 'Tutorial supply: a Construct card and the price of a Settler.'; },
+        prepare: s => { if (yard(s.state)) return null; ensureShipyard(s); return 'Supplied: a Shipyard next to your Colony.'; },
+        ensure: s => { ensureHand(s, ['construct']); ensureResources(s, { matter: 1, energy: 1, biomass: 1 }); return 'Supplied: a Construct card and the price of a Settler.'; },
         needsEnsure: state => myOps(state) && (!handHas(state, 'construct') || !(me(state).resources.matter >= 1 && me(state).resources.energy >= 1 && me(state).resources.biomass >= 1)),
         text: () => 'Drag a Construct card onto your Shipyard and choose Settler. Settlers found Colonies.',
         show: state => ({ ghost: scanOpen() ? null : { from: hand('construct')(state), to: hexAt(yard(state)) }, callouts: [{ el: scanButton(/Settler/)() || hexAt(yard(state)), label: scanOpen() ? 'This one' : 'Your Shipyard' }] }),
         anchor: state => scanButton(/Settler/)() || hand('construct')(state), aimAt: state => yard(state), done: state => unitCount(state, 'settler') > 0 },
       { id: 'explorer', title: 'Commission an Explorer', rule: 'building', aimAt: state => yard(state),
-        ensure: s => { ensureHand(s, ['construct']); ensureResources(s, { energy: 1, data: 2 }); return 'Tutorial supply: a Construct card and the price of an Explorer.'; },
+        ensure: s => { ensureHand(s, ['construct']); ensureResources(s, { energy: 1, data: 2 }); return 'Supplied: a Construct card and the price of an Explorer.'; },
         needsEnsure: state => myOps(state) && (!handHas(state, 'construct') || !(me(state).resources.energy >= 1 && me(state).resources.data >= 2)),
         text: () => 'Again, for an Explorer: it finds relics. Your Settler’s Colonize card went to the discard pile.',
         show: state => ({ ghost: scanOpen() ? null : { from: hand('construct')(state), to: hexAt(yard(state)) }, callouts: [{ el: scanButton(/Explorer/)() || $('#discard-button'), label: scanOpen() ? 'This one' : 'Colonize card: drawn later', side: 'left' }] }),
@@ -200,8 +201,8 @@
     ] },
     { id: 'movement', title: 'Movement', steps: [
       { id: 'move-split', title: 'Split a move', rule: 'split-moves', aimAt: state => state.moveSource ? null : yard(state),
-        prepare: s => { const fleet = unitCount(s.state, 'fleet') === 0; ensureUnits(s, { settler: 1, explorer: 1, fleet: 1 }); return fleet ? 'Tutorial supply: a Fleet (your warship: attack 3, hull 7) joins your ships at the Shipyard. You commission one like the others, for 2 Matter, 1 Energy and 1 Biomass.' : null; },
-        ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
+        prepare: s => { const fleet = unitCount(s.state, 'fleet') === 0; ensureUnits(s, { settler: 1, explorer: 1, fleet: 1 }); return fleet ? 'Supplied: a Fleet (warship, attack 3) at your Shipyard.' : null; },
+        ensure: s => { ensureHand(s, ['move']); return 'Supplied: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         start: state => ({ fleets: unitsAt(state, 'fleet').join('|') }),
         text: () => 'Drag a Move card onto your Shipyard. Untick the slow Settler, then fly the Fleet 2 hexes.',
@@ -209,7 +210,7 @@
         anchor: state => scanOpen() && $('#sector-popover [data-move-unit="settler"]')?.checked ? $('#sector-popover [data-move-unit="settler"]').closest('label') : hand('move')(state),
         done: (state, base) => unitsAt(state, 'fleet').join('|') !== base.fleets && !state.pendingMove },
       { id: 'move-explorer', title: 'Explorers fly alone', rule: 'movement', aimAt: state => state.moveSource ? null : unitsAt(state, 'explorer')[0],
-        ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
+        ensure: s => { ensureHand(s, ['move']); return 'Supplied: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         start: state => ({ explorers: unitsAt(state, 'explorer').join('|') }),
         text: () => 'Drag your other Move card onto the Explorer. Explorers fly 3 hexes on their own.',
@@ -219,20 +220,20 @@
     { id: 'relics', title: 'Relics', steps: [
       { id: 'probe', title: 'Probe for a relic', rule: 'movement', aimAt: state => unitsAt(state, 'explorer')[0], wait: state => !myOps(state),
         prepare: s => { ensureUnits(s, { explorer: 1 }); ensureOwned(s, 'probe'); ensureHand(s, ['probe', 'move', 'move']); },
-        ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); return 'Tutorial supply: your Probe / Excavate card.'; },
+        ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); return 'Supplied: your Probe / Excavate card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'probe') && !me(state).inPlay.some(c => c.key === 'probe'),
         text: () => 'Drag the Probe / Excavate card onto your Explorer and choose Probe: it finds the nearest hidden relic.',
         show: state => ({ ghost: { from: hand('probe')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(unitsAt(state, 'explorer')[0]), label: 'Explorer' }] }),
         anchor: hand('probe'), done: (state, base, port) => Boolean(knownRelic(state, port)) },
       { id: 'reach-relic', title: 'Fly to the relic', rule: 'excavation', aimAt: (state, port) => state.moveSource ? knownRelic(state, port) : unitsAt(state, 'explorer')[0],
-        ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
+        ensure: s => { ensureHand(s, ['move']); return 'Supplied: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         text: () => 'Fly your Explorer onto the ◈ with a Move card. Far away? Get close, then use another.',
         show: (state, port) => ({ ghost: state.moveSource ? null : { from: hand('move')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(knownRelic(state, port)), label: '◈ the relic' }] }),
         anchor: (state, port) => (myOps(state) ? hand('move')(state) : null) || hexAt(knownRelic(state, port)),
         done: (state, base, port) => { const site = knownRelic(state, port); return !site || unitsAt(state, 'explorer').includes(site); } },
       { id: 'excavate', title: 'Excavate', rule: 'excavation', aimAt: state => unitsAt(state, 'explorer')[0],
-        ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); ensureResources(s, { matter: 1, energy: 1, data: 2 }); return 'Tutorial supply: your Probe / Excavate card and the excavation cost (1 Matter, 1 Energy, 2 Data).'; },
+        ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); ensureResources(s, { matter: 1, energy: 1, data: 2 }); return 'Supplied: your Probe / Excavate card and the excavation cost (1 Matter, 1 Energy, 2 Data).'; },
         needsEnsure: state => myOps(state) && !me(state).inPlay.some(c => c.key === 'probe') && (!handHas(state, 'probe') || !(me(state).resources.matter >= 1 && me(state).resources.energy >= 1 && me(state).resources.data >= 2)),
         text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? 'Your Probe / Excavate card is in play until the round ends. Finish this round: Pass & buy, then Finish Buy.' : 'Drag Probe / Excavate onto your Explorer on the ◈ and choose Excavate (1 Matter, 1 Energy, 2 Data).',
         show: state => handHas(state, 'probe') ? { ghost: { from: hand('probe')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(unitsAt(state, 'explorer')[0]), label: 'Explorer on the ◈' }] } : { callouts: [{ el: $('#in-play-button'), label: 'Probe / Excavate: in play' }] },
@@ -255,16 +256,16 @@
           const from = unitsAt(s.state, 'settler')[0];
           if (from && from !== edge) relocate(s, 'settler', from, edge);
           ensureOwned(s, 'colonize'); ensureHand(s, ['move', 'colonize']); ensureResources(s, { biomass: 2 });
-          return `Tutorial fast-forward: your Settler flew to the edge of ${world.name}. (Settlers move 1 hex per Move card, so this usually takes a few rounds.)`;
+          return `Fast-forward: your Settler reached ${world.name} (usually a few rounds).`;
         },
-        ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
+        ensure: s => { ensureHand(s, ['move']); return 'Supplied: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         text: state => `Move your Settler 1 hex onto the ringed center of ${targetWorld(state)?.name || 'the world'}.`,
         show: state => ({ ghost: state.moveSource ? null : { from: hand('move')(state), to: hexAt(unitsAt(state, 'settler')[0]) }, callouts: [{ el: hexAt(targetWorld(state)?.center), label: 'World center' }] }),
         anchor: state => (myOps(state) ? hand('move')(state) : null) || hexAt(targetWorld(state)?.center),
         done: state => { const w = targetWorld(state); return !w || unitsAt(state, 'settler').includes(w.center); } },
       { id: 'colonize', title: 'Found a Colony', rule: 'orders', aimAt: state => targetWorld(state)?.center,
-        ensure: s => { ensureOwned(s, 'colonize'); ensureHand(s, ['colonize']); ensureResources(s, { biomass: 2 }); return 'Tutorial supply: a Colonize card and 2 Biomass.'; },
+        ensure: s => { ensureOwned(s, 'colonize'); ensureHand(s, ['colonize']); ensureResources(s, { biomass: 2 }); return 'Supplied: a Colonize card and 2 Biomass.'; },
         needsEnsure: state => myOps(state) && (!handHas(state, 'colonize') || me(state).resources.biomass < 2),
         start: state => ({ colonies: coloniesOf(state) }),
         text: () => 'Drag the Colonize card onto your Settler and choose Found Colony: 2 Biomass, +3★.',
@@ -273,8 +274,8 @@
     ] },
     { id: 'bank', title: 'The bank', steps: [
       { id: 'bank-trade', buy: true, title: 'Trade 4 for 1', rule: 'trade',
-        prepare: s => { ensureResources(s, { energy: 4 }); return 'Tutorial supply: 4 Energy.'; },
-        ensure: s => { ensureResources(s, { energy: 4 }); return 'Tutorial supply: 4 Energy.'; },
+        prepare: s => { ensureResources(s, { energy: 4 }); return 'Supplied: 4 Energy.'; },
+        ensure: s => { ensureResources(s, { energy: 4 }); return 'Supplied: 4 Energy.'; },
         needsEnsure: state => (myOps(state) || myBuy(state)) && me(state).resources.energy < 4,
         start: state => ({ data: me(state).resources.data }),
         text: () => 'Trade at the bank: drag from your Energy row onto your Data row. 4 Energy become 1 Data.',
@@ -283,19 +284,19 @@
     ] },
     { id: 'buy', title: 'Your Buy turn', steps: [
       { id: 'pass-buy', buy: true, title: 'Start your Buy turn', rule: 'buy',
-        prepare: s => { setResources(s, { matter: 4, energy: 4, biomass: 4, data: 4 }); return 'Tutorial supply: 4 of each resource to spend in the market.'; },
+        prepare: s => { setResources(s, { matter: 4, energy: 4, biomass: 4, data: 4 }); return 'Supplied: 4 of each resource to spend in the market.'; },
         text: () => 'The tutorial filled your mat. Choose Pass & buy to shop.',
         show: () => ({ callouts: [{ el: globalThis.galacticReachGuide.turnButton(), label: 'Pass & buy', side: 'left' }, { el: $('#resource-grid'), label: '4 of each', side: 'left' }] }),
         anchor: () => globalThis.galacticReachGuide.turnButton(), done: state => myBuy(state) },
       { id: 'buy-card', buy: true, title: 'Buy a card', rule: 'market-tiers',
-        ensure: s => { setResources(s, { matter: 4, energy: 4, biomass: 4, data: 4 }); return 'Tutorial supply: 4 of each resource.'; },
+        ensure: s => { setResources(s, { matter: 4, energy: 4, biomass: 4, data: 4 }); return 'Supplied: 4 of each resource.'; },
         needsEnsure: (state, port) => myBuy(state) && !state.market.some(c => port.canAfford(port.purchaseCost(c.key))),
         start: state => ({ bought: purchases(me(state)) }),
         text: () => 'Buy any gold-outlined market card. It goes to your discard pile.',
         show: () => ({ spotlight: [$('#market-row')], callouts: [{ el: $('[data-buy-market]:not([disabled])'), label: 'You can afford this' }, { el: $('[data-market-tier="expensive"]'), label: 'Expensive', side: 'left' }, { el: $('[data-market-tier="cheap"]'), label: 'Cheap', side: 'left' }] }),
         anchor: (state, port) => $(`[data-buy-market]:not([disabled])`), done: (state, base) => purchases(me(state)) > base.bought },
       { id: 'upgrade', buy: true, title: 'Upgrade a starter', rule: 'buy',
-        ensure: s => { ensureResources(s, { energy: 2 }); return 'Tutorial supply: 2 Energy.'; },
+        ensure: s => { ensureResources(s, { energy: 2 }); return 'Supplied: 2 Energy.'; },
         needsEnsure: state => myBuy(state) && !RES.some(r => me(state).resources[r] >= 2),
         start: state => ({ upgraded: upgradedCount(me(state)) }),
         dialogs: { '#upgrade-dialog': 'Pick any copy (they are the same card), and the resource that pays 2.' },
@@ -303,14 +304,14 @@
         show: () => ({ callouts: [{ el: $('[data-upgrade-offer]:not([disabled])'), label: 'Stronger order, no converting' }] }),
         anchor: () => $('[data-upgrade-offer]:not([disabled])'), done: (state, base) => upgradedCount(me(state)) > base.upgraded },
       { id: 'capacity', title: 'A Capacity Module', buy: true, rule: 'capacity-module',
-        ensure: s => { ensureResources(s, { matter: 1, energy: 1, biomass: 1, data: 1 }); return 'Tutorial supply: 1 of each resource.'; },
+        ensure: s => { ensureResources(s, { matter: 1, energy: 1, biomass: 1, data: 1 }); return 'Supplied: 1 of each resource.'; },
         needsEnsure: (state, port) => myBuy(state) && !port.canBuyCapacity(),
         start: state => ({ modules: modules(me(state)) }),
         text: () => 'Buy a Capacity Module card. Played later, it raises your limits.',
         show: () => ({ callouts: [{ el: $('[data-capacity-offer]'), label: 'Raises limits by 4' }, { el: matPart('matter', '.mat-pips.now i.cap'), label: 'Limit', side: 'left' }] }),
         anchor: () => $('[data-capacity-offer]'), done: (state, base) => modules(me(state)) > base.modules },
       { id: 'trash', buy: true, title: 'Trash a card', rule: 'buy',
-        ensure: s => { ensureResources(s, { biomass: 3 }); return 'Tutorial supply: 3 Biomass.'; },
+        ensure: s => { ensureResources(s, { biomass: 3 }); return 'Supplied: 3 Biomass.'; },
         needsEnsure: state => myBuy(state) && !RES.some(r => me(state).resources[r] >= 3),
         start: state => ({ cards: allCards(me(state)).length }),
         dialogs: { '#trash-dialog': 'Pick the resource that pays 3, then the card to remove for good.' },
@@ -326,7 +327,7 @@
     { id: 'capacity', title: 'Capacity', steps: [
       { id: 'play-module', title: 'Raise your limits', rule: 'storage-allocation', wait: state => !myOps(state),
         prepare: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); },
-        ensure: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); return 'Tutorial supply: your Capacity Module card.'; },
+        ensure: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); return 'Supplied: your Capacity Module card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'capacityModule') && !(me(state).storage || []).length,
         dialogs: { '#storage-allocation-dialog': 'Split the 4 points as you like, then choose Play Capacity Module. Each point raises that limit by 1, for good.' },
         text: () => 'Play your Capacity Module card: point at it and choose Use order.',
@@ -342,9 +343,9 @@
           const at = reach[0];
           if (at) { s.ensureFleet(at, 1).explorer += 1; s.state.players[1].resources.energy = 0; }
           ensureHand(s, ['move', 'move']);
-          return `Tutorial: an ${s.state.players[1].name} Explorer strayed near your Fleet.`;
+          return `Staged: an enemy Explorer near your Fleet.`;
         },
-        ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
+        ensure: s => { ensureHand(s, ['move']); return 'Supplied: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         start: state => ({ wins: me(state).combatVictories || 0 }),
         text: state => `Drag a Move card onto your Fleet and fly onto the enemy Explorer.`,
@@ -378,6 +379,8 @@
     return ok;
   }
   let note = '';
+  // A Sector Scan left open from the step before is closed once, as a new step begins.
+  let scanClosedFor = -1;
   function toastNote(message) { note = message; }
 
   // Progress names its step, so a later edit to the lesson list resumes at the same step.
@@ -451,7 +454,7 @@
     const lesson = step.lesson;
     const eyebrow = `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${lesson.title} · step ${step.index + 1} of ${lesson.steps.length}${reviewing ? ' · done' : ''}`;
     let text = openDialog ? step.dialogs[openDialog] : typeof step.text === 'function' ? step.text(state, port) : step.text;
-    if (!reviewing && note && !openDialog) text = `${note} ${text}`;
+
     if (!reviewing && !openDialog && !step.dialog && state.activePlayer !== 0 && state.phase === 'operations' && !state.pendingCombat) text = `Rivals are taking their turns… ${text}`;
     const buyDetour = !reviewing && !openDialog && !step.buy && myBuy(state);
     let anchor = null;
@@ -459,7 +462,7 @@
     // This step needs an Operations turn, but you are in Buy: finish it, then carry on next round.
     // The Sector Scan stays open after a build; when this step's control is elsewhere, close it first.
     if (!reviewing && !openDialog && scanOpen() && !buyDetour && !(anchor && anchor.closest?.('#sector-popover')) && !['scan-close'].includes(step.id) && !(['move', 'construct', 'colonize', 'excavate'].includes(state.actionMode)))
-      text = `First close the Sector Scan (its Close button, or Escape). ${text}`;
+      { if (scanClosedFor !== progress.step) { scanClosedFor = progress.step; $('#sector-popover')?.hidePopover?.(); } }
     if (buyDetour) { anchor = globalThis.galacticReachGuide.turnButton(); if (!/Finish Buy/.test(text)) text = `You are in your Buy turn. Choose Finish Buy; the next round brings a new hand. Then: ${text}`; }
     // A card aimed with Use order waits for its hex: point at the lit hexes, whatever the step.
     const lit = coord => coord && $(`.hex.cf-drop-target[data-coord="${coord}"], .hex.target[data-coord="${coord}"]`);
@@ -468,7 +471,7 @@
       && (lit(step.aimAt?.(state, port)) || $('.hex.cf-drop-target, .hex.target'));
     if (aimed) { anchor = aimed; text = `${state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.) ${text}`; }
     return {
-      id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: step.title, text, rule: step.rule,
+      id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: step.title, text, rule: step.rule, aside: !reviewing && !openDialog ? note : '',
       inDialog: openDialog || step.dialog || null, anchor, followCallouts: Boolean(step.followCallouts) && !reviewing, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return step.marks?.(state, port) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
       buttons: [
         { action: 'back', label: 'Back', disabled: progress.view === 0 },

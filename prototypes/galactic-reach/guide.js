@@ -152,7 +152,7 @@
       if (s.pendingConstruct) return { title: 'Build again?', text: 'You may pay for a second build now: choose a lit hex. Or choose Finish to end your turn.', anchor: firstShown('#finish-construct') };
       if (s.actionMode && ['move', 'construct', 'colonize'].includes(s.actionMode)) {
         const target = firstShown('.hex.cf-drop-target', '.hex.target');
-        return { title: 'Choose a lit hex', text: !target ? 'No hex can take this order right now. Point at the card and choose Cancel order to pick another one.' : s.moveSource ? 'Choose a lit hex to move there. Choosing the hex you start on spends the Move card to stay put. To change your mind, point at the card and choose Cancel order.' : 'Choose one of the lit hexes for this order. Escape, or Cancel order on the card, lets you choose a different card.', anchor: target };
+        return { title: 'Choose a lit hex', text: !target ? 'No hex can take this order now: choose Cancel order on the card.' : s.moveSource ? 'Choose a lit hex to move there (your own hex just stays put).' : 'Choose a lit hex for this order.', anchor: target };
       }
       if (s.actionMode === 'excavate') return { title: 'Choose your relic', text: 'Choose one of the three relic cards. You pay the excavation cost and gain 2★.', anchor: firstShown('#relic-row .game-card') };
       const card = kind => c.playable.find(p => p.kind === kind || p.def.order === kind);
@@ -160,18 +160,17 @@
       // upgrades), then a Shipyard. Each says what to do with this turn's cards.
       const goals = [];
       const dataHex = c.colonies.flatMap(col => Object.keys(s.planets).filter(k => s.planets[k].cluster === s.planets[col].cluster && hexDistance(k, col) === 1 && s.planets[k].type === 'data' && !s.planets[k].upgrade))[0];
-      if (!c.harvesters.length && dataHex) goals.push({ kind: 'harvester', name: 'Data Harvester', button: 'Build Harvester', cost: port.structures.harvester.cost, site: dataHex,
-        why: 'It makes 2 Data every round. Data pays for Explorers (they find relics, 2★ each), for excavating and for upgrading your cards.' });
-      if (!c.shipyards.length) goals.push({ kind: 'starbase', name: 'Shipyard', button: 'Build Shipyard', cost: port.structures.starbase.cost, site: null,
-        why: 'You need a Shipyard to commission ships: Settlers found Colonies (3★ each).' });
+      const yardSite = c.colonies.flatMap(col => Object.keys(s.planets).filter(k => s.planets[k].cluster === s.planets[col].cluster && hexDistance(k, col) === 1 && !s.planets[k].upgrade && s.planets[k].type !== 'data'))[0] || null;
+      if (!c.harvesters.length && dataHex) goals.push({ kind: 'harvester', name: 'Data Harvester', button: 'Build Harvester', cost: port.structures.harvester.cost, site: dataHex, why: '+2 Data every round' });
+      if (!c.shipyards.length) goals.push({ kind: 'starbase', name: 'Shipyard', button: 'Build Shipyard', cost: port.structures.starbase.cost, site: yardSite, why: 'Shipyard: builds ships' });
       const goal = goals[0];
       const matRow = r => firstShown(`#resource-grid .resource-box[data-resource="${r}"]`);
       if (goal) {
         const construct = card('construct');
         const siteHex = goal.site ? hex(goal.site) : null;
-        const show = target => ({ ghost: target, callouts: siteHex ? [{ el: siteHex, label: `${goal.name} here` }] : [] });
+        const show = target => ({ ghost: target, callouts: siteHex ? [{ el: siteHex, label: goal.why }] : [] });
         if (construct && port.canAfford(goal.cost))
-          return { title: `Build a ${goal.name}`, text: `Drag this Construct card onto ${goal.site ? 'the ringed Data hex' : 'an empty hex next to your Colony'}, then choose ${goal.button}. ${goal.why}`,
+          return { title: `Build a ${goal.name}`, text: `Drag this Construct card onto the ringed hex, then choose ${goal.button}.`,
             anchor: handCard(construct.card.id), marks: siteHex ? [siteHex] : [], avoid: siteHex ? [siteHex] : [], show: show(siteHex ? { from: handCard(construct.card.id), to: siteHex } : null) };
         const short = Object.entries(goal.cost).filter(([r, n]) => c.player.resources[r] < n).map(([r]) => r);
         // Only suggest converting when it really pays for the build this turn (keeping a Construct card to build with).
@@ -181,10 +180,10 @@
         const convert = reachable && construct && spare.find(x => short.some(r => (port.cards[x.key].resource || {})[r]));
         if (convert) {
           const gets = Object.keys(port.cards[convert.key].resource)[0];
-          return { title: `First goal: a ${goal.name}`, text: `Short of ${short.map(r => RESOURCE_NAMES[r]).join(' and ')}. Drag this ${port.cards[convert.key].name} card onto your mat for ${costText(port.cards[convert.key].resource)}, then build with a Construct card this turn.`,
+          return { title: `First goal: a ${goal.name}`, text: `Short of ${short.map(r => RESOURCE_NAMES[r]).join(' and ')}: drag this ${port.cards[convert.key].name} card onto your mat for ${costText(port.cards[convert.key].resource)}.`,
             anchor: handCard(convert.id), marks: siteHex ? [siteHex] : [], avoid: siteHex ? [siteHex] : [], show: show({ from: handCard(convert.id), to: matRow(gets) }) };
         }
-        if (!reachable) return { title: `Next: a ${goal.name}`, text: `A ${goal.name} costs ${costText(goal.cost)}: more than you can raise this turn. Production adds resources each round; use this round's cards on other orders, or Pass & buy.`,
+        if (!reachable) return { title: `Next: a ${goal.name}`, text: `Not affordable this round. Use your other cards, or Pass & buy.`,
           anchor: turnButton(), marks: siteHex ? [siteHex] : [], show: { callouts: [...short.map(r => ({ el: matRow(r), label: `Need more ${RESOURCE_NAMES[r]}`, side: 'left' })), ...(siteHex ? [{ el: siteHex, label: `${goal.name} here` }] : [])] } };
       }
       const colonize = card('colonize');
@@ -207,7 +206,7 @@
           anchor: handCard(construct.card.id), show: { ghost: { from: handCard(construct.card.id), to: yardHex }, callouts: [{ el: yardHex, label: 'Your Shipyard' }] } };
         const short = Object.entries(port.ships.settler.cost).filter(([r, n]) => c.player.resources[r] < n).map(([r]) => r);
         const conv = c.canConvert ? c.convertible.find(card => short.some(r => (port.cards[card.key].resource || {})[r])) : null;
-        return { title: 'Next: a Settler', text: `A Settler costs ${costText(port.ships.settler.cost)}; short of ${short.map(r => RESOURCE_NAMES[r]).join(' and ')}. ${short.map(r => SOURCES[r]).join(' ')} Resources carry over; cards left in hand are discarded at round end, so use them now.${fullWarning(c)}`,
+        return { title: 'Next: a Settler', text: `A Settler needs ${short.map(r => RESOURCE_NAMES[r]).join(' and ')} you lack. ${SOURCES[short[0]]}`,
           anchor: (conv ? handCard(conv.id) : null) || matRow(short[0]), show: { ghost: conv ? { from: handCard(conv.id), to: matRow(Object.keys(port.cards[conv.key].resource)[0]) } : null, callouts: short.map(r => ({ el: matRow(r), label: `Need ${RESOURCE_NAMES[r]}`, side: 'left' })) } };
       }
       // A Settler waiting on a free world's center, but its Colonize card has not come round yet.
@@ -234,7 +233,7 @@
         const first = c.playable[0];
         return { title: 'Your turn', text: `Gold-outlined cards have an order you can use now; this one is a good start. Drag it onto a lit hex, or point at it and choose Use order.${fullWarning(c)}`, anchor: handCard(first.card.id) };
       }
-      return { title: 'Nothing left to play', text: c.canConvert ? `No order can be used now. Convert spare starters if they help you buy something, then choose Pass & buy. Passing ends your Operations for this round and starts your Buy turn; cards left in your hand are discarded when the round ends.${fullWarning(c)}` : 'No order can be used now. Choose Pass & buy: it ends your Operations for this round and starts your Buy turn.', anchor: turnButton() };
+      return { title: 'Nothing left to play', text: 'No order can be used now: choose Pass & buy.', anchor: turnButton(), show: { callouts: [{ el: turnButton(), label: 'Ends your turns this round', side: 'left' }] } };
     }
     if (c.buy) {
       const market = c.marketBuys[0];
@@ -243,7 +242,7 @@
       if (c.upgrades.length && port.resources.some(r => c.player.resources[r] >= 3)) return { title: 'Upgrade a starter', text: 'Upgrade a Move or Construct card for a stronger order: pay 2 of your most plentiful resource. Or choose Finish Buy.', anchor: firstShown('#upgrade-market .game-card:not([disabled])') };
       return { title: 'Finish Buy', text: 'Nothing here is affordable yet. Choose Finish Buy. Your resources carry over to the next round.', anchor: turnButton() };
     }
-    if (!c.myTurn && s.winner === null && ['operations', 'buy'].includes(s.phase)) return { title: 'Rivals are acting', text: `${s.players[s.activePlayer].name} is taking its ${s.phase === 'buy' ? 'Buy' : 'Operations'} turn. Your turn comes round again shortly.${s.phase === 'operations' && !c.player.passed ? ' Meanwhile you can still convert starters or trade with the bank.' : ''}`, anchor: null, quiet: true };
+    if (!c.myTurn && s.winner === null && ['operations', 'buy'].includes(s.phase)) return { title: 'Rivals are acting', text: `${s.players[s.activePlayer].name} is taking its turn.`, anchor: firstShown(`[data-score-player="${s.activePlayer}"]`), quiet: true };
     return null;
   }
 
@@ -290,6 +289,7 @@
       const action = button.dataset.coach;
       if (action === 'got-it') { prefs.seen[button.dataset.id] = true; savePrefs(); }
       if (action === 'hide') setEnabled(false);
+      if (action === 'dismiss') { dismissed = `${port.turnSerial()}|${coach.querySelector('.gr-coach-title')?.textContent || ''}`; hide(); return; }
       if (action === 'learn') { prefs.seen.welcome = true; savePrefs(); location.href = `${location.pathname}?tutorial=1`; return; }
       if (action === 'more') { coach.dataset.expanded = String(coach.dataset.expanded !== 'true'); schedule(); return; }
       globalThis.galacticReachTutorial?.coachAction?.(action, button.dataset);
@@ -352,14 +352,14 @@
     box.classList.toggle('in-dialog', host !== document.body);
     if (host === document.body) box.setAttribute('popover', 'manual'); else box.removeAttribute('popover');
     box.classList.toggle('quiet', Boolean(tip.quiet));
-    const key = JSON.stringify([tip.id, tip.title, tip.text, tip.step]);
+    const key = JSON.stringify([tip.id, tip.title, tip.text, tip.step, tip.aside || '']);
     if (key !== lastKey) {
       lastKey = key;
       box.dataset.expanded = 'false';
       delete box.dataset.full; delete box.dataset.fit;
       const buttons = [...(tip.buttons || []), { action: 'more', label: 'More' }];
       const bar = tip.progress ? `<ol class="gr-coach-progress" aria-hidden="true">${Array.from({ length: tip.progress.lessons }, (_, i) => `<li class="${i < tip.progress.finishedLessons ? 'done' : ''}${i === tip.progress.current ? ' current' : ''}"></li>`).join('')}</ol>` : '';
-      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}${b.quiet ? ' gr-coach-quiet' : ''}${b.link ? ' gr-coach-link' : ''}"${b.title ? ` title="${esc(b.title)}"` : ''} data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.aria ? ` aria-label="${esc(b.aria)}"` : ''}${b.action === 'more' ? ' hidden' : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
+      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.aside ? `<p class="gr-coach-aside">${esc(tip.aside)}</p>` : ''}${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}${b.quiet ? ' gr-coach-quiet' : ''}${b.link ? ' gr-coach-link' : ''}"${b.title ? ` title="${esc(b.title)}"` : ''} data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.aria ? ` aria-label="${esc(b.aria)}"` : ''}${b.action === 'more' ? ' hidden' : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
       if (!tip.quiet && tip.text !== lastAnnounced) lastAnnounced = tip.text;
     }
     box.hidden = false;
@@ -375,7 +375,7 @@
     const anchor = host === document.body && tip.anchor && shown(tip.anchor) ? tip.anchor : null;
     if (anchor && !tip.noPulse) { anchor.classList.add('gr-coach-target'); targeted.push(anchor); }
     currentAnchor = anchor;
-    currentAvoid = (tip.avoid || []).filter(Boolean);
+    currentAvoid = [...(tip.avoid || []), ...(tip.show?.callouts || []).map(c => c?.el), ...(tip.show?.spotlight || []), tip.show?.ghost?.to].filter(el => el && el !== anchor && !el.contains?.(anchor));
     pendingShow = host === document.body ? tip.show || null : null;
     // A destination the note names (a world to reach) gets a quieter dashed ring of its own.
     if (host === document.body) for (const mark of (tip.marks || []).filter(Boolean)) { mark.classList.add('gr-coach-goal'); targeted.push(mark); }
@@ -445,7 +445,7 @@
   // table (never intercepting a click). A step names the parts it talks about; the stage lights
   // them, labels them one at a time, and shows the drag it asks for. Reduced motion: all still. ----
   let pendingShow = null, currentDock = false;
-  let following = false;
+  let following = false, dismissed = '';
   let stage = null, currentShow = null, showKey = '', activeCallout = 0, ghostAnimation = null, ghostKey = '';
   const reducedMotion = () => Boolean(matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   const SVG = 'http://www.w3.org/2000/svg';
@@ -577,17 +577,19 @@
     const around = anchor.closest('#sector-popover') || anchor;
     const a = around.getBoundingClientRect();
     const sides = around === anchor ? ['top', 'bottom', 'right', 'left'] : ['right', 'left', 'top', 'bottom'];
+    // Level with the anchor itself, even when the note lies beside the whole Sector Scan.
+    const levelY = (b => b.top + b.height / 2)(anchor.getBoundingClientRect());
     const clampX = x => Math.max(margin, Math.min(vw - width - margin, x));
     const clampY = y => Math.max(margin, Math.min(vh - height - margin, y));
     const options = [
       { side: 'top', left: clampX(a.left + a.width / 2 - width / 2), top: a.top - gap - height, fits: a.top - gap - height >= margin },
       { side: 'bottom', left: clampX(a.left + a.width / 2 - width / 2), top: a.bottom + gap, fits: a.bottom + gap + height <= vh - margin },
-      { side: 'right', left: a.right + gap, top: clampY(a.top + a.height / 2 - height / 2), fits: a.right + gap + width <= vw - margin },
-      { side: 'left', left: a.left - gap - width, top: clampY(a.top + a.height / 2 - height / 2), fits: a.left - gap - width >= margin },
+      { side: 'right', left: a.right + gap, top: clampY(levelY - height / 2), fits: a.right + gap + width <= vw - margin },
+      { side: 'left', left: a.left - gap - width, top: clampY(levelY - height / 2), fits: a.left - gap - width >= margin },
     ];
     // Of the sides that fit, prefer the one that hides least of what you may need next: the lit
     // hexes of an aimed order and an open Sector Scan.
-    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...currentAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden])')].filter((el, i) => i === 0 || (el !== around && !around.contains(el))).map(el => el.getBoundingClientRect());
+    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...currentAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden]), #resource-grid, #open-trade, #convert-all-button:not([hidden]), #prestige-track')].filter((el, i) => i === 0 || (el !== around && !around.contains(el))).map(el => el.getBoundingClientRect());
     const covered = o => avoid.reduce((sum, r) => sum + Math.max(0, Math.min(o.left + width, r.right) - Math.max(o.left, r.left)) * Math.max(0, Math.min(o.top + height, r.bottom) - Math.max(o.top, r.top)), 0);
     const hexRects = $$('.hex').map(h => h.getBoundingClientRect());
     const overHexes = o => hexRects.reduce((n, r) => n + (r.right > o.left && r.left < o.left + width && r.bottom > o.top && r.top < o.top + height ? 1 : 0), 0);
@@ -639,7 +641,8 @@
           anchor: explainer.anchor?.(c) || null, marks: explainer.marks?.(c) || [], show: explainer.show?.(c) || null, buttons: [...(explainer.buttons || []), { action: 'got-it', id: explainer.id, label: 'Got it', primary: !explainer.buttons }] };
         else {
           tip = hint(c);
-          if (tip) tip = { ...tip, free: true, eyebrow: tip.quiet ? 'Guide' : 'You can', buttons: [] };
+          if (tip && dismissed === `${port.turnSerial()}|${tip.title}`) tip = null;
+          if (tip) tip = { ...tip, free: true, eyebrow: tip.quiet ? 'Guide' : 'You can', buttons: tip.quiet ? [] : [{ action: 'dismiss', label: 'Got it' }] };
         }
       }
     } catch (error) { console.error('Guidance could not read the table.', error); tip = null; }
