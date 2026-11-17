@@ -2851,12 +2851,12 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
   /* Bottom band. */
   #hand-row { grid-column: 1 / -1 !important; grid-row: 9 !important; margin: 0 calc(var(--mat-w) + var(--tools-w) + var(--side-w) + 46px) 0 calc(52px + 3 * var(--pile-w) + 32px) !important; }
   /* The turn's main button, small, right of the mat directly above Discard. Convert level I
-     starters (only while you hold one) and Trade lie left of the mat, in their own column. */
+     starters (only while your hand holds one) lies left of the mat, a large target in its own
+     column, centred on the band, with the resources it gives. */
   #hand-panel .hand-tools { position: relative; grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: start !important; width: var(--tools-w) !important; margin: 10px 0 0 0 !important; display: flex !important; flex-direction: column; gap: 3px; }
   #hand-panel .hand-tools .button { width: 100%; min-height: 0 !important; padding: 2px 6px !important; font-size: 10.5px !important; line-height: 1.2; border-radius: 999px !important; }
-  #hand-panel .hand-tools #convert-all-button { position: absolute !important; right: calc(100% + var(--mat-w) + 28px); width: var(--side-w) !important; padding: 4px 6px !important; font-size: 11px !important; }
-  #hand-panel .hand-tools #convert-all-button { top: calc(var(--band-h) / 2 - 46px); }
-  #convert-all-button .conversion-symbols { display: none !important; }
+  #hand-panel .hand-tools #convert-all-button { position: absolute !important; right: calc(100% + var(--mat-w) + 28px); width: var(--side-w) !important; min-height: 64px !important; padding: 8px !important; font-size: 13px !important; font-weight: 700; line-height: 1.2; border-radius: 12px !important; }
+  #hand-panel .hand-tools #convert-all-button { top: calc(var(--band-h) / 2 - 32px); }
   #discard-button { margin-right: calc((var(--tools-w) - var(--pile-w)) / 2) !important; }
   #resource-grid.resource-grid { grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: end !important; width: var(--mat-w) !important; height: calc(var(--band-h) - 6px) !important; margin: 0 calc(var(--tools-w) + 14px) 0 0 !important; }
   /* A large mat: bigger pips, icons and legend. */
@@ -2882,10 +2882,11 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
   .left-tight .app-shell { --pile-w: 84px !important; }
   /* Squarer tables (1300 units wide): a narrower mat and buttons, and smaller hand cards, so the
      hand keeps its room in the bottom band. */
-  /* Squarer tables (1300 units wide) have no room for a column left of the mat: Convert and Trade
-     stack with the turn's main button above Discard. */
+  /* Squarer tables (1300 units wide) have no room for a column left of the mat: Convert stacks
+     with the turn's main button above Discard, still taller and larger than it. */
   :root:not(.table-wide) .app-shell { --mat-w: 340px !important; --tools-w: 150px !important; --side-w: -46px !important; }
-  :root:not(.table-wide) #hand-panel .hand-tools #convert-all-button { position: static !important; width: 100% !important; }
+  :root:not(.table-wide) #hand-panel .hand-tools #convert-all-button { position: static !important; width: 100% !important; min-height: 40px !important; padding: 6px 8px !important; font-size: 12.5px !important; font-weight: 700; border-radius: 12px !important; }
+  :root:not(.table-wide) #convert-all-button .conversion-symbols { display: none !important; }
   :root:not(.table-wide) #hand-panel .hand-tools { margin-top: 2px !important; }
   /* There a raised card is wider than its resting slot, so the hand leaves room for it. */
   :root:not(.table-wide) #hand-row { margin-right: calc(var(--mat-w) + var(--tools-w) + var(--side-w) + 46px + max(0px, 200px - var(--top-w))) !important; }
