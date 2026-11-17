@@ -373,6 +373,17 @@ test('Shared-table Construct III draw-only control sends the authoritative choic
  const game=boot(createStorage(),1729,undefined,{network});const button=game.dom.lastQuery('[data-construct-draw]')[0];assert(button);button.click();game.settle();
  assert.deepEqual(sent,[[{type:'construct_draw',card:'iii',key:'construct'}]]);
 });
+test('Seed Ark offers a separate draw-two choice and commits before the draw',()=>{
+ const storage=createStorage(),state=boot(storage).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ state.players[0].hand=[{id:'seed-choice',key:'seedArk'},{id:'pods',key:'colonyPods'}];state.players[0].deck=[];state.players[0].discard=[{id:'draw-one',key:'signalRelay'},{id:'draw-two',key:'move',starter:true}];state.players[0].resources={matter:0,energy:0,biomass:0,data:0};writeSave(storage,state);
+ const game=boot(storage),buttons=game.dom.lastQuery('[data-order-draw]');assert.equal(buttons.length,1);assert.equal(buttons[0].dataset.orderDraw,'seed-choice');assert(game.dom.element('hand-row').innerHTML.includes('Play Seed Ark to draw two cards instead of colonizing'));
+ buttons[0].click();game.settle();const after=game.saved();assert(after.players[0].inPlay.some(c=>c.id==='seed-choice'));assert(!after.players[0].hand.some(c=>c.id==='seed-choice'));assert(after.players[0].hand.some(c=>c.id==='draw-one'));assert(after.players[0].hand.some(c=>c.id==='draw-two'));assert.deepEqual(after.players[0].resources,state.players[0].resources);assert.equal(boot(storage).dom.lastQuery('[data-order-draw]').length,0);
+});
+test('Shared-table Seed Ark draw choice sends the authoritative command',()=>{
+ const state=boot(createStorage()).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});state.players[0].hand=[{id:'shared-seed',key:'seedArk'}];
+ const sent=[],network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});const button=game.dom.lastQuery('[data-order-draw]')[0];assert(button);button.click();game.settle();assert.deepEqual(sent,[[{type:'order_draw',card:'shared-seed',key:'seedArk'}]]);
+});
 test('Wonders in hand have no order or conversion and remain until cleanup or later trash',()=>{
  const storage=createStorage(),state=boot(storage).saved();
  state.players[0].hand=[{key:'monumentOfAccord',id:'monument'},{key:'dysonLattice',id:'dyson'}];writeSave(storage,state);

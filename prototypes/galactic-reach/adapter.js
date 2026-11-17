@@ -20,7 +20,7 @@ function createGalacticAdapter(e) {
       // 34.39: printed Wonder Prestige, military card stats and the capture rule, published for the same reason.
       marketPrestige: state.market.map(card => e.ALL_CARDS[card.key]?.gainPrestige || 0),
       // Printed effects are public; no deck order or private hand is included here.
-      cardStats: Object.fromEntries(Object.entries(e.ALL_CARDS).map(([key,c])=>[key,{order:c.order,kind:c.kind,tag:c.tag,military:!!c.military,draw:c.effect?.draw||c.orderDraw||(c.tag==='alienEchoes'?3:0),limits:c.effect?.limits,prestige:c.effect?.prestige||0,gainPrestige:c.gainPrestige||0,buildDiscount:c.buildDiscount||null,range:c.range||0,assault:c.assault||0,pathfinder:!!c.pathfinder,secondBuild:!!c.secondBuild,colonyCost:c.colonyCost??null,keepSettler:!!c.keepSettler,colonyPrestige:c.colonyPrestige||0,buyEffect:c.buyEffect||null,trashSelf:!!c.effect?.trashSelf,trashStarters:c.effect?.trashStarters||0,victoryPrestige:c.victoryPrestige||0,attack:c.attack||0,shield:c.shield||0,pierce:!!c.pierce}])),
+      cardStats: Object.fromEntries(Object.entries(e.ALL_CARDS).map(([key,c])=>[key,{order:c.order,kind:c.kind,tag:c.tag,military:!!c.military,draw:c.effect?.draw||c.orderDraw||(c.tag==='alienEchoes'?3:0),fallbackDraw:c.fallbackDraw||0,limits:c.effect?.limits,prestige:c.effect?.prestige||0,gainPrestige:c.gainPrestige||0,buildDiscount:c.buildDiscount||null,range:c.range||0,assault:c.assault||0,pathfinder:!!c.pathfinder,secondBuild:!!c.secondBuild,colonyCost:c.colonyCost??null,keepSettler:!!c.keepSettler,colonyPrestige:c.colonyPrestige||0,buyEffect:c.buyEffect||null,trashSelf:!!c.effect?.trashSelf,trashStarters:c.effect?.trashStarters||0,victoryPrestige:c.victoryPrestige||0,attack:c.attack||0,shield:c.shield||0,pierce:!!c.pierce}])),
       tacticStats: Object.fromEntries(Object.entries(e.MILITARY_CARDS).map(([key, c]) => [key, { attack: c.attack || 0, shield: c.shield || 0, pierce: !!c.pierce }])),
       combatVictoryPrestige: e.COMBAT_VICTORY_PRESTIGE, captureNeedsFleet: true, phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
@@ -122,6 +122,7 @@ function createGalacticAdapter(e) {
         if (e.canConvertCard(card)) actions.push({ type: 'resource', ...base, gain });
         if (state.pendingColonyBuild) return;
         if(e.canConstructDraw(seat,card.id))actions.push({type:'construct_draw',...base});
+        if (e.canOrderDraw(seat,card.id)) actions.push({type:'order_draw',...base});
         if (def.order === 'colonize') Object.keys(state.planets).forEach(coord => {
           if (e.colonizePlanet(seat, coord, { tag: def.tag }, true)) actions.push({ type: 'colonize', ...base, coord });
         });
@@ -224,6 +225,7 @@ function createGalacticAdapter(e) {
       case 'finish_colony_build': e.finishColonyBuild(seat); return;
       case 'colony_build': e.finishColonyBuild(seat,action.coord,action.kind); return;
       case 'colonize': e.applyColonizeOrder(seat, action.coord, card); return;
+      case 'order_draw': e.useOrderDraw(seat,action.card); return;
       case 'construct_draw': e.useConstructDraw(seat,action.card); return;
       case 'build': e.performConstructOrder(seat,action.coord,action.kind,card); return;
       case 'move': e.performMoveOrder(seat, action.source, action.destination, card, { tag: def.tag, moveGroup: action.moveGroup, units: action.units }); return;

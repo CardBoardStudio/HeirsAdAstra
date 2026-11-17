@@ -108,6 +108,7 @@ require('./test-corner-portals.cjs');
 require('./test-change-queue.cjs');
 
 require('./test-construct-iii-draw.cjs');
+require('./test-seed-ark-choice.cjs');
 require('./test-world-engine-draw.cjs');
 require('./test-public-card-metadata.cjs');
 

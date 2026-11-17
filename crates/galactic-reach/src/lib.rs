@@ -853,9 +853,11 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
     let horizon = ((view["victoryTarget"].as_f64().unwrap_or(40.0) - leader) / 5.0)
         .ceil()
         .clamp(1.0, 5.0);
-    let draw = number(&stats["draw"]);
+    let fallback_draw = number(&stats["fallbackDraw"]);
+    let draw = number(&stats["draw"]).max(fallback_draw);
+    let draw_value = draw * (7.0 + size.min(18.0) * 0.25) * (horizon / 2.0).min(1.0);
     let mut value = 6.0 + prestige * 9.0 + number(&stats["prestige"]) * horizon.min(4.0) * 8.0;
-    value += draw * (7.0 + size.min(18.0) * 0.25) * (horizon / 2.0).min(1.0);
+    value += draw_value;
     // Research only: printed one-less-of-each coupons need a later purchase to pay off.
     // Face-up prices bound possible savings; this is not a promise of future spending.
     if view["investmentPlanning"] == true
@@ -925,22 +927,27 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
                 let printed = view["colonyPlanning"] == true && view["investmentPlanning"] == true;
                 let useful = bot_units(view, seat, "settler") > 0.0
                     && (!printed || public_colony_opportunity(view, seat));
-                value += if useful {
+                let mut colony_value = if useful {
                     (16.0 - bot_cards(me, "colonize") * 8.0).max(0.0)
                 } else {
                     -15.0
                 };
                 if printed && useful {
                     let uses = (horizon * 5.0 / size.max(5.0)).min(3.0);
-                    value += ((if stats["keepSettler"] == true {
-                        6.0
-                    } else {
-                        0.0
-                    }) + (2.0 - stats["colonyCost"].as_f64().unwrap_or(2.0)).max(0.0)
-                        * 2.0
-                        + number(&stats["colonyPrestige"]) * 6.0)
-                        * uses;
+                    colony_value +=
+                        ((if stats["keepSettler"] == true {
+                            6.0
+                        } else {
+                            0.0
+                        }) + (2.0 - stats["colonyCost"].as_f64().unwrap_or(2.0)).max(0.0) * 2.0
+                            + number(&stats["colonyPrestige"]) * 6.0)
+                            * uses;
                 }
+                value += if fallback_draw > 0.0 {
+                    (colony_value - draw_value).max(0.0)
+                } else {
+                    colony_value
+                };
             }
             _ => {}
         }
@@ -1865,6 +1872,19 @@ impl BuiltinAgent {
                 }
             }
             // Current engines expose this choice; archived observations never do.
+            "order_draw" => {
+                if number(&view["cardStats"][action["key"].as_str().unwrap_or("")]["fallbackDraw"])
+                    > 0.0
+                    && (number(&me["deckCount"]) > 0.0
+                        || me["discard"]
+                            .as_array()
+                            .is_some_and(|cards| !cards.is_empty()))
+                {
+                    95.0
+                } else {
+                    -10.0
+                }
+            }
             "construct_draw" => {
                 if view["constructDrawOnly"] == true
                     && (number(&me["deckCount"]) > 0.0
@@ -3164,6 +3184,56 @@ mod tests {
             "Market profile can fund capacity before another starter upgrade"
         );
     }
+    #[test]
+    fn seed_ark_alternatives_draw_or_colonize_without_double_counting() {
+        let mut agent = BuiltinAgent::new(Strategy::Economy, [8; 32]);
+        let mut view = strategic_view();
+        view["players"][0]["hand"] = json!([{"id":"seed","key":"seedArk"}]);
+        view["players"][0]["deckCount"] = json!(2);
+        view["market"] = json!([{"key":"seedArk"}]);
+        view["marketCosts"] = json!([{"biomass":4}]);
+        view["cardStats"]["seedArk"] = json!({"order":"colonize","colonyCost":1});
+        let baseline = capacity_value(&view, 0, "seedArk").unwrap();
+        let draw = json!({"type":"order_draw","key":"seedArk","card":"seed"});
+        let pass = json!({"type":"pass"});
+        assert_eq!(agent.select_action(&view, &[draw.clone(), pass.clone()]), 1);
+        view["cardStats"]["seedArk"]["fallbackDraw"] = json!(2);
+        assert_eq!(agent.select_action(&view, &[pass.clone(), draw.clone()]), 1);
+        assert_eq!(
+            agent.select_action(
+                &view,
+                &[
+                    draw.clone(),
+                    json!({"type":"colonize","key":"seedArk","card":"seed","coord":"1,0"})
+                ]
+            ),
+            1,
+            "A legal Colony scores before drawing"
+        );
+        let flexible = capacity_value(&view, 0, "seedArk").unwrap();
+        assert!(flexible > baseline);
+        view["cardStats"]["seedArk"] = json!({"order":"special","draw":2});
+        assert_eq!(
+            capacity_value(&view, 0, "seedArk").unwrap(),
+            flexible,
+            "Without a Colony opportunity, use the draw alternative's value"
+        );
+        view["cardStats"]["seedArk"] = json!({"order":"colonize","colonyCost":1,"fallbackDraw":0});
+        assert_eq!(
+            capacity_value(&view, 0, "seedArk").unwrap(),
+            baseline,
+            "Zero/absent fallback retains previous valuation"
+        );
+        view["cardStats"]["seedArk"]["fallbackDraw"] = json!(2);
+        view["players"][0]["deckCount"] = json!(0);
+        view["players"][0]["discard"] = json!([]);
+        assert_eq!(
+            agent.select_action(&view, &[draw, pass]),
+            1,
+            "Do not spend a card on an empty draw"
+        );
+    }
+
     #[test]
     fn buy_discount_planning_values_future_visible_purchases_without_inventing_savings() {
         let mut agent = BuiltinAgent::new(Strategy::Market, [8; 32]);

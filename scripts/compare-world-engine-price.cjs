@@ -11,7 +11,7 @@ function validateSources(left,right){
  assert.equal(b[0],candidate,'Unexpected World Engine change');
  assert.equal(right,left.replace(a[0],candidate),'Unrelated game-source changes');
 }
-function compare(left,right,validateApp=validateSources,changeText='World Engine 6M1E1B to 4M1E1B; identical policy binary and adapter/native sources. Canonical rulebooks differ to document the intended price/tier.'){
+function compare(left,right,validateApp=validateSources,changeText='World Engine 6M1E1B to 4M1E1B; identical policy binary and adapter/native sources. Canonical rulebooks differ to document the intended price/tier.',transformation='declared price-only transformation'){
  const read=d=>{
   const protocol=JSON.parse(fs.readFileSync(path.join(d,'protocol.json')));
   const raw=fs.readFileSync(path.join(d,'results.jsonl'),'utf8');
@@ -41,7 +41,7 @@ function compare(left,right,validateApp=validateSources,changeText='World Engine
  };
  const cases=new Map(a.rows.map(g=>[`${g.seed}/${g.rotation}`,g]));
  for(const g of b.rows){const x=cases.get(`${g.seed}/${g.rotation}`);assert(x,'Missing archive pair');const aa=archived(x),bb=archived(g);validateApp(aa.engine,bb.engine);for(const key of ['adapter','factory','recorder','runner'])assert.equal(aa[key],bb[key],'Archived tooling differs: '+key);assert.equal(aa.runner,runnerA,'Archive and run runner differ');}
- return {left,right,archiveProvenance:{pairedCases:b.rows.length,nativeRunnerHash:hash(runnerA),scope:'Every paired archived instrumented engine matches the declared price-only transformation; adapter,factory,recorder,native runner match and source hashes verify.'},change:changeText,analysisSourceHash:hash(fs.readFileSync(__filename)),leftResultsHash:hash(a.raw),rightResultsHash:hash(b.raw),protocols:{left:a.protocol,right:b.protocol},...compareRows(a.rows,b.rows)};
+ return {left,right,archiveProvenance:{pairedCases:b.rows.length,nativeRunnerHash:hash(runnerA),scope:`Every paired archived instrumented engine matches the ${transformation}; adapter,factory,recorder,native runner match and source hashes verify.`},change:changeText,analysisSourceHash:hash(fs.readFileSync(__filename)),leftResultsHash:hash(a.raw),rightResultsHash:hash(b.raw),protocols:{left:a.protocol,right:b.protocol},...compareRows(a.rows,b.rows)};
 }
 if(require.main===module){const[out,left,right]=process.argv.slice(2);const result=compare(left,right);fs.writeFileSync(out,JSON.stringify(result,null,2));console.log(JSON.stringify({delta:result.delta,seedBootstrap95:result.seedBootstrap95,galaxies:result.galaxies}));}
 module.exports={validateSources,compare};
