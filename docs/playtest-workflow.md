@@ -12,7 +12,7 @@ Read the [canonical rulebook](../prototypes/galactic-reach/rulebook.html) and [m
 
 The `Rules contract` check requires a grounding declaration and pairs changes in known engine paths with the canonical document. It does not prove semantic agreement: reviewers must compare rules, code, card text, and tests. Work unrelated to Galactic Reach must explain its exclusion and cite its own specification.
 
-The `Review conventions` check is advisory: it reports, without failing, a PR title or commit subject that is not `Area: sentence`, an unanswered template section, template comments left in a ready PR, a compatibility box that is not exactly one, and a missing or mismatched `changes/` entry. It runs the shared [review-conventions](https://github.com/bitswell-hq/review-conventions) workflow with `.github/review-conventions.json`.
+The `Review conventions` check is advisory: it reports, without failing, a PR title or commit subject that is not `Area: sentence`, an unanswered template section, template comments left in a ready PR, a commit over 30 changed lines with no body, a compatibility box that is not exactly one, and a missing or mismatched `changes/` entry. It runs the shared [review-conventions](https://github.com/bitswell-hq/review-conventions) workflow with `.github/review-conventions.json`.
 
 ## Breaking experiments
 
