@@ -553,11 +553,36 @@ function assertTab(game,name){
   for(const panel of game.dom.panels)assert.equal(panel.hidden,panel.dataset.panel!==name);
 }
 test('Relics tab browses read-only and participates in keyboard tab navigation',()=>{
-  const {storage}=excavationStorage(),game=boot(storage);assert.deepEqual(game.dom.tabs.map(t=>t.dataset.tab),['market','fleet','relics']);
+  const {storage}=excavationStorage(),game=boot(storage);assert.deepEqual(game.dom.tabs.map(t=>t.dataset.tab),['market','relics']);
   const before=JSON.stringify(game.saved());game.click('relics-tab');assertTab(game,'relics');assert.equal(JSON.stringify(game.saved()),before);
   const relics=game.dom.element('relics-tab');assert.equal(relics.getAttribute('role'),'tab');assert.equal(relics.getAttribute('aria-controls'),'relics-panel');assert.equal(game.dom.element('relics-panel').getAttribute('aria-labelledby'),'relics-tab');
   fire(relics,'keydown',{key:'ArrowRight',cancelable:true});assertTab(game,'market');fire(game.dom.element('market-tab'),'keydown',{key:'End',cancelable:true});assertTab(game,'relics');fire(relics,'keydown',{key:'Home',cancelable:true});assertTab(game,'market');
   game.dom.hex(game.saved().clusters[0].center).click();assertTab(game,'market');assert.equal(game.saved().actionMode,null,'Ordinary map inspection does not start excavation');
+});
+// Rules #shared-board and #military-deck: the standings table carries each faction's public counts
+// (the old Fleet panel's manifest), and the military deck is a pile with its own inspect view.
+test('Standings table shows public counts and the military deck is a pile of its own',()=>{
+  const storage=createStorage(),state=boot(storage).saved();
+  const coord=Object.keys(state.planets).find(k=>state.planets[k].owner===null&&!state.planets[k].hasColony);
+  Object.assign(state.planets[coord],{owner:1,upgrade:'harvester'});state.fleets[coord]={1:{settler:1,explorer:2,fleet:3}};
+  state.players[1].cardsPurchased=4;state.players[1].relicsExcavated=1;
+  state.players[0].military=[{key:'aegisOfSilentArchitects',id:'m1'},{key:'aegisOfSilentArchitects',id:'m2'},{key:'cinderDrive',id:'m3'}];
+  writeSave(storage,state);const game=boot(storage);
+  const track=game.dom.element('prestige-track').innerHTML;
+  assert(track.includes('role="table"'),'The standings are a table');
+  for(const label of ['Settlers','Explorers','Fleets','Strongest fleet power','Colonies','Harvesters','Shipyards','Excavated relics','Cards bought'])assert(track.includes(`aria-label="${label}"`),`${label} column`);
+  const row=track.split('role="row"').find(part=>part.includes(`<span class="sr-only">${game.saved().players[1].name}</span>`));
+  assert(row,"A row for the second faction");
+  const saved=game.saved(),total=type=>Object.values(saved.fleets).reduce((n,group)=>n+(group[1]?.[type]||0),0);
+  const harvesters=Object.values(saved.planets).filter(p=>p.owner===1&&p.upgrade==='harvester').length;
+  assert(total('fleet')>=3&&harvesters>=1);
+  for(const [label,value] of [['settlers',total('settler')],['explorers',total('explorer')],['fleets',total('fleet')],['harvesters',harvesters],['excavated relics',1],['cards bought',4]])
+    assert(row.includes(`: ${value} ${label}"`),`${label} is ${value}`);
+  assert.equal(String(game.dom.element('military-count').textContent),'3');
+  assert(game.dom.element('military-row').innerHTML.includes('2×'),'Two copies group');
+  assert(game.dom.element('military-basic-row').innerHTML.includes('Concentrated Fire'));
+  assert(/7 tactics/.test(game.dom.element('military-dialog-help').textContent),'Four basic tactics plus three cards');
+  assert(!/id="(fleet-panel|fleet-tab|fleet-glance)"/.test(fs.readFileSync(path.join(__dirname,'../prototypes/galactic-reach/index.html'),'utf8')),'The Fleet panel is gone');
 });
 function productionNumbers(game) {
  const html=game.dom.element('resource-grid').innerHTML;

@@ -129,6 +129,13 @@ function piecesState() {
   });
   return state;
 }
+// Rules #military-deck: four military cards owned (two of one design), so the pile is thick.
+function militaryState() {
+  const state = piecesState();
+  state.players[0].military = ['obeliskOfAnnihilation', 'aegisOfSilentArchitects', 'aegisOfSilentArchitects', 'cinderDrive'].map(key => card(key));
+  state.players[0].cardsPurchased = 6;
+  return state;
+}
 // Bank trades on the mat: 5 Matter to give and room for Data.
 function matTradeState() {
   const state = operationsState(['move', 'construct']);
@@ -212,7 +219,10 @@ const CASES = [
   { name: 'trade dialog', save: operationsState(['move']), click: ['#open-trade'], devices: true },
   { name: 'game menu', save: operationsState(['move']), click: ['#table-menu-button'], devices: true },
   { name: 'game menu, playtest changes', save: operationsState(['move']), click: ['#table-menu-button', '#playtest-changes summary'] },
-  { name: 'fleet tab', save: operationsState(['move']), click: ['#fleet-tab'], devices: true },
+  // Rules #military-deck: the military deck is a pile beside In play; it opens like the others.
+  { name: 'military deck pile', save: militaryState(), click: ['#military-button'], devices: 'tablet' },
+  // Phones: the Table drawer holds the race and the standings table.
+  { name: 'standings with units and worlds (Table drawer on phones)', save: piecesState(), click: ['.phone-drawers [data-drawer="table"]'], devices: true },
   { name: 'relics tab', save: operationsState(['move']), click: ['#relics-tab'] },
   { name: 'battle: escape choice', save: combatState('escape') },
   { name: 'battle: tactic choice', save: combatState('tactic') },
@@ -289,7 +299,7 @@ const MEASURE = `(() => {
   if ((!phone && doc.scrollHeight > H + 1) || doc.scrollWidth > W + 1) problems.push('page scrolls: ' + doc.scrollWidth + 'x' + doc.scrollHeight);
   // Containers allowed to scroll their own reference content.
   const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region' + (phone ? ', .board-map-region, .console, .resource-panel, .board-shared, .phase-stepper, #hand-panel .hand-tools' : '') + '';
-  const modal = document.querySelector('dialog[open], body.menu-open, #fleet-panel.active');
+  const modal = document.querySelector('dialog[open], body.menu-open');
   const scope = modal || document;
   // Hand cards are held as card tops that clip on purpose; a raised (pointed-at or focused)
   // card is checked like any other. Each top must still show its name and gain/cost row.
@@ -304,7 +314,7 @@ const MEASURE = `(() => {
     const summary = [top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(e => e && e.getClientRects().length) || top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
     // An open Sector Scan (a popover over the map) may cover card tops while it is open.
-    if (!document.querySelector(':is(dialog[open], body.menu-open, #fleet-panel.active, .sector-popover:popover-open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
+    if (!document.querySelector(':is(dialog[open], body.menu-open, .sector-popover:popover-open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
       const c = chip.getBoundingClientRect(), hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       if (!hit || !top.contains(hit)) { problems.push('gain badge covered in ' + label(top)); break; }
     }
@@ -385,7 +395,7 @@ const MEASURE = `(() => {
     if (matchMedia('(orientation: landscape)').matches) {
       if (!document.querySelector('.log-panel.open')) {
         const hexes = [...board.querySelectorAll('.hex')].map(hex => hex.getBoundingClientRect());
-        const panels = [...document.querySelectorAll('#prestige-track, .phase-stepper, .log-panel, #fleet-glance, .map-tools, #map-legend-corner, #hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].filter(shown);
+        const panels = [...document.querySelectorAll('#prestige-track, .standings-stats, .phase-stepper, .log-panel, .map-tools, #map-legend-corner, #hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].filter(shown);
         const apart = (h, o) => Math.max(o.left - h.right, h.left - o.right, o.top - h.bottom, h.top - o.bottom, 0);
         const gaps = [['region left', Math.min(...hexes.map(h => h.left)) - r.left], ['region top', Math.min(...hexes.map(h => h.top)) - r.top], ['region bottom', r.bottom - Math.max(...hexes.map(h => h.bottom))],
           ...panels.map(e => { const o = e.getBoundingClientRect(); return [label(e).slice(0, 40), Math.min(...hexes.map(h => apart(h, o)))]; })];
@@ -401,8 +411,8 @@ const MEASURE = `(() => {
   // or hex stays under 4% of the window (measured on an 8px grid).
   // Only the table during a game is measured (not a waiting room, nor a shared table's top bar).
   const tableArea = document.querySelector('.app-shell')?.getBoundingClientRect();
-  if (!phone && !modal && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, #fleet-panel.active, .board-stage.map-zoomed')) {
-    const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .phase-stepper, .log-panel, #fleet-glance, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
+  if (!phone && !modal && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, .board-stage.map-zoomed')) {
+    const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .standings-stats, .phase-stepper, .log-panel, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
     const cell = 8, cols = Math.ceil(innerWidth / cell), rows = Math.ceil(innerHeight / cell), heights = new Array(cols).fill(0);
     const covered = new Uint8Array(cols * rows);
     // Everything outside the table area counts as covered.
@@ -425,7 +435,7 @@ const MEASURE = `(() => {
     if (share > 0.04) problems.push('wasted felt: an empty ' + at[2] + 'x' + at[3] + ' rectangle at ' + at[0] + ',' + at[1] + ' (' + (share * 100).toFixed(1) + '% of the window)');
   }
   // Supply pieces never lie on one another (a raised or open piece may).
-  if (!phone && !modal && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), #fleet-panel.active')) {
+  if (!phone && !modal && !document.querySelector('.game-card:is(:hover, :focus, :focus-within)')) {
     const pieces = [...document.querySelectorAll('#upgrade-market, #open-trash, #market-row > .game-card, #relics-panel > .section-intro, .relic-row, .phase-stepper, .board-toolbar, .console-nav, #hand-panel .hand-tools, .resource-grid, .map-legend-corner, .prestige-track, .log-panel')].filter(shown);
     const box = e => e.getBoundingClientRect();
     outer: for (let i = 0; i < pieces.length; i++) for (let j = i + 1; j < pieces.length; j++) {
