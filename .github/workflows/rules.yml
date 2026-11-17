@@ -15,6 +15,8 @@ jobs:
     name: Rules contract
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    env:
+      REVIEW_CONVENTIONS_HOME: .review-conventions
     steps:
       - uses: actions/checkout@v4
         with:
@@ -22,6 +24,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
+      # The shared validator that runs .github/rules-contract.json; the pin is
+      # scripts/lib/review-conventions.cjs (the tests check the two agree).
+      - uses: actions/checkout@v4
+        with:
+          repository: bitswell-hq/review-conventions
+          ref: v1
+          path: .review-conventions
+          persist-credentials: false
       - run: node scripts/test-rules-contract.cjs
       - run: node scripts/check-rulebook.cjs
       - if: github.event_name == 'pull_request'
