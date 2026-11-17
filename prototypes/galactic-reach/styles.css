@@ -2859,6 +2859,10 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   /* Right column: the relics row, then the market rows, all real cards of one size. */
   #relics-panel, #relics-panel[hidden], #relics-panel.tab-panel { grid-column: 3 !important; grid-row: 1 !important; align-self: start !important; margin: 0 0 6px !important; }
   .tab-panel { grid-column: 3 !important; grid-row: 2 / 9 !important; }
+  /* The market spans the upgrade tray's grid rows. Its empty lower area must not
+     intercept pointer clicks on the upgrade cards underneath it. */
+  #market-panel { pointer-events: none; }
+  #market-panel :is(.game-card, .section-intro) { pointer-events: auto; }
   #relics-panel.tab-panel { grid-row: 1 !important; }
   #fleet-panel.active { grid-column: 3 !important; grid-row: 1 / 9 !important; }
   .relic-row { grid-template-columns: repeat(3, var(--card-w, 1fr)) !important; gap: 6px !important; }
