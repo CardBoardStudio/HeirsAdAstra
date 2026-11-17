@@ -1237,6 +1237,34 @@ fn harvester_headroom_delay(
     };
     Some((delay, free))
 }
+// Printed ship costs, with discounts applied only to the first construction.
+fn paid_ship_cost(view: &Value, action: &Value) -> Option<f64> {
+    let kind = action["kind"].as_str()?;
+    let printed = view["shipCosts"][kind].as_object()?;
+    if printed.is_empty()
+        || printed.iter().any(|(r, v)| {
+            !RESOURCE_KEYS.contains(&r.as_str())
+                || v.as_f64().is_none_or(|n| !n.is_finite() || n < 0.0)
+        })
+    {
+        return None;
+    }
+    let mut cost: [f64; 4] =
+        std::array::from_fn(|i| number(&view["shipCosts"][kind][RESOURCE_KEYS[i]]));
+    if action["type"] == "build" {
+        match action["discountResource"].as_str() {
+            Some("free") => cost = [0.0; 4],
+            Some("each") => cost.iter_mut().for_each(|n| *n = (*n - 1.0).max(0.0)),
+            Some(r) => {
+                if let Some(i) = RESOURCE_KEYS.iter().position(|key| *key == r) {
+                    cost[i] = (cost[i] - 1.0).max(0.0);
+                }
+            }
+            None => {}
+        }
+    }
+    Some(cost.iter().sum())
+}
 fn established_construction(me: &Value) -> bool {
     ["hand", "discard", "inPlay", "deckContents"]
         .iter()
@@ -2008,6 +2036,11 @@ impl BuiltinAgent {
                             }
                         {
                             86.0
+                        } else if view["investmentPlanning"] == true
+                            && view["settlerInvestmentDiscipline"] == true
+                            && paid_ship_cost(view, action).is_some_and(|cost| cost > 0.0)
+                        {
+                            -1.0
                         } else {
                             5.0
                         }
@@ -3774,6 +3807,59 @@ mod tests {
         view["players"][0]["hand"] = json!([]);
         view["players"][0]["discard"] = surplus;
         assert_eq!(from_hand, agent.score(&view, &trash));
+    }
+
+    #[test]
+    fn settler_discipline_replaces_units_but_rejects_paid_surplus() {
+        let mut agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["shipCosts"] = json!({"settler":{"matter":1,"energy":1,"biomass":1}});
+        view["fleets"] = json!({"0,0":{"0":{"settler":1,"fleet":1,"explorer":0}}});
+        let build = json!({"type":"build","kind":"settler","coord":"0,0"});
+        let pass = json!({"type":"pass"});
+        assert_eq!(agent.score(&view, &build), 5.0);
+        view["settlerInvestmentDiscipline"] = json!(true);
+        assert_eq!(agent.select_action(&view, &[build.clone(), pass]), 1);
+        let mut free = build.clone();
+        free["discountResource"] = json!("free");
+        assert_eq!(agent.score(&view, &free), 5.0);
+        free["discountResource"] = json!("each");
+        assert_eq!(agent.score(&view, &free), 5.0);
+        free["type"] = json!("second_build");
+        assert_eq!(
+            agent.score(&view, &free),
+            -1.0,
+            "Second build pays its cost"
+        );
+        free = build.clone();
+        free["discountResource"] = json!("matter");
+        assert_eq!(
+            agent.score(&view, &free),
+            -1.0,
+            "Partial discounts still cost resources"
+        );
+        view["fleets"]["0,0"]["0"]["settler"] = json!(0);
+        assert_eq!(agent.score(&view, &build), 86.0, "Replace consumed Settler");
+        view["fleets"]["0,0"]["0"]["settler"] = json!(1);
+        agent = BuiltinAgent::new(Strategy::Expansion, [17; 32]);
+        assert_eq!(agent.score(&view, &build), 86.0, "Expansion keeps two");
+        view["fleets"]["0,0"]["0"]["settler"] = json!(2);
+        assert_eq!(agent.score(&view, &build), -1.0);
+        view["shipCosts"] = json!(null);
+        assert_eq!(
+            agent.score(&view, &build),
+            5.0,
+            "Missing metadata preserves prior choice"
+        );
+        view["shipCosts"] = json!({"settler":{"matter":-1}});
+        assert_eq!(
+            agent.score(&view, &build),
+            5.0,
+            "Malformed metadata preserves prior choice"
+        );
+        view["investmentPlanning"] = json!(false);
+        assert_eq!(agent.score(&view, &build), 5.0);
     }
 
     #[test]

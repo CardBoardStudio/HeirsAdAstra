@@ -41,9 +41,9 @@ function audit(directory){
   assert(initial&&last);assert.equal(decision,null);const manifest=JSON.parse(fs.readFileSync(path.join(g.archive,'manifest.json')));assert.equal(hash(last),manifest.finalStateHash);
   balanced(initial,stocks(last),ledger,start,`${g.id} whole game`);
   const players=g.players.map(p=>{
-   const v=ledger[p.seat];for(const k of RES){assert.equal(v.gained[k],p.gained[k]);assert.equal(v.lost[k],p.lost[k]);assert.equal(v.bankGiven[k],p.bankGiven[k]);assert.equal(v.paidCosts[k]+v.starterUpgrades[k],p.spent[k],'Historical spent definition changed; review auditor');}
+   const v=ledger[p.seat];for(const k of RES){assert.equal(v.gained[k],p.gained[k]);assert.equal(v.lost[k],p.lost[k]);assert.equal(v.bankGiven[k],p.bankGiven[k]);const expected=v.paidCosts[k]+v.starterUpgrades[k]+(p.resourceAccounting==='receipt-ledger-v2'?v.trashing[k]+v.escape[k]+v.consortiumGiven[k]:0);assert.equal(expected,p.spent[k],'Spent definition differs from declared accounting');}
    const correctedSpent=Object.fromEntries(RES.map(k=>[k,v.paidCosts[k]+v.starterUpgrades[k]+v.trashing[k]+v.escape[k]+v.consortiumGiven[k]]));
-   const aggregate=profiles[p.profile]??={games:0,...blank(),correctedSpent:zero(),historicalSpent:zero()};aggregate.games++;for(const field of fields)for(const k of RES)aggregate[field][k]+=v[field][k];for(const k of RES){aggregate.correctedSpent[k]+=correctedSpent[k];aggregate.historicalSpent[k]+=p.spent[k];}
+   const aggregate=profiles[p.profile]??={games:0,...blank(),correctedSpent:zero(),historicalSpent:zero()};aggregate.games++;for(const field of fields)for(const k of RES)aggregate[field][k]+=v[field][k];for(const k of RES){aggregate.correctedSpent[k]+=correctedSpent[k];aggregate.historicalSpent[k]+=v.paidCosts[k]+v.starterUpgrades[k];}
    return {seat:p.seat,profile:p.profile,initial:initial.find(x=>x.id===p.seat).stock,final:last.players[p.seat].resources,...v,correctedSpent};
   });games.push({id:g.id,seed:g.seed,rotation:g.rotation,checkedDecisions:checked,players});
  }

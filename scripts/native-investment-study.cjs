@@ -1,7 +1,7 @@
 // Actual native standard policies over the authoritative browser adapter, with full archives.
 const fs=require('node:fs'),path=require('node:path'),{spawn}=require('node:child_process'),readline=require('node:readline');
 const {Worker,isMainThread,parentPort,workerData}=require('node:worker_threads');
-const {factory}=require('./strategic-bot-study.cjs'),{instrument,summarize}=require('./market-investment-study.cjs');
+const {factory,RESOURCE_ACCOUNTING}=require('./strategic-bot-study.cjs'),{instrument,summarize}=require('./market-investment-study.cjs');
 const {SimulationArchive,resultDirectory,hash}=require('./lib/simulation-archive.cjs');
 const ROOT=path.resolve(__dirname,'..'),RUNNER=fs.readFileSync(__filename,'utf8'),RES=['matter','energy','biomass','data'];
 const blank=()=>Object.fromEntries(RES.map(r=>[r,0]));
@@ -42,6 +42,7 @@ async function play(task,sources,directory,binary){
    if(task.protocol.protectedMarketBudget==='all'||task.protocol.protectedMarketBudget==='subject'&&actor===subjectSeat)observation.protectedMarketBudget=true;
    if(actor===subjectSeat&&task.protocol.subjectMarket&&task.protocol.subjectMarket!=='normal')observation.marketPurchasePolicy=task.protocol.subjectMarket;
    if(task.protocol.orderBenefits==='all'||task.protocol.orderBenefits==='subject'&&actor===subjectSeat)observation.orderBenefitPlanning=true;
+   if(task.protocol.constructionDiscipline==='all'||task.protocol.constructionDiscipline==='subject'&&actor===subjectSeat){observation.settlerInvestmentDiscipline=true;observation.fleetInvestmentDiscipline=true;observation.optionalConstructionPlanning=true;}
    if(task.protocol.fleetDiscipline==='all'||task.protocol.fleetDiscipline==='subject'&&actor===subjectSeat)observation.fleetInvestmentDiscipline=true;
    const buyKey=e.state.round+':'+actor;if(e.state.phase==='buy'&&!buyStarts.has(buyKey)){buyStarts.add(buyKey);market[actor].buyTurns++;}
    const response=await native.choose(task.profiles[actor],observation,legal);
@@ -82,7 +83,8 @@ else if(require.main===module){
  const harvesterHeadroom=arg('harvester-headroom','none');if(!['none','subject','all'].includes(harvesterHeadroom))throw Error('Invalid Harvester headroom mode');
  const optionalConstruction=arg('optional-construction','none');if(!['none','subject','all'].includes(optionalConstruction))throw Error('Invalid optional construction mode');
  const buyDiscount=arg('buy-discount','none');if(!['none','subject','all'].includes(buyDiscount))throw Error('Invalid Buy discount planning mode');
- const protocol={kind:'native-investment',variant,mode,buyDiscount,optionalConstruction,fleetDiscipline,colonyExecution,harvesterHeadroom,tacticalForecast,militaryHorizon,productionDiscipline,marketFilter,colonyPlanning,protectedMarketBudget,subjectMarket,orderBenefits,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
+ const constructionDiscipline=arg('construction-discipline','none');if(!['none','subject','all'].includes(constructionDiscipline))throw Error('Invalid construction discipline mode');
+ const protocol={constructionDiscipline,kind:'native-investment',resourceAccounting:RESOURCE_ACCOUNTING,variant,mode,buyDiscount,optionalConstruction,fleetDiscipline,colonyExecution,harvesterHeadroom,tacticalForecast,militaryHorizon,productionDiscipline,marketFilter,colonyPlanning,protectedMarketBudget,subjectMarket,orderBenefits,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
  fs.writeFileSync(path.join(out,'protocol.json'),JSON.stringify(protocol,null,2));console.log('Study output: '+out);
  const tasks=[];for(let i=0;i<seeds;i++)for(const rotation of rotations)tasks.push({id:tasks.length,variant,mode,seed:seedStart+7919*i,rotation,target,profiles:profiles.map((_,j)=>profiles[(j+rotation)%4]),maxRound,maxSteps:18000,protocol});
  let next=0,failures=0;const games=[];

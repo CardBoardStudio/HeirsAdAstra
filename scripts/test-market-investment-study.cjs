@@ -8,7 +8,9 @@ const directory=process.env.GR_SIMULATION_ARCHIVE_DIR||path.join(root,'output/st
 const streams=[[],[]],random=i=>{let seed=9181;return()=>{const x=(seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32;streams[i].push(x);return x;};};
 const control=factory(app,adapter)({random:random(0),victoryTarget:30,archiveDirectory:directory,archiveMetadata:{kind:'instrumentation-control'}});
 const metrics=Array.from({length:4},()=>({marketBuys:{},marketPlays:{},militaryTacticPlays:{},harvestersBuilt:0,firstHarvesterRound:null,firstMarketRound:null,buyTurns:0,affordableOffers:0,valuableOffers:0}));
-const measured=factory(instrument(app),adapter)({random:random(1),victoryTarget:30,marketMetrics:metrics,archiveDirectory:directory,archiveMetadata:{kind:'instrumentation-measured'},archiveSources:{'market-study.cjs':fs.readFileSync(path.join(__dirname,'market-investment-study.cjs'),'utf8')}});
+const zero=()=>({matter:0,energy:0,biomass:0,data:0});
+const studyMetrics=Array.from({length:4},()=>({gained:zero(),lost:zero(),spent:zero(),bankGiven:zero(),bankReceived:zero(),ships:{settler:0,explorer:0,fleet:0},draws:0,upgrades:0,colonizations:0,captures:0}));
+const measured=factory(instrument(app),adapter)({random:random(1),victoryTarget:30,marketMetrics:metrics,studyMetrics,archiveDirectory:directory,archiveMetadata:{kind:'instrumentation-measured'},archiveSources:{'market-study.cjs':fs.readFileSync(path.join(__dirname,'market-investment-study.cjs'),'utf8')}});
 for(const game of [control,measured])game.e.state.players.forEach((p,i)=>p.strategy=['market','economy','expansion','military'][i]);
 function step(e){if(e.state.pendingCombat){const id=e.combatActor();e.applyCombatAction(id,e.chooseCombatAction(e.combatView(id),e.combatActions(id)));}else if(e.state.phase==='operations')e.runAiOperation();else e.runAiBuy();}
 let decisions=0;
@@ -20,6 +22,7 @@ try{
     assert.equal(measured.e.turnSerial,control.e.turnSerial);assert.equal(measured.e.cardSerial,control.e.cardSerial);
   }
   assert.deepEqual(streams[1],streams[0],'Metrics must not add or remove RNG calls');
+  for(const m of studyMetrics){assert.equal(m.resourceAccounting,'receipt-ledger-v2');for(const k of Object.keys(zero())){const v=m.resourceLedger;assert.equal(m.spent[k],v.paidCosts[k]+v.starterUpgrades[k]+v.trashing[k]+v.escape[k]+v.consortiumGiven[k]);}}
   assert(metrics.some(m=>m.harvestersBuilt>0));assert(metrics.some(m=>m.buyTurns>0));
 }finally{for(const game of [control,measured])game.archive.finish({reason:'instrumentation-verification',incomplete:game.e.state.winner===null});}
 for(const game of [control,measured])assert.equal(JSON.stringify(readArchive(game.archive.directory).state),JSON.stringify(game.e.state));

@@ -5,6 +5,8 @@ let e;const create=ctx.createGalacticAdapter;ctx.createGalacticAdapter=p=>{e=p;r
 const a=ctx.createGalacticReach({headless:true,random:()=>.3}),view=a.observe(0);
 assert.equal(JSON.stringify(view.harvesterCost),JSON.stringify(e.STRUCTURES.harvester.cost));
 view.harvesterCost.matter=99;assert.equal(e.STRUCTURES.harvester.cost.matter,1);assert.equal(a.observe(1).harvesterCost.matter,1,'Printed costs are cloned public metadata');
+for(const [kind,stats] of Object.entries(e.SHIP_STATS))assert.equal(JSON.stringify(view.shipCosts[kind]),JSON.stringify(stats.cost));
+view.shipCosts.settler.matter=99;assert.equal(e.SHIP_STATS.settler.cost.matter,1);assert.equal(a.observe(1).shipCosts.settler.matter,1,'Ship costs are public clones, not mutable engine definitions');
 let checked=0;
 for(const [key,card] of Object.entries(e.ALL_CARDS)){
  const stats=view.cardStats[key];

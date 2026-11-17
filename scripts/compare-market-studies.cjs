@@ -15,6 +15,7 @@ function compareRows(left,right,repeats=10000){
 }
 function compare(left,right){
  const read=d=>{const p=JSON.parse(fs.readFileSync(path.join(d,'protocol.json'))),raw=fs.readFileSync(path.join(d,'results.jsonl'),'utf8'),rows=raw.trim().split('\n').filter(Boolean).map(JSON.parse);assert.equal(rows.length,p.seeds*p.rotations.length,'Unfinished scheduled batch');return{protocol:p,rows,resultsHash:hash(raw)};},a=read(left),b=read(right);
+ assert.equal(a.protocol.resourceAccounting,b.protocol.resourceAccounting,'Resource accounting versions differ');
  assert.equal(a.protocol.target,b.protocol.target);assert.equal(a.protocol.binaryHash,b.protocol.binaryHash,'Policy binary mismatch');assert.deepEqual(a.protocol.sourceHashes,b.protocol.sourceHashes,'Frozen sources mismatch');
  return {left,right,sourceHash:hash(fs.readFileSync(__filename)),leftResultsHash:a.resultsHash,rightResultsHash:b.resultsHash,protocols:{left:a.protocol,right:b.protocol},...compareRows(a.rows,b.rows)};
 }
