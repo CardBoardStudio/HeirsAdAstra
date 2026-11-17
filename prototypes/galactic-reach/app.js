@@ -3677,10 +3677,11 @@ function createGalacticReach(options = {}) {
     // teaches itself without opening the Map key (which keeps the full descriptions).
     const corner = $('#map-legend-corner');
     const pieceCost = type => type === 'colony' ? { biomass: 2 } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
-    if (corner) corner.innerHTML = `<span class="legend-terrain">${RESOURCES.map(resource => `<span class="legend-res ${resource}"><i></i>${RESOURCE_NAMES[resource]}</span>`).join('')}</span>`
-      + entries.map(([type,label]) => `<span class="legend-piece">${BOARD_ICONS[type]}<b>${label}</b>${resourceDots(pieceCost(type))}${type === 'harvester' ? `<em>makes ${HARVESTER_YIELD}</em>` : ''}</span>`).join('')
-      + `<span class="legend-piece legend-excavate"><span class="legend-icon">◈</span><b>Excavate</b>${resourceDots(EXCAVATION_COST)}</span>`
-      + `<span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
+    const costRow = (icon, label, cost) => `<tr><th scope="row"><span class="legend-cost-name">${icon}<b>${label}</b></span></th>${RESOURCES.map(resource => `<td>${cost?.[resource] || ''}</td>`).join('')}</tr>`;
+    if (corner) corner.innerHTML = `<table class="legend-cost-table" aria-label="Resource costs"><thead><tr><th scope="col">Build</th>${RESOURCES.map(resource => `<th scope="col"><span class="legend-res ${resource}"><i></i>${RESOURCE_NAMES[resource]}</span></th>`).join('')}</tr></thead><tbody>`
+      + entries.map(([type,label]) => costRow(BOARD_ICONS[type], label, pieceCost(type))).join('')
+      + costRow('<span class="legend-icon">◈</span>', 'Excavate', EXCAVATION_COST)
+      + `</tbody></table><span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
     $('#symbol-legend').innerHTML = `<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) => {
       const cost = type === 'colony' ? { biomass: 2 } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
       return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-cost">${resourceDots(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
