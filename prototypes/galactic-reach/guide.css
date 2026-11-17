@@ -59,3 +59,8 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
 /* Floating beside its anchor (Learn to play): clicks pass through to the table, except its own controls. */
 .gr-coach:not(.docked):not(.in-dialog) { pointer-events: none; }
 .gr-coach:not(.docked):not(.in-dialog) :is(button, a) { pointer-events: auto; }
+/* A long docked note shows its first lines until you choose More. */
+.gr-coach.docked { font-size: 12px; line-height: 1.38; }
+.gr-coach.docked .gr-coach-title { font-size: 16px; }
+.gr-coach.clamped .gr-coach-text { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: var(--lines, 4); overflow: hidden; }
+.gr-coach [data-coach="more"][hidden] { display: none; }

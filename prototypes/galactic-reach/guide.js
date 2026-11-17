@@ -174,6 +174,7 @@
       const action = button.dataset.coach;
       if (action === 'got-it') { prefs.seen[button.dataset.id] = true; savePrefs(); }
       if (action === 'hide') setEnabled(false);
+      if (action === 'more') { coach.dataset.expanded = String(coach.dataset.expanded !== 'true'); if (currentAnchor !== undefined) position(coach, currentAnchor); return; }
       globalThis.galacticReachTutorial?.coachAction?.(action, button.dataset);
       schedule();
     });
@@ -201,8 +202,10 @@
     const key = JSON.stringify([tip.id, tip.title, tip.text, tip.step]);
     if (key !== lastKey) {
       lastKey = key;
+      box.dataset.expanded = 'false';
+      const buttons = [...(tip.buttons || []), ...(tip.dock ? [{ action: 'more', label: 'More' }] : [])];
       const bar = tip.progress ? `<ol class="gr-coach-progress" aria-hidden="true">${Array.from({ length: tip.progress.lessons }, (_, i) => `<li class="${i < tip.progress.finishedLessons ? 'done' : ''}${i === tip.progress.current ? ' current' : ''}"></li>`).join('')}</ol>` : '';
-      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${(tip.buttons || []).map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}" data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
+      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}" data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
       if (!tip.quiet && tip.text !== lastAnnounced) lastAnnounced = tip.text;
     }
     box.hidden = false;
@@ -228,7 +231,7 @@
     const r = key.getBoundingClientRect();
     if (r.width < 200 || r.height < 120) return null;
     const above = $('#fleet-glance')?.getBoundingClientRect();
-    return { left: r.left, width: r.width, bottom: r.bottom, ceiling: above?.height ? above.bottom + 8 : 10 };
+    return { left: r.left, width: r.width, top: r.top, bottom: r.bottom, ceiling: above?.height ? above.bottom + 8 : 10 };
   }
 
   // Beside the anchor, never over it and never off screen (the table does not scroll).
@@ -236,10 +239,24 @@
     const margin = 10, gap = 14, vw = innerWidth, vh = innerHeight;
     const dock = box.classList.contains('docked') ? dockRect() : null;
     if (dock) {
+      // Within the map key's own area; a longer note shows its first lines and a More button.
+      // More lets it grow upward, over the map, because you asked to read it all.
       box.style.width = `${Math.round(dock.width)}px`;
+      const text = box.querySelector('.gr-coach-text'), more = box.querySelector('[data-coach="more"]');
+      const expanded = box.dataset.expanded === 'true';
+      box.classList.remove('clamped'); text?.style.removeProperty('--lines');
+      const room = (expanded ? dock.bottom - dock.ceiling : dock.bottom - dock.top);
+      if (text && box.offsetHeight > room) {
+        const line = parseFloat(getComputedStyle(text).lineHeight) || 17;
+        const rest = box.offsetHeight - text.offsetHeight + (more ? 0 : 34);
+        box.classList.add('clamped');
+        text.style.setProperty('--lines', String(Math.max(2, Math.floor((room - rest) / line))));
+      }
+      if (more) more.hidden = !box.classList.contains('clamped') && !expanded;
+      if (more) more.textContent = expanded ? 'Less' : 'More';
       const tall = box.offsetHeight;
       box.style.left = `${Math.round(dock.left)}px`;
-      box.style.top = `${Math.round(Math.max(dock.ceiling, dock.bottom - tall))}px`;
+      box.style.top = `${Math.round(Math.max(expanded ? dock.ceiling : dock.top, dock.bottom - tall))}px`;
       box.dataset.side = 'none';
       return;
     }
