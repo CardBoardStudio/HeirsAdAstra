@@ -19,9 +19,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         let request: Request = serde_json::from_str(&line?)?;
         let strategy = match request.profile.as_str() {
             "economy" => Strategy::Economy,
+            "market" => Strategy::Market,
             "military" => Strategy::Military,
             "expansion" => Strategy::Expansion,
-            _ => return Err("Study bridge accepts only deterministic standard policies".into()),
+            _ => {
+                return Err(
+                    "Study bridge accepts only deterministic standard/research policies".into(),
+                );
+            }
         };
         if request.legal.is_empty() {
             return Err("Study request has no legal actions".into());

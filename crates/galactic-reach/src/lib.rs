@@ -523,6 +523,7 @@ impl GameAdapter for GalacticReach {
 pub enum Strategy {
     Military,
     Economy,
+    Market,
     Expansion,
     Wanderer,
 }
@@ -531,6 +532,7 @@ impl Strategy {
         match self {
             Self::Military => "gr-military/29",
             Self::Economy => "gr-economy/29",
+            Self::Market => "gr-market/29",
             Self::Expansion => "gr-expansion/29",
             Self::Wanderer => "gr-wanderer/29",
         }
@@ -539,6 +541,7 @@ impl Strategy {
         match version {
             "gr-military/29" => Some(Self::Military),
             "gr-economy/29" => Some(Self::Economy),
+            "gr-market/29" => Some(Self::Market),
             "gr-expansion/29" => Some(Self::Expansion),
             "gr-wanderer/29" => Some(Self::Wanderer),
             _ => None,
@@ -740,12 +743,58 @@ fn observed_buy_prestige(view: &Value, key: &str) -> Option<f64> {
     let prestige = number(&view["marketPrestige"].as_array()?[index]);
     (prestige > 0.0).then_some(prestige)
 }
+fn market_combat_opportunity(view: &Value, seat: usize) -> bool {
+    let mut own_fleets = Vec::new();
+    let mut enemy_fleets = Vec::new();
+    let mut own_yards = Vec::new();
+    let mut enemy_yards = Vec::new();
+    for (at, group) in view["fleets"].as_object().into_iter().flatten() {
+        if number(&group[seat.to_string()]["fleet"]) > 0.0 {
+            own_fleets.push(at.as_str());
+        }
+        if group
+            .as_object()
+            .into_iter()
+            .flatten()
+            .any(|(id, f)| *id != seat.to_string() && number(&f["fleet"]) > 0.0)
+        {
+            enemy_fleets.push(at.as_str());
+        }
+    }
+    for (at, p) in view["planets"].as_object().into_iter().flatten() {
+        if p["upgrade"] != "starbase" {
+            continue;
+        }
+        if p["owner"] == json!(seat) {
+            own_yards.push(at.as_str());
+        } else if p["owner"].as_u64().is_some_and(|id| id as usize != seat) {
+            enemy_yards.push(at.as_str());
+        }
+    }
+    own_fleets.iter().any(|a| {
+        enemy_fleets
+            .iter()
+            .chain(&enemy_yards)
+            .any(|b| travel_distance(view, a, b) <= 3.0)
+    }) || own_yards.iter().any(|a| {
+        enemy_fleets
+            .iter()
+            .any(|b| travel_distance(view, a, b) <= 3.0)
+    })
+}
 fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
     let (table_cost, table_prestige, military) = capacity_card(key)?;
     let cost = observed_cost(view, key).unwrap_or(table_cost);
     let prestige = observed_buy_prestige(view, key).unwrap_or(table_prestige);
     let me = &view["players"][seat];
     if military && bot_units(view, seat, "fleet") == 0.0 {
+        return None;
+    }
+    if military
+        && view["investmentPlanning"] == true
+        && view["_rival_market_focus"] == true
+        && view["_rival_market_combat_opportunity"] != true
+    {
         return None;
     }
     let owned = ["hand", "discard", "inPlay", "military"]
@@ -798,6 +847,10 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
         value = 10.0 + improvement * 5.0;
         if tactics.len() >= 3 && improvement <= 0.0 {
             value -= 18.0;
+        }
+        // Like other engine investments, a tactic needs an opportunity to pay off.
+        if view["militaryHorizon"] == true && horizon == 1.0 {
+            value -= 15.0;
         }
     } else {
         value -= owned * if draw >= 2.0 { 9.0 } else { 12.0 };
@@ -1130,6 +1183,162 @@ fn bot_cost(view: &Value, seat: usize) -> Value {
         json!({"matter":2,"energy":2,"biomass":2,"data": if view["relicRow"].as_array().is_some_and(|r|!r.is_empty()){2}else{1}})
     }
 }
+// Restricted public-tactic model: one Fleet each, no reaction/order bonuses.
+fn fleet_tactic_hand(view: &Value, seat: usize, used: &Value) -> Value {
+    let mut hand = json!({"concentratedFire":2,"defensiveScreen":2});
+    for card in view["players"][seat]["military"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        if let Some(key) = card["key"].as_str() {
+            hand[key] = json!(hand[key].as_u64().unwrap_or(0) + 1);
+        }
+    }
+    for key in used
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+    {
+        hand[key] = json!(hand[key].as_u64().unwrap_or(0).saturating_sub(1));
+    }
+    hand
+}
+fn fleet_tactic_plan(
+    view: &Value,
+    own: &Value,
+    enemy: &Value,
+    hull: i16,
+    enemy_hull: i16,
+    volley: u8,
+) -> Option<(i8, String)> {
+    use std::collections::HashMap;
+    type Position = (i16, i16, u64, u64, u8);
+    type Plan = (i8, usize);
+    struct Search {
+        stats: Vec<(i16, i16, bool)>,
+        memo: HashMap<Position, Plan>,
+    }
+    impl Search {
+        fn visit(&mut self, a: i16, b: i16, ours: u64, theirs: u64, n: u8) -> (i8, usize) {
+            if a <= 0 {
+                return (-1, 0);
+            }
+            if b <= 0 {
+                return (1, 0);
+            }
+            if n >= 3 {
+                return (0, 0);
+            }
+            let key = (a, b, ours, theirs, n);
+            if let Some(v) = self.memo.get(&key) {
+                return *v;
+            }
+            let mut best = (-2, 0);
+            for i in 0..self.stats.len() {
+                if (ours >> (2 * i)) & 3 == 0 {
+                    continue;
+                }
+                let (attack, shield, pierce) = self.stats[i];
+                let mut worst = 1;
+                for j in 0..self.stats.len() {
+                    if (theirs >> (2 * j)) & 3 == 0 {
+                        continue;
+                    }
+                    let (enemy_attack, enemy_shield, enemy_pierce) = self.stats[j];
+                    let damage = (3 + attack - if pierce { 0 } else { enemy_shield }).max(0);
+                    let received =
+                        (3 + enemy_attack - if enemy_pierce { 0 } else { shield }).max(0);
+                    worst = worst.min(
+                        self.visit(
+                            a - received,
+                            b - damage,
+                            ours - (1 << (2 * i)),
+                            theirs - (1 << (2 * j)),
+                            n + 1,
+                        )
+                        .0,
+                    );
+                    if worst == -1 {
+                        break;
+                    }
+                }
+                if worst > best.0 {
+                    best = (worst, i)
+                }
+                if best.0 == 1 {
+                    break;
+                }
+            }
+            self.memo.insert(key, best);
+            best
+        }
+    }
+    let keys: Vec<&str> = view["tacticStats"]
+        .as_object()?
+        .keys()
+        .map(String::as_str)
+        .collect();
+    if keys.is_empty() || keys.len() > 32 || hull <= 0 || enemy_hull <= 0 || volley >= 3 {
+        return None;
+    }
+    let encode = |hand: &Value| {
+        keys.iter().enumerate().fold(0_u64, |bits, (i, k)| {
+            bits | (hand[*k].as_u64().unwrap_or(0).min(3) << (2 * i))
+        })
+    };
+    let ours = encode(own);
+    let theirs = encode(enemy);
+    if ours == 0 || theirs == 0 {
+        return None;
+    }
+    let stats = keys
+        .iter()
+        .map(|k| {
+            let (a, s, p) = tactic_stats(view, k);
+            (a as i16, s as i16, p)
+        })
+        .collect();
+    let (score, index) = Search {
+        stats,
+        memo: HashMap::new(),
+    }
+    .visit(hull, enemy_hull, ours, theirs, volley);
+    Some((score, keys[index].to_string()))
+}
+fn combat_fleet_tactic_plan(view: &Value) -> Option<String> {
+    if view["singleFleetForecast"] != true {
+        return None;
+    }
+    let combat = &view["combat"];
+    let side = combat["side"].as_str()?;
+    let own = &combat["sides"][side];
+    let enemy = &combat["sides"][if side == "attacker" {
+        "defender"
+    } else {
+        "attacker"
+    }];
+    let piece = |force: &Value| -> Option<i16> {
+        let pieces = force["pieces"].as_array()?;
+        if pieces.len() != 1 || pieces[0]["type"] != "fleet" {
+            return None;
+        }
+        Some((number(&pieces[0]["hull"]) - number(&pieces[0]["damage"])) as i16)
+    };
+    let enemy_id = enemy["playerId"].as_u64()? as usize;
+    let hand = fleet_tactic_hand(view, enemy_id, &enemy["used"]);
+    let (score, tactic) = fleet_tactic_plan(
+        view,
+        &own["hand"],
+        &hand,
+        piece(own)?,
+        piece(enemy)?,
+        combat["volley"].as_u64()?.saturating_sub(1) as u8,
+    )?;
+    (score == 1).then_some(tactic)
+}
+
 fn bot_safe_fight(view: &Value, seat: usize, moving: &Value, target: &str) -> bool {
     let opponent = view["fleets"][target].as_object().and_then(|g| {
         g.iter().find(|(id, f)| {
@@ -1159,7 +1368,25 @@ fn bot_safe_fight(view: &Value, seat: usize, moving: &Value, target: &str) -> bo
     if number(&moving["settler"]) > 0.0 {
         return enemy_attack <= 1.0 && attack - 2.0 >= enemy_hull;
     }
-    attack * 3.0 - 4.0 >= enemy_hull && hull > enemy_attack * 3.0 + 2.0
+    let old_safe = attack * 3.0 - 4.0 >= enemy_hull && hull > enemy_attack * 3.0 + 2.0;
+    if old_safe {
+        return true;
+    }
+    if view["singleFleetForecast"] == true
+        && !yard
+        && number(&moving["fleet"]) == 1.0
+        && number(&moving["explorer"]) == 0.0
+        && number(&enemy["fleet"]) == 1.0
+        && number(&enemy["settler"]) == 0.0
+        && number(&enemy["explorer"]) == 0.0
+        && let Some((id, _)) = opponent
+        && let Ok(enemy_id) = id.parse::<usize>()
+    {
+        let own_hand = fleet_tactic_hand(view, seat, &Value::Null);
+        let enemy_hand = fleet_tactic_hand(view, enemy_id, &Value::Null);
+        return fleet_tactic_plan(view, &own_hand, &enemy_hand, 7, 7, 0).is_some_and(|p| p.0 == 1);
+    }
+    false
 }
 fn bot_limit(view: &Value, seat: usize, resource: &str) -> f64 {
     view["players"][seat]["resourceLimits"][resource]
@@ -1356,7 +1583,7 @@ impl BuiltinAgent {
         let seat = view["seat"].as_u64().unwrap() as usize;
         let me = &view["players"][seat];
         let military = matches!(self.strategy, Strategy::Military);
-        let economy = matches!(self.strategy, Strategy::Economy);
+        let economy = matches!(self.strategy, Strategy::Economy | Strategy::Market);
         match action["type"].as_str().unwrap_or("") {
             "combat_stay" => 30.0,
             "combat_escape" => {
@@ -1387,6 +1614,13 @@ impl BuiltinAgent {
                 }
             }
             "combat_tactic" => {
+                if let Some(tactic) = view["_rival_fleet_tactic"].as_str() {
+                    return if action["tactic"] == tactic {
+                        10000.0
+                    } else {
+                        -10000.0
+                    };
+                }
                 // Only public used tactics and our own hand are in this view.
                 // An opponent's pending commitment is deliberately unavailable.
                 let combat = &view["combat"];
@@ -1984,7 +2218,13 @@ impl BuiltinAgent {
                         -20.0
                     } else if capacity_need(view, seat).is_some() || worthwhile {
                         if established_construction(me) {
-                            100.0
+                            if matches!(self.strategy, Strategy::Market)
+                                && capacity_need(view, seat).is_some()
+                            {
+                                134.0
+                            } else {
+                                100.0
+                            }
                         } else {
                             90.0
                         }
@@ -2016,7 +2256,11 @@ impl BuiltinAgent {
                             if v > 0.0 {
                                 if view["investmentPlanning"] == true
                                     && established_construction(me)
-                                    && v >= 24.0
+                                    && v >= if matches!(self.strategy, Strategy::Market) {
+                                        18.0
+                                    } else {
+                                        24.0
+                                    }
                                 {
                                     120.0 + v
                                 } else {
@@ -2167,6 +2411,15 @@ impl PlayerAgent<GalacticReach> for BuiltinAgent {
         // Hundreds of legal split moves share the same public defense plan.
         // Cache it only for this decision, never across changes to the table.
         let mut planned = observation.clone();
+        planned["_rival_fleet_tactic"] = json!(combat_fleet_tactic_plan(observation));
+        planned["_rival_market_focus"] = json!(matches!(self.strategy, Strategy::Market));
+        planned["_rival_market_combat_opportunity"] = json!(
+            matches!(self.strategy, Strategy::Market)
+                && market_combat_opportunity(
+                    observation,
+                    observation["seat"].as_u64().unwrap() as usize
+                )
+        );
         let defense: Vec<Value> =
             colony_defense(observation, observation["seat"].as_u64().unwrap() as usize)
                 .into_iter()
@@ -2430,6 +2683,187 @@ mod tests {
         );
         view["players"][1]["hand"] = json!([{"key":"genesisCharter"}]);
         assert_eq!(number(&bot_storage_reserve(&view, 0)["data"]), 5.0);
+    }
+    #[test]
+    fn market_research_profile_keeps_economy_core_and_prioritizes_useful_purchases() {
+        let mut market = BuiltinAgent::new(Strategy::Market, [8; 32]);
+        let mut economy = BuiltinAgent::new(Strategy::Economy, [8; 32]);
+        assert!(agent("gr-market/29", [0; 32]).is_ok());
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":4,"phase":"buy","victoryTarget":30,"players":[{"prestige":6,"resources":{"matter":4,"energy":4,"biomass":4,"data":4},"resourceLimits":{"matter":4,"energy":4,"biomass":4,"data":4},"hand":[{"id":"c","key":"construct","starter":true,"upgraded":true,"level":2}],"handCount":1,"deckCount":9,"deckContents":[{"key":"move","count":9}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"}},"fleets":{},"clusters":[],"market":[{"key":"signalRelay"}],"marketCosts":[{"energy":2,"data":1}],"cardStats":{"signalRelay":{"draw":2,"order":"special"}}});
+        let legal = vec![
+            json!({"type":"upgrade","card":"c","resource":"matter"}),
+            json!({"type":"buy","source":"market","key":"signalRelay"}),
+        ];
+        assert_eq!(economy.select_action(&view, &legal), 0);
+        assert_eq!(market.select_action(&view, &legal), 1);
+        view["players"][0]["hand"][0]["upgraded"] = json!(false);
+        view["players"][0]["hand"][0]["level"] = json!(1);
+        assert_eq!(
+            market.select_action(&view, &legal),
+            0,
+            "First Construct II is protected"
+        );
+        view["phase"] = json!("operations");
+        view["planets"]["0,0"]["hasColony"] = json!(true);
+        view["planets"]["1,0"] = json!({"owner":0,"type":"matter","cluster":0});
+        let build = json!({"type":"build","kind":"harvester","coord":"1,0"});
+        assert_eq!(
+            market.score(&view, &build),
+            economy.score(&view, &build),
+            "Market priority does not replace the Economy production core"
+        );
+        view["phase"] = json!("buy");
+        view["players"][0]["hand"][0]["upgraded"] = json!(true);
+        view["players"][0]["hand"][0]["level"] = json!(2);
+        view["players"][0]["storageUpgradeCost"] =
+            json!({"matter":1,"energy":1,"biomass":1,"data":1});
+        view["market"] = json!([{"key":"commandNexus"}]);
+        view["marketCosts"] = json!([{"energy":2,"data":6}]);
+        view["cardStats"] = json!({"commandNexus":{"draw":4,"order":"special"}});
+        let capacity = vec![
+            legal[0].clone(),
+            json!({"type":"buy","source":"capacity","key":"capacityModule"}),
+        ];
+        assert_eq!(economy.select_action(&view, &capacity), 0);
+        assert_eq!(
+            market.select_action(&view, &capacity),
+            1,
+            "Market profile can fund capacity before another starter upgrade"
+        );
+    }
+    #[test]
+    fn military_purchase_horizon_discounts_only_late_opt_in_investments() {
+        let mut view = json!({"seat":0,"victoryTarget":30,"players":[{"prestige":26,"resources":{},"resourceLimits":{"matter":10,"energy":10,"biomass":10,"data":10},"military":[]}],"fleets":{"0,0":{"0":{"fleet":1}}},"planets":{},"market":[{"key":"aegisLattice"}],"marketCosts":[{"matter":7,"energy":2}],"cardStats":{"aegisLattice":{"shield":8}}});
+        let baseline = capacity_value(&view, 0, "aegisLattice").unwrap();
+        view["militaryHorizon"] = json!(true);
+        assert_eq!(
+            capacity_value(&view, 0, "aegisLattice").unwrap(),
+            baseline - 15.0
+        );
+        view["players"][0]["prestige"] = json!(10);
+        let early = capacity_value(&view, 0, "aegisLattice").unwrap();
+        view["militaryHorizon"] = json!(false);
+        assert_eq!(capacity_value(&view, 0, "aegisLattice").unwrap(), early);
+        view["players"][0]["prestige"] = json!(30);
+        view["militaryHorizon"] = json!(true);
+        assert_eq!(
+            capacity_value(&view, 0, "aegisLattice").unwrap(),
+            baseline - 15.0,
+            "Already reaching the target does not make tactics into immediate points"
+        );
+    }
+    #[test]
+    fn single_fleet_forecast_uses_public_tactics_and_stays_gated() {
+        let mut view = json!({"seat":0,"players":[{"military":[{"key":"torpedoSpread"}]},{"military":[]}],"tacticStats":{"concentratedFire":{"attack":1,"shield":0},"defensiveScreen":{"attack":0,"shield":2},"torpedoSpread":{"attack":3,"shield":0},"aegisLattice":{"attack":0,"shield":8},"phaseLance":{"attack":2,"shield":0,"pierce":true}},"fleets":{"1,0":{"1":{"fleet":1}}},"planets":{}});
+        let moving = json!({"fleet":1});
+        assert!(!bot_safe_fight(&view, 0, &moving, "1,0"));
+        view["singleFleetForecast"] = json!(true);
+        assert!(bot_safe_fight(&view, 0, &moving, "1,0"));
+        view["players"][1]["military"] = json!([{"key":"aegisLattice"}]);
+        assert!(
+            !bot_safe_fight(&view, 0, &moving, "1,0"),
+            "Enemy public tactics change the forecast"
+        );
+        view["players"][1]["military"] = json!([]);
+        assert!(
+            !bot_safe_fight(&view, 0, &json!({"fleet":1,"explorer":1}), "1,0"),
+            "Unsupported mixed forces retain their old safety check"
+        );
+        let hand = fleet_tactic_hand(&view, 0, &json!([]));
+        let enemy = fleet_tactic_hand(&view, 1, &json!([]));
+        assert_eq!(
+            fleet_tactic_plan(&view, &hand, &enemy, 7, 7, 0).unwrap().0,
+            1
+        );
+        view["combat"] = json!({"side":"attacker","volley":1,"sides":{"attacker":{"playerId":0,"pieces":[{"type":"fleet","hull":7,"damage":0}],"hand":hand,"used":[]},"defender":{"playerId":1,"pieces":[{"type":"fleet","hull":7,"damage":0}],"used":[]}}});
+        let tactic = combat_fleet_tactic_plan(&view).unwrap();
+        let mut bot = BuiltinAgent::new(Strategy::Market, [9; 32]);
+        let legal = vec![
+            json!({"type":"combat_tactic","tactic":if tactic=="defensiveScreen"{"concentratedFire"}else{"defensiveScreen"}}),
+            json!({"type":"combat_tactic","tactic":tactic}),
+        ];
+        assert_eq!(bot.select_action(&view, &legal), 1);
+        view["combat"]["sides"]["defender"]["choice"] = json!("aegisLattice");
+        assert_eq!(
+            bot.select_action(&view, &legal),
+            1,
+            "An injected secret commitment must not influence the plan"
+        );
+        let used = fleet_tactic_hand(&view, 0, &json!(["torpedoSpread", "concentratedFire"]));
+        assert_eq!(used["torpedoSpread"], 0);
+        assert_eq!(used["concentratedFire"], 1);
+    }
+    #[test]
+    fn market_tactics_follow_public_combat_opportunities() {
+        let mut market = BuiltinAgent::new(Strategy::Market, [9; 32]);
+        let mut economy = BuiltinAgent::new(Strategy::Economy, [9; 32]);
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":6,"phase":"buy","victoryTarget":30,"players":[{"prestige":9,"resources":{"matter":8,"energy":4,"biomass":4,"data":4},"resourceLimits":{"matter":10,"energy":10,"biomass":10,"data":10},"hand":[{"id":"c","key":"construct","starter":true,"upgraded":true,"level":2}],"handCount":1,"deckCount":9,"deckContents":[{"key":"move","count":9}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"}},"fleets":{"0,0":{"0":{"fleet":1}},"9,0":{"1":{"fleet":1}}},"clusters":[],"market":[{"key":"aegisLattice"}],"marketCosts":[{"matter":7,"energy":2}],"cardStats":{"aegisLattice":{"shield":8}}});
+        let legal = vec![
+            json!({"type":"upgrade","card":"c","resource":"matter"}),
+            json!({"type":"buy","source":"market","key":"aegisLattice"}),
+        ];
+        assert_eq!(
+            economy.select_action(&view, &legal),
+            1,
+            "Standard profile ranking remains unchanged"
+        );
+        assert_eq!(
+            market.select_action(&view, &legal),
+            0,
+            "A remote army does not justify this military purchase yet"
+        );
+        view["players"][1]["hand"] = json!([{"key":"novaBarrage"}]);
+        assert_eq!(
+            market.select_action(&view, &legal),
+            0,
+            "Private enemy cards do not create a public opportunity"
+        );
+        view["fleets"] = json!({"0,0":{"0":{"fleet":1}},"3,0":{"1":{"fleet":1}}});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "Three weighted steps is within the forecast"
+        );
+        view["fleets"] = json!({"0,0":{"0":{"fleet":1}},"4,0":{"1":{"fleet":1}}});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            0,
+            "Four ordinary steps is outside it"
+        );
+        view["fleets"] = json!({"0,0":{"0":{"fleet":1}},"3,0":{"1":{"fleet":1}}});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "A nearby Fleet makes preparation useful"
+        );
+        view["fleets"] = json!({"0,0":{"0":{"fleet":1}}});
+        view["planets"]["3,0"] = json!({"owner":1,"type":"energy","upgrade":"starbase"});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "An armed Shipyard is also a combat opportunity"
+        );
+        view["fleets"] = json!({"-9,0":{"0":{"fleet":1}}});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            0,
+            "Two immobile Shipyards do not create a near-term battle"
+        );
+        view["fleets"] = json!({"-9,0":{"0":{"fleet":1}},"3,0":{"1":{"fleet":1}}});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "A moving enemy can threaten the owned Shipyard"
+        );
+        view["planets"].as_object_mut().unwrap().remove("3,0");
+        view["fleets"] = json!({"-9,9":{"0":{"fleet":1}},"9,-10":{"1":{"fleet":1}}});
+        view["portalLinks"] = json!({"-9,10":"9,-10","9,-10":"-9,10"});
+        view["portalMovementCost"] = json!(2);
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "A nearby portal makes a physically distant enemy reachable"
+        );
     }
     #[test]
     fn construct_iii_draw_choice_and_equivalent_card_preference() {

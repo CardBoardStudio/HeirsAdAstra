@@ -30,6 +30,8 @@ async function play(task,sources,directory,binary){
    const actor=a.activeSeat(),observation=a.observe(actor),legal=a.legalActions(actor);if(!legal.length)throw Error('No legal native action');
    const updated=task.mode==='updated'||task.mode==='mixed'&&actor===subjectSeat;
    if(!updated){delete observation.investmentPlanning;delete observation.marketPaymentCosts;}
+   if(task.protocol.tacticalForecast==='all'||task.protocol.tacticalForecast==='subject'&&actor===subjectSeat)observation.singleFleetForecast=true;
+   if(task.protocol.militaryHorizon==='all'||task.protocol.militaryHorizon==='subject'&&actor===subjectSeat)observation.militaryHorizon=true;
    const buyKey=e.state.round+':'+actor;if(e.state.phase==='buy'&&!buyStarts.has(buyKey)){buyStarts.add(buyKey);market[actor].buyTurns++;}
    const response=await native.choose(task.profiles[actor],observation,legal);
    if(response.nativeRandomDraws!==0||!Number.isInteger(response.index)||!legal[response.index])throw Error('Invalid native policy result');
@@ -46,12 +48,14 @@ if(!isMainThread&&require.main===module){parentPort.on('message',async task=>{tr
 else if(require.main===module){
  const args=process.argv.slice(2),arg=(k,d)=>{const i=args.indexOf('--'+k);return i<0?d:args[i+1];};
  const binary=arg('native-bin',process.env.GR_NATIVE_POLICY_BIN||path.join(ROOT,'target/debug/examples/policy-study')),mode=arg('mode','mixed'),variant=arg('variant','native-'+mode),target=Number(arg('target',30)),seedStart=Number(arg('seed-start',430010)),seeds=Number(arg('seeds',1)),maxRound=Number(arg('max-round',45)),rotations=arg('rotations','0,1,2,3').split(',').map(Number),profiles=arg('profiles','economy,economy,expansion,military').split(',');
- if(![20,30,40,50,60].includes(target)||!['control','mixed','updated'].includes(mode)||profiles.length!==4||profiles.some(p=>!['economy','military','expansion'].includes(p)))throw Error('Invalid native protocol');
+ if(![20,30,40,50,60].includes(target)||!['control','mixed','updated'].includes(mode)||profiles.length!==4||profiles.some(p=>!['economy','market','military','expansion'].includes(p)))throw Error('Invalid native protocol');
  const sourceDir=arg('source-dir',path.join(ROOT,'prototypes/galactic-reach')),nativeDir=arg('native-source-dir',null);
  const sources={app:fs.readFileSync(path.join(sourceDir,'app.js'),'utf8'),adapter:fs.readFileSync(path.join(sourceDir,'adapter.js'),'utf8'),rulebook:fs.readFileSync(path.join(sourceDir,'rulebook.html'),'utf8'),rust:fs.readFileSync(nativeDir?path.join(nativeDir,'rust.txt'):path.join(ROOT,'crates/galactic-reach/src/lib.rs'),'utf8'),bridge:fs.readFileSync(nativeDir?path.join(nativeDir,'bridge.txt'):path.join(ROOT,'crates/galactic-reach/examples/policy-study.rs'),'utf8'),lock:fs.readFileSync(nativeDir?path.join(nativeDir,'lock.txt'):path.join(ROOT,'Cargo.lock'),'utf8')};
  const out=resultDirectory(arg('out',path.join(ROOT,'output/native-investment'))),archiveRoot=path.join(out,'games');fs.mkdirSync(path.join(out,'sources'));const frozenBinary=path.join(out,'sources/policy-study');fs.copyFileSync(binary,frozenBinary);fs.chmodSync(frozenBinary,0o755);
  for(const [k,v] of Object.entries(sources))fs.writeFileSync(path.join(out,'sources',k==='rulebook'?'rulebook.html':k==='app'||k==='adapter'?k+'.js':k+'.txt'),v);fs.writeFileSync(path.join(out,'sources/runner.cjs'),RUNNER);
- const protocol={kind:'native-investment',variant,mode,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
+ const tacticalForecast=arg('tactical-forecast','none');if(!['none','subject','all'].includes(tacticalForecast))throw Error('Invalid tactical forecast mode');
+ const militaryHorizon=arg('military-horizon','none');if(!['none','subject','all'].includes(militaryHorizon))throw Error('Invalid military horizon mode');
+ const protocol={kind:'native-investment',variant,mode,tacticalForecast,militaryHorizon,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
  fs.writeFileSync(path.join(out,'protocol.json'),JSON.stringify(protocol,null,2));console.log('Study output: '+out);
  const tasks=[];for(let i=0;i<seeds;i++)for(const rotation of rotations)tasks.push({id:tasks.length,variant,mode,seed:seedStart+7919*i,rotation,target,profiles:profiles.map((_,j)=>profiles[(j+rotation)%4]),maxRound,maxSteps:18000,protocol});
  let next=0,failures=0;const games=[];
