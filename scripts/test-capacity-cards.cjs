@@ -104,7 +104,7 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
   assert.deepEqual(JSON.parse(JSON.stringify(p.resourceLimits)), { matter: 6, energy: 6, biomass: 6, data: 6 }, 'Cargo Expansion raises every limit');
   assert.equal(p.storagePurchases || 0, 0, 'Card capacity does not raise the next paid price');
   s.activePlayer = 0; p.hand = [{ key: 'ascendancyCodex', id: 'codex' }]; p.deck = [{ key: 'move', id: 'drawn' }];
-  act(g, 0, 'special', a => a.card === 'codex'); assert.equal(p.cardPrestige, 1, 'Ascendancy Codex: 1 Prestige per use (rebalance b2)'); assert(p.hand.some(c => c.id === 'drawn'));
+  act(g, 0, 'special', a => a.card === 'codex'); assert.equal(p.cardPrestige, 1, 'Ascendancy Codex: 1 Prestige per use (rebalance b2)'); assert(!p.hand.some(c => c.id === 'drawn'), 'Ascendancy Codex no longer draws (rebalance b2)');
   s.activePlayer = 0; p.hand = [{ key: 'commandNexus', id: 'nexus' }]; p.deck = [1, 2, 3, 4, 5].map(n => ({ key: 'move', id: `d${n}` }));
   act(g, 0, 'special', a => a.card === 'nexus'); assert.equal(p.hand.length, 4);
   assert(p.inPlay.some(c => c.id === 'nexus'), 'Used orders stay in play until cleanup');

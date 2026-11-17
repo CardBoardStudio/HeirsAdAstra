@@ -49,8 +49,8 @@ function effectPower(effect = {}) {
   v += limitPoints * (effect.trashSelf ? 0.75 : 1.9);
   v += effect.produce ? 5 : 0;
   v += RESOURCES.reduce((n, r) => n + ((effect.gain || {})[r] || 0), 0) * 0.9;
-  // Prestige on every play (Ascendancy Codex: 1 and a draw for 14).
-  v += (effect.prestige || 0) * 12.5;
+  // Prestige on every play (Ascendancy Codex: 1 for 14).
+  v += (effect.prestige || 0) * 14;
   if (effect.trashSelf && !limitPoints) v *= 0.6;
   return v;
 }
