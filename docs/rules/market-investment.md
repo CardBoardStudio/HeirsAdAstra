@@ -2,6 +2,23 @@
 
 The round-16 human report on 38.43 ended 33–19–15–14 at a target of 30. The human built seven Harvesters; the rivals built three, three and four. None bought a market card. All six purchased cards were Capacity Modules. Reversed Undo ranges are excluded from these counts.
 
+## Current research decisions
+
+This is local research, not a release. The current experiment keeps the eight price-v1 changes and World Engine draw; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
+
+| Candidate | Current disposition | Evidence boundary |
+| --- | --- | --- |
+| General native investment planning | Retain | Fresh subject comparison improved 5/32 to20/32 wins; does not prove every later feature |
+| Paid Harvester discipline | Retain for evaluation | Fresh 12/32 to15/32 wins, fewer paid builds and lower overflow; not independently enabled in adapter |
+| Market access | Useful among tested bots | Fresh normal access beats points-only/no purchases at30 and40; not proof of every card or specialist dominance |
+| Named-order trimming correction | Retain | Actual command defect corrected; no claim of uniform win improvement |
+| Range/Industry valuation | Opt-in only | Training regression at30, provisional improvement at40 |
+| Cheaper World Engine | Reject adoption | Corrected-policy Market wins6/12 to4/12 at30 and6/12 to5/12 at40 |
+| Optional paid Fleet discipline | Off | Training4/12 versus6/12 at30,7/12 versus6/12 at40; no consistent purchase/score benefit |
+| Market-priority versus equally skilled Economy | Fresh evaluation running | 128 games, unseen1410010-series maps, unsuccessful/unproven extra skills off |
+
+See the experiment entries below and immutable output artifacts for protocols, scope, intervals and exceptions. Browser and native evidence are separate. Do not infer a stronger default from increased purchases or a favorable small training batch.
+
 ## Intended policy and rules
 
 Keep all players on the same legal actions, payments, visibility, scoring and victory target. Improve rivals' production investment using useful income that can actually be stored and spent, a finite payback horizon, immediate scoring opportunities and defense. Compare market purchases with starter upgrades before the Buy budget is exhausted. Build a path from capacity through income and saved payment to a chosen market card, rather than valuing a card without funding it.
@@ -498,3 +515,28 @@ Early Fleet-discipline mechanism checks: the first two completed default-off cas
 
 
 Optional-Fleet preparation also passes web packaging, packaged canonical rulebook verification and rules-contract tests. No browser or remote deployment was performed. The continuing48-game training results remain pending; no default flag or website behavior is changed.
+
+
+### Optional-Fleet training:30 complete,40 pending
+
+All24 thirty-point games completed with strict paired binary/source and opening-map equality. Control6/12 wins,26.25 Prestige,6.58 purchases,7.50 Harvesters; subject feature4/12,25.33,6.42,7.50. Win delta-16.67 percentage points,score-0.92 across three training galaxies. Actual subject Fleet commands decline126 to112,paid121 to108; associated payment242M121E121B to214M106E106B. Survivors112 to86,combat victories6 to10. Fewer paid Fleets did not improve wins or market purchases here; combat victory count alone also does not identify a stronger policy. Candidate audit validates all profile counters and trace/final state hashes. Artifacts `native/fleet-discipline-30-{paired,training}.json`, `native/fleet-discipline-30-candidate-payments.json`. Forty-point runs remain active; keep flags/weights fixed until complete, do not adopt from resource savings alone.
+
+
+### Optional-Fleet result: mixed, leave off
+
+Forty-point training completed: control6/12 wins,33.67 Prestige,10.08 purchases,9.33 Harvesters; subject7/12,33.33,9.75,10.17. Paired win delta+8.33 percentage points and score-0.33; three-galaxy intervals span zero widely. This does not offset the30-point regression or establish a universal improvement. Leave fleetInvestmentDiscipline off; fewer optional paid units alone is not the objective. Artifacts `native/fleet-discipline-40-{paired,training}.json`, `native/fleet-discipline-40-candidate-payments.json`. Both new flag-off control batches match all twelve prior corrected games on complete player metrics, winners, rounds, steps and maps (`fleet-discipline-default-off-final-parity.json`).
+
+### Fresh retained-policy strategy evaluation: priority without unequal skills
+
+Next evaluate the retained candidate market package against an equally skilled Economy subject at both30 and40. Eight previously unused seeds1410010+7919*i, four rotations per seed, cutoff80,128 games total. Freeze sources/binary from `native/run-0OjPpA/sources`. Both arms share investment planning, production discipline and protected budgets; default-off Fleet discipline, order-benefit planning, Colony planning, military horizon and tactical forecasts remain off. World Engine stays price-v1 with its retained build/draw effect. Set market-filter off in both arms to remove the separate unproven Market-only proximity preference, isolating priority/capacity differences on the same Economy core. Lineups Market/Economy/Expansion/Military versus Economy/Economy/Expansion/Military; designated slot0 only is compared, not both Economy seats pooled.
+
+Primary endpoint subject wins with paired opening-map equality and whole-galaxy bootstrap; report points, resource overflow/spending and card purchases/actual plays, incomplete games separately. This is fresh evaluation of the retained strategy in the corrected-trimming context, not fresh confirmation of the rejected price/Fleet experiments. Do not tune any weights or card designs on partial outcomes or declare priority superior merely because purchases rise. If priority fails, retain useful general investment improvements and market access evidence without manufacturing specialist dominance.
+
+
+Fresh retained-policy runs active:30 Economy `native/run-UVWI1F`,Market `native/run-2mHDBC`;40 Economy `native/run-c3EAP7`,Market `native/run-d3IPC8`,32 games each. Scan of retained native run protocols verifies no overlap with the selected1410010-series seeds; all four frozen source/binary hashes match. No partial outcomes used for tuning. Final40 Fleet payment audit also shows why construction count alone is insufficient: subject paid commands125 control versus127 candidate,free7 versus14,despite suppressing optional fallback builds; trajectories can produce more defense/free builds. No universal spending reduction is claimed.
+
+
+Independent resource-accounting preparation while fresh strategy matches run: integrity-checked Harvester audits of corrected controls show82 paid/8free at30 (82M82E82D),89paid/23free at40 (89M89E89D). Combined with audited Fleet payments, subject Fleet+Harvester construction costs324M203E121B82D at30 and338M213E124B89D at40 across12 games each. These are actual associated construction payments, not proof of waste or intrinsic resource values. Recorded payCost/upgrade spending is786M710E448B694D at30 and904M832E491B818D at40; it excludes direct bank/trash deductions, so do not label it all expenditure. Details `native/retained-construction-resource-accounting.json`, `native/retained-control-{30,40}-harvester-payments.json`. Fresh paired map checks match the first two completed cases at each target; no policy tuning on partial outcomes.
+
+
+Fleet-payment audit regression coverage now constructs paid/free Fleet commands and final survivors, then rejects missing payment evidence (rather than calling it free), a resource-gain payment, corrupt trace/final hashes and inconsistent independent build counters. `test-native-fleet-spending-audit.cjs` passes. This analysis-only preparation does not change the frozen fresh-study policies or use their partial outcomes for tuning.
