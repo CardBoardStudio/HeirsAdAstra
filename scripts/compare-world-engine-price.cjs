@@ -11,7 +11,7 @@ function validateSources(left,right){
  assert.equal(b[0],candidate,'Unexpected World Engine change');
  assert.equal(right,left.replace(a[0],candidate),'Unrelated game-source changes');
 }
-function compare(left,right){
+function compare(left,right,validateApp=validateSources,changeText='World Engine 6M1E1B to 4M1E1B; identical policy binary and adapter/native sources. Canonical rulebooks differ to document the intended price/tier.'){
  const read=d=>{
   const protocol=JSON.parse(fs.readFileSync(path.join(d,'protocol.json')));
   const raw=fs.readFileSync(path.join(d,'results.jsonl'),'utf8');
@@ -28,10 +28,10 @@ function compare(left,right){
   return {protocol,raw,rows,sources};
  };
  const a=read(left),b=read(right);
- for(const key of ['target','mode','tacticalForecast','militaryHorizon','productionDiscipline','marketFilter','colonyPlanning','protectedMarketBudget','subjectMarket','orderBenefits','seedStart','seeds','rotations','profiles','maxRound','binaryHash'])assert.deepEqual(a.protocol[key],b.protocol[key],'Protocol mismatch: '+key);
+ for(const key of ['target','mode','tacticalForecast','militaryHorizon','productionDiscipline','marketFilter','colonyPlanning','protectedMarketBudget','subjectMarket','orderBenefits','fleetDiscipline','seedStart','seeds','rotations','profiles','maxRound','binaryHash'])assert.deepEqual(a.protocol[key],b.protocol[key],'Protocol mismatch: '+key);
  for(const key of ['adapter','rust','bridge','lock'])assert.equal(a.sources[key],b.sources[key],'Unrelated source mismatch: '+key);
- validateSources(a.sources.app,b.sources.app);
- return {left,right,change:'World Engine 6M1E1B to 4M1E1B; identical policy binary and adapter/native sources. Canonical rulebooks differ to document the intended price/tier.',analysisSourceHash:hash(fs.readFileSync(__filename)),leftResultsHash:hash(a.raw),rightResultsHash:hash(b.raw),protocols:{left:a.protocol,right:b.protocol},...compareRows(a.rows,b.rows)};
+ validateApp(a.sources.app,b.sources.app);
+ return {left,right,change:changeText,analysisSourceHash:hash(fs.readFileSync(__filename)),leftResultsHash:hash(a.raw),rightResultsHash:hash(b.raw),protocols:{left:a.protocol,right:b.protocol},...compareRows(a.rows,b.rows)};
 }
 if(require.main===module){const[out,left,right]=process.argv.slice(2);const result=compare(left,right);fs.writeFileSync(out,JSON.stringify(result,null,2));console.log(JSON.stringify({delta:result.delta,seedBootstrap95:result.seedBootstrap95,galaxies:result.galaxies}));}
 module.exports={validateSources,compare};

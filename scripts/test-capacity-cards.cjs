@@ -32,9 +32,9 @@ for (const [key, def] of Object.entries(cards)) {
 }
 const prices = Object.values(cards).map(c => Object.values(c.cost).reduce((n, x) => n + x, 0));
 // 32.37 (Cheaper Cards): about 30% cheaper, from exactly 5 of one resource (one upgrade) to 14.
-assert.equal(Math.min(...prices), 3, 'The cheapest draw cards still cost three resources');
+assert.equal(Math.min(...prices), 2, 'Seed Ark costs two Biomass; draw-two cards still cost three');
 assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
-assert.equal(prices.reduce((n, p) => n + p, 0), 210, 'Price v1 reduces the eight selected designs by eleven resources total');
+assert.equal(prices.reduce((n, p) => n + p, 0), 208, 'Seed Ark price experiment reduces the price-v1 set by two more Biomass');
 assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
 
 // Setup: nine face-up cards (three per price tier) from 62 cards that mix both decks; target defaults to 40.

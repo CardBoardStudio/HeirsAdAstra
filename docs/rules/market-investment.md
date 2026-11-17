@@ -4,7 +4,7 @@ The round-16 human report on 38.43 ended 33–19–15–14 at a target of 30. Th
 
 ## Current research decisions
 
-This is local research, not a release. The current experiment keeps the eight price-v1 changes and World Engine draw; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
+This is local research, not a release. The retained baseline keeps the eight price-v1 changes and World Engine draw; the current working tree temporarily tests Seed Ark at2 Biomass, pending results; the cheaper price-v2 World Engine is rejected after both original and corrected-policy training. General investment planning and preserving named orders remain in the candidate engine. Production discipline and protected budgets are retained common study settings, not automatically enabled native website settings.
 
 | Candidate | Current disposition | Evidence boundary |
 | --- | --- | --- |
@@ -13,6 +13,7 @@ This is local research, not a release. The current experiment keeps the eight pr
 | Market access | Useful among tested bots | Fresh normal access beats points-only/no purchases at30 and40; not proof of every card or specialist dominance |
 | Named-order trimming correction | Retain | Actual command defect corrected; no claim of uniform win improvement |
 | Range/Industry valuation | Opt-in only | Training regression at30, provisional improvement at40 |
+| Seed Ark at2 Biomass | Training running | Price-only change within Cheap tier; seek earlier acquisition and legal use |
 | Cheaper World Engine | Reject adoption | Corrected-policy Market wins6/12 to4/12 at30 and6/12 to5/12 at40 |
 | Optional paid Fleet discipline | Off | Training4/12 versus6/12 at30,7/12 versus6/12 at40; no consistent purchase/score benefit |
 | Market-priority versus equally skilled Economy | Viable, target-dependent evidence | Fresh30 wins13/32both;40 Market11/32 versus9/32 and +2.97 mean Prestige; win-rate uncertainty remains |
@@ -565,3 +566,19 @@ Next audit owned Colony cards at actual Operations decisions against authoritati
 Fresh30 Market:one Seed Ark,drawn twice,19 normal-order decisions,no legal use; all19 lack a Settler on a non-owned world center. Economy:one,drawn five times,46 normal decisions,one legal opportunity used and45 without an available center. Fresh40 Market:two,drawn nine times,85 normal decisions,one legal opportunity skipped for another Colonize card and84 without an available center. Economy:two,drawn eight times,54 normal decisions,no legal opportunity,all54 without an available center. Every purchased card was drawn. Thus deck access is not the main observed obstruction and choosing a competing Colony order accounts for only one missed opportunity in these samples. Colony Pods/Genesis have no bought-card sample; no claim about their hypothetical execution is possible.
 
 Retained reports `native/retained-{market,economy}-{30,40}-colony-use-v2.json`; initial audit reports are also preserved. The next hypothesis should address the spatial timing of reusable Colony purchases or their coordination with Settler routes, rather than blindly lower a price or claim zero plays proves a weak printed effect. Existing opt-in Colony planning only tests a global public prospect and a Settler, which is looser than having a near-term route. A separate execution preference for printed Colony terms can address the lone tie-choice defect but should not be credited with solving the much larger missing-center mismatch. No policy/card change is made by this analysis.
+
+
+### Spatial timing diagnosis and Seed Ark price hypothesis
+
+Audit v3 finds zero recorded Settler moves with a legal unoccupied-neutral-center arrival alternative while these bought Seed Arks were held. This does not prove route optimality or safe enemy captures; it rejects that specific immediate-arrival omission in this sample. Audit v4 records first ownership: Market round13 at30,round13/18 at40; Economy round15 at30,round15/18 at40. Every case has zero neutral worlds remaining. Reports `native/retained-{market,economy}-{30,40}-colony-use-v{3,4}.json` preserve these observations. Do not implement an arbitrary movement bonus from the earlier concern alone.
+
+Predeclare a Seed Ark price-only training experiment:2 Biomass versus4, unchanged1-Biomass Colony effect, consumed Settler and reusable card. It remains Cheap, so tier membership/copy counts and initial market shuffle order must be identical. A price of2 plus a2-Biomass neutral-Colony reserve fits starting capacity4; the former4-plus2 does not. Test whether earlier acquisition produces actual legal uses before neutral worlds vanish, not merely more purchases. Use frozen retained-policy binary/sources (corrected trimming), common production/protected budgets, no order-benefit/Colony-planning/Fleet/horizon/forecast features,market-filter off,Market/Economy/Expansion/Military at30/40,three610010-series training seeds/all rotations,48games. Both price arms use identical native policies and observations except the printed price. Inspect acquisition rounds, first-owned neutral worlds, draws/legal opportunities/plays, score/wins/resources together. No fresh confirmation unless training is promising; fresh1410010-series outcomes informed this new hypothesis and cannot be reused as its confirmation.
+
+
+Seed Ark price preparation passes the full Galactic Reach mechanic suite, tiered-market checks and source rulebook check. The focused price test verifies identical initial planets/clusters/market/tier-deck order and setup RNG versus the former price, buys for2B while preserving2B at starting limits, gains to discard, and performs the unchanged1B Colony with consumed Settler/reusable in-play card. Candidate `native/seed-ark-price-hkbsjj4_` freezes the exact Seed-only app price transformation and identical adapter/native executable/sources from `run-2mHDBC/sources`. Results are pending; this is a tentative local breaking experiment, not an adopted price or publication.
+
+
+Seed Ark training runs active:30 control `native/run-T6brC0`,candidate `native/run-uAFzmK`;40 control `native/run-X2WwOj`,candidate `native/run-vXFwrU`. Each schedules12 games under the declared frozen policy,with all private archives retained. No policy is tuned on partial results.
+
+
+Seed Ark preparation also passes web build, packaged canonical rulebook check and rules-contract tests. The price comparison helper now supports an explicitly declared single-card cost transformation while retaining identical native/adapter/source/protocol checks, including Fleet feature settings. Negative tests reject unrelated app/effect/other-price changes; the earlier World-specific validator regression still passes. These are local checks; no Render deployment or browser verification is claimed, and the pending Seed price is not adopted.
