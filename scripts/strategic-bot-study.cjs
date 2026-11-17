@@ -89,7 +89,7 @@ function summarize(games) {
   }
   return result;
 }
-if(!isMainThread) {
+if(!isMainThread && require.main===module) {
   parentPort.on('message',task=>{try{parentPort.postMessage({game:simulate(task,workerData.sources)});}catch(e){parentPort.postMessage({error:e.stack,task});}});
 } else if(require.main===module) {
   const args=process.argv.slice(2),arg=(name,fallback)=>{const at=args.indexOf('--'+name);return at<0?fallback:args[at+1];};

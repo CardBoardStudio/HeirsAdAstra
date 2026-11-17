@@ -46,3 +46,9 @@ node scripts/read-simulation-archive.cjs /path/to/game-archive > positions.jsonl
 For a Node analysis, iterate `archiveRecords(directory)` from `scripts/lib/simulation-archive.cjs`. Each record's `position` contains the complete reconstructed state; `counters` accompanies checkpoints. Iteration avoids retaining every position in memory. `readArchive(directory)` is a convenience materializer for small games and tests.
 
 The format is `galactic-reach-simulation/1`. New fields must preserve old-reader meaning or use a new schema version. Never rewrite an old archive to match current rules.
+
+## Frozen market experiments
+
+`market-investment-study.cjs` freezes the chosen browser, adapter and canonical rulebook at batch start. It supplies that rulebook to `SimulationArchive` through `rulebookSource`; later edits in a working tree cannot silently change a subsequent game's recorded rules. Each run also retains the original sources, runner and protocol outside temporary checkouts when `--out` points to a durable directory.
+
+`--opponent-source-dir` permits a designated subject to face another browser policy under the same printed card catalog. The runner rejects different catalogs. It resumes the complete state and counters when policy control changes, shares the recorder and random stream, and keeps both compiled source versions. The designated subject is original lineup slot zero (seat `(4 - rotation) % 4`); use that seat when comparing it with a duplicated-profile control. This mode is for policy comparisons under identical rules, not for playing two price variants in one game.

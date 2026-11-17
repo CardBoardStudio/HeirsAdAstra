@@ -23,11 +23,11 @@ function applyPatch(state,changes){
  return state;
 }
 class SimulationArchive{
- constructor({directory=process.env.GR_SIMULATION_ARCHIVE_DIR||path.join(ROOT,'output/simulations'),metadata={},sources={}}={}){
+ constructor({directory=process.env.GR_SIMULATION_ARCHIVE_DIR||path.join(ROOT,'output/simulations'),metadata={},sources={},rulebookSource=null}={}){
   fs.mkdirSync(directory,{recursive:true});this.directory=fs.mkdtempSync(path.join(path.resolve(directory),'game-'));this.file=path.join(this.directory,'trace.partial.jsonl');this.fd=fs.openSync(this.file,'wx');this.previous=null;this.randomCalls=0;this.index=0;this.depth=0;this.closed=false;
   fs.mkdirSync(path.join(this.directory,'sources'));const sourceHashes={};
   for(const [name,content] of Object.entries(sources)){if(!/^[a-zA-Z0-9_.-]+$/.test(name))throw Error('Unsafe archive source name');fs.writeFileSync(path.join(this.directory,'sources',name),content);sourceHashes[name]=hash(content);}
-  for(const [name,file] of [['recorder.cjs',__filename],['rulebook.html',path.join(ROOT,'prototypes/galactic-reach/rulebook.html')]])if(fs.existsSync(file)){const text=file===__filename?RECORDER_SOURCE:fs.readFileSync(file,'utf8');fs.writeFileSync(path.join(this.directory,'sources',name),text);sourceHashes[name]=hash(text);}
+  for(const [name,file] of [['recorder.cjs',__filename],['rulebook.html',path.join(ROOT,'prototypes/galactic-reach/rulebook.html')]])if(fs.existsSync(file)){const text=file===__filename?RECORDER_SOURCE:rulebookSource??fs.readFileSync(file,'utf8');fs.writeFileSync(path.join(this.directory,'sources',name),text);sourceHashes[name]=hash(text);}
   this.manifest={format:FORMAT,status:'running',createdAt:new Date().toISOString(),node:process.version,metadata:plain(metadata),sourceHashes,trace:'trace.partial.jsonl',retention:'No local automatic deletion'};
   this.writeManifest();this.write({type:'header',format:FORMAT,metadata:plain(metadata)});active.add(this);
   if(!handlers){handlers=true;process.once('exit',code=>{for(const recorder of active)recorder.finish({reason:'process-exit',exitCode:code,incomplete:true});});process.once('uncaughtExceptionMonitor',error=>{for(const recorder of active)recorder.finish({reason:'uncaught-exception',incomplete:true,error:{message:error.message,stack:error.stack}});});}

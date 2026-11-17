@@ -162,20 +162,20 @@ function createGalacticReach(options = {}) {
   const ADVANCED_CARDS = {
     ionThrusters: { code: 'N01', name: 'Ion Thrusters', kind: 'Movement', accent: 'var(--energy)', cost: { energy: 5 }, order: 'move', tag: 'ionThrusters', range: 2, text: 'Move one group with +2 range.' },
     slipstreamCharts: { code: 'N02', name: 'Slipstream Charts', kind: 'Movement', accent: 'var(--data)', cost: { data: 5 }, order: 'move', tag: 'slipstreamCharts', range: 3, pathfinder: true, text: 'Move one group with +3 range. It cannot enter hostile hexes.' },
-    strikeVector: { code: 'N03', name: 'Strike Vector', kind: 'Movement', accent: 'var(--red)', cost: { matter: 1, energy: 5 }, order: 'move', tag: 'strikeVector', range: 1, assault: 2, text: 'Move one group with +1 range. If it attacks, add 2 hits to the first volley.' },
-    foldSpaceGate: { code: 'N04', name: 'Fold-Space Gate', kind: 'Movement', accent: 'var(--energy)', cost: { energy: 7, data: 2 }, order: 'move', tag: 'foldSpaceGate', range: 5, text: 'Move one group with +5 range.' },
-    prefabYards: { code: 'N05', name: 'Prefab Yards', kind: 'Industry', accent: 'var(--matter)', cost: { matter: 5 }, order: 'construct', tag: 'prefabYards', buildDiscount: 'each', secondBuild: true, text: 'Build or commission once, paying 1 less of each resource in its cost; then you may build once more at full price.' },
-    worldEngine: { code: 'N07', name: 'World Engine', kind: 'Industry', accent: 'var(--matter)', cost: { matter: 7, energy: 2, biomass: 2 }, order: 'construct', tag: 'worldEngine', buildDiscount: 'free', text: 'Build or commission once at no resource cost.' },
-    seedArk: { code: 'N08', name: 'Seed Ark', kind: 'Expansion', accent: 'var(--biomass)', cost: { biomass: 5 }, order: 'colonize', tag: 'seedArk', colonyCost: 1, text: 'Colonize with a Settler for 1 Biomass. The Settler is consumed; Seed Ark stays in your deck.' },
-    colonyPods: { code: 'N09', name: 'Colony Pods', kind: 'Expansion', accent: 'var(--biomass)', cost: { energy: 1, biomass: 5 }, order: 'colonize', tag: 'colonyPods', colonyCost: 1, keepSettler: true, text: 'Colonize for 1 Biomass without consuming the Settler.' },
+    strikeVector: { code: 'N03', name: 'Strike Vector', kind: 'Movement', accent: 'var(--red)', cost: {"matter": 1, "energy": 4}, order: 'move', tag: 'strikeVector', range: 1, assault: 2, text: 'Move one group with +1 range. If it attacks, add 2 hits to the first volley.' },
+    foldSpaceGate: { code: 'N04', name: 'Fold-Space Gate', kind: 'Movement', accent: 'var(--energy)', cost: {"energy": 6, "data": 1}, order: 'move', tag: 'foldSpaceGate', range: 5, text: 'Move one group with +5 range.' },
+    prefabYards: { code: 'N05', name: 'Prefab Yards', kind: 'Industry', accent: 'var(--matter)', cost: {"matter": 4}, order: 'construct', tag: 'prefabYards', buildDiscount: 'each', secondBuild: true, text: 'Build or commission once, paying 1 less of each resource in its cost; then you may build once more at full price.' },
+    worldEngine: { code: 'N07', name: 'World Engine', kind: 'Industry', accent: 'var(--matter)', cost: {"matter": 6, "energy": 1, "biomass": 1}, order: 'construct', tag: 'worldEngine', buildDiscount: 'free', text: 'Build or commission once at no resource cost.' },
+    seedArk: { code: 'N08', name: 'Seed Ark', kind: 'Expansion', accent: 'var(--biomass)', cost: {"biomass": 4}, order: 'colonize', tag: 'seedArk', colonyCost: 1, text: 'Colonize with a Settler for 1 Biomass. The Settler is consumed; Seed Ark stays in your deck.' },
+    colonyPods: { code: 'N09', name: 'Colony Pods', kind: 'Expansion', accent: 'var(--biomass)', cost: {"energy": 1, "biomass": 4}, order: 'colonize', tag: 'colonyPods', colonyCost: 1, keepSettler: true, text: 'Colonize for 1 Biomass without consuming the Settler.' },
     genesisCharter: { code: 'N10', name: 'Genesis Charter', kind: 'Expansion', accent: 'var(--biomass)', cost: { matter: 2, biomass: 8, data: 1 }, order: 'colonize', tag: 'genesisCharter', colonyCost: 0, keepSettler: true, colonyPrestige: 2, text: 'Colonize for 0 Biomass without consuming the Settler, and gain 2 permanent Prestige.' },
     strategyCore: { code: 'N16', name: 'Strategy Core', kind: 'Deckcraft', accent: 'var(--data)', cost: { energy: 1, data: 5 }, order: 'special', tag: 'strategyCore', effect: { draw: 3 }, text: 'Draw three cards.' },
     archivePurge: { code: 'N17', name: 'Archive Purge', kind: 'Deckcraft', accent: 'var(--data)', cost: { biomass: 1, data: 5 }, order: 'special', tag: 'archivePurge', effect: { trashStarters: 2, draw: 1 }, text: 'Choose up to two level I starter cards in your discard pile and trash them permanently, then draw one card.' },
     commandNexus: { code: 'N18', name: 'Command Nexus', kind: 'Deckcraft', accent: 'var(--data)', cost: { energy: 2, data: 6 }, order: 'special', tag: 'commandNexus', effect: { draw: 4 }, text: 'Draw four cards.' },
     cargoExpansion: { code: 'N19', name: 'Cargo Expansion', kind: 'Capacity', accent: 'var(--gold)', cost: { matter: 5, data: 1 }, order: 'special', tag: 'cargoExpansion', effect: { limits: { matter: 2, energy: 2, biomass: 2, data: 2 }, trashSelf: true }, text: 'Permanently raise each resource limit by 2, then trash this card.' },
     hyperspaceVaults: { code: 'N20', name: 'Hyperspace Vaults', kind: 'Capacity', accent: 'var(--gold)', cost: { matter: 2, energy: 1, data: 6 }, order: 'special', tag: 'hyperspaceVaults', effect: { limits: { matter: 2, energy: 2, biomass: 2, data: 2 }, draw: 1 }, text: 'Permanently raise each resource limit by 2, then draw one card.' },
-    procurementHub: { code: 'N21', name: 'Procurement Hub', kind: 'Buy', accent: 'var(--gold)', cost: { biomass: 1, data: 5 }, buyEffect: 'hubDiscount', text: 'Buy turn: your next purchase this Buy costs 1 less of each resource in its cost.' },
-    tradeSyndicate: { code: 'N22', name: 'Trade Syndicate', kind: 'Buy', accent: 'var(--gold)', cost: { energy: 5, data: 1 }, buyEffect: 'discountEach', text: 'Buy turn: your next purchase this Buy costs 1 less of each resource in its cost.' },
+    procurementHub: { code: 'N21', name: 'Procurement Hub', kind: 'Buy', accent: 'var(--gold)', cost: {"biomass": 1, "data": 4}, buyEffect: 'hubDiscount', text: 'Buy turn: your next purchase this Buy costs 1 less of each resource in its cost.' },
+    tradeSyndicate: { code: 'N22', name: 'Trade Syndicate', kind: 'Buy', accent: 'var(--gold)', cost: {"energy": 4, "data": 1}, buyEffect: 'discountEach', text: 'Buy turn: your next purchase this Buy costs 1 less of each resource in its cost.' },
     monumentOfAccord: { code: 'N23', name: 'Monument of Accord', kind: 'Wonder', accent: 'var(--gold)', cost: { matter: 6, biomass: 2, data: 2 }, gainPrestige: 3, text: 'When bought, gain 3 permanent Prestige. This card enters discard and has no effect in hand; trash it later to remove it from your deck.' },
     dysonLattice: { code: 'N25', name: 'Dyson Lattice', kind: 'Wonder', accent: 'var(--gold)', cost: { matter: 4, energy: 8, data: 2 }, gainPrestige: 5, text: 'When bought, gain 5 permanent Prestige. This card enters discard and has no effect in hand; trash it later to remove it from your deck.' },
     ascendancyCodex: { code: 'N26', name: 'Ascendancy Codex', kind: 'Prestige', accent: 'var(--gold)', cost: { energy: 2, biomass: 4, data: 8 }, order: 'special', tag: 'ascendancyCodex', effect: { prestige: 2, draw: 1 }, text: 'Gain 2 permanent Prestige, then draw one card.' },
@@ -2672,6 +2672,24 @@ function createGalacticReach(options = {}) {
     return state.relicRow.length>0;
   }
 
+  function aiInvestmentHorizon() {
+    const leader=Math.max(...state.players.map((_,id)=>calculatePrestige(id)));
+    const pace=Math.max(2,(leader-3)/Math.max(1,state.round-1));
+    return Math.max(0,Math.min(6,Math.ceil((victoryTarget()-leader)/pace)));
+  }
+
+  // Protect a concrete scoring/defense opportunity, rather than reserving a full
+  // excavation payment indefinitely for an Explorer many turns from any known site.
+  function aiImmediateProtection(playerId) {
+    const p=state.players[playerId],keep={matter:0,energy:0,biomass:0,data:0};
+    const colony=findColonizeTarget(playerId);
+    if(colony&&aiCards(playerId).some(c=>ALL_CARDS[c.key].order==='colonize'))keep.biomass=state.planets[colony].owner===null?2:1;
+    if(Object.entries(state.planets).some(([coord,planet])=>planet.special==='relic'&&!planet.relicClaimed&&getFleet(coord,playerId)?.explorer&&relicKnown(state.clusters[planet.cluster],playerId)))Object.assign(keep,EXCAVATION_COST,{biomass:keep.biomass});
+    if(aiColonyDefense(playerId).some(d=>d.needed>0))RESOURCES.forEach(r=>{keep[r]=Math.max(keep[r],SHIP_STATS.fleet.cost[r]||0);});
+    if(!controlledPlanets(playerId).some(([,planet])=>planet.upgrade==='starbase'))Object.assign(keep,STRUCTURES.starbase.cost);
+    return keep;
+  }
+
   function aiStorageProtection(playerId) {
     if (!controlledPlanets(playerId).some(([,p])=>p.upgrade==='starbase')) return {matter:2,energy:1,biomass:1,data:1};
     const settlers=countPlacedShips(playerId,'settler'),explorers=countPlacedShips(playerId,'explorer');
@@ -2882,10 +2900,14 @@ function createGalacticReach(options = {}) {
     if (effect.limits) value+=RESOURCES.reduce((n,r)=>n+Math.min(2,effect.limits[r]||0),0)*1.5;
     if (def.order==='construct') value+=aiOrderCount(playerId,'construct')<3?15:5;
     if (def.order==='move') value+=countPlacedShips(playerId,'settler')+countPlacedShips(playerId,'explorer')+fleets?aiOrderCount(playerId,'move')<4?12:3:0;
+    const uses=Math.min(3,horizon*5/Math.max(5,cards.length));
+    if(def.order==='move')value+=(def.range||0)*2+(fleets?Math.min(4,def.assault||0)*2:0);
+    if(def.order==='construct'&&def.buildDiscount)value+=(def.buildDiscount==='free'?2.5:2)*uses+(def.secondBuild?3:0);
     if (def.order==='colonize') {
       const opportunities=state.clusters.some(c=>c.kind==='world'&&state.planets[c.center].owner!==playerId);
       if (!opportunities||!countPlacedShips(playerId,'settler')) value-=15;
       else value+=Math.max(0,16-aiOrderCount(playerId,'colonize')*8);
+      if(opportunities&&countPlacedShips(playerId,'settler'))value+=((def.keepSettler?6:0)+Math.max(0,2-(def.colonyCost??2))*2+(def.colonyPrestige||0)*6)*uses;
     }
     if (def.military) {
       if (!fleets) return -20;
@@ -2910,14 +2932,20 @@ function createGalacticReach(options = {}) {
     const income=aiIncome(playerId),limits=resourceLimits(playerId);
     let value=aiCardUtility(playerId,key);
     value-=RESOURCES.reduce((n,r)=>n+(def.cost[r]||0)*(.5+1/(income[r]+1))+Math.max(0,(def.cost[r]||0)-limits[r])*3,0);
-    const favored={military:['Military','Movement'],economy:['Economy','Capacity','Deckcraft','Buy','Industry'],expansion:['Expansion','Movement','Capacity']}[p.strategy]||[];
+    const favored={market:['Economy','Capacity','Deckcraft','Buy','Industry'],military:['Military','Movement'],economy:['Economy','Capacity','Deckcraft','Buy','Industry'],expansion:['Expansion','Movement','Capacity']}[p.strategy]||[];
     if (favored.includes(def.kind)) value+=3;
     return value;
   }
 
   // The market card a rival is saving toward: its best-valued card, if any is worth buying.
   function aiTargetCard(playerId) {
-    return state.market.map(card=>({card,score:aiBuyValue(playerId,card.key)})).filter(x=>x.score>0)
+    const p=state.players[playerId],income=aiIncome(playerId),limits=resourceLimits(playerId);
+    return state.market.map(card=>{
+      const cost=purchaseCost(p,card.key),room=RESOURCES.reduce((n,r)=>n+Math.max(0,(cost[r]||0)-limits[r]),0);
+      const saving=Math.max(...RESOURCES.map(r=>Math.max(0,(cost[r]||0)-p.resources[r])/Math.max(.5,income[r])));
+      const delay=saving+(room?Math.ceil(room/4)*2:0);
+      return {card,score:aiBuyValue(playerId,card.key)/(1+delay*.55)};
+    }).filter(x=>x.score>0)
       .sort((a,b)=>b.score-a.score||a.card.id.localeCompare(b.card.id))[0]?.card||null;
   }
 
@@ -2925,10 +2953,11 @@ function createGalacticReach(options = {}) {
   // its target card needs, unless it already holds an unplayed one.
   function aiCapacityForTarget(playerId) {
     const target=aiTargetCard(playerId);
-    if (!target || aiUnplayedModules(playerId)) return false;
+    if (!target || aiUnplayedModules(playerId) || aiInvestmentHorizon()<3) return false;
     const cost=purchaseCost(state.players[playerId],target.key),limits=resourceLimits(playerId);
     if (!RESOURCES.some(r=>(cost[r]||0)>limits[r])) return false;
-    return buyCapacity(playerId);
+    const p=state.players[playerId],moduleCost=storageUpgradeCost(playerId),keep=aiImmediateProtection(playerId);
+    return RESOURCES.every(r=>p.resources[r]-(moduleCost[r]||0)>=Math.min(keep[r]||0,p.resources[r]))&&buyCapacity(playerId);
   }
 
   function aiUseResources(player, exceptCardId, desiredCost = {}) {
@@ -2976,15 +3005,18 @@ function createGalacticReach(options = {}) {
   }
 
   function chooseAiBuild(playerId) {
-    const p=state.players[playerId],military=p.strategy==='military',economy=p.strategy==='economy',expansion=p.strategy==='expansion';
+    const p=state.players[playerId],military=p.strategy==='military',economy=['economy','market'].includes(p.strategy),expansion=p.strategy==='expansion';
     const yards=controlledPlanets(playerId).filter(([,p])=>p.upgrade==='starbase'),income=aiIncome(playerId);
-    const targets={matter:2,energy:2,biomass:expansion?2:1,data:aiRelicsRemain()?2:1},options=[];
+    const horizon=aiInvestmentHorizon(),limits=resourceLimits(playerId);
+    const targets={matter:Math.min(limits.matter,5),energy:Math.min(limits.energy,4),biomass:Math.min(limits.biomass,expansion?4:3),data:Math.min(limits.data,aiRelicsRemain()?4:3)},options=[];
     const settlers=countPlacedShips(playerId,'settler'),explorers=countPlacedShips(playerId,'explorer'),fleets=countPlacedShips(playerId,'fleet');
     const defense=aiColonyDefense(playerId),enemyFleets=Math.max(0,...Object.values(state.fleets).flatMap(g=>Object.entries(g).filter(([id])=>+id!==playerId).map(([,f])=>f.fleet||0)));
     const colonyGoals=state.clusters.some(c=>c.kind==='world' && state.planets[c.center].owner!==playerId);
     for (const [coord,planet] of Object.entries(state.planets)) if (canBuildStructureAt(playerId,coord)) {
       const shortage=Math.max(0,targets[planet.type]-income[planet.type]);
-      options.push({kind:'harvester',coord,score:planet.type==='data'&&!income.data&&state.round<=2?53:shortage?10+shortage*7+(economy?4:0):1});
+      const useful=Math.min(planet.owner===playerId?1:HARVESTER_YIELD,Math.max(0,targets[planet.type]-income[planet.type]));
+      const payback=useful*Math.max(0,horizon-1);
+      options.push({kind:'harvester',coord,score:planet.type==='data'&&!income.data&&state.round<=2?53:shortage&&payback>=3?10+shortage*7+(economy?4:0):1});
       const forward=yards.length<2 && colonyPlanets(playerId).some(([center])=>state.planets[center].cluster===planet.cluster) && yards.every(([y])=>hexDistance(y,coord)>6);
       options.push({kind:'starbase',coord,score:!yards.length?50+(!p.initialShipyardCoord&&coord===aiInitialShipyard(playerId)? .1:0):forward?military?15:10:0});
     }
@@ -3039,7 +3071,7 @@ function createGalacticReach(options = {}) {
   }
 
   function chooseAiMove(playerId, card = {}, routeCache = new Map()) {
-    const p=state.players[playerId],military=p.strategy==='military',expansion=p.strategy==='expansion',economy=p.strategy==='economy';
+    const p=state.players[playerId],military=p.strategy==='military',expansion=p.strategy==='expansion',economy=['economy','market'].includes(p.strategy);
     const groups=Object.entries(state.fleets).filter(([,g])=>fleetCount(g[playerId]));
     const targets=[],defense=aiColonyDefense(playerId);
     const add=(source,moving,goal,value,moveGroup,cannotAttack)=>{
@@ -3308,9 +3340,20 @@ function createGalacticReach(options = {}) {
     const surplus=()=>[...RESOURCES].sort((a,b)=>(p.resources[b]-reserve[b])-(p.resources[a]-reserve[a]));
     const yard=controlledPlanets(id).some(([,p])=>p.upgrade==='starbase');
     // Upgrade the real current level, including II -> III in hand, discard or play.
-    const immediate=aiStorageProtection(id);
-    if (aiColonyDefense(id).some(d=>d.needed)) RESOURCES.forEach(r=>{immediate[r]=Math.max(immediate[r]||0,SHIP_STATS.fleet.cost[r]||0);});
+    const immediate=aiImmediateProtection(id);
+    const preservesPayment=choice=>{
+      if (!choice.bank) return false;
+      const funds={...p.resources},cost=purchaseCost(p,choice.key);
+      for (const trade of choice.bank) {funds[trade.giveType]-=4;funds[trade.getType]+=1;}
+      return RESOURCES.every(r=>funds[r]-(cost[r]||0)>=Math.min(immediate[r]||0,funds[r]));
+    };
+    const marketChoices=()=>state.market.map((card,index)=>({source:'market',index,key:card.key})).map(x=>({...x,score:aiBuyValue(id,x.key),bank:bankPlanForCost(p,purchaseCost(p,x.key),immediate)})).filter(x=>x.score>0&&preservesPayment(x)).sort((a,b)=>b.score-a.score||a.bank.length-b.bank.length);
+    const purchase=choice=>choice&&choice.bank.every(t=>bankTrade(id,t.giveType,t.getType))&&buyCard(id,choice.source,choice.index);
     const horizon=victoryTarget()-Math.max(...state.players.map((_,i)=>calculatePrestige(i)));
+    const early=marketChoices()[0],marketFirst=p.strategy==='market';
+    const established=aiCards(id).some(c=>c.starter&&c.key==='construct'&&starterLevel(c)>=2);
+    if(yard&&early&&(marketFirst?established&&early.score>=18:established&&early.score>=24))purchase(early);
+    if(marketFirst&&established)aiCapacityForTarget(id);
     for(let n=0;yard&&n<4&&horizon>3;n++) {
       const candidates=[...p.hand,...p.discard,...p.inPlay].filter(c=>c.starter&&starterLevel(c)<3);
       const rank=c=>starterLevel(c)===2?40:c.key==='construct'&&!aiCards(id).some(c=>c.key==='construct'&&c.upgraded)?45:c.key==='construct'?25:20;
@@ -3321,18 +3364,7 @@ function createGalacticReach(options = {}) {
     }
     // 31.36: then raise the limits the target market card needs (cheap starter upgrades come first).
     aiCapacityForTarget(id);
-    const preservesPayment=choice=>{
-      if (!choice.bank) return false;
-      const funds={...p.resources},cost=purchaseCost(p,choice.key);
-      for (const trade of choice.bank) {funds[trade.giveType]-=4;funds[trade.getType]+=1;}
-      return RESOURCES.every(r=>funds[r]-(cost[r]||0)>=Math.min(immediate[r]||0,funds[r]));
-    };
-    while (state.market.length) {
-      const choices=state.market.map((card,index)=>({source:'market',index,key:card.key})).map(x=>({...x,score:aiBuyValue(id,x.key),bank:bankPlanForCost(p,purchaseCost(p,x.key),immediate)})).filter(x=>x.score>0&&preservesPayment(x)).sort((a,b)=>b.score-a.score||a.bank.length-b.bank.length);
-      const choice=choices[0];if (!choice) break;
-      if (!choice.bank.every(t=>bankTrade(id,t.giveType,t.getType))) break;
-      if (!buyCard(id,choice.source,choice.index)) break;
-    }
+    while(state.market.length){const choice=marketChoices()[0];if(!purchase(choice))break;}
     for (let n=0;n<2;n++) {
       const cards=aiCards(id),moves=aiOrderCount(id,'move'),constructs=aiOrderCount(id,'construct'),colonize=aiOrderCount(id,'colonize'),excavateCount=aiOrderCount(id,'excavate');
       // #buy: trash candidates are cards in discard, in play or in hand when Buy began.
