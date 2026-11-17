@@ -15,17 +15,15 @@ export function config(env) {
   const url = new URL(origin);
   if (url.origin !== origin) throw new Error('MIXER_ORIGIN must be an exact origin with no path or trailing slash');
   const auth = list(env.MIXER_AUTH, 'dev-site');
-  for (const a of auth) if (!['dev-site', 'tailscale', 'local'].includes(a)) throw new Error(`MIXER_AUTH: unknown mode ${a}`);
+  for (const a of auth) if (!['dev-site', 'local'].includes(a)) throw new Error(`MIXER_AUTH: unknown mode ${a}`);
   const local = url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
   // `local` admits anyone who can reach the port. Only a laptop origin may use it:
   // behind `tailscale serve` the origin is https and every tailnet member could build.
   if (auth.includes('local') && !local) throw new Error('MIXER_AUTH=local needs a loopback http MIXER_ORIGIN');
   const bind = env.MIXER_BIND ?? '127.0.0.1';
-  // Loopback only: `tailscale serve` is the way in. Bound wider, a mix
-  // container could reach the mixer and claim a Tailscale identity header.
+  // Loopback only: `tailscale serve` is the way in. Bound wider, mix
+  // containers and the LAN could reach the mixer directly.
   if (!['127.0.0.1', '::1'].includes(bind)) throw new Error('MIXER_BIND must be a loopback address');
-  const admins = list(env.MIXER_ADMINS, '');
-  if (auth.includes('tailscale') && !admins.length) throw new Error('MIXER_AUTH=tailscale needs MIXER_ADMINS (Tailscale logins)');
   const [lo, hi] = (env.MIXER_PORT_RANGE ?? '3400-3449').split('-').map(Number);
   if (!(lo > 0 && hi >= lo)) throw new Error('MIXER_PORT_RANGE must look like 3400-3449');
   return {
@@ -34,7 +32,6 @@ export function config(env) {
     origin,
     https: url.protocol === 'https:',
     auth,
-    admins,
     devSite: (env.DEV_SITE_URL ?? 'http://127.0.0.1:3200').replace(/\/$/, ''),
     devSitePublic: env.DEV_SITE_PUBLIC_URL ?? `${url.protocol}//${url.hostname}:3200/`,
     devCookie: env.DEV_SESSION_COOKIE ?? 'drawing_board_alien_v11_session',
@@ -125,6 +122,16 @@ export function inboundCookies(header, key) {
 /** A mix's Set-Cookie value, renamed into its namespace. */
 export function outboundCookie(setCookie, key) {
   return cookiePrefix(key) + setCookie.trimStart();
+}
+
+/**
+ * Whether a sign-in server's `GET /api/account` reply is a mixer administrator:
+ * an administrator signed in with a Nido wallet. Never a temporary identity,
+ * nor a recovery-key account, even one an open host made an administrator.
+ */
+export function isAdmin(account) {
+  return account?.is_admin === true && account.development === false
+    && typeof account.id === 'string' && account.id.startsWith('nido:');
 }
 
 /** Value of cookie `name` in a Cookie header. */

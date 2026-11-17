@@ -12,13 +12,23 @@ const cfg = lib.config({ HOME: '/home/t', MIXER_AUTH: 'local' });
 test('config refuses open access, non-loopback binds and unknown modes', () => {
   assert.throws(() => lib.config({ MIXER_AUTH: 'local', MIXER_ORIGIN: 'https://bitswell.example.ts.net:3300' }), /loopback http/);
   assert.throws(() => lib.config({ MIXER_BIND: '0.0.0.0' }), /loopback/);
-  assert.throws(() => lib.config({ MIXER_AUTH: 'tailscale' }), /MIXER_ADMINS/);
+  assert.throws(() => lib.config({ MIXER_AUTH: 'tailscale' }), /unknown mode/, 'no Tailscale-login admins: Nido only');
   assert.throws(() => lib.config({ MIXER_AUTH: 'everyone' }), /unknown mode/);
   assert.throws(() => lib.config({ MIXER_ORIGIN: 'https://h.example/' }), /exact origin/);
   const c = lib.config({ MIXER_ORIGIN: 'https://bitswell.example.ts.net:3300' });
   assert.deepEqual(c.auth, ['dev-site']);
   assert.equal(c.https, true);
   assert.equal(c.devSitePublic, 'https://bitswell.example.ts.net:3200/');
+});
+
+test('admins are Nido-wallet administrators of the sign-in server, nothing else', () => {
+  const nido = { id: 'nido:C' + 'A'.repeat(55), name: 'Captain', development: false, is_admin: true };
+  assert.equal(lib.isAdmin(nido), true);
+  assert.equal(lib.isAdmin({ ...nido, is_admin: false }), false);
+  assert.equal(lib.isAdmin({ ...nido, development: true }), false, 'temporary identity');
+  assert.equal(lib.isAdmin({ ...nido, id: 'acct_123' }), false, 'recovery-key account');
+  assert.equal(lib.isAdmin({ ...nido, is_admin: 'true' }), false);
+  assert.equal(lib.isAdmin(null), false, 'signed out');
 });
 
 test('mix key: same PRs at the same heads reuse one build, in any order', () => {

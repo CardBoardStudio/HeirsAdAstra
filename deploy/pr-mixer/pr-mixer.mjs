@@ -306,18 +306,14 @@ async function gc() {
 }
 
 // --- Access ------------------------------------------------------------------------
-// Admins only. `dev-site`: the dev site's own session cookie (sent here too:
-// cookies are per host, not per port) must belong to a dev-site administrator.
-// `tailscale`: the login `tailscale serve` puts in Tailscale-User-Login must be
-// in MIXER_ADMINS. `local`: laptop only (lib.config refuses it on https).
+// Admins only, and the mixer keeps no accounts of its own. `dev-site`: the
+// sign-in server's session cookie (sent here too: cookies are per host, not per
+// port) must belong to one of its administrators who signed in with Nido
+// (lib.isAdmin). `local`: laptop only (lib.config refuses it on https).
 const adminCache = new Map();
 async function whoIsAdmin(req) {
   for (const mode of cfg.auth) {
     if (mode === 'local') return 'local';
-    if (mode === 'tailscale') {
-      const login = req.headers['tailscale-user-login'];
-      if (login && cfg.admins.includes(login)) return login;
-    }
     if (mode === 'dev-site') {
       const session = lib.cookieValue(req.headers.cookie, cfg.devCookie);
       if (!session) continue;
@@ -328,9 +324,8 @@ async function whoIsAdmin(req) {
       try {
         const r = await fetch(`${cfg.devSite}/api/account`, { headers: { cookie: `${cfg.devCookie}=${session}` }, signal: AbortSignal.timeout(5000) });
         const a = r.ok ? await r.json() : null;
-        // The dev site's own rule (crates/server/src/invites.rs): admins, never temporary identities.
-        if (a?.is_admin === true && a.development === false) name = a.name || a.id;
-      } catch { /* dev site down: no decision cached */ continue; }
+        if (lib.isAdmin(a)) name = a.name || a.id;
+      } catch { /* sign-in server down: no decision cached */ continue; }
       adminCache.set(id, { name, until: Date.now() + 60_000 });
       if (name) return name;
     }
@@ -360,7 +355,7 @@ async function handle(req, res) {
   const url = new URL(req.url, cfg.origin);
   const admin = await whoIsAdmin(req);
   if (!admin) {
-    const signIn = cfg.auth.includes('dev-site') ? `<p>Sign in to the <a href="${lib.escapeHtml(cfg.devSitePublic)}">dev site</a> on this host name as an administrator, then reload.</p>` : '';
+    const signIn = cfg.auth.includes('dev-site') ? `<p>Sign in with Nido as an administrator at <a href="${lib.escapeHtml(cfg.devSitePublic)}">${lib.escapeHtml(cfg.devSitePublic)}</a> (same host name, so the session reaches this page), then reload.</p>` : '';
     return send(res, 403, `<!doctype html><meta charset="utf-8"><title>PR mixer</title><h1>PR mixer: administrators only</h1>${signIn}`, 'text/html; charset=utf-8');
   }
   const p = url.pathname;
@@ -398,7 +393,7 @@ async function handle(req, res) {
 
 function proxy(req, res, mix) {
   const headers = { ...req.headers };
-  // Strip what the mix must not see: other cookies and the proxy's identity headers.
+  // Strip what the mix must not see: other cookies (the sign-in session among them) and Tailscale's identity headers.
   delete headers.cookie;
   for (const h of Object.keys(headers)) if (h.startsWith('tailscale-')) delete headers[h];
   const cookies = lib.inboundCookies(req.headers.cookie, mix.key);
