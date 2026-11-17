@@ -81,3 +81,13 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
 .gr-coach.tight .gr-coach-eyebrow, .gr-coach.tight .gr-coach-rule { display: none; }
 .gr-coach.bare .gr-coach-text { display: none; }
 .gr-coach.no-room { visibility: hidden; }
+/* Hexes are clipped to their hexagon, so an outline never shows: draw the ring with the hex's own
+   hexagonal ring (the one corner portals use). A note's hex gets a solid cyan ring that pulses; a
+   destination it names gets a dashed one. */
+.hex.gr-coach-target .portal-ring, .hex.gr-coach-goal .portal-ring { display: block; }
+.hex.gr-coach-target .portal-ring-line { stroke: #6ff3ff; stroke-width: 5; stroke-dasharray: none; animation: gr-hex-pulse 1.3s ease-in-out infinite; }
+.hex.gr-coach-goal:not(.gr-coach-target) .portal-ring-line { stroke: #6ff3ff; stroke-width: 6; stroke-dasharray: 9 5; }
+@keyframes gr-hex-pulse { 50% { stroke-opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .hex.gr-coach-target .portal-ring-line { animation: none; } }
+/* Placed every frame while the table settles: never animate its position or size. */
+.gr-coach, .gr-coach-pointer { transition: none !important; }

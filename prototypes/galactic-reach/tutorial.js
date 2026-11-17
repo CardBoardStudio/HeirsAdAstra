@@ -36,6 +36,10 @@
   const me = state => state.players[0];
   const colony = state => Object.keys(state.planets).find(c => state.planets[c].owner === 0 && state.planets[c].hasColony && state.planets[c].cluster === 0)
     || Object.keys(state.planets).find(c => state.planets[c].owner === 0 && state.planets[c].hasColony);
+  const harvester = state => Object.keys(state.planets).find(c => state.planets[c].owner === 0 && state.planets[c].upgrade === 'harvester') || null;
+  // The empty Data hex next to your home Colony: the tutorial's first build.
+  const dataSite = state => { const home = colony(state); return Object.keys(state.planets).find(c => state.planets[c].cluster === state.planets[home]?.cluster && distance(c, home) === 1 && state.planets[c].type === 'data' && !state.planets[c].upgrade) || null; };
+  const shipyardSite = state => { const home = colony(state); return Object.keys(state.planets).find(c => state.planets[c].cluster === state.planets[home]?.cluster && distance(c, home) === 1 && !state.planets[c].upgrade && state.planets[c].type !== 'data') || null; };
   const yard = state => Object.keys(state.planets).find(c => state.planets[c].owner === 0 && state.planets[c].upgrade === 'starbase') || null;
   const unitsAt = (state, type, player = 0) => Object.entries(state.fleets || {}).filter(([, f]) => f?.[player]?.[type] > 0).map(([c]) => c);
   const unitCount = (state, type) => Object.values(state.fleets || {}).reduce((n, f) => n + (f?.[0]?.[type] || 0), 0);
@@ -115,7 +119,7 @@
         done: () => !modalOpen('#prestige-dialog') },
       { id: 'home', title: 'Your home world', rule: 'shared-board',
         text: () => 'This is your home world. Your Colony (the house) sits on its center hex, and the cyan ring shows the world is yours. Select your Colony.',
-        anchor: state => hexAt(colony(state)), done: state => scanOpen() || state.selected === colony(state) },
+        anchor: state => hexAt(colony(state)), done: state => state.selected === colony(state) },
       { id: 'scan-close', title: 'The Sector Scan', rule: 'shared-board',
         text: () => 'The Sector Scan lists what is on a hex and which orders you could start there. It is your magnifying glass for the map. Close it with Close or Escape.',
         anchor: () => $('#sector-popover'), done: () => !scanOpen() },
@@ -132,52 +136,59 @@
         done: (state, base) => me(state).resources.energy > base.energy },
     ] },
     { id: 'orders', title: 'Orders', steps: [
-      { id: 'shipyard-aim', title: 'Use an order', rule: 'orders',
-        ensure: s => { if (yard(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, { matter: 2, energy: 1, biomass: 1, data: 1 }); return 'Tutorial supply: the cards and resources for a Shipyard.'; },
-        needsEnsure: state => !yard(state) && (!handHas(state, 'construct') || RES.some(r => me(state).resources[r] < ({ matter: 2, energy: 1, biomass: 1, data: 1 })[r])),
-        text: () => 'Instead of converting a card you can use its order. You now have exactly what a Shipyard costs: 2 Matter, 1 Energy, 1 Biomass, 1 Data. Drag the Construct card marked with the arrow onto a lit hex next to your Colony, or point at it, choose Use order, and then a lit hex.',
-        anchor: hand('construct'), done: state => Boolean(yard(state)) || (scanOpen() && Boolean(scanButton(/Shipyard/)())) },
-      { id: 'shipyard-build', title: 'Build a Shipyard', rule: 'building',
+      { id: 'harvester-aim', title: 'Use an order', rule: 'orders', aimAt: state => dataSite(state),
+        ensure: s => { if (harvester(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, { matter: 1, energy: 1, data: 1 }); return 'Tutorial supply: a Construct card and the price of a Harvester.'; },
+        needsEnsure: state => myOps(state) && !harvester(state) && (!handHas(state, 'construct') || RES.some(r => me(state).resources[r] < ({ matter: 1, energy: 1, data: 1 })[r])),
+        text: () => 'Instead of converting a card you can use its order. Your first build: a Data Harvester. It costs 1 Matter, 1 Energy and 1 Data, which you now have. Pick up the Construct card marked with the arrow: the hexes where it can build light up. Drop it on the Data hex next to your Colony (the purple hex with the dashed ring), or point at the card, choose Use order, then that hex.',
+        anchor: hand('construct'), marks: state => [hexAt(dataSite(state))],
+        done: state => Boolean(harvester(state)) || (scanOpen() && Boolean(scanButton(/Harvester/)())) },
+      { id: 'harvester-build', title: 'Build a Harvester', rule: 'building',
         // Closed the Sector Scan, or built something else instead: go back to choosing the hex.
-        fallback: state => !yard(state) && !(scanOpen() && scanButton(/Shipyard/)()),
-        text: () => 'Choose Build Shipyard. A Shipyard lets you commission ships, and it defends its own hex.',
-        anchor: scanButton(/Shipyard/), done: state => Boolean(yard(state)) },
+        fallback: state => !harvester(state) && !(scanOpen() && scanButton(/Harvester/)()),
+        text: () => 'Choose Build Harvester. A Harvester makes 2 of its hex’s resource every round, so this one gives you 2 Data a round. Data pays for Explorers (who find relics, 2★ each), for excavating relics and for upgrading your cards. If the hex is not Data, use Back and choose the purple Data hex.',
+        anchor: scanButton(/Harvester/), done: state => Boolean(harvester(state)) },
     ] },
     { id: 'round', title: 'The round', steps: [
       { id: 'pass', title: 'Pass & buy', rule: 'round',
-        text: () => 'You get one order per turn, then your rivals take theirs (in this tutorial they just pass). You have nothing left to pay for a build, so choose Pass & buy. That ends your Operations for this round and starts your Buy turn.',
+        text: () => 'You get one order per turn, then your rivals take theirs (in this tutorial they just pass). Nothing else is affordable this round, so choose Pass & buy. That ends your Operations for this round and starts your Buy turn. Cards still in your hand do not wait for next round: at Cleanup they go to your discard pile.',
         anchor: () => globalThis.galacticReachGuide.turnButton(), start: state => ({ round: state.round }), done: (state, base) => me(state).passed || state.round > base.round },
       { id: 'buy-empty', buy: true, title: 'Finish Buy', rule: 'buy',
         text: () => 'This is your Buy turn: the market (right) sells cards for resources. You have nothing to spend yet, so choose Finish Buy. The round then ends for everyone.',
         anchor: () => globalThis.galacticReachGuide.turnButton(), start: state => ({ round: state.round }), done: (state, base) => state.round > base.round },
       { id: 'deck', title: 'A new round', rule: 'cleanup-draw', wait: state => !myOps(state),
-        text: () => 'When everyone finished Buy, the round ended: all hands and used cards went to the discard pile and everyone drew five new cards. Then Production gave you 1 Matter. Select your Deck (bottom left) to see what is left in it.',
+        text: state => `When everyone finished Buy, the round ended (Cleanup & draw). Every card left in a hand, and every card used, went to the discard pile, and everyone drew five new cards. Your hand lasts one round; your resources carry over. Then Production paid out: 1 Matter from your Colony${harvester(state) ? ' and 2 Data from your Harvester' : ''}. Select your Deck (bottom left) to see what is left in it.`,
         anchor: () => $('#deck-button'), done: () => modalOpen('#deck-dialog') },
       { id: 'deck-close', title: 'Your deck', rule: 'deck-inspection', dialog: '#deck-dialog',
         text: () => 'These are the cards left to draw (their order stays hidden). When the deck runs out, your discard pile is shuffled into a new deck. Close this window.',
         done: () => !modalOpen('#deck-dialog') },
     ] },
     { id: 'units', title: 'Ships', steps: [
+      { id: 'shipyard-aim', title: 'Build a Shipyard', rule: 'building', aimAt: state => shipyardSite(state),
+        prepare: s => { ensureHand(s, ['construct', 'construct', 'construct', 'move', 'move'], true); ensureResources(s, { matter: 3, energy: 3, biomass: 2, data: 3 }); return 'Tutorial supply: resources for a Shipyard, a Settler and an Explorer.'; },
+        ensure: s => { if (yard(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, { matter: 2, energy: 1, biomass: 1, data: 1 }); return 'Tutorial supply: the cards and resources for a Shipyard.'; },
+        needsEnsure: state => !yard(state) && (!handHas(state, 'construct') || RES.some(r => me(state).resources[r] < ({ matter: 2, energy: 1, biomass: 1, data: 1 })[r])),
+        text: () => 'Ships come from a Shipyard (2 Matter, 1 Energy, 1 Biomass, 1 Data). The tutorial gave you enough for a Shipyard and two ships. This turn, pick up the Construct card marked with the arrow and drop it on an empty hex next to your Colony (lit while you hold the card), or choose Use order and then the hex. One order per turn: the next ships come on your next turns.',
+        anchor: hand('construct'), done: state => Boolean(yard(state)) || (scanOpen() && Boolean(scanButton(/Shipyard/)())) },
+      { id: 'shipyard-build', title: 'Build a Shipyard', rule: 'building',
+        // Closed the Sector Scan, or built something else instead: go back to choosing the hex.
+        fallback: state => !yard(state) && !(scanOpen() && scanButton(/Shipyard/)()),
+        text: () => 'Choose Build Shipyard. A Shipyard lets you commission ships, and it defends its own hex.',
+        anchor: scanButton(/Shipyard/), done: state => Boolean(yard(state)) },
       { id: 'settler', title: 'Commission a Settler', rule: 'building',
-        prepare: s => { ensureShipyard(s); ensureHand(s, ['construct', 'construct', 'construct', 'move', 'move'], true); ensureResources(s, { matter: 3, energy: 3, biomass: 2, data: 2 }); return 'Tutorial supply: resources for a Settler, an Explorer and a Fleet.'; },
+        prepare: s => { if (yard(s.state)) return null; ensureShipyard(s); return 'Tutorial supply: a Shipyard next to your Colony.'; },
         ensure: s => { ensureHand(s, ['construct']); ensureResources(s, { matter: 1, energy: 1, biomass: 1 }); return 'Tutorial supply: a Construct card and the price of a Settler.'; },
         needsEnsure: state => myOps(state) && (!handHas(state, 'construct') || !(me(state).resources.matter >= 1 && me(state).resources.energy >= 1 && me(state).resources.biomass >= 1)),
         text: () => 'Drag a Construct card onto your Shipyard and choose Commission Settler (1 Matter, 1 Energy, 1 Biomass). Settlers found Colonies.',
         anchor: state => scanButton(/Settler/)() || hand('construct')(state), aimAt: state => yard(state), done: state => unitCount(state, 'settler') > 0 },
-      { id: 'explorer', title: 'Commission an Explorer', rule: 'building',
+      { id: 'explorer', title: 'Commission an Explorer', rule: 'building', aimAt: state => yard(state),
         ensure: s => { ensureHand(s, ['construct']); ensureResources(s, { energy: 1, data: 2 }); return 'Tutorial supply: a Construct card and the price of an Explorer.'; },
         needsEnsure: state => myOps(state) && (!handHas(state, 'construct') || !(me(state).resources.energy >= 1 && me(state).resources.data >= 2)),
         text: () => 'Your Settler stands on the Shipyard, and a Colonize card went to your discard pile: a ship that needs a card brings it along. Now use another Construct card on the Shipyard to commission an Explorer (1 Energy, 2 Data). Explorers find relics.',
-        anchor: state => scanButton(/Explorer/)() || hand('construct')(state), aimAt: state => yard(state), done: state => unitCount(state, 'explorer') > 0 },
-      { id: 'fleet', title: 'Commission a Fleet', rule: 'combat',
-        ensure: s => { ensureHand(s, ['construct']); ensureResources(s, { matter: 2, energy: 1, biomass: 1 }); return 'Tutorial supply: a Construct card and the price of a Fleet.'; },
-        needsEnsure: state => myOps(state) && (!handHas(state, 'construct') || !(me(state).resources.matter >= 2 && me(state).resources.energy >= 1 && me(state).resources.biomass >= 1)),
-        text: () => 'The Explorer brought a Probe / Excavate card. Last one: use a Construct card to commission a Fleet (2 Matter, 1 Energy, 1 Biomass). Fleets are your warships: attack 3, hull 7.',
-        anchor: state => scanButton(/Fleet/)() || hand('construct')(state), aimAt: state => yard(state), done: state => unitCount(state, 'fleet') > 0 },
+        anchor: state => scanButton(/Explorer/)() || hand('construct')(state), done: state => unitCount(state, 'explorer') > 0 },
     ] },
     { id: 'movement', title: 'Movement', steps: [
       { id: 'move-split', title: 'Split a move', rule: 'split-moves', aimAt: state => state.moveSource ? null : yard(state),
-        prepare: s => { ensureUnits(s, { settler: 1, explorer: 1, fleet: 1 }); },
+        prepare: s => { const fleet = unitCount(s.state, 'fleet') === 0; ensureUnits(s, { settler: 1, explorer: 1, fleet: 1 }); return fleet ? 'Tutorial supply: a Fleet (your warship: attack 3, hull 7) joins your ships at the Shipyard. You commission one like the others, for 2 Matter, 1 Energy and 1 Biomass.' : null; },
         ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         start: state => ({ fleets: unitsAt(state, 'fleet').join('|') }),
@@ -430,7 +441,7 @@
     if (aimed) { anchor = aimed; text = `${state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.) ${text}`; }
     return {
       id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: step.title, text, rule: step.rule,
-      inDialog: openDialog || step.dialog || null, anchor, avoid: [hexAt(step.aimAt?.(state, port))], progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
+      inDialog: openDialog || step.dialog || null, anchor, avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return step.marks?.(state, port) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
       buttons: [
         { action: 'back', label: 'Back', disabled: progress.view === 0 },
         ...(reviewing ? [{ action: 'next', label: 'Next', primary: true }] : []),
