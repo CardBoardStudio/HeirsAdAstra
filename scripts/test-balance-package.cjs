@@ -79,7 +79,7 @@ for (const key of ['colonize', 'colonyPods']) {
   assert(!C.boardingMarines);
   assert(!C.miningCharter && !C.bioReactor);
   assert(C.prefabYards.secondBuild && !C.orbitalFoundry && !C.worldEngine.secondBuild);
-  // Prices are unchanged by this package.
+  // Current retained Wonder prices.
   assert.deepEqual(plain(C.dysonLattice.cost), { matter: 4, energy: 8, data: 2 });
   assert.deepEqual(plain(C.monumentOfAccord.cost), { matter: 6, biomass: 2, data: 2 });
 }

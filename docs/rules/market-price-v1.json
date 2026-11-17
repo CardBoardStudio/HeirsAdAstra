@@ -1,0 +1,33 @@
+{
+  "strikeVector": {
+    "matter": 1,
+    "energy": 4
+  },
+  "foldSpaceGate": {
+    "energy": 6,
+    "data": 1
+  },
+  "prefabYards": {
+    "matter": 4
+  },
+  "worldEngine": {
+    "matter": 6,
+    "energy": 1,
+    "biomass": 1
+  },
+  "seedArk": {
+    "biomass": 4
+  },
+  "colonyPods": {
+    "energy": 1,
+    "biomass": 4
+  },
+  "procurementHub": {
+    "biomass": 1,
+    "data": 4
+  },
+  "tradeSyndicate": {
+    "energy": 4,
+    "data": 1
+  }
+}
