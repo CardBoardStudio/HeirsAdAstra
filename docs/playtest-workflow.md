@@ -12,6 +12,8 @@ Read the [canonical rulebook](../prototypes/galactic-reach/rulebook.html) and [m
 
 The `Rules contract` check requires a grounding declaration and pairs changes in known engine paths with the canonical document. It does not prove semantic agreement: reviewers must compare rules, code, card text, and tests. Work unrelated to Galactic Reach must explain its exclusion and cite its own specification.
 
+The `Review conventions` check is advisory: it reports, without failing, a PR title or commit subject that is not `Area: sentence`, an unanswered template section, template comments left in a ready PR, a commit over 30 changed lines with no body, a compatibility box that is not exactly one, and a missing or mismatched `changes/` entry. It runs the shared [review-conventions](https://github.com/bitswell-hq/review-conventions) workflow with `.github/review-conventions.json`.
+
 ## Breaking experiments
 
 A change is breaking if it can invalidate a game or materially change a player's decisions: setup, map generation, turn order, legal actions, card effects/costs, production, combat, scoring, victory, component limits, or saved-state meaning. If uncertain, treat it as breaking until proven compatible.
