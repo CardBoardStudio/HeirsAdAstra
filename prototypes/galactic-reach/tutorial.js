@@ -286,7 +286,7 @@
         prepare: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); },
         ensure: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); return 'Tutorial supply: your Capacity Module.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'capacityModule') && !(me(state).storage || []).length,
-        dialogs: { '#storage-allocation-dialog': 'Split 4 points among your limits, for example 2 Energy and 2 Data, then Confirm allocation. Each point raises that limit by 1, for good.' },
+        dialogs: { '#storage-allocation-dialog': 'Split 4 points among your limits, for example 2 Energy and 2 Data, then choose Play Capacity Module at the bottom. Each point raises that limit by 1, for good.' },
         text: () => 'Your Capacity Module came round in your new hand. Choose Use order on it.',
         anchor: hand('capacityModule'), done: state => (me(state).storage || []).length > 0 },
     ] },
@@ -400,7 +400,7 @@
       id: `${step.id}-stray`, eyebrow: `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${step.lesson.title}`, title: step.title,
       text: `Close this window (Close, Done or Escape) to continue: ${typeof step.text === 'function' ? step.text(state, port) : step.text}`,
       rule: step.rule, inDialog: `#${stray.id}`, anchor: null,
-      buttons: [{ action: 'exit', label: 'Exit tutorial' }]
+      buttons: [{ action: 'back', label: 'Back', disabled: progress.view === 0 }, { action: 'exit', label: 'Exit tutorial' }]
     };
     const openDialog = Object.keys(step.dialogs || {}).find(modalOpen);
     const lesson = step.lesson;
@@ -416,7 +416,7 @@
     // A card aimed with Use order waits for its hex: point at the lit hexes, whatever the step.
     const lit = coord => coord && $(`.hex.cf-drop-target[data-coord="${coord}"], .hex.target[data-coord="${coord}"]`);
     const choiceInScan = anchor?.closest?.('#sector-popover') && scanOpen();
-    const aimed = !reviewing && !openDialog && !choiceInScan && ['move', 'construct', 'colonize'].includes(state.actionMode)
+    const aimed = !reviewing && !openDialog && !state.pendingCombat && !choiceInScan && ['move', 'construct', 'colonize'].includes(state.actionMode)
       && (lit(step.aimAt?.(state, port)) || $('.hex.cf-drop-target, .hex.target'));
     if (aimed) { anchor = aimed; text = `${state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.) ${text}`; }
     return {

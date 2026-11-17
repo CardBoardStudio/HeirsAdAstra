@@ -69,8 +69,8 @@
   const EXPLAINERS = [
     { id: 'welcome', when: c => c.ops && c.state.round === 1 && c.state.turnStage === 'prep',
       title: 'Welcome, commander', rule: 'start',
-      text: () => `Race to ${port.victoryTarget()} Prestige (★). Each turn you take one action: play a card's order, or pass. Your Colony is worth 3★. More Colonies, relics and battles score more. These notes point at what you can do. Turn them off in the menu.`,
-      anchor: () => firstShown('#hand-row') },
+      text: () => `Race to ${port.victoryTarget()} Prestige (★). Each turn you take one action: play a card's order, or pass. Your Colony is worth 3★. More Colonies, relics and battles score more. These notes point at what you can do; turn them off in the menu. New here? Learn to play teaches the game step by step.`,
+      anchor: () => firstShown('#hand-row'), buttons: [{ action: 'learn', label: 'Learn to play', primary: true }] },
     { id: 'buy-turn', when: c => c.buy, title: 'Your Buy turn', rule: 'buy',
       text: () => 'Passing ended your Operations for this round. Now buy any supply cards you can afford (outlined in gold), upgrade a starter, buy a Capacity Module or trash a card. Bought cards go to your discard pile. Finish Buy when you are done.',
       anchor: () => turnButton() },
@@ -78,10 +78,10 @@
       text: () => 'At the end of every round, everyone discards what is left and draws five new cards (Cleanup & draw). Then each faction collects production: one resource for each hex it owns. When your deck runs out, your discard pile is shuffled to make a new deck.',
       anchor: () => firstShown('#phase-stepper') },
     { id: 'shipyard', when: c => c.ops && c.shipyards.length > 0, title: 'Your Shipyard', rule: 'building',
-      text: () => 'A Construct played on your Shipyard commissions a unit. A Settler (1 Matter, 1 Energy, 1 Biomass) founds Colonies, worth 3★ each. An Explorer (1 Energy, 2 Data) finds relics, worth 2★ each. A Fleet (2 Matter, 1 Energy, 1 Biomass) fights. Settlers and Explorers bring a free order card, which goes to your discard pile.',
+      text: () => 'A Construct played on your Shipyard commissions a unit. A Settler (1 Matter, 1 Energy, 1 Biomass) founds Colonies, worth 3★ each. An Explorer (1 Energy, 2 Data) finds relics, worth 2★ each. A Fleet (2 Matter, 1 Energy, 1 Biomass) fights. Settlers and Explorers bring a free order card. Like every new card it goes to your discard pile, and reaches your hand after your deck runs out and the discard is shuffled in.',
       anchor: c => hex(c.shipyards[0]) },
     { id: 'colonize-card', when: c => c.ops && c.player.hand.some(card => port.cards[card.key].order === 'colonize'), title: 'Colonize', rule: 'orders',
-      text: () => 'Move a Settler onto the center hex of a neutral world, then play Colonize there and pay 2 Biomass. The new Colony scores 3★. The Settler and this card are used up. Settlers move 1 hex per Move order.',
+      text: () => 'Move a Settler onto the center hex of a neutral world, then play Colonize there and pay 2 Biomass. The new Colony scores 3★. The Settler and this card are used up. Settlers move 1 hex per Move order. Biomass comes from Biomass hexes you own, or from the bank (4 of another resource for 1).',
       anchor: c => handCard(c.player.hand.find(card => port.cards[card.key].order === 'colonize').id) },
     { id: 'probe-card', when: c => c.ops && c.player.hand.some(card => card.key === 'probe'), title: 'Probe / Excavate', rule: 'movement',
       text: () => `Probe from your Explorer, anywhere, to locate the nearest hidden relic (◈). Move the Explorer onto that hex, then play the same card as Excavate. It costs ${costText(port.excavationCost)}, scores 2★ and gives you a relic card.`,
@@ -143,9 +143,9 @@
       if (move && c.myUnits.settler.length) return { title: 'Move a unit', text: 'Drag Move onto your units (the lit hexes), choose who goes, then choose where. Settlers move 1 hex, Fleets 2, Explorers 3. Head for the center of a neutral world to found a Colony there.', anchor: handCard(move.card.id) };
       if (c.playable.length) {
         const first = c.playable[0];
-        return { title: 'Your turn', text: `Cards outlined in gold have an order you can use now: drag one onto a lit hex, or choose Use order. You can also convert level I starters into resources. When you are done, choose Pass & buy.`, anchor: handCard(first.card.id) };
+        return { title: 'Your turn', text: `Cards outlined in gold have an order you can use now. Drag one onto a lit hex, or point at it and choose Use order. You can also convert level I starters into resources. When you are done, choose Pass & buy.${fullWarning(c)}`, anchor: handCard(first.card.id) };
       }
-      return { title: 'Nothing left to play', text: c.canConvert ? 'No order can be used now. Convert spare starters if they help you buy something, then choose Pass & buy to start your Buy turn.' : 'No order can be used now. Choose Pass & buy to start your Buy turn.', anchor: turnButton() };
+      return { title: 'Nothing left to play', text: c.canConvert ? `No order can be used now. Convert spare starters if they help you buy something, then choose Pass & buy to start your Buy turn.${fullWarning(c)}` : 'No order can be used now. Choose Pass & buy to start your Buy turn.', anchor: turnButton() };
     }
     if (c.buy) {
       const market = c.marketBuys[0];
@@ -154,8 +154,15 @@
       if (c.upgrades.length) return { title: 'Upgrade a starter', text: 'Upgrade a Move or Construct in the Upgrades rows: pay 2 of one resource for level II (a stronger order, but no more converting). Or choose Finish Buy.', anchor: firstShown('#upgrade-market .game-card:not([disabled])') };
       return { title: 'Finish Buy', text: 'Nothing here is affordable yet. Choose Finish Buy. Your resources carry over to the next round.', anchor: turnButton() };
     }
-    if (s.phase === 'operations' && !c.player.passed) return { title: 'Rivals are acting', text: `${s.players[s.activePlayer].name} is taking a turn. You can still convert starters or trade with the bank meanwhile.`, anchor: null, quiet: true };
+    if (!c.myTurn && s.winner === null && ['operations', 'buy'].includes(s.phase)) return { title: 'Rivals are acting', text: `${s.players[s.activePlayer].name} is taking its ${s.phase === 'buy' ? 'Buy' : 'Operations'} turn. Your turn comes round again shortly.${s.phase === 'operations' && !c.player.passed ? ' Meanwhile you can still convert starters or trade with the bank.' : ''}`, anchor: null, quiet: true };
     return null;
+  }
+
+  // Converting into a full resource wastes it: say so before the player does it.
+  function fullWarning(c) {
+    const limits = port.limits();
+    const wasted = [...new Set(c.convertible.flatMap(card => Object.keys(port.cards[card.key].resource || {}).filter(r => c.player.resources[r] >= limits[r])))];
+    return wasted.length ? ` Careful: your ${wasted.map(r => RESOURCE_NAMES[r]).join(' and ')} ${wasted.length > 1 ? 'are' : 'is'} full, so converting a card into ${wasted.length > 1 ? 'them' : 'it'} now would waste it.` : '';
   }
 
   // ---- The coach mark itself. ----
@@ -174,6 +181,7 @@
       const action = button.dataset.coach;
       if (action === 'got-it') { prefs.seen[button.dataset.id] = true; savePrefs(); }
       if (action === 'hide') setEnabled(false);
+      if (action === 'learn') { prefs.seen.welcome = true; savePrefs(); location.href = `${location.pathname}?tutorial=1`; return; }
       if (action === 'more') { coach.dataset.expanded = String(coach.dataset.expanded !== 'true'); position(coach, currentAnchor); return; }
       globalThis.galacticReachTutorial?.coachAction?.(action, button.dataset);
       schedule();
@@ -307,7 +315,12 @@
       { side: 'right', left: a.right + gap, top: clampY(a.top + a.height / 2 - height / 2), fits: a.right + gap + width <= vw - margin },
       { side: 'left', left: a.left - gap - width, top: clampY(a.top + a.height / 2 - height / 2), fits: a.left - gap - width >= margin },
     ];
-    options.sort((x, y) => sides.indexOf(x.side) - sides.indexOf(y.side));
+    // Of the sides that fit, prefer the one that hides least of what you may need next: the lit
+    // hexes of an aimed order and an open Sector Scan.
+    const avoid = [...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open')].filter(el => el !== around && !around.contains(el)).map(el => el.getBoundingClientRect());
+    const covered = o => avoid.reduce((sum, r) => sum + Math.max(0, Math.min(o.left + width, r.right) - Math.max(o.left, r.left)) * Math.max(0, Math.min(o.top + height, r.bottom) - Math.max(o.top, r.top)), 0);
+    options.forEach(o => { o.cost = Math.round(covered(o) / 100); });
+    options.sort((x, y) => x.cost - y.cost || sides.indexOf(x.side) - sides.indexOf(y.side));
     const choice = options.find(o => o.fits) || { side: 'none', left: clampX(a.left), top: clampY(a.top - height - gap) };
     box.style.left = `${Math.round(choice.left)}px`;
     box.style.top = `${Math.round(choice.top)}px`;
@@ -335,7 +348,7 @@
         const c = context();
         const explainer = EXPLAINERS.find(e => !prefs.seen[e.id] && e.when(c));
         if (explainer) tip = { dock: true, id: explainer.id, eyebrow: 'New to you', title: explainer.title, text: explainer.text(c), rule: explainer.rule, inDialog: explainer.inDialog,
-          anchor: explainer.anchor?.(c) || null, buttons: [{ action: 'got-it', id: explainer.id, label: 'Got it', primary: true }, { action: 'hide', label: 'Hide guidance' }] };
+          anchor: explainer.anchor?.(c) || null, buttons: [...(explainer.buttons || []), { action: 'got-it', id: explainer.id, label: 'Got it', primary: !explainer.buttons }, { action: 'hide', label: 'Hide guidance' }] };
         else {
           tip = hint(c);
           if (tip) tip = { ...tip, dock: true, eyebrow: tip.quiet ? 'Guide' : 'You can', buttons: tip.quiet ? [] : [{ action: 'hide', label: 'Hide guidance' }] };

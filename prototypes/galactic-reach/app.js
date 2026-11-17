@@ -4258,7 +4258,9 @@ function createGalacticReach(options = {}) {
     if (replayMode) { $('#decommission-area').innerHTML=''; renderUpgradeOffers(false); return; }
     const eligible=trashEligibleCards(state.players[ME]);
     const selectedResource = $('#trash-resource')?.value;
-    const trashResource = RESOURCES.includes(selectedResource) ? selectedResource : RESOURCES.find(resource=>state.players[ME].resources[resource]>=3) || 'matter';
+    // Keep the chosen payment while it can still pay; otherwise offer one that can.
+    const canPayTrash = resource => state.players[ME].resources[resource]>=3;
+    const trashResource = RESOURCES.includes(selectedResource) && (canPayTrash(selectedResource) || !RESOURCES.some(canPayTrash)) ? selectedResource : RESOURCES.find(canPayTrash) || 'matter';
     const trashOptions = RESOURCES.map(resource =>
       `<option value="${resource}" ${resource===trashResource?'selected':''}>${RESOURCE_NAMES[resource]}</option>`
     ).join('');
@@ -4701,7 +4703,8 @@ function createGalacticReach(options = {}) {
     $('#combat-help').textContent=view.stage==='tactic'?`Your base attack is ${combatPower(mine.pieces)}; the opponent’s is ${combatPower(enemy.pieces)}. Fire adds 1 hit. Screen prevents 2. Opponent bonuses and shields remain unknown until both commit. Damage is simultaneous.`:'Escape moves only the chosen Explorers. Other units stay. Energy costs are included in these choices; there is no ship-stacking limit.';
     $('#combat-history').innerHTML=view.summary.map(line=>`<p>${esc(line)}</p>`).join('');
     $$('[data-combat-action]').forEach(button=>button.addEventListener('click',()=>applyCombatAction(ME,actions[Number(button.dataset.combatAction)])));
-    if (!dialog.open) dialog.showModal();
+    // The Sector Scan that started the move must not lie over the battle's tactics.
+    if (!dialog.open) { if ($('#sector-popover')?.matches?.(':popover-open')) $('#sector-popover').hidePopover(); dialog.showModal(); }
   }
 
   function renderOverflow() {}
