@@ -26,6 +26,7 @@ For two human players on one computer, use separate browser profiles or a privat
 - The current prototype/platform/experiment dependency graph and follow-up PR plan are tracked in the [playtest roadmap](docs/playtest-roadmap.md).
 - Optional local release deployment through Tailscale Funnel. See [local HTTPS hosting](docs/local-hosting.md).
 - Invite-only mode for a public host: Nido sign-in plus an administrator's invitation. See [invite-only hosting](docs/invite-only.md).
+- A dev-only PR mixer: administrators turn open PRs on and off and play `main` with exactly those changes, each mix with its own throwaway database. See [PR mixer](docs/pr-mixer.md).
 - Axum HTTP server with SQLite persistence, cookie sessions, membership checks, origin protection, and revision-checked commands.
 - Nido passkey sign-in with live Stellar testnet wallet verification; see [Nido setup](docs/nido-auth.md).
 - Atomic snapshots and private, hash-linked command records for future replay tooling. These records are not a ZKP or a trustless consensus system.

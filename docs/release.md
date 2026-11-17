@@ -130,6 +130,7 @@ sudo tailscale serve --bg --https=3200 http://127.0.0.1:3200   # tailnet only
 - Accounts: the dev host admits only Nido accounts that hold an invitation. Make yourself administrator once with `docker exec drawing-board-dev drawing-board grant-admin <your Nido wallet address>`, then invite testers from **Invitations** ([invite-only hosting](invite-only.md)). A host installed before invite-only mode needs `ACCESS=invite-only` added to `dev.env`; its old `ACCOUNT_REGISTRATION_CODE` then has no effect.
 - Public access: do it only after the step above. Tailscale Funnel serves only ports 443, 8443 and 10000, so the public origin may differ from the tailnet one on port 3200. Set `APP_ORIGIN` in `dev.env` to the public origin exactly, because Nido sign-in messages name it.
 - Back up `data/` with SQLite-aware tooling; deleting it resets every dev table and account.
+- PR mixer: to try open PRs together before they merge, install the [PR mixer](pr-mixer.md) beside the dev host (`deploy/pr-mixer/pr-mixer.sh check`, then `install`, then `sudo tailscale serve --bg --https=3300 http://127.0.0.1:3300`). It is admin-only, tailnet-only, and gives each mix its own throwaway database; it never touches `data/` or the `drawing-board-dev` container. Status: `deploy/pr-mixer/pr-mixer.sh status`; logs: `journalctl -u drawing-board-pr-mixer`.
 
 ## Legacy preview identifiers
 
