@@ -40,10 +40,21 @@
 .gr-coach.in-dialog { position: static; width: auto; max-height: none; margin: 0 0 10px; box-shadow: 0 0 0 2px #ffc95e55; }
 
 /* The element to use pulses with a gold ring; still for reduced motion. */
-.gr-coach-target { outline: 3px solid #ffc95e !important; outline-offset: 3px; animation: gr-coach-pulse 1.6s ease-in-out infinite; }
-.hex.gr-coach-target { outline-offset: -2px; z-index: 3; }
-@keyframes gr-coach-pulse { 50% { outline-color: #ffc95e66; outline-offset: 6px; } }
+/* The ONE element a note is about: a cyan ring (not the gold "you can use this" outline every
+   playable card already has), a gentle bounce, and a pointer above it. Reduced motion: a still glow. */
+.gr-coach-target { outline: 3px solid #6ff3ff !important; outline-offset: 3px; box-shadow: 0 0 0 6px #6ff3ff2e, 0 0 20px #6ff3ffaa !important; animation: gr-coach-bounce 1.3s ease-in-out infinite; }
+.hex.gr-coach-target { outline-offset: -2px; z-index: 3; animation-name: gr-coach-pulse; }
+@keyframes gr-coach-bounce { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
+@keyframes gr-coach-pulse { 50% { outline-color: #6ff3ff66; outline-offset: 2px; } }
 @media (prefers-reduced-motion: reduce) { .gr-coach-target { animation: none; } }
+.gr-coach-goal { outline: 2px dashed #6ff3ff !important; outline-offset: -3px; z-index: 3; }
+.gr-coach-pointer { position: fixed; z-index: 61; inset: auto; margin: 0; padding: 0; border: 0; background: none; overflow: visible; pointer-events: none;
+  width: 28px; height: 30px; color: #6ff3ff; filter: drop-shadow(0 2px 3px #000c); animation: gr-pointer-bob 1.3s ease-in-out infinite; }
+.gr-coach-pointer[hidden] { display: none; }
+.gr-coach-pointer svg { width: 100%; height: 100%; display: block; }
+.gr-coach-pointer.below { rotate: 180deg; }
+@keyframes gr-pointer-bob { 0%, 100% { translate: 0 -4px; } 50% { translate: 0 2px; } }
+@media (prefers-reduced-motion: reduce) { .gr-coach-pointer { animation: none; } }
 
 /* Phones: the note docks across the top of the screen. */
 @media (max-width: 599px), (max-height: 499px) {
@@ -68,3 +79,5 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
 .gr-coach.docked .button { min-height: 26px; padding: 2px 9px; font-size: 11.5px; }
 .gr-coach [data-coach="more"][hidden] { display: none; }
 .gr-coach.tight .gr-coach-eyebrow, .gr-coach.tight .gr-coach-rule { display: none; }
+.gr-coach.bare .gr-coach-text { display: none; }
+.gr-coach.no-room { visibility: hidden; }
