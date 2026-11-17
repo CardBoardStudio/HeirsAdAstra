@@ -4,6 +4,7 @@ const root=path.resolve(__dirname,'../prototypes/galactic-reach'),plain=x=>JSON.
 const {oldText,newText}=require('./compare-seed-ark-choice.cjs');
 function game(resume,enabled=true){
  const ctx=vm.createContext({});let source=fs.readFileSync(path.join(root,'app.js'),'utf8').replace('      clone, deckContents,','      runAiOperation, aiCardUtility, cardMarkup, describeDecision, clone, deckContents,');
+ if(enabled)source=source.replace('colonyCost: 1, text:', 'colonyCost: 1, fallbackDraw: 2, text:').replace(oldText,newText);
  if(!enabled)source=source.replace('colonyCost: 1, fallbackDraw: 2,','colonyCost: 1,').replace(newText,oldText);
  vm.runInContext(fs.readFileSync(path.join(root,'adapter.js'),'utf8')+source,ctx);let e,seed=81,calls=0;const create=ctx.createGalacticAdapter;ctx.createGalacticAdapter=port=>{e=port;return create(port);};
  const a=ctx.createGalacticReach({headless:true,resume,random:()=>{calls++;return((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}}),s=e.state,p=s.players[0];

@@ -166,7 +166,7 @@ function createGalacticReach(options = {}) {
     foldSpaceGate: { code: 'N04', name: 'Fold-Space Gate', kind: 'Movement', accent: 'var(--energy)', cost: {"energy": 6, "data": 1}, order: 'move', tag: 'foldSpaceGate', range: 5, text: 'Move one group with +5 range.' },
     prefabYards: { code: 'N05', name: 'Prefab Yards', kind: 'Industry', accent: 'var(--matter)', cost: {"matter": 4}, order: 'construct', tag: 'prefabYards', buildDiscount: 'each', secondBuild: true, text: 'Build or commission once, paying 1 less of each resource in its cost; then you may build once more at full price.' },
     worldEngine: { code: 'N07', name: 'World Engine', kind: 'Industry', accent: 'var(--matter)', cost: {"matter": 6, "energy": 1, "biomass": 1}, order: 'construct', tag: 'worldEngine', buildDiscount: 'free', orderDraw: 1, text: 'Build or commission once at no resource cost, then draw one card.' },
-    seedArk: { code: 'N08', name: 'Seed Ark', kind: 'Expansion', accent: 'var(--biomass)', cost: {"biomass": 4}, order: 'colonize', tag: 'seedArk', colonyCost: 1, fallbackDraw: 2, text: 'Choose: colonize with a Settler for 1 Biomass, consuming the Settler; or draw two cards instead. Seed Ark stays in your deck.' },
+    seedArk: { code: 'N08', name: 'Seed Ark', kind: 'Expansion', accent: 'var(--biomass)', cost: {"biomass": 4}, order: 'colonize', tag: 'seedArk', colonyCost: 1, text: 'Colonize with a Settler for 1 Biomass. The Settler is consumed; Seed Ark stays in your deck.' },
     colonyPods: { code: 'N09', name: 'Colony Pods', kind: 'Expansion', accent: 'var(--biomass)', cost: {"energy": 1, "biomass": 4}, order: 'colonize', tag: 'colonyPods', colonyCost: 1, keepSettler: true, text: 'Colonize for 1 Biomass without consuming the Settler.' },
     genesisCharter: { code: 'N10', name: 'Genesis Charter', kind: 'Expansion', accent: 'var(--biomass)', cost: { matter: 2, biomass: 8, data: 1 }, order: 'colonize', tag: 'genesisCharter', colonyCost: 0, keepSettler: true, colonyPrestige: 2, text: 'Colonize for 0 Biomass without consuming the Settler, and gain 2 permanent Prestige.' },
     strategyCore: { code: 'N16', name: 'Strategy Core', kind: 'Deckcraft', accent: 'var(--data)', cost: { energy: 1, data: 5 }, order: 'special', tag: 'strategyCore', effect: { draw: 3 }, text: 'Draw three cards.' },
@@ -181,7 +181,10 @@ function createGalacticReach(options = {}) {
     ascendancyCodex: { code: 'N26', name: 'Ascendancy Codex', kind: 'Prestige', accent: 'var(--gold)', cost: { energy: 2, biomass: 4, data: 8 }, order: 'special', tag: 'ascendancyCodex', effect: { prestige: 2, draw: 1 }, text: 'Gain 2 permanent Prestige, then draw one card.' },
     signalRelay: { code:'N27', name:'Signal Relay', kind:'Deckcraft', accent:'var(--data)', cost:{energy:2,data:1}, order:'special', effect:{draw:2}, text:'Draw two cards.' },
     surveyNetwork: { code:'N28', name:'Survey Network', kind:'Deckcraft', accent:'var(--data)', cost:{biomass:1,data:2}, order:'special', effect:{draw:2}, text:'Draw two cards.' },
-    tacticalBriefing: { code:'N29', name:'Tactical Briefing', kind:'Deckcraft', accent:'var(--data)', cost:{matter:1,data:2}, order:'special', effect:{draw:2}, text:'Draw two cards.' }
+    tacticalBriefing: { code:'N29', name:'Tactical Briefing', kind:'Deckcraft', accent:'var(--data)', cost:{matter:1,data:2}, order:'special', effect:{draw:2}, text:'Draw two cards.' },
+    exchangeProtocol: { code:'N30', name:'Exchange Protocol', kind:'Exchange', accent:'var(--gold)', cost:{energy:2,data:1}, order:'special', effect:{bankRate:2}, text:'Choose a resource to give. Until your Buy turn ends, exchange 2 of that resource for 1 of another at the bank.' },
+    barterNetwork: { code:'N31', name:'Barter Network', kind:'Exchange', accent:'var(--gold)', cost:{biomass:1,data:2}, order:'special', effect:{bankRate:2}, text:'Choose a resource to give. Until your Buy turn ends, exchange 2 of that resource for 1 of another at the bank.' },
+    clearingHouse: { code:'N32', name:'Clearing House', kind:'Exchange', accent:'var(--gold)', cost:{matter:1,data:2}, order:'special', effect:{bankRate:2}, text:'Choose a resource to give. Until your Buy turn ends, exchange 2 of that resource for 1 of another at the bank.' },
   };
 
   // Military-deck market cards (codes M01-M10). Buying one adds it to your military deck,
@@ -561,7 +564,7 @@ function createGalacticReach(options = {}) {
       id: index, name: options.names?.[index] || PLAYER_NAMES[faction], color: PLAYER_COLORS[faction], strategy: PLAYER_STRATEGIES[faction],
       resources: { matter: 0, energy: 0, biomass: 1, data: 1 }, deck: shuffled(deck,`deck:${index}`), discard: [], hand: [], inPlay: [],
       resourceLimits: { matter:4, energy:4, biomass:4, data:4 }, storageUpgrades: 0, storagePurchases: 0, storage: [], initialShipyardCoord: null, cardsPurchased: 0, relicsExcavated: 0, combatVictories: 0, passed: false, tradeUsed: false, bought: 0,
-      buyDiscountEach: 0, buyHubDiscounts: 0, buyStartDiscardIds: [], buyStartInPlayIds: [], buyStartHandIds: [], combatBonus: 0, military: [], cardPrestige: 0,
+      buyDiscountEach: 0, buyHubDiscounts: 0, bankExchangeResources: [], buyStartDiscardIds: [], buyStartInPlayIds: [], buyStartHandIds: [], combatBonus: 0, military: [], cardPrestige: 0,
       tradesWith: [0,0,0,0], ...(options.controllers ? {controller: options.controllers[index]} : {})
     };
   }
@@ -607,7 +610,7 @@ function createGalacticReach(options = {}) {
       players:position.players.map(player=>({
         resources:clone(player.resources), resourceLimits:clone(player.resourceLimits), prestige:prestigeBreakdown(player.id,position), storageUpgrades:player.storageUpgrades, storagePurchases:player.storagePurchases,
         cardsPurchased:player.cardsPurchased, relicsExcavated:player.relicsExcavated, combatVictories:player.combatVictories, cardPrestige:player.cardPrestige, military:clone(player.military),
-        passed:player.passed, bought:player.bought,
+        passed:player.passed, bought:player.bought, bankExchangeResources:[...(player.bankExchangeResources||[])],
         hand:clone(player.hand), deck:clone(player.deck), discard:clone(player.discard), inPlay:clone(player.inPlay)
       })),
       planets:clone(position.planets), clusters:clone(position.clusters), fleets:clone(position.fleets),
@@ -1382,6 +1385,14 @@ function createGalacticReach(options = {}) {
     });
   }
 
+  function catalogMarketEnabled() { return options.headless === true && options.simulationCatalogMarket === true && !network && !replayMode; }
+  function marketOffers() {
+    if (!catalogMarketEnabled()) return state.market;
+    const supply=[...state.market,...Object.values(state.marketDecks).flat()];
+    return Object.keys(MARKET_CARDS).map(key=>supply.find(card=>card.key===key)).filter(Boolean);
+  }
+  function marketCopiesRemaining(key) { return [...state.market,...Object.values(state.marketDecks).flat()].filter(card=>card.key===key).length; }
+
   function controlledPlanets(playerId) {
     return Object.entries(state.planets).filter(([,p]) => p.owner === playerId);
   }
@@ -1556,7 +1567,7 @@ function createGalacticReach(options = {}) {
   // Mirrors the Buy section of the adapter's legal actions.
   function humanBuyHasChoice() {
     const player = state.players[ME];
-    if (state.market.some(card => canAfford(player, purchaseCost(player, card.key)))) return true;
+    if (marketOffers().some(card => canAfford(player, purchaseCost(player, card.key)))) return true;
     if ([...player.hand,...player.discard,...player.inPlay].some(card=>card.starter&&starterLevel(card)<3&&RESOURCES.some(r=>player.resources[r]>=upgradePrice(card)))) return true;
     if(player.hand.some(canConvertCard)&&canConvertCards())return true;
     if (player.hand.some(card => { const effect = ALL_CARDS[card.key].buyEffect; return effect; })) return true;
@@ -1834,6 +1845,8 @@ function createGalacticReach(options = {}) {
   function resolveCardEffect(playerId, card, definition, choice = null) {
     const player = state.players[playerId], effect = definition.effect;
     if (state.pendingCombat || !player.hand.some(c=>c.id===card.id)) return false;
+    if(effect.bankRate && (state.phase!=='operations'||state.activePlayer!==playerId||player.passed||state.pendingConstruct||state.pendingColonyBuild||state.pendingConsortium))return false;
+    if(effect.bankRate && !RESOURCES.includes(choice)) { if(!headless&&playerId===ME)openExchangeResource(card.id);return false; }
     if (effect.trashStarters && !validArchivePurgeChoice(playerId,choice,effect.trashStarters)) {
       if (!headless && playerId===ME) openArchivePurge(card.id);
       return false;
@@ -1847,6 +1860,7 @@ function createGalacticReach(options = {}) {
     // Capacity Module: the card and its chosen split stay in the permanent Storage pile.
     if (effect.store) player.storage.push({...played, allocation: {...choice}});
     const notes = [];
+    if(effect.bankRate){player.bankExchangeResources=[...new Set([...(player.bankExchangeResources||[]),choice])];notes.push(`enabled 2:1 ${RESOURCE_NAMES[choice]} bank exchanges until its Buy ends`);}
     if (effect.allocate) { addStorageCapacity(playerId,choice); player.storageUpgrades += 1; notes.push(`added ${effect.allocate} capacity points (${RESOURCES.filter(r=>choice[r]).map(r=>`+${choice[r]} ${RESOURCE_NAMES[r]}`).join(', ')}) and stored the card`); }
     if (effect.limits) { addStorageCapacity(playerId,effect.limits); notes.push(`raised its limits (${RESOURCES.filter(r=>effect.limits[r]).map(r=>`+${effect.limits[r]} ${RESOURCE_NAMES[r]}`).join(', ')})`); }
     if (effect.trashStarters) {
@@ -2660,12 +2674,12 @@ function createGalacticReach(options = {}) {
     const spare = type => resources[type] - (cost[type] || 0);
     for (const getType of RESOURCES) {
       while (resources[getType] < (cost[getType] || 0)) {
-        const givers = [...RESOURCES].filter(type => type !== getType && spare(type) >= 4);
-        const keepsReserve = givers.filter(type => spare(type) - (reserve[type] || 0) >= 4);
+        const givers = [...RESOURCES].filter(type => type !== getType && spare(type) >= bankTradeRate(player.id,type));
+        const keepsReserve = givers.filter(type => spare(type) - (reserve[type] || 0) >= bankTradeRate(player.id,type));
         const giveType = (keepsReserve.length ? keepsReserve : givers)
           .sort((a,b) => spare(b) - (reserve[b] || 0) - (spare(a) - (reserve[a] || 0)) || spare(b) - spare(a))[0];
         if (!giveType) return null;
-        resources[giveType] -= 4; resources[getType]++;
+        resources[giveType] -= bankTradeRate(player.id,giveType); resources[getType]++;
         plan.push({giveType,getType});
       }
     }
@@ -2794,9 +2808,9 @@ function createGalacticReach(options = {}) {
           const candidate={funds,available:node.available.filter(i=>i!==index),steps:[...node.steps,{type:'convert',card:cards[index].id}],penalty:node.penalty+retention[index]};
           const marker=key(candidate);if(!seen.has(marker)){seen.add(marker);next.push(candidate);}
         }
-        for(const giveType of RESOURCES) if(node.funds[giveType]>=4) for(const getType of RESOURCES) {
+        for(const giveType of RESOURCES) if(node.funds[giveType]>=bankTradeRate(player.id,giveType)) for(const getType of RESOURCES) {
           if(getType===giveType||node.funds[getType]>=(desiredCost[getType]||0)||node.funds[getType]>=limits[getType])continue;
-          const funds={...node.funds,[giveType]:node.funds[giveType]-4,[getType]:node.funds[getType]+1};
+          const funds={...node.funds,[giveType]:node.funds[giveType]-bankTradeRate(player.id,giveType),[getType]:node.funds[getType]+1};
           const candidate={funds,available:node.available,steps:[...node.steps,{type:'bank',giveType,getType}],penalty:node.penalty+.5};
           const marker=key(candidate);if(!seen.has(marker)){seen.add(marker);next.push(candidate);}
         }
@@ -2918,6 +2932,7 @@ function createGalacticReach(options = {}) {
     const drawValue=draw*(7+Math.min(cards.length,18)*.25)*Math.min(1,horizon/2);
     let value=6+(def.gainPrestige||0)*9+(effect.prestige||0)*Math.min(4,horizon)*8;
     value+=drawValue;
+    if(effect.bankRate){const income=aiIncome(playerId);value-=cards.filter(c=>ALL_CARDS[c.key].effect?.bankRate).length*10;value+=Math.max(...RESOURCES.map(r=>Math.min(3,(p.resources[r]+income[r]*2)/2)))*4*Math.min(3,horizon*5/Math.max(5,cards.length));}
     if (effect.limits) value+=RESOURCES.reduce((n,r)=>n+Math.min(2,effect.limits[r]||0),0)*1.5;
     if (def.order==='construct') value+=aiOrderCount(playerId,'construct')<3?15:5;
     if (def.order==='move') value+=countPlacedShips(playerId,'settler')+countPlacedShips(playerId,'explorer')+fleets?aiOrderCount(playerId,'move')<4?12:3:0;
@@ -2961,7 +2976,7 @@ function createGalacticReach(options = {}) {
   // The market card a rival is saving toward: its best-valued card, if any is worth buying.
   function aiTargetCard(playerId) {
     const p=state.players[playerId],income=aiIncome(playerId),limits=resourceLimits(playerId);
-    return state.market.map(card=>{
+    return marketOffers().map(card=>{
       const cost=purchaseCost(p,card.key),room=RESOURCES.reduce((n,r)=>n+Math.max(0,(cost[r]||0)-limits[r]),0);
       const saving=Math.max(...RESOURCES.map(r=>Math.max(0,(cost[r]||0)-p.resources[r])/Math.max(.5,income[r])));
       const delay=saving+(room?Math.ceil(room/4)*2:0);
@@ -3215,6 +3230,8 @@ function createGalacticReach(options = {}) {
       const origin=Object.keys(state.fleets).sort((a,b)=>aiCompareCoords(a,b,id)).find(coord=>probeRelic(id,coord,probe.id,true)&&!state.clusters.some(c=>relicKnown(c,id)&&relicCoordInCluster(c)));
       if (origin && probeRelic(id,origin,probe.id)) return;
     }
+    const exchange=p.hand.find(c=>ALL_CARDS[c.key].effect?.bankRate);
+    if(exchange){const income=aiIncome(id),resource=RESOURCES.filter(r=>bankTradeRate(id,r)>2).sort((a,b)=>(p.resources[b]+income[b]*2)-(p.resources[a]+income[a]*2))[0];if(resource&&p.resources[resource]+income[resource]>=2&&resolveHumanSpecial(exchange,ALL_CARDS[exchange.key],id,resource))return;}
     aiRespondToTrades(id);
     // These caches end before any card, payment or order changes the position.
     const moveCards=p.hand.filter(c=>ALL_CARDS[c.key].order==='move'),movePlans=new Map(),routeCache=new Map();
@@ -3228,7 +3245,7 @@ function createGalacticReach(options = {}) {
     if (best&&(!build?.funding||best.move.score>=build.score)&&moveNow()) return;
     if (build&&aiUseResources(p,construct.id,constructionCost(id,build.coord,build.kind,build.discount))&&performConstructOrder(id,build.coord,build.kind,construct)) {if(state.pendingConstruct)aiSecondConstruct(id);return;}
     if (best&&p.hand.some(c=>c.id===best.card.id)&&moveNow()) return;
-    const special=p.hand.find(c=>ALL_CARDS[c.key].order==='special' && (RELIC_CARDS[c.key]||ALL_CARDS[c.key].effect));
+    const special=p.hand.find(c=>!ALL_CARDS[c.key].effect?.bankRate && ALL_CARDS[c.key].order==='special' && (RELIC_CARDS[c.key]||ALL_CARDS[c.key].effect));
     if (special) {
       if (ALL_CARDS[special.key].tag==='surge') {
         // Preserve the recorded AI-specific Surge effect while changing policy.
@@ -3275,6 +3292,7 @@ function createGalacticReach(options = {}) {
 
   function nextBuyPlayer() {
     if (state.phase !== 'buy' || overflowPlayer() >= 0) return;
+    state.players[state.activePlayer].bankExchangeResources=[];
     state.phase = 'operations';
     nextOperationsPlayer();
   }
@@ -3283,15 +3301,15 @@ function createGalacticReach(options = {}) {
     const player = state.players[playerId];
     // 31.36: basic cards are not sold. Besides the market, the Upgrades tray sells Capacity Modules.
     if (source === 'capacity') return indexOrKey === 'capacityModule' && buyCapacity(playerId);
-    if (source !== 'market' || state.phase !== 'buy' || state.activePlayer !== playerId) return false;
-    const card = state.market[indexOrKey];
+    if (!['market','catalog'].includes(source) || source==='catalog'&&!catalogMarketEnabled() || state.phase !== 'buy' || state.activePlayer !== playerId) return false;
+    const card = source==='catalog'?marketOffers().find(c=>c.key===indexOrKey):state.market[indexOrKey];
     if (!card) return false;
     const definition = ALL_CARDS[card.key];
     if (!payCost(player,purchaseCost(player,card.key))) return false;
     // Rules #market: the bought slot refills in place from its own tier's deck, or stays empty.
-    const refill = state.marketDecks[marketTier(card.key)];
-    if (refill.length) state.market.splice(indexOrKey,1,refill.pop());
-    else state.market.splice(indexOrKey,1);
+    const refill = state.marketDecks[marketTier(card.key)], visible=state.market.findIndex(c=>c.id===card.id);
+    if (visible>=0) { if (refill.length) state.market.splice(visible,1,refill.pop()); else state.market.splice(visible,1); }
+    else { const at=refill.findIndex(c=>c.id===card.id); if(at<0)throw Error('Catalog stock changed');refill.splice(at,1); }
     // Rules #buy: a military card joins your military deck; any other card enters discard.
     if (definition.military) player.military.push(card);
     else gainCard(player,card);
@@ -3367,11 +3385,11 @@ function createGalacticReach(options = {}) {
     const preservesPayment=choice=>{
       if (!choice.bank) return false;
       const funds={...p.resources},cost=purchaseCost(p,choice.key);
-      for (const trade of choice.bank) {funds[trade.giveType]-=4;funds[trade.getType]+=1;}
+      for (const trade of choice.bank) {funds[trade.giveType]-=bankTradeRate(id,trade.giveType);funds[trade.getType]+=1;}
       return RESOURCES.every(r=>funds[r]-(cost[r]||0)>=Math.min(immediate[r]||0,funds[r]));
     };
-    const marketChoices=()=>state.market.map((card,index)=>({source:'market',index,key:card.key})).map(x=>({...x,score:aiBuyValue(id,x.key),bank:bankPlanForCost(p,purchaseCost(p,x.key),immediate)})).filter(x=>x.score>0&&preservesPayment(x)).sort((a,b)=>b.score-a.score||a.bank.length-b.bank.length);
-    const purchase=choice=>choice&&choice.bank.every(t=>bankTrade(id,t.giveType,t.getType))&&buyCard(id,choice.source,choice.index);
+    const marketChoices=()=>marketOffers().map((card,index)=>({source:catalogMarketEnabled()?'catalog':'market',index,key:card.key})).map(x=>({...x,score:aiBuyValue(id,x.key),bank:bankPlanForCost(p,purchaseCost(p,x.key),immediate)})).filter(x=>x.score>0&&preservesPayment(x)).sort((a,b)=>b.score-a.score||a.bank.length-b.bank.length);
+    const purchase=choice=>choice&&choice.bank.every(t=>bankTrade(id,t.giveType,t.getType))&&buyCard(id,choice.source,choice.source==='catalog'?choice.key:choice.index);
     const horizon=victoryTarget()-Math.max(...state.players.map((_,i)=>calculatePrestige(i)));
     const early=marketChoices()[0],marketFirst=p.strategy==='market';
     const established=aiCards(id).some(c=>c.starter&&c.key==='construct'&&starterLevel(c)>=2);
@@ -3532,18 +3550,21 @@ function createGalacticReach(options = {}) {
     return true;
   }
 
+  function bankTradeRate(playerId, resource) { return (state.players[playerId]?.bankExchangeResources||[]).includes(resource)?2:4; }
+
   function canBankTrade(playerId, giveType, getType) {
     return canManageResources(playerId) && RESOURCES.includes(giveType) && RESOURCES.includes(getType)
-      && giveType !== getType && state.players[playerId].resources[giveType] >= 4;
+      && giveType !== getType && state.players[playerId].resources[giveType] >= bankTradeRate(playerId,giveType);
   }
 
   function bankTrade(playerId, giveType, getType) {
     if (!canBankTrade(playerId, giveType, getType)) return false;
     const player = state.players[playerId];
     // Each resource has its own limit; this gain may need an overflow choice.
-    player.resources[giveType] -= 4;
+    const rate=bankTradeRate(playerId,giveType);
+    player.resources[giveType] -= rate;
     addResources(player,{[getType]:1});
-    logEvent(`${player.name} exchanged 4 ${RESOURCE_NAMES[giveType]} for 1 ${RESOURCE_NAMES[getType]} with the bank.`);
+    logEvent(`${player.name} exchanged ${rate} ${RESOURCE_NAMES[giveType]} for 1 ${RESOURCE_NAMES[getType]} with the bank.`);
     render(); saveGame();
     return true;
   }
@@ -3871,10 +3892,12 @@ function createGalacticReach(options = {}) {
       const button = $(`#bank-${side}-${resource}`);
       button.disabled = !enabled;
       button.setAttribute('aria-pressed', String(bankSelection[side] === resource));
+      button.setAttribute('aria-label',`${side==='give'?'Give '+bankTradeRate(ME,resource):'Receive 1'} ${RESOURCE_NAMES[resource]}`);
     }
-    const {give,get} = bankSelection;
+    const {give,get} = bankSelection,rate=bankTradeRate(ME,give);
+    $('#bank-give-rate').textContent=`Give ${rate}`;
     $('#bank-exchange-preview').innerHTML = give && get
-      ? `${resourceDots({[give]:4})}<span aria-hidden="true">→</span>${resourceDots({[get]:1})}${give===get?'<span>Choose two different resources.</span>':enabled&&player.resources[give]<4?`<span>You need 4 ${RESOURCE_NAMES[give]}.</span>`:''}`
+      ? `${resourceDots({[give]:rate})}<span aria-hidden="true">→</span>${resourceDots({[get]:1})}${give===get?'<span>Choose two different resources.</span>':enabled&&player.resources[give]<rate?`<span>You need ${rate} ${RESOURCE_NAMES[give]}.</span>`:''}`
       : '<span>Choose one resource on each side.</span>';
     $('#bank-exchange-button').disabled = !canBankTrade(ME,give,get);
   }
@@ -3896,7 +3919,7 @@ function createGalacticReach(options = {}) {
     const before = matSeen[viewSeat] || {};
     const mine = !replayMode && viewSeat === ME;
     const pips = (value, from, extra = () => '') => Array.from({ length: MAT_SLOTS + 1 }, (_, i) => `<i class="${i < value ? 'full' : ''}${i < value && i >= from ? ' new' : ''}${i % 5 === 4 ? ' five' : ''}${extra(i)}"></i>`).join('') + (value > MAT_SLOTS + 1 ? `<b class="mat-lap">${value}</b>` : '');
-    $('#resource-grid').innerHTML = `<div class="mat-head mat-classic" aria-hidden="true"><span class="mat-key rate"><i></i>Rate</span><span class="mat-key now"><i></i>Now</span><span class="mat-key cap"><i></i>Capacity</span></div><div class="mat-head ring-key mat-stars" aria-hidden="true"><span class="mat-key production"><i></i>Production</span><span class="mat-key now"><i></i>Available</span><span class="mat-key unavailable"><i></i>Unavailable</span>${mine ? '<span class="mat-hint">Drag 4 of one resource onto another to trade with the bank</span>' : ''}</div>` + RESOURCES.map(resource => {
+    $('#resource-grid').innerHTML = `<div class="mat-head mat-classic" aria-hidden="true"><span class="mat-key rate"><i></i>Rate</span><span class="mat-key now"><i></i>Now</span><span class="mat-key cap"><i></i>Capacity</span></div><div class="mat-head ring-key mat-stars" aria-hidden="true"><span class="mat-key production"><i></i>Production</span><span class="mat-key now"><i></i>Available</span><span class="mat-key unavailable"><i></i>Unavailable</span>${mine ? '<span class="mat-hint">Drag one resource onto another to trade at its current bank rate</span>' : ''}</div>` + RESOURCES.map(resource => {
       const have = player.resources[resource], cap = limits[resource], next = production[resource];
       const fill = have > cap ? 'over-cap' : have >= cap ? 'at-cap' : have + next > cap ? 'will-cap' : '';
       const was = before[resource] || { have, cap, next };
@@ -3912,7 +3935,7 @@ function createGalacticReach(options = {}) {
         <span class="resource-name">${RESOURCE_NAMES[resource]}</span>
         <span class="mat-pips rate mat-classic" aria-hidden="true">${pips(next, was.next)}</span>
         <span class="resource-production" aria-hidden="true">+${next}</span>
-        ${mine ? `<button type="button" class="mat-pips now" data-mat-trade="${resource}" aria-label="${label}. Trade 4 ${RESOURCE_NAMES[resource]} with the bank: choose this, then the resource to receive, or Discard">${nowRow}</button>` : `<span class="mat-pips now" aria-hidden="true">${nowRow}</span>`}
+        ${mine ? `<button type="button" class="mat-pips now" data-mat-trade="${resource}" aria-label="${label}. Trade ${bankTradeRate(ME,resource)} ${RESOURCE_NAMES[resource]} with the bank: choose this, then the resource to receive, or Discard">${nowRow}</button>` : `<span class="mat-pips now" aria-hidden="true">${nowRow}</span>`}
         <strong class="resource-amount" aria-hidden="true">${have}</strong><span class="resource-limit" aria-hidden="true">/${cap}</span>
       </article>`;
     }).join('');
@@ -4527,7 +4550,7 @@ function createGalacticReach(options = {}) {
       case 'consortium_exchange': return { text: `Trade Consortium · ${amount(2,action.giveType)} → ${amount(1,action.getType)}` };
       case 'finish_consortium': return { text: 'Finish Trade Consortium after one exchange' };
       case 'cancel_consortium': return { text: 'Cancel Trade Consortium without using the card' };
-      case 'bank_trade': return { text: `Bank exchange · ${amount(4,action.giveType)} → ${amount(1,action.getType)}` };
+      case 'bank_trade': return { text: `Bank exchange · ${amount((before.players[seat]?.bankExchangeResources||[]).includes(action.giveType)?2:4,action.giveType)} → ${amount(1,action.getType)}` };
       case 'increase_storage': return { text: `Buy 4 capacity points · ${RESOURCES.filter(r=>action.allocation?.[r]).map(r=>`+${action.allocation[r]} ${RESOURCE_NAMES[r]}`).join(', ')}` };
       case 'discard_resources': return { text: `Discard ${amount(action.amount,action.resource)} to free storage` };
       case 'resource': return { text: `Convert to resources · ${cardName('Card')} → ${gains(action.gain)}` };
@@ -4552,7 +4575,7 @@ function createGalacticReach(options = {}) {
       case 'finish_colony_build': return { text: 'Colonize II · Finish without building' };
       case 'probe': return { text: `${order} · Probe ${place(action.coord)} for a private relic location`, coords:[action.coord] };
       case 'excavate': return { text: `${order} · Excavate at ${place(action.coord)} · Choose ${ALL_CARDS[before.relicRow?.find(card=>card.id===action.relic)?.key]?.name || 'alien relic'}`, coords:[action.coord] };
-      case 'special': return { text: `${order}${action.allocation?' · '+RESOURCES.filter(r=>action.allocation[r]).map(r=>`+${action.allocation[r]} ${RESOURCE_NAMES[r]} capacity`).join(', '):''}${action.trash?' · Trash '+(action.trash.map(id=>ALL_CARDS[before.players[seat]?.discard?.find(c=>c.id===id)?.key]?.name||'a starter').join(' and ')||'nothing'):''}` };
+      case 'special': return { text: `${order}${action.resource?' · 2:1 '+RESOURCE_NAMES[action.resource]+' until Buy ends':''}${action.allocation?' · '+RESOURCES.filter(r=>action.allocation[r]).map(r=>`+${action.allocation[r]} ${RESOURCE_NAMES[r]} capacity`).join(', '):''}${action.trash?' · Trash '+(action.trash.map(id=>ALL_CARDS[before.players[seat]?.discard?.find(c=>c.id===id)?.key]?.name||'a starter').join(' and ')||'nothing'):''}` };
       case 'trade_offer': return { text: `Publish open offer · Offers ${amount(action.giveAmount,action.giveType)} → Asks for ${amount(action.getAmount,action.getType)}` };
       case 'trade_accept': return { text: `Accept offer${offer ? ` from ${names[offer.from]}` : ''}` };
       case 'trade_reject': return { text: `Reject offer${offer ? ` from ${names[offer.from]}` : ''}` };
@@ -4647,6 +4670,13 @@ function createGalacticReach(options = {}) {
 
   // Archive Purge (rules #cards): choose up to two level I starters in your discard pile.
   // With none to choose, the card resolves at once and only draws.
+  function openExchangeResource(cardId) {
+    const card=state.players[ME].hand.find(c=>c.id===cardId);
+    if(!card||!ALL_CARDS[card.key].effect?.bankRate||state.activePlayer!==ME||state.phase!=='operations')return false;
+    $('#exchange-resource-options').innerHTML=RESOURCES.map(r=>`<button type="button" class="button" data-exchange-resource="${r}">Give 2 ${RESOURCE_NAMES[r]} for 1 other</button>`).join('');
+    $$('[data-exchange-resource]').forEach(button=>button.addEventListener('click',()=>{const resource=button.dataset.exchangeResource;$('#exchange-resource-dialog').close();resolveHumanSpecial(card,ALL_CARDS[card.key],ME,resource);}));
+    $('#exchange-resource-dialog').showModal();return true;
+  }
   function openArchivePurge(cardId) {
     if (headless || replayMode) return false;
     const card=state.players[ME].hand.find(c=>c.id===cardId), max=card&&ALL_CARDS[card.key].effect?.trashStarters;
@@ -4755,9 +4785,9 @@ function createGalacticReach(options = {}) {
     const me = state.players[ME];
     if (!canManageResources(ME)) return { ok: false, text: 'Trade with the bank during Operations or Buy' };
     if (!get || get === give) return { ok: false, text: '' };
-    if (me.resources[give] < 4) return { ok: false, text: `Needs 4 ${RESOURCE_NAMES[give]} (you have ${me.resources[give]})` };
+    if (me.resources[give] < bankTradeRate(ME,give)) return { ok: false, text: `Needs ${bankTradeRate(ME,give)} ${RESOURCE_NAMES[give]} (you have ${me.resources[give]})` };
     const full = me.resources[get] >= resourceLimits(ME)[get];
-    return { ok: canBankTrade(ME, give, get), text: `4 ${RESOURCE_NAMES[give]} → 1 ${RESOURCE_NAMES[get]}${full ? ` · ${RESOURCE_NAMES[get]} is full, so the 1 would be discarded` : ''}`, warn: full };
+    return { ok: canBankTrade(ME, give, get), text: `${bankTradeRate(ME,give)} ${RESOURCE_NAMES[give]} → 1 ${RESOURCE_NAMES[get]}${full ? ` · ${RESOURCE_NAMES[get]} is full, so the 1 would be discarded` : ''}`, warn: full };
   }
   function matTradeDo(give, get) {
     const check = matTradeCheck(give, get);
@@ -5263,6 +5293,7 @@ function createGalacticReach(options = {}) {
     $('#cancel-excavate').addEventListener('click',()=>{if(state.actionMode!=='excavate' || state.pendingCombat)return;clearAction();switchTab('hand');render();saveGame();});
     $('#storage-allocation-cancel').addEventListener('click',()=>$('#storage-allocation-dialog').close());
     $('#storage-allocation-dialog').addEventListener('close',()=>{storageAllocationDraft=null;});
+    $('#exchange-resource-cancel').addEventListener('click',()=>$('#exchange-resource-dialog').close());
     $('#archive-purge-cancel').addEventListener('click',()=>$('#archive-purge-dialog').close());
     $('#archive-purge-dialog').addEventListener('close',()=>{archivePurgeCardId=null;});
     $('#archive-purge-form').addEventListener('submit',event=>{
@@ -5360,6 +5391,7 @@ function createGalacticReach(options = {}) {
     convertAllResources = () => { if (canConvertCards()) send(...state.players[ME].hand.filter(canConvertCard).map(c => ({type:'resource',card:c.id}))); };
     resolveHumanSpecial = (card, definition, id = ME, allocation = null) => {
       if (!mine(id) || !card || state.pendingCombat) return false;
+      if(definition.effect?.bankRate){if(!RESOURCES.includes(allocation)){openExchangeResource(card.id);return false;}return send({type:'special',card:card.id,resource:allocation});}
       if (definition.tag === 'alienCradle' || definition.effect?.allocate) {
         if (!validStorageAllocation(allocation,definition.effect?.allocate || RELIC_STORAGE_POINTS)) { if (canManageResources(ME)) openStorageAllocation(card.id); return false; }
         return send({type:'special',card:card.id,allocation});
@@ -5461,7 +5493,7 @@ function createGalacticReach(options = {}) {
   function headlessPort() {
     return {
       get state() { return state; }, get turnSerial() { return turnSerial; }, get cardSerial() { return cardSerial; },
-      clone, deckContents, ALL_CARDS, MARKET_TIERS, marketTier, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, CAPACITY_SUPPLY, SUPPLY_CARDS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
+      clone, deckContents, catalogMarketEnabled, marketOffers, marketCopiesRemaining, bankTradeRate, ALL_CARDS, MARKET_TIERS, marketTier, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, CAPACITY_SUPPLY, SUPPLY_CARDS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
       canAfford, canConvertCard, cardResources, resourceGainTotal, remainingResourceCapacity, addResources,
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
       decommission, trashEligibleCards, excavatedRelicCount, useBuyEffect, resolveHumanSpecial,

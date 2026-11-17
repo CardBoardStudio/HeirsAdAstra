@@ -164,7 +164,7 @@
           <p id="resource-tools-help">Free during your Operations or Buy turn.</p>
           <form id="bank-trade-form" class="bank-trade-form">
             <div class="bank-resource-picker">
-              <fieldset><legend>Give 4</legend><div class="bank-resource-options" id="bank-give-options"></div></fieldset>
+              <fieldset><legend id="bank-give-rate">Give 4</legend><div class="bank-resource-options" id="bank-give-options"></div></fieldset>
               <span class="bank-resource-arrow" aria-hidden="true">→</span>
               <fieldset><legend>Receive 1</legend><div class="bank-resource-options" id="bank-get-options"></div></fieldset>
             </div>
@@ -281,6 +281,12 @@
       <p id="storage-allocation-status" role="status" aria-live="polite"></p>
       <button type="submit" class="button button-primary" id="storage-allocation-confirm" disabled>Confirm allocation</button>
     </form>
+  </dialog>
+
+  <dialog id="exchange-resource-dialog" class="choice-dialog" aria-labelledby="exchange-resource-title" aria-describedby="exchange-resource-help">
+    <div class="dialog-heading"><h2 id="exchange-resource-title">Choose your exchange resource</h2><button type="button" class="button" id="exchange-resource-cancel">Cancel</button></div>
+    <p id="exchange-resource-help">Give two of your chosen resource for one other resource until your Buy turn ends. Choosing plays the card.</p>
+    <div id="exchange-resource-options" class="bank-resource-options"></div>
   </dialog>
 
   <dialog id="archive-purge-dialog" class="choice-dialog" aria-labelledby="archive-purge-title" aria-describedby="archive-purge-help">

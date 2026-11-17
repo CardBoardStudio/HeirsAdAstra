@@ -15,11 +15,11 @@ function instrument(app) {
   const lab=options.marketMetrics;
   if(lab){
     const buy=buyCard;
-    buyCard=(id,source,index)=>{const card=source==='market'?state.market[index]:null,ok=buy(id,source,index);if(ok&&card){lab[id].marketBuys[card.key]=(lab[id].marketBuys[card.key]||0)+1;lab[id].firstMarketRound??=state.round;}return ok;};
+    buyCard=(id,source,index)=>{const card=source==='market'?state.market[index]:source==='catalog'?marketOffers().find(c=>c.key===index):null,ok=buy(id,source,index);if(ok&&card){lab[id].marketBuys[card.key]=(lab[id].marketBuys[card.key]||0)+1;lab[id].firstMarketRound??=state.round;}return ok;};
     const build=constructAt;
     constructAt=(...args)=>{const [id,coord,kind,discount,dry=false]=args,ok=build(...args);if(ok&&!dry&&kind==='harvester'){lab[id].harvestersBuilt++;lab[id].firstHarvesterRound??=state.round;}return ok;};
     const buyTurn=runAiBuy;
-    runAiBuy=()=>{const id=state.activePlayer,p=state.players[id];lab[id].buyTurns++;const offers=state.market.map(c=>({key:c.key,value:aiBuyValue(id,c.key),affordable:!!bankPlanForCost(p,purchaseCost(p,c.key),aiStorageProtection(id))}));lab[id].affordableOffers+=offers.filter(c=>c.affordable).length;lab[id].valuableOffers+=offers.filter(c=>c.value>0).length;return buyTurn();};
+    runAiBuy=()=>{const id=state.activePlayer,p=state.players[id];lab[id].buyTurns++;const offers=marketOffers().map(c=>({key:c.key,value:aiBuyValue(id,c.key),affordable:!!bankPlanForCost(p,purchaseCost(p,c.key),aiStorageProtection(id))}));lab[id].affordableOffers+=offers.filter(c=>c.affordable).length;lab[id].valuableOffers+=offers.filter(c=>c.value>0).length;return buyTurn();};
     const play=removeHandCard;
     removeHandCard=(p,id,...args)=>{const card=p.hand.find(c=>c.id===id);const result=play(p,id,...args);if(card&&!card.starter&&ALL_CARDS[card.key].cost&&!['probe','colonize','capacityModule'].includes(card.key))lab[p.id].marketPlays[card.key]=(lab[p.id].marketPlays[card.key]||0)+1;return result;};
     const combat=applyCombatAction;

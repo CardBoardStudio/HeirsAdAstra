@@ -113,3 +113,5 @@ require('./test-world-engine-draw.cjs');
 require('./test-public-card-metadata.cjs');
 
 require('./test-inward-worlds.cjs');
+
+require('./test-exchange-market.cjs');

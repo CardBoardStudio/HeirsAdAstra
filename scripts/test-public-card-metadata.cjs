@@ -13,6 +13,7 @@ for(const [key,card] of Object.entries(e.ALL_CARDS)){
  for(const field of ['range','assault','colonyPrestige','fallbackDraw'])assert.equal(stats[field],card[field]||0,key+': '+field);
  for(const field of ['pathfinder','secondBuild','keepSettler'])assert.equal(stats[field],!!card[field],key+': '+field);
  assert.equal(stats.colonyCost,card.colonyCost??null,key+': preserve free versus unspecified cost');
+ assert.equal(stats.bankRate,card.effect?.bankRate||0,key+': published bank rate');
  assert.equal(stats.buyEffect,card.buyEffect||null);
  assert.equal(stats.trashSelf,!!card.effect?.trashSelf);assert.equal(stats.trashStarters,card.effect?.trashStarters||0);checked++;
 }

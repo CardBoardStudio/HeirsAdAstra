@@ -237,7 +237,12 @@ function combatStorage(attacker=0,stage='escape') {
 }
 
 const tests = [];
-function test(name, body) { tests.push({ name, body }); }
+function test(name, body) {
+ if(name.startsWith('Seed Ark ')||name.startsWith('Shared-table Seed Ark')){
+  const original=body;body=()=>{const saved=source,{oldText,newText}=require('./compare-seed-ark-choice.cjs');source=source.replace('colonyCost: 1, text:','colonyCost: 1, fallbackDraw: 2, text:').replace(oldText,newText);try{original();}finally{source=saved;}};name+=' (isolated experimental fixture)';
+ }
+ tests.push({ name, body });
+}
 
 // Plays the fresh game's first round: the human leads Operations and Buy in round 1.
 function playFirstRound() {
@@ -1194,6 +1199,22 @@ test('the combined card selects Excavate and keeps the choice through reload',()
  game=boot(storage);assert.equal(game.saved().actionMode,'excavate');
  game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderMode==='probe').click();
  assert.equal(game.saved().actionMode,'probe');
+});
+test('Exchange order chooses a give resource,can cancel,and updates the bank rate',()=>{
+ const storage=createStorage(),state=boot(storage).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});state.players.forEach((p,id)=>p.passed=id!==0);
+ state.players[0].hand=[{id:'exchange-choice',key:'exchangeProtocol'},{id:'keep-turn',key:'move',starter:true}];state.players[0].resources={matter:0,energy:0,biomass:4,data:0};writeSave(storage,state);
+ const game=boot(storage);game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='exchange-choice').click();assert(game.dom.element('exchange-resource-dialog').open);
+ game.click('exchange-resource-cancel');assert(game.saved().players[0].hand.some(c=>c.id==='exchange-choice'));
+ game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='exchange-choice').click();const buttons=game.dom.lastQuery('[data-exchange-resource]');assert.equal(buttons.length,4);buttons.find(b=>b.dataset.exchangeResource==='biomass').click();game.settle();assert(game.saved().players[0].bankExchangeResources.includes('biomass'));assert(game.saved().players[0].inPlay.some(c=>c.id==='exchange-choice'));
+ game.click('bank-give-biomass').click('bank-get-data');assert.equal(game.dom.element('bank-give-rate').textContent,'Give 2');fire(game.dom.element('bank-trade-form'),'submit',{cancelable:true});game.settle();assert.equal(game.saved().players[0].resources.biomass,2);assert.equal(game.saved().players[0].resources.data,1);
+});
+test('Shared exchange order sends its resource choice to the authoritative engine',()=>{
+ const state=boot(createStorage()).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});state.players[0].hand=[{id:'shared-exchange',key:'barterNetwork'}];
+ const sent=[],network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='shared-exchange').click();game.dom.lastQuery('[data-exchange-resource]').find(b=>b.dataset.exchangeResource==='energy').click();game.settle();assert.deepEqual(sent,[[{type:'special',card:'shared-exchange',resource:'energy'}]]);
+});
+test('Retained Seed Ark has no unadopted draw alternative',()=>{
+ const storage=createStorage(),state=boot(storage).saved();state.players[0].hand=[{id:'retained-seed',key:'seedArk'}];writeSave(storage,state);const game=boot(storage);assert.equal(game.dom.lastQuery('[data-order-draw]').length,0);
 });
 for (const { name, body } of tests) {
   try {

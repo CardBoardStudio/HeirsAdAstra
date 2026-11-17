@@ -23,7 +23,7 @@ function factory(app,adapter) {
     const pay=payCost;payCost=(p,...args)=>{const b={...p.resources};const r=pay(p,...args);for(const k of RESOURCES)m[p.id].spent[k]+=b[k]-p.resources[k];return r;};
     const draw=drawCards;drawCards=(p,n)=>{const b=p.hand.length;const r=draw(p,n);m[p.id].draws+=p.hand.length-b;return r;};
     const upgrade=upgradeStarter;upgradeStarter=(id,card,r)=>{const p=state.players[id],b=p.resources[r],ok=upgrade(id,card,r);if(ok){m[id].spent[r]+=b-p.resources[r];m[id].upgrades++;}return ok;};
-    const trade=bankTrade;bankTrade=(id,give,get)=>{const ok=trade(id,give,get);if(ok){m[id].bankGiven[give]+=4;m[id].bankReceived[get]++;}return ok;};
+    const trade=bankTrade;bankTrade=(id,give,get)=>{const before=state.players[id].resources[give],ok=trade(id,give,get);if(ok){m[id].bankGiven[give]+=before-state.players[id].resources[give];m[id].bankReceived[get]++;}return ok;};
     const ship=buildShip;buildShip=(id,coord,type,...args)=>{const ok=ship(id,coord,type,...args);if(ok&&!args[1])m[id].ships[type]++;return ok;};
     const settle=colonizePlanet;colonizePlanet=(id,coord,opts={},dry=false)=>{const owner=state.planets[coord]?.owner,ok=settle(id,coord,opts,dry);if(ok&&!dry){m[id].colonizations++;if(owner!==null&&owner!==undefined)m[id].captures++;}return ok;};
   }

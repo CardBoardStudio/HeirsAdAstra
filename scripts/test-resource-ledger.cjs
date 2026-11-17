@@ -6,7 +6,7 @@ const event=e=>account(ledger,e);
 event({type:'resource-gain',player:0,requested:{matter:5},result:{lost:{matter:2}}});
 event({type:'resource-payment',player:0,result:true,before:resources(20),after:{...resources(20),biomass:18}});
 const action=(name,args,before=initial,after=initial,result=true)=>event({type:'action',name,args,before,after,result});
-action('bankTrade',[0,'matter','data']);event({type:'resource-gain',player:0,requested:{data:1},result:{lost:{}}});
+action('bankTrade',[0,'matter','data'],initial,[{id:0,stock:{...resources(20),matter:16,data:21}},initial[1]]);event({type:'resource-gain',player:0,requested:{data:1},result:{lost:{}}});
 action('consortiumExchange',[0,'energy','biomass']);event({type:'resource-gain',player:0,requested:{biomass:1},result:{lost:{}}});
 action('decommission',[0,'colonize-123','biomass']);
 action('applyCombatAction',[0,{type:'combat_escape',amount:2}]);

@@ -624,7 +624,10 @@ fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
 /// Data, printed Prestige (reusable Prestige weighted x3) and whether it joins the
 /// military deck. Policy 26 meets these keys only in 31.36 games, so its play under
 /// earlier rules is unchanged.
-const CAPACITY_CARDS: [(&str, [f64; 4], f64, bool); 39] = [
+const CAPACITY_CARDS: [(&str, [f64; 4], f64, bool); 42] = [
+    ("exchangeProtocol", [0.0, 2.0, 0.0, 1.0], 0.0, false),
+    ("barterNetwork", [0.0, 0.0, 1.0, 2.0], 0.0, false),
+    ("clearingHouse", [1.0, 0.0, 0.0, 2.0], 0.0, false),
     ("signalRelay", [0.0, 2.0, 0.0, 1.0], 0.0, false),
     ("surveyNetwork", [0.0, 0.0, 1.0, 2.0], 0.0, false),
     ("tacticalBriefing", [1.0, 0.0, 0.0, 2.0], 0.0, false),
@@ -679,6 +682,22 @@ const CAPACITY_TACTICS: [(&str, f64, f64, bool); 10] = [
     ("victoryDoctrine", 2.0, 0.0, false),
 ];
 const RESOURCE_KEYS: [&str; 4] = ["matter", "energy", "biomass", "data"];
+fn bank_rate(view: &Value, seat: usize, resource: &str) -> f64 {
+    if view["players"][seat]["bankTradeRates"][resource] == 2 {
+        2.0
+    } else {
+        4.0
+    }
+}
+fn exchange_surplus(view: &Value, seat: usize, resource: &str) -> f64 {
+    if bank_rate(view, seat, resource) <= 2.0 {
+        return 0.0;
+    }
+    let i = RESOURCE_KEYS.iter().position(|r| *r == resource).unwrap();
+    (number(&view["players"][seat]["resources"][resource]) - planning_protection(view, seat)[i])
+        .max(0.0)
+        + number(&bot_income(view, seat)[resource])
+}
 fn capacity_card(key: &str) -> Option<([f64; 4], f64, bool)> {
     CAPACITY_CARDS
         .iter()
@@ -797,6 +816,12 @@ fn public_colony_opportunity(view: &Value, seat: usize) -> bool {
     })
 }
 fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
+    if view["excludedMarketCards"]
+        .as_array()
+        .is_some_and(|cards| cards.iter().any(|c| c == key))
+    {
+        return None;
+    }
     let (table_cost, table_prestige, military) = capacity_card(key)?;
     let prestige = observed_buy_prestige(view, key).unwrap_or(table_prestige);
     let immediate_prestige = if view["cardStats"][key].is_object() {
@@ -858,6 +883,22 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
     let draw_value = draw * (7.0 + size.min(18.0) * 0.25) * (horizon / 2.0).min(1.0);
     let mut value = 6.0 + prestige * 9.0 + number(&stats["prestige"]) * horizon.min(4.0) * 8.0;
     value += draw_value;
+    if stats["bankRate"] == 2 {
+        let income = bot_income(view, seat);
+        let exchanges = RESOURCE_KEYS
+            .iter()
+            .map(|r| {
+                ((number(&me["resources"][*r]) + number(&income[*r]) * 2.0) / 2.0).clamp(0.0, 3.0)
+            })
+            .fold(0.0, f64::max);
+        let family: f64 = ["hand", "discard", "inPlay", "deckContents"]
+            .iter()
+            .flat_map(|pile| me[*pile].as_array().into_iter().flatten())
+            .filter(|c| view["cardStats"][c["key"].as_str().unwrap_or("")]["bankRate"] == 2)
+            .map(|c| c["count"].as_f64().unwrap_or(1.0))
+            .sum();
+        value += exchanges * 4.0 * (horizon * 5.0 / size.max(5.0)).min(3.0) - family * 10.0;
+    }
     // Research only: printed one-less-of-each coupons need a later purchase to pay off.
     // Face-up prices bound possible savings; this is not a promise of future spending.
     if view["investmentPlanning"] == true
@@ -2129,7 +2170,9 @@ impl BuiltinAgent {
                     .any(|(k, v)| number(v) > number(&me["resources"][k]));
                 let bankable: f64 = gain
                     .iter()
-                    .filter(|(k, _)| number(&me["resources"][*k]) < number(&cost[*k]) + 4.0)
+                    .filter(|(k, _)| {
+                        number(&me["resources"][*k]) < number(&cost[*k]) + bank_rate(view, seat, k)
+                    })
                     .map(|(r, v)| {
                         number(v)
                             .min((bot_limit(view, seat, r) - number(&me["resources"][r])).max(0.0))
@@ -2380,6 +2423,18 @@ impl BuiltinAgent {
             {
                 95.0
             }
+            "special"
+                if view["cardStats"][action["key"].as_str().unwrap_or("")]["bankRate"] == 2 =>
+            {
+                let resource = action["resource"].as_str().unwrap_or("");
+                if !RESOURCE_KEYS.contains(&resource)
+                    || exchange_surplus(view, seat, resource) < 2.0
+                {
+                    -10.0
+                } else {
+                    75.0 + exchange_surplus(view, seat, resource).min(8.0)
+                }
+            }
             "special" => {
                 50.0 + if action["key"] == "cradleOfLostSuns" {
                     bot_allocation_value(view, seat, action, false) * 0.1
@@ -2581,10 +2636,11 @@ impl BuiltinAgent {
                 let bootstrap = get == "data"
                     && bot_yards(view, seat) == 0
                     && number(&me["resources"]["data"]) < 1.0
-                    && number(&me["resources"][give]) >= 4.0;
+                    && number(&me["resources"][give]) >= bank_rate(view, seat, give);
                 let funded = number(&me["resources"][get]) < number(&cost[get])
-                    && number(&me["resources"][give]) >= 4.0
-                    && (number(&me["resources"][give]) >= number(&cost[give]) + 4.0
+                    && number(&me["resources"][give]) >= bank_rate(view, seat, give)
+                    && (number(&me["resources"][give])
+                        >= number(&cost[give]) + bank_rate(view, seat, give)
                         || (view["investmentPlanning"] != true
                             && number(&me["resources"][give]) >= bot_limit(view, seat, give)));
                 if number(&me["resources"][get]) >= bot_limit(view, seat, get) {
@@ -3810,6 +3866,67 @@ mod tests {
     }
 
     #[test]
+    fn exchange_cards_choose_surplus_and_use_the_published_bank_rate() {
+        let mut agent = BuiltinAgent::new(Strategy::Market, [7; 32]);
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["players"][0]["resources"] = json!({"matter":1,"energy":3,"biomass":6,"data":0});
+        view["cardStats"]["exchangeProtocol"] = json!({"order":"special","bankRate":2});
+        let biomass = json!({"type":"special","key":"exchangeProtocol","resource":"biomass"});
+        let energy = json!({"type":"special","key":"exchangeProtocol","resource":"energy"});
+        assert_eq!(agent.select_action(&view, &[energy, biomass.clone()]), 1);
+        view["players"][0]["bankTradeRates"] = json!({"biomass":2});
+        assert!(
+            agent.score(&view, &biomass) < agent.score(&view, &json!({"type":"pass"})),
+            "Do not replay for an already improved give type"
+        );
+        assert_eq!(bank_rate(&view, 0, "energy"), 4.0);
+        assert_eq!(bank_rate(&view, 0, "biomass"), 2.0);
+        view["market"] = json!([{"key":"strategyCore"}]);
+        view["marketCosts"] = json!([{"energy":1,"data":5}]);
+        view["cardStats"]["strategyCore"] = json!({"order":"special","draw":3});
+        view["players"][0]["resources"]["biomass"] = json!(3);
+        view["planets"]["0,0"]["special"] = json!("relic");
+        view["fleets"] = json!({"0,0":{"0":{"explorer":1}}});
+        view["players"][0]["hand"] = json!([{"key":"probe","id":"probe"}]);
+        let trade = json!({"type":"bank_trade","giveType":"biomass","getType":"data"});
+        assert!(
+            agent.score(&view, &trade) > 0.0,
+            "Use a legal2:1trade below four resources"
+        );
+        view["players"][0]["bankTradeRates"] = json!({});
+        assert!(
+            agent.score(&view, &trade) < 0.0,
+            "Ordinary4:1rate stays unchanged"
+        );
+    }
+
+    #[test]
+    fn omitted_card_is_excluded_from_purchase_value_and_saving_targets() {
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["market"] = json!([{"key":"signalRelay"}]);
+        view["marketCosts"] = json!([{"energy":2,"data":1}]);
+        view["cardStats"]["signalRelay"] = json!({"order":"special","draw":2});
+        assert!(capacity_value(&view, 0, "signalRelay").is_some());
+        assert!(market_target_cost(&view, 0).is_some());
+        view["excludedMarketCards"] = json!(["signalRelay"]);
+        assert!(capacity_value(&view, 0, "signalRelay").is_none());
+        assert!(market_target_cost(&view, 0).is_none());
+        let agent = BuiltinAgent::new(Strategy::Market, [7; 32]);
+        assert!(
+            agent.score(
+                &view,
+                &json!({"type":"buy","source":"catalog","key":"signalRelay"})
+            ) < 0.0
+        );
+        assert!(
+            capacity_value(&view, 0, "exchangeProtocol").is_some(),
+            "Other designs retain their normal valuation"
+        );
+    }
+
+    #[test]
     fn settler_discipline_replaces_units_but_rejects_paid_surplus() {
         let mut agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
         let mut view = strategic_view();
@@ -4379,8 +4496,22 @@ mod tests {
         );
         assert!(game.scores().is_some(), "the 40-point match finishes");
         assert!(bought >= 4, "rivals buy new market cards ({bought})");
-        assert!(storage >= 4, "rivals buy Capacity Modules ({storage})");
-        assert!(modules >= 4, "rivals play Capacity Modules ({modules})");
+        assert!(storage > 0, "rivals buy Capacity Modules ({storage})");
+        assert!(
+            modules > 0 && modules <= storage,
+            "Purchased modules are played ({modules}/{storage})"
+        );
+        let observed = game.observe(0).unwrap();
+        let stored: usize = observed["players"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["storage"].as_array().map_or(0, Vec::len))
+            .sum();
+        assert_eq!(
+            stored, modules,
+            "Every played module remains in its permanent pile"
+        );
         assert!(played >= 2, "rivals play new cards ({played})");
     }
     /// A shared table resumes from its snapshot text exactly: every revision in

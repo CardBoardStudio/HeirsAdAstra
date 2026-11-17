@@ -10,6 +10,7 @@ try{
  assert.equal(e.decommission(0,card.id,'biomass'),true);assert.equal(m.spent.biomass,3);assert.equal(m.resourceLedger.trashing.biomass,3);
  assert.equal(e.decommission(0,card.id,'biomass'),false);assert.equal(m.spent.biomass,3);
  const gained=m.gained.data;assert.equal(e.bankTrade(0,'matter','data'),true);assert.equal(m.gained.data-gained,1);assert.equal(m.bankGiven.matter,4);assert.equal(m.spent.matter,0,'Bank outflow is separate');
+ p.bankExchangeResources=['biomass'];assert.equal(e.bankTrade(0,'biomass','energy'),true);assert.equal(m.bankGiven.biomass,2);assert.equal(m.resourceLedger.bankGiven.biomass,2);assert.equal(m.spent.biomass,3,'2:1 exchanges are bank outflows,not trashing costs');
  s.phase='operations';p.hand.push({id:'consortium-fixture',key:'tradeConsortium'});s.pendingConsortium={playerId:0,cardId:'consortium-fixture',trades:0};
  assert.equal(e.consortiumExchange(0,'energy','biomass'),true);assert.equal(m.spent.energy,2);assert.equal(m.resourceLedger.consortiumGiven.energy,2);
  const resume=game.a.snapshotState();const resumed=factory(read('app.js'),read('adapter.js'))({random:()=>0.3,studyMetrics:metrics,resume,simulationArchive:game.archive});

@@ -24,10 +24,11 @@ async function play(task,sources,directory,binary){
  const market=Array.from({length:4},()=>({marketBuys:{},marketPlays:{},militaryTacticPlays:{},harvestersBuilt:0,firstHarvesterRound:null,firstMarketRound:null,buyTurns:0,affordableOffers:0,valuableOffers:0}));
  let native,game,steps=0;const started=Date.now(),subjectSeat=(4-task.rotation)%4,buyStarts=new Set();
  try{
-  native=bridge(binary);game=factory(instrument(sources.app),sources.adapter)({random,victoryTarget:task.target,studyMetrics:metrics,marketMetrics:market,simulationArchive:recorder,archiveSources:{'original-app.js':sources.app,'original-adapter.js':sources.adapter,'protocol.json':JSON.stringify(task.protocol)}});
+  native=bridge(binary);game=factory(instrument(sources.app),sources.adapter)({random,victoryTarget:task.target,studyMetrics:metrics,marketMetrics:market,simulationCatalogMarket:task.protocol.catalogMarket===true,simulationArchive:recorder,archiveSources:{'original-app.js':sources.app,'original-adapter.js':sources.adapter,'protocol.json':JSON.stringify(task.protocol)}});
   const {e,a}=game;e.state.players.forEach((p,id)=>p.strategy=task.profiles[id]);const mapHash=hash({planets:e.state.planets,clusters:e.state.clusters});let stalled=false;
   while(e.state.winner===null&&e.state.round<=task.maxRound&&steps<task.maxSteps){
    const actor=a.activeSeat(),observation=a.observe(actor),legal=a.legalActions(actor);if(!legal.length)throw Error('No legal native action');
+   if(actor===subjectSeat&&task.protocol.excludeCard)observation.excludedMarketCards=[task.protocol.excludeCard];
    const updated=task.mode==='updated'||task.mode==='mixed'&&actor===subjectSeat;
    if(!updated){delete observation.investmentPlanning;delete observation.marketPaymentCosts;}
    if(task.protocol.tacticalForecast==='all'||task.protocol.tacticalForecast==='subject'&&actor===subjectSeat)observation.singleFleetForecast=true;
@@ -49,10 +50,11 @@ async function play(task,sources,directory,binary){
    if(response.nativeRandomDraws!==0||!Number.isInteger(response.index)||!legal[response.index])throw Error('Invalid native policy result');
    recorder.event({type:'native-choice',step:steps,actor,updated,profile:task.profiles[actor],policy:response.policy,observationHash:hash(observation),legalHash:hash(legal),index:response.index,nativeRandomDraws:0});
    const selected=legal[response.index];
-   if(actor===subjectSeat&&selected.type==='buy'&&selected.source==='market'){
+   if(actor===subjectSeat&&selected.type==='buy'&&['market','catalog'].includes(selected.source)){
     if(task.protocol.subjectMarket==='none')throw Error('No-market policy attempted a market purchase');
     if(task.protocol.subjectMarket==='points-only'&&!(e.ALL_CARDS[selected.key]?.gainPrestige>0))throw Error('Points-only policy attempted a non-purchase-Prestige card');
    }
+   if(actor===subjectSeat&&selected.type==='buy'&&selected.key===task.protocol.excludeCard)throw Error('Omitted card was purchased');
    const before=JSON.stringify(a.snapshotState());a.applyAction(actor,selected);steps++;
    if(before===JSON.stringify(a.snapshotState())){stalled=true;break;}
   }

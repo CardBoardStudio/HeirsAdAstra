@@ -14,7 +14,7 @@ function account(ledger,e){
  if(e.result!==true)return;
  if(e.name==='upgradeStarter')add(id,'starterUpgrades',b,e.before.find(p=>p.id===id).stock[b]-e.after.find(p=>p.id===id).stock[b]);
  if(e.name==='decommission')add(id,'trashing',b,3);
- if(e.name==='bankTrade')add(id,'bankGiven',a,4);
+ if(e.name==='bankTrade')add(id,'bankGiven',a,e.before.find(p=>p.id===id).stock[a]-e.after.find(p=>p.id===id).stock[a]);
  if(e.name==='consortiumExchange')add(id,'consortiumGiven',a,2);
  if(e.name==='applyCombatAction'&&a.type==='combat_escape')add(id,'escape','energy',a.amount);
  if(e.name==='discardResources')add(id,'voluntaryDiscarded',a,b);
