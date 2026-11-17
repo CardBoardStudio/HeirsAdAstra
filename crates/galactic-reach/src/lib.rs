@@ -919,6 +919,34 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
             }
             _ => {}
         }
+        if view["orderBenefitPlanning"] == true && view["investmentPlanning"] == true {
+            let uses = (horizon * 5.0 / size.max(5.0)).min(3.0);
+            match stats["order"].as_str().unwrap_or("") {
+                "move" => {
+                    let ships = ["settler", "explorer", "fleet"]
+                        .iter()
+                        .any(|k| bot_units(view, seat, k) > 0.0);
+                    if ships {
+                        value += number(&stats["range"]) * 2.0;
+                    } else {
+                        value -= if bot_cards(me, "move") < 4.0 {
+                            12.0
+                        } else {
+                            3.0
+                        };
+                    }
+                }
+                "construct" => {
+                    if let Some(discount) = stats["buildDiscount"].as_str() {
+                        value += (if discount == "free" { 2.5 } else { 2.0 }) * uses;
+                        if stats["secondBuild"] == true {
+                            value += 3.0;
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
         value += stats["limits"]
             .as_object()
             .into_iter()
@@ -2676,6 +2704,48 @@ mod tests {
         );
         view.as_object_mut().unwrap().remove("investmentPlanning");
         assert_eq!(agent.score(&view, &action), archived);
+    }
+    #[test]
+    fn order_benefits_value_range_and_build_savings_without_inventing_draws() {
+        let mut agent = BuiltinAgent::new(Strategy::Market, [5; 32]);
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":5,"phase":"buy","victoryTarget":40,"players":[{"prestige":10,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":8,"energy":8,"biomass":8,"data":8},"hand":[{"id":"c","key":"construct","starter":true,"level":2,"upgraded":true}],"handCount":1,"deckCount":5,"deckContents":[{"key":"construct","starter":true,"level":3,"upgraded":true,"count":2},{"key":"move","starter":true,"level":3,"upgraded":true,"count":3}],"discard":[],"inPlay":[],"military":[]},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"},"1,0":{"owner":0,"type":"energy","upgrade":"harvester"}},"fleets":{"0,0":{"0":{"settler":1}}},"harvesterYield":2,"market":[{"key":"worldEngine"},{"key":"foldSpaceGate"},{"key":"prefabYards"}],"marketCosts":[{"matter":6,"energy":1,"biomass":1},{"energy":6,"data":1},{"matter":4}],"cardStats":{"worldEngine":{"order":"construct","draw":1,"buildDiscount":"free"},"foldSpaceGate":{"order":"move","range":5},"prefabYards":{"order":"construct","buildDiscount":"each","secondBuild":true}}});
+        let world = capacity_value(&view, 0, "worldEngine").unwrap();
+        let gate = capacity_value(&view, 0, "foldSpaceGate").unwrap();
+        let prefab = capacity_value(&view, 0, "prefabYards").unwrap();
+        let buy = json!({"type":"buy","source":"market","key":"worldEngine"});
+        let upgrade = json!({"type":"upgrade","card":"c","resource":"data"});
+        assert_eq!(
+            agent.select_action(&view, &[upgrade.clone(), buy.clone()]),
+            0
+        );
+        view["orderBenefitPlanning"] = json!(true);
+        assert!((capacity_value(&view, 0, "worldEngine").unwrap() - world - 7.5).abs() < 1e-9);
+        assert_eq!(
+            capacity_value(&view, 0, "foldSpaceGate").unwrap(),
+            gate + 10.0
+        );
+        assert_eq!(
+            capacity_value(&view, 0, "prefabYards").unwrap(),
+            prefab + 9.0
+        );
+        assert_eq!(
+            agent.select_action(&view, &[upgrade, buy]),
+            1,
+            "Printed savings can prioritize the purchase before another starter upgrade"
+        );
+        view["cardStats"]["prefabYards"]["secondBuild"] = json!(false);
+        assert_eq!(
+            capacity_value(&view, 0, "prefabYards").unwrap(),
+            prefab + 6.0
+        );
+        view["fleets"] = json!({});
+        assert!(
+            capacity_value(&view, 0, "foldSpaceGate").unwrap() < gate,
+            "An extra Move needs an actual ship"
+        );
+        view["fleets"] = json!({"0,0":{"0":{"settler":1}}});
+        view["orderBenefitPlanning"] = json!(false);
+        assert_eq!(capacity_value(&view, 0, "worldEngine").unwrap(), world);
     }
     #[test]
     fn market_purchase_ablation_changes_purchases_and_targets_not_order_legality() {

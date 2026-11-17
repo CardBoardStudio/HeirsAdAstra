@@ -37,6 +37,7 @@ async function play(task,sources,directory,binary){
    if(task.protocol.colonyPlanning==='all'||task.protocol.colonyPlanning==='subject'&&actor===subjectSeat)observation.colonyPlanning=true;
    if(task.protocol.protectedMarketBudget==='all'||task.protocol.protectedMarketBudget==='subject'&&actor===subjectSeat)observation.protectedMarketBudget=true;
    if(actor===subjectSeat&&task.protocol.subjectMarket&&task.protocol.subjectMarket!=='normal')observation.marketPurchasePolicy=task.protocol.subjectMarket;
+   if(task.protocol.orderBenefits==='all'||task.protocol.orderBenefits==='subject'&&actor===subjectSeat)observation.orderBenefitPlanning=true;
    const buyKey=e.state.round+':'+actor;if(e.state.phase==='buy'&&!buyStarts.has(buyKey)){buyStarts.add(buyKey);market[actor].buyTurns++;}
    const response=await native.choose(task.profiles[actor],observation,legal);
    if(response.nativeRandomDraws!==0||!Number.isInteger(response.index)||!legal[response.index])throw Error('Invalid native policy result');
@@ -70,7 +71,8 @@ else if(require.main===module){
  const colonyPlanning=arg('colony-planning','none');if(!['none','subject','all'].includes(colonyPlanning))throw Error('Invalid Colony planning mode');
  const protectedMarketBudget=arg('protected-market-budget','none');if(!['none','subject','all'].includes(protectedMarketBudget))throw Error('Invalid protected market budget mode');
  const subjectMarket=arg('subject-market','normal');if(!['normal','points-only','none'].includes(subjectMarket))throw Error('Invalid subject market policy');
- const protocol={kind:'native-investment',variant,mode,tacticalForecast,militaryHorizon,productionDiscipline,marketFilter,colonyPlanning,protectedMarketBudget,subjectMarket,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
+ const orderBenefits=arg('order-benefits','none');if(!['none','subject','all'].includes(orderBenefits))throw Error('Invalid order benefit mode');
+ const protocol={kind:'native-investment',variant,mode,tacticalForecast,militaryHorizon,productionDiscipline,marketFilter,colonyPlanning,protectedMarketBudget,subjectMarket,orderBenefits,target,seedStart,seeds,rotations,profiles,maxRound,binaryHash:hash(fs.readFileSync(frozenBinary)),binary:frozenBinary,sourceHashes:Object.fromEntries(Object.entries(sources).map(([k,v])=>[k,hash(v)])),nativeRandomness:'Deterministic standard policies; zero native RNG draws. Engine RNG recorded in full.'};
  fs.writeFileSync(path.join(out,'protocol.json'),JSON.stringify(protocol,null,2));console.log('Study output: '+out);
  const tasks=[];for(let i=0;i<seeds;i++)for(const rotation of rotations)tasks.push({id:tasks.length,variant,mode,seed:seedStart+7919*i,rotation,target,profiles:profiles.map((_,j)=>profiles[(j+rotation)%4]),maxRound,maxSteps:18000,protocol});
  let next=0,failures=0;const games=[];
