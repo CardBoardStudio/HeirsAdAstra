@@ -2495,7 +2495,12 @@ impl BuiltinAgent {
                 };
                 let r = action["resource"].as_str().unwrap();
                 let reserve = bot_cost(view, seat);
+                let basic = matches!(
+                    card["key"].as_str().unwrap_or(""),
+                    "construct" | "move" | "colonize" | "excavate" | "probe"
+                );
                 if redundant
+                    && (view["investmentPlanning"] != true || basic)
                     && card["upgraded"] != true
                     && number(&me["resources"][r]) >= number(&reserve[r]) + 3.0
                 {
@@ -3555,6 +3560,42 @@ mod tests {
         view["players"][0]["hand"] = json!([]);
         view["players"][0]["discard"] = surplus;
         assert_eq!(from_hand, agent.score(&view, &trash));
+    }
+
+    #[test]
+    fn investment_trimming_preserves_named_orders() {
+        let agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["players"][0]["resources"] = json!({"matter":30,"energy":30,"biomass":30,"data":30});
+        view["players"][0]["deckContents"] = json!([
+            {"key":"construct","count":4}, {"key":"move","count":8},
+            {"key":"colonize","count":5}
+        ]);
+        for key in [
+            "worldEngine",
+            "prefabYards",
+            "stellarCrucible",
+            "horizonSail",
+            "evergreenArk",
+        ] {
+            view["players"][0]["hand"] = json!([{"id":"held","key":key,"upgraded":false}]);
+            let trash = json!({"type":"decommission","card":"held","resource":"matter"});
+            assert!(agent.score(&view, &trash) < 0.0, "Keep named order {key}");
+            view["investmentPlanning"] = json!(false);
+            assert!(
+                agent.score(&view, &trash) > 0.0,
+                "Historical trimming is preserved"
+            );
+            view["investmentPlanning"] = json!(true);
+        }
+        view["players"][0]["hand"] = json!([{"id":"held","key":"construct","starter":true}]);
+        assert!(
+            agent.score(
+                &view,
+                &json!({"type":"decommission","card":"held","resource":"matter"})
+            ) > 0.0
+        );
     }
 
     #[test]

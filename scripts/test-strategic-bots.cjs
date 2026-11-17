@@ -55,12 +55,7 @@ for(const strategy of ['military','economy','expansion']) {
 }
 {
   const g=game();g.p.hand=Array.from({length:6},(_,i)=>({id:'starter'+i,key:i<3?'move':'construct',starter:true}));
-  const world = g.e.ALL_CARDS.worldEngine, printedCost = world.cost;
-  const accessibleValue = g.e.aiBuyValue(1,'worldEngine');
-  world.cost = { matter: 6, energy: 1, biomass: 1 };
-  assert(g.e.aiBuyValue(1,'signalRelay')>g.e.aiBuyValue(1,'worldEngine'),'Useful draw beats the former expensive extra build in this deck');
-  assert(accessibleValue>g.e.aiBuyValue(1,'worldEngine'),'Lower capital and capacity requirements increase World Engine utility');
-  world.cost = printedCost;
+  assert(g.e.aiBuyValue(1,'signalRelay')>g.e.aiBuyValue(1,'worldEngine'),'Useful draw beats an expensive extra build in this deck');
   assert(g.e.aiBuyValue(1,'seedArk')<g.e.aiBuyValue(1,'signalRelay'),'No Settler means little value in another Colonize card');
   const before=g.e.aiBuyValue(1,'signalRelay');g.p.discard.push({id:'owned',key:'signalRelay'});assert(g.e.aiBuyValue(1,'signalRelay')<before);
 }

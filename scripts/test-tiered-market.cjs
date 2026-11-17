@@ -33,8 +33,8 @@ const startBuy = g => { Object.assign(g.s, { phase: 'buy', activePlayer: 0 }); g
     assert.equal(e.marketTier(key), total >= 8 ? 'expensive' : total >= 6 ? 'medium' : 'cheap', key);
   }
   assert.deepEqual(split.cheap, ['colonyPods', 'deflectorGrid', 'ionThrusters', 'prefabYards', 'procurementHub', 'railBattery', 'seedArk', 'signalRelay', 'slipstreamCharts', 'strikeVector', 'surveyNetwork', 'tacticalBriefing', 'tradeSyndicate']);
-  assert.deepEqual(split.medium, ['archivePurge', 'cargoExpansion', 'flakScreen', 'foldSpaceGate', 'hardlightBulwark', 'strategyCore', 'torpedoSpread', 'worldEngine']);
-  assert.deepEqual(split.expensive, ['aegisLattice', 'ascendancyCodex', 'commandNexus', 'dysonLattice', 'genesisCharter', 'hyperspaceVaults', 'monumentOfAccord', 'novaBarrage', 'phaseLance', 'victoryDoctrine']);
+  assert.deepEqual(split.medium, ['archivePurge', 'cargoExpansion', 'flakScreen', 'foldSpaceGate', 'hardlightBulwark', 'strategyCore', 'torpedoSpread']);
+  assert.deepEqual(split.expensive, ['aegisLattice', 'ascendancyCodex', 'commandNexus', 'dysonLattice', 'genesisCharter', 'hyperspaceVaults', 'monumentOfAccord', 'novaBarrage', 'phaseLance', 'victoryDoctrine', 'worldEngine']);
 }
 
 // Setup: three decks of two copies per design, three face-up cards from each, in row order.
@@ -43,7 +43,7 @@ const startBuy = g => { Object.assign(g.s, { phase: 'buy', activePlayer: 0 }); g
   assert.equal(s.market.length, 9, 'Nine market cards: three rows of three');
   assert.deepEqual(plain(s.market.map(c => e.marketTier(c.key))), ['expensive', 'expensive', 'expensive', 'medium', 'medium', 'medium', 'cheap', 'cheap', 'cheap']);
   assert.deepEqual(Object.keys(s.marketDecks), tiers);
-  assert.deepEqual(plain(Object.fromEntries(tiers.map(t => [t, s.marketDecks[t].length]))), { expensive: 17, medium: 13, cheap: 23 });
+  assert.deepEqual(plain(Object.fromEntries(tiers.map(t => [t, s.marketDecks[t].length]))), { expensive: 19, medium: 11, cheap: 23 });
   for (const t of tiers) assert(s.marketDecks[t].every(c => e.marketTier(c.key) === t), `the ${t} deck holds only ${t} cards`);
   const supply = [...s.market, ...Object.values(s.marketDecks).flat()].map(c => c.key);
   assert.equal(supply.length, 62);
@@ -60,27 +60,6 @@ for (const at of [0, 4, 8]) {
   assert.equal(s.market.length, 9);
   assert.equal(s.market[at].id, next.id, `slot ${at} refills from the top of the ${tier} deck`);
   assert.deepEqual(plain(s.market).filter((_, i) => i !== at), before.filter((_, i) => i !== at), 'other slots do not move');
-}
-
-// World Engine can be paid from the starting tracks and refills from Medium.
-{
-  const g = game(), { s, e, p } = g;
-  Object.assign(s, { phase: 'buy', activePlayer: 0 }); p.passed = true;
-  p.resourceLimits = { matter: 4, energy: 4, biomass: 4, data: 4 };
-  p.resources = { matter: 4, energy: 1, biomass: 1, data: 0 };
-  const deck = s.marketDecks.medium;
-  const index = deck.findIndex(c => c.key === 'worldEngine');
-  const [card] = deck.splice(index, 1);
-  assert(card, 'World Engine fixture exists in Medium supply');
-  s.market[3] = card;
-  const next = deck.at(-1);
-  const action = g.a.legalActions(0).find(a => a.type === 'buy' && a.source === 'market' && a.index === 3);
-  assert(action, 'Starting limits permit the exact printed World Engine payment');
-  g.a.applyAction(0, action);
-  assert.deepEqual(plain(p.resources), { matter: 0, energy: 0, biomass: 0, data: 0 });
-  assert(p.discard.some(c => c.id === card.id), 'Gained World Engine goes to discard');
-  assert.equal(s.market[3].id, next.id, 'Purchase refills from Medium');
-  assert.equal(e.marketTier('worldEngine'), 'medium');
 }
 
 // An empty tier deck leaves its slot empty; no card moves in from another tier.
@@ -134,4 +113,4 @@ for (const at of [0, 4, 8]) {
   assert.equal(s.round, 1);
 }
 
-console.log('Tiered market: price split 13/8/10 designs, Expensive/Medium/Cheap rows of three, in-place refills from each tier deck, empty slots when a deck runs out, hidden tier decks with public sizes and Undo reveals passed.');
+console.log('Tiered market: price split 13/7/11 designs, Expensive/Medium/Cheap rows of three, in-place refills from each tier deck, empty slots when a deck runs out, hidden tier decks with public sizes and Undo reveals passed.');
