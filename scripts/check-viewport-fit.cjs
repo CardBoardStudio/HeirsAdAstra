@@ -218,7 +218,8 @@ const CASES = [
   { name: 'buy, upgrade chooser', save: buyState(chunks[0]), click: ['#market-tab', '[data-upgrade-offer="move"]'] },
   { name: 'buy, trash dialog', save: buyState(chunks[0]), click: ['#market-tab', '#open-trash'] },
   { name: 'buy, raised market card (bottom row)', save: buyState(chunks[2], { matter: 8, energy: 8, biomass: 8, data: 8 }), focus: '#market-row .game-card:not(:disabled)', focusLast: true },
-  { name: 'trade dialog', save: operationsState(['move']), click: ['#open-trade'], devices: true },
+  // Trade pulls out from the left edge; open, it may lie over the map's edge, like an opened comms card.
+  { name: 'trade panel', save: operationsState(['move']), click: ['#open-trade'], devices: true },
   { name: 'game menu', save: operationsState(['move']), click: ['#table-menu-button'], devices: true },
   { name: 'game menu, playtest changes', save: operationsState(['move']), click: ['#table-menu-button', '#playtest-changes summary'] },
   // Rules #military-deck: the military deck is a pile beside In play; it opens like the others.
@@ -300,7 +301,7 @@ const MEASURE = `(() => {
   const phone = window.__fitMode === 'phone';
   if ((!phone && doc.scrollHeight > H + 1) || doc.scrollWidth > W + 1) problems.push('page scrolls: ' + doc.scrollWidth + 'x' + doc.scrollHeight);
   // Containers allowed to scroll their own reference content.
-  const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region' + (phone ? ', .board-map-region, .console, .resource-panel, .board-shared, .phase-stepper, #hand-panel .hand-tools' : '') + '';
+  const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region' + (phone ? ', .board-map-region, .console, .resource-panel, .board-shared, .phase-stepper, #hand-panel .hand-tools, .trade-panel' : '') + '';
   const modal = document.querySelector('dialog[open], body.menu-open');
   const scope = modal || document;
   // Hand cards are held as card tops that clip on purpose; a raised (pointed-at or focused)
@@ -315,8 +316,8 @@ const MEASURE = `(() => {
     // A top shows its one-line headline, its effect in icons, or its effect, whichever it shows.
     const summary = [top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(e => e && e.getClientRects().length) || top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
-    // An open Sector Scan (a popover over the map) may cover card tops while it is open.
-    if (!document.querySelector(':is(dialog[open], body.menu-open, .sector-popover:popover-open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
+    // An open Sector Scan (a popover over the map) or Trade panel may cover card tops while it is open.
+    if (!document.querySelector(':is(dialog[open], body.menu-open, .sector-popover:popover-open, .trade-drawer.open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
       const c = chip.getBoundingClientRect(), hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       if (!hit || !top.contains(hit)) { problems.push('gain badge covered in ' + label(top)); break; }
     }
@@ -406,7 +407,7 @@ const MEASURE = `(() => {
   if (!phone && !modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
     // The centre and both side edges of every hex must be clickable.
     const r = hex.getBoundingClientRect(), y = r.top + r.height / 2;
-    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open, #gr-coach, .gr-coach-pointer, .gr-stage'); });
+    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open, .trade-drawer.open, #gr-coach, .gr-coach-pointer, .gr-stage'); });
     if (blocked) { const hit = document.elementFromPoint(...blocked); problems.push('hex covered at ' + Math.round(blocked[0]) + ',' + Math.round(y) + ' by ' + (hit ? label(hit) : 'nothing')); break; }
   }
   // The map fills the space left to it. On a landscape table it reaches between the left-hand

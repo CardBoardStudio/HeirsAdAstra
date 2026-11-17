@@ -1330,9 +1330,8 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 /* Trade opens as a dialog from the button beside the tabs. */
 .console-nav { display: flex; align-items: stretch; gap: 3px; }
 .console-nav .console-tabs { flex: 1 1 auto; min-width: 0; }
-.trade-open { flex: none; }
-.trade-dialog .trade-form { margin-top: 4px; }
-.trade-dialog .trade-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12.5px; }
+.trade-panel .trade-form { margin-top: 4px; }
+.trade-panel .trade-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12.5px; }
 /* The desktop table folds the page header into a menu button; narrow layouts keep the header. */
 .table-menu-button { display: none; }
 /* Comms feed: who acted, an event icon, and resource / Prestige chips. */
@@ -1527,7 +1526,6 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .console-nav .console-tabs { display: flex; gap: 5px; padding: 0; border: 0; }
   .console-tab { min-height: 28px; padding: 3px 14px; border: 1px solid #a49c6f40; border-radius: 999px; background: linear-gradient(160deg, #2d403b, #22322f); box-shadow: 0 2px 0 #0a1513; color: var(--muted); font-size: 12.5px; text-align: center; }
   .console-tab.active, .console-tab[aria-selected="true"] { border-color: var(--gold); color: var(--gold); background: linear-gradient(160deg, #3a4a3c, #2a382f); }
-  .console-tab.trade-open { color: var(--text); white-space: nowrap; }
   .tab-panel { grid-row: 5; grid-column: 3; min-height: 0; }
   #market-tab, #relics-tab { display: none; }
   #market-panel, #market-panel[hidden] { display: flex; flex-direction: column; min-height: 0; overflow: visible; }
@@ -1782,9 +1780,8 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .upgrade-offer { border-style: dashed; }
   .basic-market:empty { display: none; }
 
-  /* Relics are a side panel too; Trade opens as a dialog. */
+  /* Relics are a side panel too. */
   #relics-panel.active { overflow: hidden; }
-  .trade-dialog { width: min(820px, calc(100vw - 24px)); }
   .trade-form { grid-template-columns: repeat(4, minmax(0,1fr)) auto; gap: 6px; }
   .trade-form label, .trade-form input, .trade-form select { font-size: 13px; }
   .trade-form select, .trade-form input { min-height: 32px; padding: 4px 6px; }
@@ -2734,7 +2731,6 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
   #hand-panel .hand-tools { grid-column: 3 !important; grid-row: 8 !important; justify-self: end !important; align-self: start !important; width: 240px !important; display: flex !important; flex-direction: column; align-items: stretch; gap: 6px; margin: 0 !important; }
   #hand-panel .hand-tools .button { width: 100%; white-space: normal; text-align: center; }
   .console-nav { display: none !important; }
-  #hand-panel .hand-tools #open-trade { align-self: stretch; }
 }
 /* While you choose an Excavate reward, each relic's choose button lies over the foot of its card,
    so the relics row keeps its height and the market keeps its room. */
@@ -2858,9 +2854,8 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
      starters (only while you hold one) and Trade lie left of the mat, in their own column. */
   #hand-panel .hand-tools { position: relative; grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: start !important; width: var(--tools-w) !important; margin: 10px 0 0 0 !important; display: flex !important; flex-direction: column; gap: 3px; }
   #hand-panel .hand-tools .button { width: 100%; min-height: 0 !important; padding: 2px 6px !important; font-size: 10.5px !important; line-height: 1.2; border-radius: 999px !important; }
-  #hand-panel .hand-tools :is(#convert-all-button, #open-trade) { position: absolute !important; right: calc(100% + var(--mat-w) + 28px); width: var(--side-w) !important; padding: 4px 6px !important; font-size: 11px !important; }
+  #hand-panel .hand-tools #convert-all-button { position: absolute !important; right: calc(100% + var(--mat-w) + 28px); width: var(--side-w) !important; padding: 4px 6px !important; font-size: 11px !important; }
   #hand-panel .hand-tools #convert-all-button { top: calc(var(--band-h) / 2 - 46px); }
-  #hand-panel .hand-tools #open-trade { top: calc(var(--band-h) / 2 - 12px); }
   #convert-all-button .conversion-symbols { display: none !important; }
   #discard-button { margin-right: calc((var(--tools-w) - var(--pile-w)) / 2) !important; }
   #resource-grid.resource-grid { grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: end !important; width: var(--mat-w) !important; height: calc(var(--band-h) - 6px) !important; margin: 0 calc(var(--tools-w) + 14px) 0 0 !important; }
@@ -2890,7 +2885,7 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
   /* Squarer tables (1300 units wide) have no room for a column left of the mat: Convert and Trade
      stack with the turn's main button above Discard. */
   :root:not(.table-wide) .app-shell { --mat-w: 340px !important; --tools-w: 150px !important; --side-w: -46px !important; }
-  :root:not(.table-wide) #hand-panel .hand-tools :is(#convert-all-button, #open-trade) { position: static !important; width: 100% !important; }
+  :root:not(.table-wide) #hand-panel .hand-tools #convert-all-button { position: static !important; width: 100% !important; }
   :root:not(.table-wide) #hand-panel .hand-tools { margin-top: 2px !important; }
   /* There a raised card is wider than its resting slot, so the hand leaves room for it. */
   :root:not(.table-wide) #hand-row { margin-right: calc(var(--mat-w) + var(--tools-w) + var(--side-w) + 46px + max(0px, 200px - var(--top-w))) !important; }
@@ -3144,12 +3139,16 @@ body.background-stars .galaxy-board::before {
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
   #prestige-track { width: calc(100% - 66px) !important; }
 }
-/* The faction names head the lanes: a name column, then the race, then the counts. The header
-   row (tick numbers and column icons) is --track-head tall. */
+/* The faction names head the lanes: a name column, then the counts beside the names, then the
+   race to the goal. The header row (column icons and tick numbers) is --track-head tall. The panel
+   keeps its footprint: the race moves right by the counts' width and ends where they used to. */
 .prestige-names { display: none; }
 @media (min-width: 600px) and (min-height: 600px) {
   .app-shell { --track-head: 10px; --name-w: 44px; }
-  .prestige-line { top: var(--track-head) !important; left: var(--name-w) !important; }
+  .app-shell { --stats-gap: 4px; --line-gap: 14px; }
+  .prestige-line { top: var(--track-head) !important; left: calc(var(--name-w) + var(--stats-gap) + var(--stats-w) + var(--line-gap)) !important; right: calc(-1 * var(--stats-w)) !important; }
+  .standings-stats { left: calc(var(--name-w) + var(--stats-gap)) !important; }
+  .prestige-track-goal { right: calc(-1 * var(--stats-w)) !important; }
   .standings-header { height: var(--track-head); }
   .prestige-names { position: absolute; top: var(--track-head); left: 0; display: flex; flex-direction: column; width: var(--name-w); }
   .prestige-lane-name { display: flex; align-items: center; gap: 3px; height: var(--lane-h); overflow: hidden; color: #dfe6e0; font-size: 9.5px; font-weight: 700; letter-spacing: .02em; line-height: 1; white-space: nowrap; }
@@ -3199,3 +3198,27 @@ body.background-stars .galaxy-board::before {
   /* It keeps that height while the log is short, so the column does not change as play goes on. */
   :root.table-wide:not(.left-tight) .log-panel:not(.open) { min-height: 200px; }
 }
+
+/* ==== Trade (rules #trade): a panel that pulls out from the table's left edge. Closed, only its
+   handle shows, a tab on the edge; open, the panel lies over the left column (not the map) with
+   the handle on its outer edge to tuck it back. On the table the handle sits in the left column's
+   gap between the comms card and the map key (--trade-top, see stackLeft). It is not modal: the map stays in play. ==== */
+.trade-drawer { --trade-w: min(340px, calc(100vw - 44px)); position: fixed; z-index: 60; left: 0; top: 0; width: 0; height: 0; }
+.trade-handle { position: fixed; left: 0; top: var(--trade-top, 50%); transform: translateY(-50%); display: flex; align-items: center; justify-content: center; min-width: 22px; min-height: 76px; padding: 10px 3px; border: 1.5px solid #a49c6f; border-left: 0; border-radius: 0 10px 10px 0; background: linear-gradient(90deg, #22322f, #2d403b); box-shadow: 2px 3px 0 #0a1513, 4px 8px 14px -4px #000a; color: var(--text); font: 700 12px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em; writing-mode: vertical-rl; white-space: nowrap; cursor: pointer; transition: left .22s ease; }
+.trade-handle:hover { color: var(--gold); }
+.trade-handle:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.trade-drawer.open .trade-handle { left: var(--trade-w); color: var(--gold); }
+.trade-panel { position: fixed; left: 0; top: 50%; box-sizing: border-box; width: var(--trade-w); max-height: calc(100vh - 24px); max-height: calc(100dvh - 24px); overflow: auto; padding: 16px; border: 1.5px solid #a49c6f99; border-left: 0; border-radius: 0 10px 10px 0; background: #1b2b2d; box-shadow: 0 25px 80px #0008, inset 0 0 0 4px #101d1d66; color: var(--text); transform: translate(-100%, -50%); visibility: hidden; transition: transform .22s ease, visibility 0s linear .22s; }
+.trade-drawer.open .trade-panel { transform: translate(0, -50%); visibility: visible; transition: transform .22s ease, visibility 0s; }
+.trade-panel .dialog-heading { gap: 10px; margin-bottom: 10px; }
+.trade-panel h2 { font-size: 18px; }
+.trade-panel .trade-heading p { font-size: 11.5px !important; line-height: 1.4; }
+.trade-panel .trade-form { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 6px !important; }
+.trade-panel .trade-form .button { grid-column: 1 / -1; }
+.trade-panel .trade-form label, .trade-panel .trade-form input, .trade-panel .trade-form select { font-size: 13px; }
+.trade-panel .trade-form select, .trade-panel .trade-form input { min-height: 32px; padding: 4px 6px; }
+.trade-panel .trade-offers { margin: 12px 0; gap: 8px; }
+.trade-panel .trade-offer { padding: 10px; }
+.trade-panel .trade-offer p, .trade-panel .trade-terms { font-size: 12.5px; }
+.trade-panel .trade-ledger { grid-template-columns: 1fr; gap: 5px; }
+@media (prefers-reduced-motion: reduce) { .trade-handle, .trade-panel, .trade-drawer.open .trade-panel { transition: none; } }
