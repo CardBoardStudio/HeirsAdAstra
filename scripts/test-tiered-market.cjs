@@ -1,5 +1,5 @@
-// Rules #market: the market is three decks by total printed price (Expensive 8+, Medium 6-7,
-// Cheap up to 5), each with three face-up slots. A bought slot refills in place from its own
+// Rules #market-tiers: Expensive total 8+; Medium total 6-7 or five of one resource;
+// Cheap contains only three draw-two and three exchange designs, each with three face-up slots. A bought slot refills in place from its own
 // deck; once that deck runs out the slot stays empty.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -22,7 +22,7 @@ const tiers = ['expensive', 'medium', 'cheap'];
 const rich = p => { p.resourceLimits = { matter: 30, energy: 30, biomass: 30, data: 30 }; p.resources = { matter: 30, energy: 30, biomass: 30, data: 30 }; };
 const startBuy = g => { Object.assign(g.s, { phase: 'buy', activePlayer: 0 }); g.p.passed = true; rich(g.p); };
 
-// The split: every design's tier follows its total price, and the table order is Expensive, Medium, Cheap.
+// The split: printed price determines tiers within the active supply, and the table order is Expensive, Medium, Cheap.
 {
   const { e } = game();
   assert.deepEqual(plain(e.MARKET_TIERS.map(t => t.id)), tiers, 'Rows read Expensive, Medium, Cheap below the relics');
@@ -30,10 +30,14 @@ const startBuy = g => { Object.assign(g.s, { phase: 'buy', activePlayer: 0 }); g
   const split = Object.fromEntries(tiers.map(t => [t, designs.filter(key => e.marketTier(key) === t).sort()]));
   for (const key of designs) {
     const total = price(e.MARKET_CARDS[key].cost);
-    assert.equal(e.marketTier(key), total >= 8 ? 'expensive' : total >= 6 ? 'medium' : 'cheap', key);
+    assert.equal(e.marketTier(key), total >= 8 ? 'expensive' : total >= 6 || Object.values(e.MARKET_CARDS[key].cost).some(n => n >= 5) ? 'medium' : 'cheap', key);
   }
-  assert.deepEqual(split.cheap, ['barterNetwork', 'clearingHouse', 'colonyPods', 'deflectorGrid', 'exchangeProtocol', 'ionThrusters', 'prefabYards', 'procurementHub', 'railBattery', 'seedArk', 'signalRelay', 'slipstreamCharts', 'strikeVector', 'surveyNetwork', 'tacticalBriefing', 'tradeSyndicate']);
-  assert.deepEqual(split.medium, ['archivePurge', 'cargoExpansion', 'flakScreen', 'foldSpaceGate', 'hardlightBulwark', 'strategyCore', 'torpedoSpread']);
+  assert.deepEqual(split.cheap, ['barterNetwork', 'clearingHouse', 'exchangeProtocol', 'signalRelay', 'surveyNetwork', 'tacticalBriefing']);
+  assert.deepEqual(split.medium, ['archivePurge', 'cargoExpansion', 'deflectorGrid', 'flakScreen', 'foldSpaceGate', 'hardlightBulwark', 'ionThrusters', 'railBattery', 'slipstreamCharts', 'strategyCore', 'torpedoSpread']);
+  for (const key of ['strikeVector','prefabYards','seedArk','colonyPods','procurementHub','tradeSyndicate']) {
+    assert(e.ALL_CARDS[key], `${key}: retained definition`);
+    assert(!e.MARKET_CARDS[key], `${key}: absent from new supply`);
+  }
   assert.deepEqual(split.expensive, ['aegisLattice', 'ascendancyCodex', 'commandNexus', 'dysonLattice', 'genesisCharter', 'hyperspaceVaults', 'monumentOfAccord', 'novaBarrage', 'phaseLance', 'victoryDoctrine', 'worldEngine']);
 }
 
@@ -43,10 +47,10 @@ const startBuy = g => { Object.assign(g.s, { phase: 'buy', activePlayer: 0 }); g
   assert.equal(s.market.length, 9, 'Nine market cards: three rows of three');
   assert.deepEqual(plain(s.market.map(c => e.marketTier(c.key))), ['expensive', 'expensive', 'expensive', 'medium', 'medium', 'medium', 'cheap', 'cheap', 'cheap']);
   assert.deepEqual(Object.keys(s.marketDecks), tiers);
-  assert.deepEqual(plain(Object.fromEntries(tiers.map(t => [t, s.marketDecks[t].length]))), { expensive: 19, medium: 11, cheap: 29 });
+  assert.deepEqual(plain(Object.fromEntries(tiers.map(t => [t, s.marketDecks[t].length]))), { expensive: 19, medium: 19, cheap: 9 });
   for (const t of tiers) assert(s.marketDecks[t].every(c => e.marketTier(c.key) === t), `the ${t} deck holds only ${t} cards`);
   const supply = [...s.market, ...Object.values(s.marketDecks).flat()].map(c => c.key);
-  assert.equal(supply.length, 68);
+  assert.equal(supply.length, 56);
   for (const key of Object.keys(e.MARKET_CARDS)) assert.equal(supply.filter(k => k === key).length, 2, `${key}: two copies`);
   assert(!('advancedDeck' in s) && !('marketDiscard' in s), 'The single mixed supply is gone');
 }
@@ -113,4 +117,4 @@ for (const at of [0, 4, 8]) {
   assert.equal(s.round, 1);
 }
 
-console.log('Tiered market: price split 16/7/11 designs, Expensive/Medium/Cheap rows of three, in-place refills from each tier deck, empty slots when a deck runs out, hidden tier decks with public sizes and Undo reveals passed.');
+console.log('Tiered market: price split 6/11/11 designs, Expensive/Medium/Cheap rows of three, in-place refills from each tier deck, empty slots when a deck runs out, hidden tier decks with public sizes and Undo reveals passed.');

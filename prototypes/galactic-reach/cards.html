@@ -104,7 +104,7 @@
     document.querySelector('#site-footer-version').textContent = `Galactic Reach ${version} · playtest`;
     const $ = selector => document.querySelector(selector);
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const cards = [...Object.entries(catalog.ADVANCED_CARDS), ...Object.entries(catalog.MARKET_MILITARY)].map(([key, def]) => ({ key, ...def }));
+    const cards = Object.entries(catalog.MARKET_CARDS || { ...catalog.ADVANCED_CARDS, ...catalog.MARKET_MILITARY }).map(([key, def]) => ({ key, ...def }));
     const price = card => catalog.RESOURCES.reduce((n, r) => n + (card.cost[r] || 0), 0);
     const chips = gain => catalog.RESOURCES.filter(r => gain?.[r]).map(r => `<span class="chip ${r}">${gain[r]} ${catalog.RESOURCE_NAMES[r]}</span>`).join('') || '<span class="muted">None</span>';
     const storeKey = 'galactic-reach-card-feedback-31-36';
