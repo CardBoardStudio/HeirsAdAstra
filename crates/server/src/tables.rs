@@ -504,10 +504,10 @@ mod tests {
                 "fewer or Easy rivals are not offered"
             );
         }
-        // 31.36 #victory: the host picks the Prestige target; 40 by default.
+        // 31.36 #victory: the host picks the Prestige target; 30 by default.
         assert_eq!(
             call(&a, "GET", &lobby, &host, json!({})).await.2["victory_target"],
-            40
+            30
         );
         assert_eq!(
             call(

@@ -82,7 +82,7 @@
         <div><span class="label">Round</span><strong id="round-value">1</strong></div>
         <div><span class="label">Phase</span><strong id="phase-value">Production</strong></div>
         <div><span class="label">Active</span><strong id="active-value">You</strong></div>
-        <div><span class="label">Goal</span><strong id="round-goal">40 Prestige</strong></div>
+        <div><span class="label">Goal</span><strong id="round-goal">30 Prestige</strong></div>
       </div>
             </div>
       <aside class="board-shared" aria-label="Shared table information">
@@ -110,7 +110,7 @@
             <dt>Combat</dt><dd>2 per fight won with all enemy units destroyed. None if any escape or retreat.</dd>
             <dt>Cards</dt><dd>Permanent Prestige printed on Wonders, Ascendancy Codex, Genesis Charter and Victory Doctrine.</dd>
           </dl>
-          <p>Reach <strong id="victory-target-text">40 Prestige</strong>, set when this game was created. Victory is checked at round end.</p>
+          <p>Reach <strong id="victory-target-text">30 Prestige</strong>, set when this game was created. Victory is checked at round end.</p>
         </section>
         <section class="panel log-panel">
           <div class="panel-heading">
@@ -168,7 +168,7 @@
           <p id="resource-tools-help">Free during your Operations or Buy turn.</p>
           <form id="bank-trade-form" class="bank-trade-form">
             <div class="bank-resource-picker">
-              <fieldset><legend>Give 4</legend><div class="bank-resource-options" id="bank-give-options"></div></fieldset>
+              <fieldset><legend id="bank-give-rate">Give 4</legend><div class="bank-resource-options" id="bank-give-options"></div></fieldset>
               <span class="bank-resource-arrow" aria-hidden="true">→</span>
               <fieldset><legend>Receive 1</legend><div class="bank-resource-options" id="bank-get-options"></div></fieldset>
             </div>
@@ -235,7 +235,7 @@
       <p>This replaces your current guest save.</p>
       <label for="new-game-target">Prestige target</label>
       <select id="new-game-target"></select>
-      <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 40.</p>
+      <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 30.</p>
       <p id="new-game-neighbor" class="new-game-neighbor"></p>
       <div class="dialog-actions"><button class="button button-ghost" value="cancel" type="submit">Cancel</button><button class="button button-primary" value="start" type="submit" id="new-game-start">Start new game</button></div>
     </form>
@@ -256,7 +256,7 @@
       <section><h3>Your turn</h3><p>Convert level I starters for resources, then use one order, offer a trade, or pass. Passing immediately starts your Buy turn. Finish Buy, then the remaining factions continue Operations.</p></section>
       <section><h3>Your round</h3><p>Produce → Operations (pass → your Buy turn) → everyone finishes → cleanup → victory check → draw five → next round.</p></section>
       <section><h3>Your deck</h3><p>Buy as many cards as you can afford during your Buy turn. Upgrade original starters to II for two of one resource, then III for three of one resource; III draws one card when used as an order. Only level I starters convert to resources. Trash eligible discarded cards, including starters, for three of one chosen resource type each. There is no one-card trash limit. Gained cards go to discard. Played and converted cards stay in play until shared cleanup. Buy a Capacity Module from the Upgrades tray (1 + the cards in your Storage pile, of each resource); play it during Operations to add 4 capacity points, and it stays in your permanent Storage pile. Successful Colonize, Excavate and Cargo Expansion are permanently trashed. Probe keeps its combined card. Stored resources carry forward.</p></section>
-      <section><h3>Your goal</h3><p>Reach the table’s Prestige target (40 unless chosen otherwise when the game was created) at the end of a round. Colonies, excavated relics, and decisive combat victories contribute. Click a point total to see its breakdown. The rulebook includes costs, scoring, and current card clarifications.</p></section>
+      <section><h3>Your goal</h3><p>Reach the table’s Prestige target (30 unless chosen otherwise when the game was created) at the end of a round. Colonies, excavated relics, and decisive combat victories contribute. Click a point total to see its breakdown. The rulebook includes costs, scoring, and current card clarifications.</p></section>
     </div>
   </dialog>
 
@@ -278,6 +278,12 @@
       <p id="storage-allocation-status" role="status" aria-live="polite"></p>
       <button type="submit" class="button button-primary" id="storage-allocation-confirm" disabled>Confirm allocation</button>
     </form>
+  </dialog>
+
+  <dialog id="exchange-resource-dialog" class="choice-dialog" aria-labelledby="exchange-resource-title" aria-describedby="exchange-resource-help">
+    <div class="dialog-heading"><h2 id="exchange-resource-title">Choose your exchange resource</h2><button type="button" class="button" id="exchange-resource-cancel">Cancel</button></div>
+    <p id="exchange-resource-help">Give two of your chosen resource for one other resource until your Buy turn ends. Choosing plays the card.</p>
+    <div id="exchange-resource-options" class="bank-resource-options"></div>
   </dialog>
 
   <dialog id="archive-purge-dialog" class="choice-dialog" aria-labelledby="archive-purge-title" aria-describedby="archive-purge-help">
