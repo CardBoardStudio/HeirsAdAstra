@@ -50,11 +50,12 @@
   .gr-coach-arrow { display: none; }
 }
 
-/* Docked over the map key (your own games): it steps aside while you raise a hand card, while a
-   notice (toast) shows there, and while the game menu is open. */
+/* Your own games' notes (docked over the map key, or floating where there is no key): they step
+   aside while you raise a card, while a notice (toast) shows, and while the game menu is open. */
 .gr-coach.docked { box-shadow: 0 0 0 2px #ffc95e55, 0 8px 20px #0009; }
-body:has(#hand-row .game-card:is(:hover, :focus-within)) .gr-coach.docked,
-body:has(.toast) .gr-coach.docked,
+body:has(#hand-row .game-card:is(:hover, :focus-within)) .gr-coach.free:not(.in-dialog),
+body:has(:is(.market-cards, .relic-row) .game-card:is(:hover, :focus-within)) .gr-coach.free:not(.in-dialog),
+body:has(.toast) .gr-coach.free:not(.in-dialog),
 body.menu-open .gr-coach:not(.in-dialog) { display: none; }
 /* Floating beside its anchor (Learn to play): clicks pass through to the table, except its own controls. */
 .gr-coach:not(.docked):not(.in-dialog) { pointer-events: none; }
@@ -62,4 +63,7 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
 /* A long docked note shows its first whole sentences until you choose More (guide.js fitText). */
 .gr-coach.docked { font-size: 12px; line-height: 1.38; }
 .gr-coach.docked .gr-coach-title { font-size: 16px; }
+.gr-coach.docked .gr-coach-actions { gap: 4px; margin-top: 6px; }
+.gr-coach.docked .button { min-height: 26px; padding: 2px 9px; font-size: 11.5px; }
 .gr-coach [data-coach="more"][hidden] { display: none; }
+.gr-coach.tight .gr-coach-eyebrow, .gr-coach.tight .gr-coach-rule { display: none; }

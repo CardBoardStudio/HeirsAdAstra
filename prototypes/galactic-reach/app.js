@@ -5196,7 +5196,8 @@ function createGalacticReach(options = {}) {
       playAt(cardId, coord) {
         const order = availableContextOrders(coord, cardId)[0];
         if (!order || !startContextOrder(cardId, coord, order.group)) return false;
-        if (['construct','colonize'].includes(order.type)) showSectorScan(false);
+        // A dropped Move shows its units in the Sector Scan too, as choosing the hex after Use order does.
+        if (['construct','colonize','move'].includes(order.type)) showSectorScan(false);
         return true;
       },
     });

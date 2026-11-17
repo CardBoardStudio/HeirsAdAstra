@@ -181,14 +181,14 @@
         ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         start: state => ({ fleets: unitsAt(state, 'fleet').join('|') }),
-        text: () => 'A Move order moves one group from one hex. Drag a Move onto your Shipyard and choose Move ships. The Fleet and the Settler are both ticked, so they would go together at the Settler’s speed: 1 hex. Untick the Settler so the Fleet can go 2, then choose a lit hex.',
+        text: () => 'A Move order moves one group from one hex. Drag a Move onto your Shipyard and choose Move ships. The Fleet and the Settler are both ticked, so they would go together at the Settler’s speed: 1 hex. In the Sector Scan, untick the Settler so the Fleet can go 2, then choose a lit hex two steps away. (Choosing the hex you start on spends the Move to stay put.)',
         anchor: state => scanOpen() && $('#sector-popover [data-move-unit="settler"]')?.checked ? $('#sector-popover [data-move-unit="settler"]').closest('label') : hand('move')(state),
         done: (state, base) => unitsAt(state, 'fleet').join('|') !== base.fleets && !state.pendingMove },
       { id: 'move-explorer', title: 'Explorers fly alone', rule: 'movement', aimAt: state => state.moveSource ? null : unitsAt(state, 'explorer')[0],
         ensure: s => { ensureHand(s, ['move']); return 'Tutorial supply: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         start: state => ({ explorers: unitsAt(state, 'explorer').join('|') }),
-        text: () => 'Explorers never move with warships. Drag your other Move onto the Explorer, choose Move Explorers, and pick any lit hex: Explorers fly 3 hexes.',
+        text: () => 'Explorers never move with warships. Drag your other Move onto the Explorer (choose Move Explorers if asked) and pick a lit hex away from the Shipyard: Explorers fly 3 hexes.',
         anchor: hand('move'), done: (state, base) => unitsAt(state, 'explorer').join('|') !== base.explorers },
     ] },
     { id: 'relics', title: 'Relics', steps: [
@@ -430,7 +430,7 @@
     if (aimed) { anchor = aimed; text = `${state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.) ${text}`; }
     return {
       id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: step.title, text, rule: step.rule,
-      inDialog: openDialog || step.dialog || null, anchor, progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
+      inDialog: openDialog || step.dialog || null, anchor, avoid: [hexAt(step.aimAt?.(state, port))], progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
       buttons: [
         { action: 'back', label: 'Back', disabled: progress.view === 0 },
         ...(reviewing ? [{ action: 'next', label: 'Next', primary: true }] : []),

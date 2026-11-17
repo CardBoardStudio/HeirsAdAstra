@@ -30,7 +30,7 @@
   const prefs = loadPrefs();
   function savePrefs() { try { localStorage.setItem(STORE, JSON.stringify(prefs)); } catch { /* not saved */ } }
 
-  let port = null, frame = 0, coach = null, targeted = [], lastKey = '', lastAnnounced = '', raisedOver = null, currentAnchor = null;
+  let port = null, frame = 0, coach = null, targeted = [], lastKey = '', lastAnnounced = '', raisedOver = null, currentAnchor = null, currentAvoid = [];
 
   // ---- Reading the table: what the player can do right now. ----
   function context() {
@@ -119,7 +119,7 @@
       if (s.pendingConstruct) return { title: 'Build again?', text: 'You may pay for a second build now: choose a lit hex. Or choose Finish to end your turn.', anchor: firstShown('#finish-construct') };
       if (s.actionMode && ['move', 'construct', 'colonize'].includes(s.actionMode)) {
         const target = firstShown('.hex.cf-drop-target', '.hex.target');
-        return { title: 'Choose a lit hex', text: s.moveSource ? 'Choose a lit hex to move there. Press Escape to cancel.' : 'Choose one of the lit hexes for this order. Press Escape (or Cancel order) to choose a different card.', anchor: target };
+        return { title: 'Choose a lit hex', text: s.moveSource ? 'Choose a lit hex to move there. Choosing the hex you start on spends the Move to stay put. Press Escape to cancel.' : 'Choose one of the lit hexes for this order. Press Escape (or Cancel order) to choose a different card.', anchor: target };
       }
       if (s.actionMode === 'excavate') return { title: 'Choose your relic', text: 'Choose one of the three relic cards. You pay the excavation cost and gain 2★.', anchor: firstShown('#relic-row .game-card') };
       const card = kind => c.playable.find(p => p.kind === kind || p.def.order === kind);
@@ -227,7 +227,7 @@
       delete box.dataset.full; delete box.dataset.fit;
       const buttons = [...(tip.buttons || []), ...(tip.dock ? [{ action: 'more', label: 'More' }] : [])];
       const bar = tip.progress ? `<ol class="gr-coach-progress" aria-hidden="true">${Array.from({ length: tip.progress.lessons }, (_, i) => `<li class="${i < tip.progress.finishedLessons ? 'done' : ''}${i === tip.progress.current ? ' current' : ''}"></li>`).join('')}</ol>` : '';
-      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}" data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
+      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}" data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.aria ? ` aria-label="${esc(b.aria)}"` : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
       if (!tip.quiet && tip.text !== lastAnnounced) lastAnnounced = tip.text;
     }
     box.hidden = false;
@@ -240,7 +240,16 @@
     const anchor = host === document.body && tip.anchor && shown(tip.anchor) ? tip.anchor : null;
     if (anchor && !tip.noPulse) { anchor.classList.add('gr-coach-target'); targeted.push(anchor); }
     currentAnchor = anchor;
-    if (host !== document.body) { box.style.left = box.style.top = box.style.width = ''; box.dataset.side = 'inline'; box.classList.remove('docked'); return; }
+    currentAvoid = (tip.avoid || []).filter(Boolean);
+    box.classList.toggle('free', Boolean(tip.dock));
+    if (host !== document.body) {
+      box.style.left = box.style.top = box.style.width = ''; box.dataset.side = 'inline'; box.classList.remove('docked');
+      // A note must not push the window's own buttons (a battle's tactics) off screen: shorten it.
+      const text = box.querySelector('.gr-coach-text');
+      const over = Math.max(host.getBoundingClientRect().bottom - innerHeight + 8, host.scrollHeight - host.clientHeight);
+      if (text && over > 0 && !box.dataset.full) fitText(box, text, Math.max(60, box.offsetHeight - over));
+      return;
+    }
     box.classList.toggle('docked', Boolean(tip.dock && dockRect()));
     position(box, anchor);
   }
@@ -251,16 +260,23 @@
     const key = $('#map-legend-corner');
     if (!shown(key) || matchMedia('(max-width: 599px), (max-height: 499px)').matches) return null;
     const r = key.getBoundingClientRect();
-    if (r.width < 200 || r.height < 120) return null;
+    if (r.width < 160 || r.height < 100) return null;
     const above = $('#fleet-glance')?.getBoundingClientRect();
-    // The hexagon's slanted edge can reach into the key's box: start below any hex in this column.
-    let top = r.top;
-    for (const hexEl of $$('.hex')) {
-      const h = hexEl.getBoundingClientRect();
-      if (h.right > r.left + 2 && h.left < r.right - 2 && h.top < r.bottom && h.bottom > r.top) top = Math.max(top, h.bottom + 2);
+    // Never over your hand, piles or menu button where the key's box reaches beside them.
+    let bottom = r.bottom;
+    for (const el of $$('#hand-row .game-card, .pile-stats > button, #table-menu-button, #board-primary:not([hidden])')) {
+      const b = el.getBoundingClientRect();
+      if (b.width && b.right > r.left && b.left < r.right && b.top > r.top + 40 && b.top < bottom) bottom = b.top - 6;
     }
-    if (r.bottom - top < 120) return null;
-    return { left: r.left, width: r.width, top, bottom: r.bottom, ceiling: above?.height ? above.bottom + 8 : 10 };
+    // The hexagon's slanted edge can reach into the key's box. Either start below every hex in
+    // this column, or keep the key's height and stop short of the hexes: whichever leaves more room.
+    const hexes = $$('.hex').map(h => h.getBoundingClientRect()).filter(h => h.right > r.left + 2 && h.left < r.right - 2 && h.top < bottom && h.bottom > r.top);
+    const below = { left: r.left, width: r.width, top: Math.max(r.top, ...hexes.map(h => h.bottom + 2)) };
+    const beside = { left: r.left, width: Math.min(r.width, ...hexes.map(h => h.left - 4 - r.left)), top: r.top };
+    const area = d => Math.max(0, d.width) * Math.max(0, bottom - d.top);
+    const best = [below, beside].filter(d => d.width >= 160 && bottom - d.top >= 100).sort((a, b) => area(b) - area(a))[0];
+    if (!best) return null;
+    return { ...best, bottom, ceiling: above?.height ? above.bottom + 8 : 10 };
   }
 
   // A long docked note shows its first whole sentences until you choose More, so nothing is cut.
@@ -297,6 +313,8 @@
       if (text && box.dataset.fit !== fit) {
         box.dataset.fit = fit;
         if (more) more.hidden = false;
+        // Too little room even for one sentence: drop the eyebrow and Rules link first.
+        box.classList.toggle('tight', !expanded && room < 150);
         const cut = expanded ? (text.textContent = box.dataset.full || text.textContent, false) : fitText(box, text, room);
         if (more) { more.hidden = !cut && !expanded; more.textContent = expanded ? 'Less' : 'More'; }
       }
@@ -330,7 +348,7 @@
     ];
     // Of the sides that fit, prefer the one that hides least of what you may need next: the lit
     // hexes of an aimed order and an open Sector Scan.
-    const avoid = [...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open')].filter(el => el !== around && !around.contains(el)).map(el => el.getBoundingClientRect());
+    const avoid = [...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...currentAvoid].filter(el => el !== around && !around.contains(el)).map(el => el.getBoundingClientRect());
     const covered = o => avoid.reduce((sum, r) => sum + Math.max(0, Math.min(o.left + width, r.right) - Math.max(o.left, r.left)) * Math.max(0, Math.min(o.top + height, r.bottom) - Math.max(o.top, r.top)), 0);
     options.forEach(o => { o.cost = Math.round(covered(o) / 100); });
     options.sort((x, y) => x.cost - y.cost || sides.indexOf(x.side) - sides.indexOf(y.side));
@@ -361,10 +379,10 @@
         const c = context();
         const explainer = EXPLAINERS.find(e => !prefs.seen[e.id] && e.when(c));
         if (explainer) tip = { dock: true, id: explainer.id, eyebrow: 'New to you', title: explainer.title, text: explainer.text(c), rule: explainer.rule, inDialog: explainer.inDialog,
-          anchor: explainer.anchor?.(c) || null, buttons: [...(explainer.buttons || []), { action: 'got-it', id: explainer.id, label: 'Got it', primary: !explainer.buttons }, { action: 'hide', label: 'Hide guidance' }] };
+          anchor: explainer.anchor?.(c) || null, buttons: [...(explainer.buttons || []), { action: 'got-it', id: explainer.id, label: 'Got it', primary: !explainer.buttons }, { action: 'hide', label: 'Hide', aria: 'Hide guidance' }] };
         else {
           tip = hint(c);
-          if (tip) tip = { ...tip, dock: true, eyebrow: tip.quiet ? 'Guide' : 'You can', buttons: tip.quiet ? [] : [{ action: 'hide', label: 'Hide guidance' }] };
+          if (tip) tip = { ...tip, dock: true, eyebrow: tip.quiet ? 'Guide' : 'You can', buttons: tip.quiet ? [] : [{ action: 'hide', label: 'Hide', aria: 'Hide guidance' }] };
         }
       }
     } catch (error) { console.error('Guidance could not read the table.', error); tip = null; }
@@ -390,6 +408,12 @@
 
   function init() {
     $('#guide-toggle')?.addEventListener('click', () => setEnabled(!prefs.enabled));
+    // A walkthrough in progress: the menu offers to continue it rather than start again.
+    try {
+      const tutorial = JSON.parse(localStorage.getItem('galactic-reach-tutorial-progress-v1') || 'null');
+      const learn = $('#learn-to-play');
+      if (learn && !globalThis.galacticReachTutorial?.active && tutorial?.step > 0 && tutorial.stepId !== 'finished') learn.textContent = 'Continue Learn to play';
+    } catch { /* no saved walkthrough */ }
     $('#guide-reset')?.addEventListener('click', () => { prefs.seen = {}; prefs.enabled = true; savePrefs(); schedule(); });
     // A click can open a dialog or popover without a render: look again afterwards.
     document.addEventListener('click', () => setTimeout(schedule, 0), true);
