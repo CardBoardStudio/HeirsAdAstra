@@ -43,7 +43,7 @@ actions, game rules, combat outcomes or random number generation.
 
 ## Measured result
 
-The [recorded comparison](../../analysis/search-performance-2026-11-15/results.json)
+The [recorded comparison](https://github.com/CardBoardStudio/galactic-reach-studies/blob/main/search-performance-2026-11-15/results.json)
 uses Node 24.22.3 and the exact pre-optimization commit named above. Eight
 standard-policy games averaged 11.38 seconds before and 2.12 seconds after,
 an aggregate 5.35-fold speedup. Timing includes VM setup and state hashing.
