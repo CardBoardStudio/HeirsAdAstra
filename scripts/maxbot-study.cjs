@@ -7,7 +7,7 @@ const {bridge}=require('./native-investment-study.cjs');
 const {SimulationArchive,hash}=require('./lib/simulation-archive.cjs');
 const RES=['matter','energy','biomass','data'],blank=()=>Object.fromEntries(RES.map(r=>[r,0]));
 async function play(task,sources,directory,binary){
- const recorder=new SimulationArchive({directory,metadata:task,rulebookSource:sources.rulebook,sources:{'maxbot-study.cjs':fs.readFileSync(__filename,'utf8'),'native-policy.rs':sources.rust,'native-bridge.rs':sources.bridge,'Cargo.lock':sources.lock}});
+ const recorder=new SimulationArchive({directory,metadata:task,rulebookSource:sources.rulebook,sources:{'rulebook.html':sources.rulebook,'maxbot-study.cjs':fs.readFileSync(__filename,'utf8'),'native-policy.rs':sources.rust,'native-bridge.rs':sources.bridge,'Cargo.lock':sources.lock}});
  const metrics=Array.from({length:4},()=>({gained:blank(),lost:blank(),spent:blank(),bankGiven:blank(),bankReceived:blank(),ships:{settler:0,explorer:0,fleet:0},draws:0,upgrades:0,colonizations:0,captures:0}));
  const market=Array.from({length:4},()=>({marketBuys:{},marketPlays:{},militaryTacticPlays:{},harvestersBuilt:0,firstHarvesterRound:null,firstMarketRound:null,buyTurns:0,affordableOffers:0,valuableOffers:0}));
  let seed=task.seed>>>0,steps=0,native;const started=Date.now();
