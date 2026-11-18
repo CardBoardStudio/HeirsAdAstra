@@ -1849,7 +1849,7 @@ fn bot_split_value(view: &Value, seat: usize, action: &Value, paid: bool, biomas
     let me = &view["players"][seat];
     let income = bot_income(view, seat);
     let protection = bot_cost(view, seat);
-    let next_price = number(&me["storageUpgradeCost"]["matter"]) + if paid { 1.0 } else { 0.0 };
+    let next_price = number(&me["storageUpgradeCost"]["matter"]);
     let mut value = 0.0;
     for r in ["matter", "energy", "biomass", "data"] {
         let count = action["allocation"][r].as_u64().unwrap_or(0);

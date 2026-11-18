@@ -527,7 +527,7 @@ test('Capacity Module pile buys a card into discard during Buy and survives relo
   assert.equal(after.phase, 'buy');
   assert.deepEqual(after.planets, before.planets);
   assert(!game.dialog('storage-allocation').open, 'Buying opens no allocation');
-  assert(game.dom.lastQuery('[data-capacity-offer]')[0].disabled, 'The second module costs 2 of each');
+  assert(game.dom.lastQuery('[data-capacity-offer]')[0].disabled, 'The next module still costs 1 of each, but the first purchase spent the remaining resources');
   const reloaded = boot(storage);
   assert.equal(reloaded.saved().players[0].storagePurchases, 1);
   assert.equal(reloaded.saved().capacitySupply, before.capacitySupply - 1);
@@ -1106,7 +1106,7 @@ test('storage allocations cancel atomically, survive commitment and undo with th
  playModule(game);game.settle();game.dom.element('storage-points-data').value='4';fire(game.dom.element('storage-points-data'),'input');game=boot(storage);assert.deepEqual(game.saved(),before,'Reloading a draft plays nothing');
  playModule(game);game.settle();for(const r of ['matter','energy','biomass','data'])game.dom.element('storage-points-'+r).value='1';fire(game.dom.element('storage-points-data'),'input');
  fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();assert.deepEqual(game.saved().players[0].resourceLimits,{matter:5,energy:5,biomass:5,data:5});
- const owned=p=>[...p.hand,...p.deck,...p.discard,...p.inPlay];assert(!owned(game.saved().players[0]).some(c=>c.id==='module'),'The played module leaves the deck cycle');assert.deepEqual(game.saved().players[0].storage.map(c=>c.id),['module'],'It is stored');assert.equal(game.dom.element('storage-pile-count').textContent,1,'The Storage pile count shows beside the mat');
+ const owned=p=>[...p.hand,...p.deck,...p.discard,...p.inPlay];assert(!owned(game.saved().players[0]).some(c=>c.id==='module'),'The played module leaves the deck cycle');assert.deepEqual(game.saved().players[0].storage.map(c=>c.id),['module'],'It is stored');assert.equal(game.dom.element('storage-pile-count').textContent,1,'The Storage pile count shows beside the mat');assert.match(game.dom.element('storage-pile').title,/next Capacity Module costs 1 of each resource/,'Stored modules do not raise the displayed price');
  const cleanup=boot(storage);assert.deepEqual(cleanup.saved().players[0].storage.map(c=>c.id),['module'],'The Storage pile survives reload');
  game.click('export-game-report');const report=game.downloads.at(-1);assert.deepEqual(report.save.state.players[0].resourceLimits,game.saved().players[0].resourceLimits);
  assert(report.save.gameHistory.events.some(e=>e.changes.some(c=>c.path.join('.')==='players.0.resourceLimits.data')));
