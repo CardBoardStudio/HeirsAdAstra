@@ -596,7 +596,7 @@ function createGalacticReach(options = {}) {
   function newState() {
     cardSerial = 1;
     // Solo positions are shuffled; authority/simulation defaults and the practice game stay fixed.
-    const solo = !headless && !network && !options.names && !TUTORIAL;
+    const solo = !headless && !network && !replayMode && !TUTORIAL;
     const homeOrder = validHomeOrder(options.homeOrder) ? [...options.homeOrder]
       : validHomeOrder(newGameSettings.homeOrder) ? [...newGameSettings.homeOrder]
       : solo ? rollHomeOrder() : DEFAULT_HOME_ORDER;
