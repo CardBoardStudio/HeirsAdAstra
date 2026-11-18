@@ -10,5 +10,11 @@ const {play}=require('./maxbot-study.cjs'),{hash}=require('./lib/simulation-arch
  const manifest=JSON.parse(fs.readFileSync(path.join(game.archive,'manifest.json')));
  assert.equal(manifest.status,'incomplete');assert.equal(manifest.sourceHashes['rulebook.html'],hash(sources.rulebook));assert.equal(fs.readFileSync(path.join(game.archive,'sources/rulebook.html'),'utf8'),sources.rulebook);
  assert.equal(game.players[0].name,'MaxBot');assert.equal(game.players[0].profile,'maxbot');assert.equal(game.completed,false);
+ const vm=require('node:vm'),{factory}=require('./strategic-bot-study.cjs');
+ const game2=factory(sources.app,sources.adapter)({random:()=>.4,archiveDirectory:directory});
+ game2.a.legalActions(0);game2.e.runAiOperation();
+ const fresh=vm.runInNewContext(sources.adapter+';createGalacticAdapter',{})(game2.e),actor=fresh.activeSeat(),player=game2.e.state.players[actor];
+ for(const action of fresh.legalActions(actor))if(action.card)assert(player.hand.some(c=>c.id===action.card),'Legal cards belong to the actual active seat');
+ game2.archive.finish({reason:'bootstrap-fixture',incomplete:true});
  console.log('MaxBot study: standalone canonical rulebook retained, profile/name initialization recorded and zero-step fixture marked incomplete.');
 })().catch(e=>{console.error(e);process.exitCode=1;});

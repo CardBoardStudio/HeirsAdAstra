@@ -1,6 +1,6 @@
 // Same MaxBot browser policy as solo play; native or browser reference opponents.
 // Retain every source, random draw, private state and decision through the common archive.
-const fs=require('node:fs'),path=require('node:path');
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {factory,RESOURCE_ACCOUNTING}=require('./strategic-bot-study.cjs');
 const {instrument}=require('./market-investment-study.cjs');
 const {bridge}=require('./native-investment-study.cjs');
@@ -17,9 +17,12 @@ async function play(task,sources,directory,binary){
   const mapHash=hash({planets:e.state.planets,clusters:e.state.clusters});
   recorder.invoke({method:'study-lineup',profiles:task.profiles},()=>e.state.players.forEach((p,id)=>{p.strategy=task.profiles[id];p.name=p.strategy==='maxbot'?'MaxBot':p.strategy[0].toUpperCase()+p.strategy.slice(1); }));
   if(task.opponents==='native')native=bridge(binary);
+  // Direct browser orders bypass the adapter's command cache. A fresh command
+  // port per decision prevents a native opponent from seeing the previous seat's legal list.
+  const freshAdapter=vm.runInNewContext(sources.adapter+';createGalacticAdapter',{});
   const subjectSeat=task.profiles.indexOf('maxbot'),maxMetrics={warehouseAcquiredRound:null,warehousePlays:0,coloniesWithoutYardAtEnd:0},buyStarts=new Set();
   while(e.state.winner===null&&e.state.round<=task.maxRound&&steps<task.maxSteps){
-   const actor=a.activeSeat(),observation=a.observe(actor),legal=a.legalActions(actor);if(!legal.length)throw Error('No legal action');
+   const commands=freshAdapter(e),actor=commands.activeSeat(),observation=commands.observe(actor),legal=commands.legalActions(actor);if(!legal.length)throw Error('No legal action');
    const p=e.state.players[subjectSeat];
    if(maxMetrics.warehouseAcquiredRound===null&&[...p.hand,...p.discard,...p.deck,...p.inPlay].some(c=>c.key==='foldedWarehouse'))maxMetrics.warehouseAcquiredRound=e.state.round;
    const buyKey=e.state.round+':'+actor;if(e.state.phase==='buy'&&!buyStarts.has(buyKey)){buyStarts.add(buyKey);if(actor!==subjectSeat&&task.opponents==='native')market[actor].buyTurns++;}
@@ -34,7 +37,7 @@ async function play(task,sources,directory,binary){
     const response=await native.choose(task.profiles[actor],observation,legal);
     if(response.nativeRandomDraws!==0||!Number.isInteger(response.index)||!legal[response.index])throw Error('Invalid native choice');
     recorder.event({type:'native-choice',step:steps,actor,profile:task.profiles[actor],policy:response.policy,observationHash:hash(observation),legalHash:hash(legal),index:response.index,nativeRandomDraws:0});
-    a.applyAction(actor,legal[response.index]);
+    recorder.invoke({method:'applyAction',actor,action:legal[response.index]},()=>commands.applyAction(actor,legal[response.index]));
    }
    steps++;if(before===JSON.stringify(a.snapshotState()))throw Error('Stalled game at step '+steps);
   }
