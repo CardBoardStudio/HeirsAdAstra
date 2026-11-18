@@ -107,10 +107,10 @@ function createGalacticReach(options = {}) {
   const STORAGE_UPGRADE = { capacity: 4 };
   // Rules #storage-allocation: capacity is a card. The table shares one pile of Capacity
   // Modules in the Upgrades tray. A played module joins its owner's permanent Storage pile,
-  // and a module costs 1 + (cards in your Storage pile) of each resource.
+  // and a module always costs 1 of each resource.
   const CAPACITY_SUPPLY = 20;
   const SUPPLY_CARDS = {
-    capacityModule: { code: 'U01', name: 'Capacity Module', kind: 'Capacity', accent: 'var(--gold)', order: 'special', tag: 'capacityModule', supply: true, effect: { allocate: STORAGE_UPGRADE.capacity, store: true }, text: 'Costs 1 + the cards in your Storage pile, of each resource. Add 4 capacity points, split as you choose among your resource limits, then put this card in your Storage pile.' }
+    capacityModule: { code: 'U01', name: 'Capacity Module', kind: 'Capacity', accent: 'var(--gold)', order: 'special', tag: 'capacityModule', supply: true, effect: { allocate: STORAGE_UPGRADE.capacity, store: true }, text: 'Costs 1 of each resource, every time. Add 4 capacity points, split as you choose among your resource limits, then put this card in your Storage pile.' }
   };
   // 32.37: a Harvester hex produces 2 of its resource (31.36 and earlier: 1).
   const HARVESTER_YIELD = 2;
@@ -2773,7 +2773,7 @@ function createGalacticReach(options = {}) {
   function aiStorageAllocation(playerId, points, extraGain = {}, payment = {}) {
     const player=state.players[playerId],limits=resourceLimits(playerId),income=aiIncome(playerId),protection=aiStorageProtection(playerId);
     const allocation=Object.fromEntries(RESOURCES.map(r=>[r,0]));
-    const paid=RESOURCES.some(r=>(payment[r]||0)>0),nextPrice=storageUpgradeCost(playerId).matter+(paid?1:0);
+    const nextPrice=storageUpgradeCost(playerId).matter;
     for(let n=0;n<points;n++) {
       const score=r=>{
         const limit=limits[r]+allocation[r],need=player.resources[r]-(payment[r]||0)+(extraGain[r]||0)+income[r]*2-limit;
@@ -3564,8 +3564,8 @@ function createGalacticReach(options = {}) {
   }
 
   function storageUpgradeCost(playerId) {
-    // Rules #capacity-module: 1 + the cards in your Storage pile, of each resource.
-    const price = (state.players[playerId].storage || []).length + 1;
+    // Rules #capacity-module: every module costs 1 of each, regardless of stored modules.
+    const price = 1;
     return Object.fromEntries(RESOURCES.map(resource => [resource,price]));
   }
 
@@ -4389,7 +4389,7 @@ function createGalacticReach(options = {}) {
     const stored=player.storage||[];
     $('#storage-pile-count').textContent=stored.length;
     $('#storage-pile').setAttribute('aria-label',`Storage pile: ${stored.length} Capacity Module${stored.length===1?'':'s'}`);
-    $('#storage-pile').title=stored.length?`Storage pile: ${stored.map(c=>RESOURCES.filter(r=>c.allocation?.[r]).map(r=>`+${c.allocation[r]} ${RESOURCE_NAMES[r]}`).join(', ')).join(' · ')}. Never reshuffled; the next Capacity Module costs ${stored.length+1} of each resource.`:'Storage pile: played Capacity Modules stay here. Your next one costs 1 of each resource.';
+    $('#storage-pile').title=stored.length?`Storage pile: ${stored.map(c=>RESOURCES.filter(r=>c.allocation?.[r]).map(r=>`+${c.allocation[r]} ${RESOURCE_NAMES[r]}`).join(', ')).join(' · ')}. Never reshuffled; the next Capacity Module costs 1 of each resource.`:'Storage pile: played Capacity Modules stay here. Your next one costs 1 of each resource.';
     renderPile('deck', replayMode?player.deckCount:player.deck.length, null);
     renderPile('discard', discardCount, replayMode?null:player.discard.at(-1));
     renderPile('in-play', player.inPlay.length, player.inPlay.at(-1));
@@ -4556,11 +4556,11 @@ function createGalacticReach(options = {}) {
     return `<button class="game-card upgrade-offer trash-pile ${humanBuy?'':'unavailable'}" type="button" data-trash-pile ${humanBuy?'':'disabled title="Trash a card during your Buy turn."'} aria-label="Trash pile: trash a card from your deck${humanBuy?'':'. Unavailable: during your Buy turn only.'}"><span class="card-type">Trash</span><span class="card-name">Trash pile</span><span class="card-effect">Remove a card from your deck${label?` ${label}`:''}.</span></button>`;
   }
   // Rules #capacity-module: the shared Capacity Module pile lies with the starter upgrades,
-  // showing this faction's price (1 + its Storage pile, of each resource). Choosing it buys one.
+  // showing the fixed price (1 of each resource). Choosing it buys one.
   function capacityOffer(humanBuy) {
     const me=state.players[ME],def=SUPPLY_CARDS.capacityModule,left=state.capacitySupply||0,cost=storageUpgradeCost(ME),stored=(me.storage||[]).length;
     const reason=!humanBuy?'Buy during your Buy turn.':!left?'The capacity pile is empty.':!canAfford(me,cost)?`Needs ${cost.matter} of each resource.`:'';
-    return `<button class="game-card upgrade-offer capacity-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-capacity-offer="capacityModule" ${reason?`disabled title="${reason}"`:''} aria-label="Buy a Capacity Module for ${cost.matter} of each resource (1 + ${stored} in your Storage pile); ${left} left in the pile${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Supply · ${left} left</span><span class="card-name">${def.name}</span><span class="card-effect">${iconText('Play in Operations: split 4 points among your resource limits, then store this card.')}</span><span class="card-footer"><small>1 + ${stored} stored</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${cost.matter}</strong>${RESOURCES.map(resource => `<span class="pay-chip ${me.resources[resource]>=cost[resource]?'can':'cannot'}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${cost.matter} of each resource</span></span></button>`;
+    return `<button class="game-card upgrade-offer capacity-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-capacity-offer="capacityModule" ${reason?`disabled title="${reason}"`:''} aria-label="Buy a Capacity Module for ${cost.matter} of each resource (${stored} in your Storage pile); ${left} left in the pile${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Supply · ${left} left</span><span class="card-name">${def.name}</span><span class="card-effect">${iconText('Play in Operations: split 4 points among your resource limits, then store this card.')}</span><span class="card-footer"><small>${stored} stored</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${cost.matter}</strong>${RESOURCES.map(resource => `<span class="pay-chip ${me.resources[resource]>=cost[resource]?'can':'cannot'}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${cost.matter} of each resource</span></span></button>`;
   }
   function openUpgradeChoice(key, pay) {
     upgradeChoiceKey=key;

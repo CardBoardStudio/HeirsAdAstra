@@ -59,7 +59,7 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
   p.discard.splice(p.discard.indexOf(module), 1); p.hand.push(module); s.phase = 'operations'; p.passed = false; s.turnStage = 'action';
   act(g, 0, 'special', a => a.card === module.id && a.allocation.energy === 4);
   assert(![...p.hand, ...p.inPlay, ...p.discard, ...p.deck].some(c => c.id === module.id), 'A played module leaves the deck cycle');
-  assert.deepEqual(JSON.parse(JSON.stringify(p.storage.map(c => c.id))), [module.id], 'It goes to the Storage pile'); assert.equal(g.e.storageUpgradeCost(0).matter, 2, 'One stored module: the next costs 2 of each');
+  assert.deepEqual(JSON.parse(JSON.stringify(p.storage.map(c => c.id))), [module.id], 'It goes to the Storage pile'); assert.equal(g.e.storageUpgradeCost(0).matter, 1, 'One stored module: the next still costs 1 of each');
   s.phase = 'buy'; s.activePlayer = 0; p.passed = true;
   assert.equal(p.resourceLimits.energy, 8); p.resources.energy = 5; p.resources.data = 1;
   act(g, 0, 'buy', a => a.key === 'ionThrusters');assert(p.discard.some(c => c.id === 'ion'));assert.equal(p.resources.energy, 0);
@@ -74,8 +74,28 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
   assert.equal(s.round, 2, 'Cleanup reshuffled the discard and drew a new hand');
   assert.deepEqual(JSON.parse(JSON.stringify(p.storage.map(c => c.id))), ['stored']);
   assert(![...p.hand, ...p.deck, ...p.discard, ...p.inPlay].some(c => c.id === 'stored'), 'A stored module is never reshuffled or drawn');
-  assert.equal(g.e.storageUpgradeCost(0).matter, 2);
+  assert.equal(g.e.storageUpgradeCost(0).matter, 1);
   assert(!g.adapter().legalActions(0).some(a => a.card === 'stored'), 'No command can use or trash a stored module');
+}
+// Fixed pricing is independent of stored modules and prior purchases, including after reload.
+for (const stored of [0, 1, 8]) {
+  const g = game(), {s,p} = g;
+  p.storage = Array.from({length:stored}, (_,i)=>({id:`stored-${i}`,key:'capacityModule',allocation:{matter:0,energy:0,biomass:0,data:4}}));
+  p.resourceLimits.data = 4 + stored * 4;
+  p.storagePurchases = stored;
+  s.phase='buy';s.activePlayer=0;p.passed=true;
+  p.resources={matter:2,energy:2,biomass:2,data:2};
+  const before=s.capacitySupply;
+  for(let i=0;i<2;i++) {
+    assert.deepEqual(JSON.parse(JSON.stringify(g.e.storageUpgradeCost(0))),{matter:1,energy:1,biomass:1,data:1});
+    act(g,0,'buy',a=>a.source==='capacity');
+  }
+  assert.deepEqual(JSON.parse(JSON.stringify(p.resources)),{matter:0,energy:0,biomass:0,data:0});
+  assert.equal(s.capacitySupply,before-2);
+  assert.equal(p.storagePurchases,stored+2);
+  assert(!g.adapter().legalActions(0).some(a=>a.type==='buy'&&a.source==='capacity'),'No free purchase after resources run out');
+  const resumed=game({resume:g.adapter().snapshotState()});
+  assert.equal(resumed.e.storageUpgradeCost(0).matter,1,'Reload keeps the fixed price');
 }
 // Military cards join the military deck; Wonders pay Prestige; Buy cards discount a purchase.
 {
