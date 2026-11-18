@@ -1445,10 +1445,13 @@ function createGalacticReach(options = {}) {
     return adjacentKeys(coord).some(neighbor => state.planets[neighbor]?.cluster === planet.cluster && state.planets[neighbor]?.owner === playerId);
   }
 
-  function canBuildStructureAt(playerId, coord) {
+  function canBuildStructureAt(playerId, coord, kind = null) {
     const planet = state.planets[coord];
     if (!planet) return false;
     if (planet.type==='moon') return clusterKnown(state.clusters[planet.cluster],playerId) && !!fleetCount(getFleet(coord,playerId)) && planet.owner===null && !hasBuilding(planet) && !hostileAt(coord,playerId);
+    // #building: a captured world permits paid Harvester replacement, not free transfer.
+    if (planet.owner !== null && planet.owner !== playerId && planet.upgrade==='harvester'
+      && !planet.hasColony && clusterHasColony(playerId,planet.cluster)) return kind===null || kind==='harvester';
     return (planet.owner === playerId && !hasBuilding(planet)) || canClaimStructureHex(playerId,coord);
   }
 
@@ -2576,12 +2579,12 @@ function createGalacticReach(options = {}) {
     const player = state.players[playerId];
     const planet = state.planets[coord];
     if (!planet || (planet.type==='moon' && type!=='starbase')) return false;
-    if (!canBuildStructureAt(playerId,coord)) return false;
+    if (!canBuildStructureAt(playerId,coord,type)) return false;
     const cost = discountedCost(STRUCTURES[type].cost,discountResource);
     if (!canAfford(player,cost,0,discountMatter)) return false;
     if (dryRun) return true;
     payCost(player,cost,0,discountMatter);
-    if (planet.owner === null) {
+    if (planet.owner !== playerId) {
       planet.owner = playerId;
       planet.originalFounder = null;
       planet.conquest = false;
@@ -3155,7 +3158,7 @@ function createGalacticReach(options = {}) {
       const payback=useful*Math.max(0,horizon-1);
       options.push({kind:'harvester',coord,score:planet.type==='data'&&!income.data&&state.round<=2?53:shortage&&payback>=3?10+shortage*7+(economy?4:0):1});
       const forward=yards.length<2 && colonyPlanets(playerId).some(([center])=>state.planets[center].cluster===planet.cluster) && yards.every(([y])=>hexDistance(y,coord)>6);
-      options.push({kind:'starbase',coord,score:!yards.length?50+(!p.initialShipyardCoord&&coord===aiInitialShipyard(playerId)? .1:0):forward?military?15:10:0});
+      if (canBuildStructureAt(playerId,coord,'starbase')) options.push({kind:'starbase',coord,score:!yards.length?50+(!p.initialShipyardCoord&&coord===aiInitialShipyard(playerId)? .1:0):forward?military?15:10:0});
     }
     for (const [coord] of yards) {
       const group=state.fleets[coord]?.[playerId]||{};
@@ -4248,7 +4251,7 @@ function createGalacticReach(options = {}) {
         }));
       }
       if (state.actionMode==='construct' && planet) {
-        if (canBuildStructureAt(ME,key)) Object.keys(STRUCTURES).forEach(kind=>actions.appendChild(buildButton(`Build ${STRUCTURES[kind].name}`,kind)));
+        if (canBuildStructureAt(ME,key)) Object.keys(STRUCTURES).filter(kind=>canBuildStructureAt(ME,key,kind)).forEach(kind=>actions.appendChild(buildButton(`Build ${STRUCTURES[kind].name}`,kind)));
         if (canLaunchExplorer(ME,key)) actions.appendChild(buildButton('Commission Explorer + Probe / Excavate','explorer'));
         if (planet.upgrade==='starbase') Object.keys(SHIP_STATS).filter(kind=>kind!=='explorer').forEach(kind=>actions.appendChild(buildButton(`Commission ${SHIP_STATS[kind].name}${kind==='settler'?' + Colonize':''}`,kind)));
       }
