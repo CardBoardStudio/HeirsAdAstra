@@ -3,14 +3,14 @@
 //! ledger or contract could implement the same trait (docs/shared-tables.md).
 use crate::store::Store;
 use rusqlite::{Connection, OptionalExtension, params};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::sync::Arc;
 
 /// One seat at a shared table. `account` is set for a person and empty for an
 /// AI rival, which the table service plays with `policy`.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Seat {
     pub seat: usize,
     pub account: Option<String>,
@@ -23,7 +23,7 @@ impl Seat {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Table {
     pub id: String,
     pub name: String,
@@ -50,7 +50,7 @@ pub struct NewEvent {
     pub private: Option<Value>,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Event {
     pub seq: u64,
     pub kind: String,
