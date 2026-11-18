@@ -87,7 +87,7 @@ function createGalacticReach(options = {}) {
   function lineupText(lineup, homeOrder=DEFAULT_HOME_ORDER) {
     const neighbor=neighborSeat(homeOrder);
     const seats=[neighbor,...[1,2,3].filter(id=>id!==neighbor)];
-    const [near,...far]=seats.map(id=>{const n=lineup[id-1];return `${PLAYER_NAMES[n]} (${STRATEGY_NAMES[PLAYER_STRATEGIES[n]]})`;});
+    const [near,...far]=seats.map(id=>{const n=lineup[id-1];return `${options.names?.[id]||PLAYER_NAMES[n]} (${STRATEGY_NAMES[PLAYER_STRATEGIES[n]]})`;});
     return {neighbor:near,far:far.join(' and ')};
   }
   const BOARD_RADIUS = 10;
@@ -5509,8 +5509,8 @@ function createGalacticReach(options = {}) {
       const select=$('#new-game-target');
       select.innerHTML=VICTORY_TARGET_CHOICES.map(n=>`<option value="${n}" ${n===victoryTarget()?'selected':''}>${n} Prestige${n===DEFAULT_VICTORY_TARGET?' (default)':''}</option>`).join('');
       // Rules #solo-seating: deal physical homes and preview the rival sharing your half.
-      newGameLineup=rollLineup();
-      newGameHomeOrder=TUTORIAL ? [...DEFAULT_HOME_ORDER] : rollHomeOrder();
+      newGameLineup=validLineup(options.lineup) ? [...options.lineup] : rollLineup();
+      newGameHomeOrder=validHomeOrder(options.homeOrder) ? [...options.homeOrder] : TUTORIAL ? [...DEFAULT_HOME_ORDER] : rollHomeOrder();
       const {neighbor,far}=lineupText(newGameLineup,newGameHomeOrder);
       $('#new-game-neighbor').innerHTML=`<strong>Your neighbor: ${esc(neighbor)}.</strong> It shares your half of the map. Across the map: ${esc(far)}.`;
       $('#new-game-dialog').showModal();

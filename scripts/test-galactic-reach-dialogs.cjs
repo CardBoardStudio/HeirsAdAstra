@@ -992,6 +992,7 @@ test('New solo games randomize all four starting positions and name the actual n
  assert.equal(homes.size,4,'Real browser startup reaches every home position');assert.equal(rivals.size,3,'Every rival can be the neighbor');
  const saved=game.saved(),reloaded=boot(storage);assert.deepEqual(reloaded.saved().homeOrder,saved.homeOrder);assert.deepEqual(reloaded.saved().clusters,saved.clusters,'Reload does not reroll positions');
  const named=boot(createStorage(),20261013,undefined,{names:['Pilot','Rival A','Rival B','Rival C']});assert.equal(new Set(named.saved().homeOrder).size,4,'Custom solo names still receive randomized homes');
+ named.click('new-game-button');const customPreview=named.dom.element('new-game-neighbor').innerHTML;named.dialog('new-game').returnValue='start';named.dialog('new-game').close();named.settle();assert(customPreview.includes(`Your neighbor: ${neighbor(named.saved()).name} (`),'Custom names also match the actual neighbor');
 });
 
 test('Undo retains the audit and records which events it reverses, including across reload', () => {
