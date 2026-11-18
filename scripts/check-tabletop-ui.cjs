@@ -1,7 +1,7 @@
 // Public-board viewport, keyboard and touch checks over the real browser bundle.
 const assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),http=require('node:http'),vm=require('node:vm');
-const {findChrome,launch}=require('./check-viewport-fit.cjs');
+const {launch}=require('./lib/tabletop-browser.cjs');
 const root=path.join(__dirname,'..'),id='a'.repeat(32),context=vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(root,'prototypes/galactic-reach/adapter.js'),'utf8')+fs.readFileSync(path.join(root,'prototypes/galactic-reach/app.js'),'utf8'),context);
 const adapter=context.createGalacticReach({headless:true,names:['Ada','Bo','Violet','Helios'],controllers:['human','human','ai','ai'],random:()=>0.41});
@@ -18,9 +18,9 @@ const server=http.createServer((req,res)=>{
   res.end(fs.readFileSync(path.join(root,'prototypes/tabletop',file)));
 });
 (async()=>{
-  const chrome=findChrome();assert(chrome,'Install Chrome or set CHROME_PATH to run tablet UI checks');
+
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  const browser=await launch(chrome);
+  const browser=await launch();
   try{
     for(const [width,height] of [[1280,720],[1440,900],[1024,768],[768,1024],[390,844]]){
       browser.errors.length=0;
@@ -41,5 +41,5 @@ const server=http.createServer((req,res)=>{
       console.log(`ok - public board ${width}x${height}`);
     }
     assert(requests.every(([method,url])=>(method==='GET'||url===`/api/tabletop/${id}/focus`)&&!url.includes('/api/shared/')),'board uses no private endpoint or game command');
-  }finally{browser.close();server.closeAllConnections();server.close();}
+  }finally{await browser.close();server.closeAllConnections();server.close();}
 })().catch(error=>{console.error(error);server.closeAllConnections();server.close();process.exit(1);});

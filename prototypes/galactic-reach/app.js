@@ -1580,6 +1580,7 @@ function createGalacticReach(options = {}) {
   // answer, Pass is the only way forward except posting a trade, so the browser passes
   // for the player. Undo restores the Operations turn, so no legal choice is lost.
   function autoPassIfHandEmpty() {
+    if (network?.committedOnly) return false;
     if (headless || replayMode || options.paused?.() || state.phase !== 'operations' || state.activePlayer !== ME || !['prep','action'].includes(state.turnStage)) return false;
     const player = state.players[ME];
     if (player.passed || player.hand.length || state.pendingCombat || state.pendingCombatReport || state.pendingConstruct || state.pendingColonyBuild || state.pendingConsortium || overflowPlayer() >= 0 || state.winner !== null) return false;
@@ -1607,6 +1608,7 @@ function createGalacticReach(options = {}) {
   }
 
   function autoSkipBuy() {
+    if (network?.committedOnly) return false;
     if (headless || replayMode || options.paused?.() || state.phase !== 'buy' || state.activePlayer !== ME || overflowPlayer() >= 0 || state.pendingCombat || state.winner !== null || humanBuyHasChoice()) return false;
     const wasAuto = autoTurn;
     autoTurn = true;
@@ -5474,16 +5476,18 @@ function createGalacticReach(options = {}) {
     window.addEventListener('resize',() => fitMap());
     // A resized window balances the supply afresh, from its narrowest cards.
     window.addEventListener('resize',() => { supplyExtra = 0; fitMarket(); stackLeft(); fitMap(); balanceSupply(); });
-    // Late layout (web fonts, panels settling) re-fits the market and the map; their own sizing
-    // does not change the panels' sizes, so this cannot loop.
+    // Late layout re-fits the market and map on the next frame. A fit can change
+    // an observed panel; never write layout inside ResizeObserver delivery.
     if (typeof ResizeObserver === 'function') {
-      const refit = new ResizeObserver(() => { fitMarket(); stackLeft(); fitMap(); balanceSupply(); settleFit(); });
+      let refitFrame = 0;
+      const queueRefit = () => { if (!refitFrame) refitFrame = requestAnimationFrame(() => { refitFrame = 0; fitMarket(); stackLeft(); fitMap(); balanceSupply(); settleFit(); }); };
+      const refit = new ResizeObserver(queueRefit);
       ['.app-shell', '#market-panel', '#relics-panel', '.board-map-region'].forEach(sel => { const el = $(sel); if (el) refit.observe(el); });
       // Hex positions are measured as fractions of the board, and a hex's fixed-size parts shift
       // those fractions a little with scale. When a fit has resized the board (a frame later), fit
       // once more at the new size; a fit that keeps the size ends it, so this cannot loop.
       const board = $('#galaxy-board');
-      if (board) new ResizeObserver(() => { const now = board.getBoundingClientRect().width; if (fitMapFrom && Math.abs(now - fitMapFrom) > 0.02 * fitMapFrom) { stackLeft(); fitMap(); } }).observe(board);
+      if (board) new ResizeObserver(() => { const now = board.getBoundingClientRect().width; if (fitMapFrom && Math.abs(now - fitMapFrom) > 0.02 * fitMapFrom) queueRefit(); }).observe(board);
     }
     document.fonts?.ready?.then?.(() => { fitMarket(); stackLeft(); fitMap(); balanceSupply(); settleFit(); });
     document.addEventListener('scroll',event=>{if(!$('#sector-popover').contains(event.target))positionSectorScan();},true);

@@ -582,6 +582,7 @@ pub async fn start_paired(
                 status: "active".into(),
                 seats: shared::random_seats(&people, &mut rand::thread_rng()),
                 victory_target: target,
+                committed_only: true,
             };
             tx.execute(
                 "UPDATE tabletop_rooms SET deal=?,invite_hash=NULL WHERE table_id=?",

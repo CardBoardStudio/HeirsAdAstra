@@ -187,6 +187,7 @@ async fn guest_approval_scopes_private_hands_and_reconnects_without_accounts() {
     .await;
     assert_eq!(started.0, StatusCode::OK, "{}", started.2);
     let before = view(&app, &id, &host_phone).await.2;
+    assert_eq!(before["committed_only"], true);
     assert_eq!(
         call(
             &app,
@@ -255,6 +256,32 @@ async fn guest_approval_scopes_private_hands_and_reconnects_without_accounts() {
     );
     let renewed = redeem_phone(&app, &id, &replacement).await;
     assert_eq!(view(&app, &id, &renewed).await.2["seat"], guest["seat"]);
+    let host_view = view(&app, &id, &host_phone).await.2;
+    let seat = host_view["seat"].as_u64().unwrap() as usize;
+    let action = json!({"seq":host_view["seq"],"actions":[{"type":"resource","card":host_view["state"]["players"][seat]["hand"][0]["id"]}]});
+    let accepted = scoped(&app, &id, "act", &host_phone, action.clone()).await;
+    assert_eq!(accepted.0, StatusCode::OK, "{}", accepted.2);
+    let head = accepted.2["view"]["seq"].clone();
+    assert_eq!(
+        scoped(&app, &id, "act", &host_phone, action).await.0,
+        StatusCode::CONFLICT,
+        "a lost response cannot apply the same command twice"
+    );
+    for (path, cookie) in [
+        (format!("/api/tabletop/{id}/undo"), &host_phone),
+        (format!("/api/shared/{id}/undo"), &host),
+    ] {
+        let denied = call(&app, "POST", &path, cookie, json!({"seq":head})).await;
+        assert_eq!(denied.0, StatusCode::CONFLICT);
+        assert!(denied.2["error"].as_str().unwrap().contains("final"));
+    }
+    app.shared.kick(&id);
+    tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+    assert_eq!(
+        view(&app, &id, &host_phone).await.2["seq"],
+        head,
+        "no automatic replacement of a waiting human"
+    );
     let (_, _, board_link) = scoped(&app, &id, "board-grant", &host, json!({})).await;
     let board = redeem_phone(&app, &id, &board_link).await;
     assert_eq!(view(&app, &id, &board).await.0, StatusCode::UNAUTHORIZED);

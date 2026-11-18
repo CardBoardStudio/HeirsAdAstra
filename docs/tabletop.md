@@ -95,3 +95,26 @@ minutes, and discards a suggestion when the game sequence changes. Only the
 acting phone receives it. Inspection never invokes the engine's action-taking
 map click path, and an existing private selection is left for the player to
 finish or cancel. Suggestions are absent from saves, hashes and game reports.
+
+## Committed games and recovery
+
+Fresh paired games persist `committed_only` in the table record and frozen deal.
+The shared authority rejects Undo for this mode through both account and scoped
+phone endpoints. Old rows and saved deals default to false; their existing Undo
+and automatic-turn behavior stays intact. The current browser also suppresses
+automatic Pass and Finish Buy for this mode, so an empty hand still waits for a
+human. The headless authority already waits for these explicit commands.
+
+An accepted command is logged before its response. A client resynchronizes after
+a dropped response rather than replaying its request; an old sequence cannot
+apply twice. Device cookies survive page reload and server restart. Lost phones
+can be replaced by the host without changing seats. Disconnection never converts
+a human seat to AI. The online server keeps the game while the tablet is asleep;
+the board resynchronizes when visible again. This is not an offline guarantee.
+
+The browser flow check also disconnects the phone during a preview, changes the
+table from another device, reconnects, rejects the stale preview, and verifies
+that an empty hand waits for confirmed Pass. Both browser scripts optionally use
+WebKit with `BROWSER=webkit PLAYWRIGHT_MODULE=/path/to/playwright`; install that
+Playwright version's WebKit runtime first. `PLAYWRIGHT_BROWSERS_PATH` can point to
+a local test cache. These checks do not replace an Android/iPhone playtest.

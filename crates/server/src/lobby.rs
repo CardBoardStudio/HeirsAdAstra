@@ -395,6 +395,7 @@ pub async fn start(
                 status: "active".into(),
                 seats,
                 victory_target: lobby.victory_target,
+                committed_only: false,
             })
             .await?;
     }

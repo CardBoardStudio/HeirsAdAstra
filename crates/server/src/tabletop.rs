@@ -292,6 +292,7 @@ mod tests {
                     ("friend".into(), "Friend".into()),
                 ]),
                 victory_target: 30,
+                committed_only: false,
             })
             .await
             .unwrap();
@@ -498,6 +499,33 @@ mod tests {
             StatusCode::UNAUTHORIZED
         );
     }
+    #[tokio::test]
+    async fn older_table_rows_and_saved_deals_keep_their_undo_mode() {
+        use shared::log::TableLog;
+        let (app, _) = setup().await;
+        {
+            let db = app.store.0.lock().unwrap();
+            db.execute_batch("ALTER TABLE gr_shared_tables DROP COLUMN committed_only;")
+                .unwrap();
+            shared::log::migrate(&db).unwrap();
+        }
+        let table = shared::log::SqliteTableLog(app.store.clone())
+            .table(ID)
+            .unwrap()
+            .unwrap();
+        assert!(
+            !table.committed_only,
+            "pre-migration tables preserve their original mode"
+        );
+        let mut legacy = serde_json::to_value(&table).unwrap();
+        legacy.as_object_mut().unwrap().remove("committed_only");
+        assert!(
+            !serde_json::from_value::<shared::log::Table>(legacy)
+                .unwrap()
+                .committed_only
+        );
+    }
+
     #[tokio::test]
     async fn quiet_board_stream_closes_after_revocation() {
         use axum::{body::Body, http::Request};
