@@ -5740,7 +5740,7 @@ function createGalacticReach(options = {}) {
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
       decommission, trashEligibleCards, excavatedRelicCount, useBuyEffect, resolveHumanSpecial,
       colonizePlanet, buildUpgrade, probeStatus, probeRelic, excavate, buildShip, getFleet, fleetCount,
-      PORTAL_MOVEMENT_COST, portalExit, movementRoutes, travelDistance, fleetGroup, moveSelection, fleetMove, fleetPower, reachableFrom, executeMove, performMoveOrder, combatActor, combatView, combatActions, applyCombatAction, nearestUnscannedRelicCluster,
+      BOARD_RADIUS, PORTAL_MOVEMENT_COST, portalExit, movementRoutes, travelDistance, fleetGroup, moveSelection, fleetMove, fleetPower, reachableFrom, executeMove, performMoveOrder, combatActor, combatView, combatActions, applyCombatAction, nearestUnscannedRelicCluster,
       clusterKnown, clusterRevealed, clusterScanned, relicKnown, relicCoordInCluster, calculatePrestige, colonyPlanets,
       totalResources, playerCapacity, resourceLimits, resourceExcess, totalResourceExcess, storageAllocations, validStorageAllocation, overflowPlayer, discardOverflow,
       canConsortiumGain, canConsortiumExchange, consortiumGain, consortiumExchange, finishConsortium,
