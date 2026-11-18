@@ -115,3 +115,5 @@ require('./test-public-card-metadata.cjs');
 require('./test-inward-worlds.cjs');
 
 require('./test-exchange-market.cjs');
+
+require('./test-random-solo-homes.cjs');

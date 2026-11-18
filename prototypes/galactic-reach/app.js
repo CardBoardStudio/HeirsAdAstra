@@ -61,7 +61,7 @@ function createGalacticReach(options = {}) {
   const PLAYER_STRATEGIES = ['human', 'military', 'economy', 'expansion'];
   const STRATEGY_NAMES = { military: 'Military', economy: 'Economy', expansion: 'Expansion' };
   // Rules #setup: in a solo game the three rival factions are dealt to seats 1-3 at random.
-  // Seat 1 shares your half of the map, so its rival is your neighbor. A lineup lists the
+  // Home order maps these logical seats to physical homes. A lineup lists the
   // rival (1-3, by its default seat) in seats 1, 2 and 3; headless games keep [1,2,3].
   const DEFAULT_LINEUP = [1, 2, 3];
   function validLineup(lineup) {
@@ -72,9 +72,23 @@ function createGalacticReach(options = {}) {
     for (let i = lineup.length - 1; i > 0; i -= 1) { const j = Math.floor(random() * (i + 1)); [lineup[i], lineup[j]] = [lineup[j], lineup[i]]; }
     return lineup;
   }
-  function lineupText(lineup) {
-    const [neighbor, ...far] = lineup.map(n => `${PLAYER_NAMES[n]} (${STRATEGY_NAMES[PLAYER_STRATEGIES[n]]})`);
-    return { neighbor, far: far.join(' and ') };
+  const DEFAULT_HOME_ORDER = [0,1,2,3];
+  function validHomeOrder(order) {
+    return Array.isArray(order) && order.length===4 && DEFAULT_HOME_ORDER.every(n=>order.includes(n));
+  }
+  function rollHomeOrder() {
+    const order=[...DEFAULT_HOME_ORDER];
+    for(let i=order.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+    return order;
+  }
+  function neighborSeat(homeOrder=DEFAULT_HOME_ORDER) {
+    return homeOrder.indexOf(homeOrder[0]^1);
+  }
+  function lineupText(lineup, homeOrder=DEFAULT_HOME_ORDER) {
+    const neighbor=neighborSeat(homeOrder);
+    const seats=[neighbor,...[1,2,3].filter(id=>id!==neighbor)];
+    const [near,...far]=seats.map(id=>{const n=lineup[id-1];return `${options.names?.[id]||PLAYER_NAMES[n]} (${STRATEGY_NAMES[PLAYER_STRATEGIES[n]]})`;});
+    return {neighbor:near,far:far.join(' and ')};
   }
   const BOARD_RADIUS = 10;
   const PORTAL_MOVEMENT_COST = 2;
@@ -423,6 +437,7 @@ function createGalacticReach(options = {}) {
   const bankSelection = { give: null, get: null };
   let storageAllocationDraft = null;
   let newGameLineup = null;
+  let newGameHomeOrder = null;
   let archivePurgeCardId = null;
   let aiTimer = null;
   let displayingCombatReport = false;
@@ -512,10 +527,11 @@ function createGalacticReach(options = {}) {
     return {worlds:[...shuffled(slots,'world-positions'),[0,0]],moons:randomizedMoonPositions([...homes,...slots,[0,0]],homes)};
   }
 
-  function generateGalaxy() {
+  function generateGalaxy(homeOrder=DEFAULT_HOME_ORDER) {
     // Seven-hex home worlds touch the rim; first AI Shipyards use the inward Energy hex.
     const edge = BOARD_RADIUS - 1;
-    const homeCenters = [[-edge,0],[0,-edge],[edge,0],[0,edge]];
+    const physicalHomes = [[-edge,0],[0,-edge],[edge,0],[0,edge]];
+    const homeCenters = homeOrder.map(slot=>physicalHomes[slot]);
     const layout = centralTerrainPositions();
     const centers = [...homeCenters, ...layout.worlds];
     const names = ['Asterion','Borealis','Cygnus','Draco','Erebus','Fornax','Gemini','Helios','Icarus','Juno','Kepler','Lyra','Meridian'];
@@ -528,7 +544,8 @@ function createGalacticReach(options = {}) {
     centers.forEach(([q,r], clusterIndex) => {
       const coords = [[q,r], ...DIRECTIONS.map(([dq,dr]) => [q+dq,r+dr])];
       const homeOwner = homes.has(clusterIndex) ? homes.get(clusterIndex) : null;
-      const homeStart = HOME_STARTS.find(start => start.cluster === clusterIndex);
+      const originalStart = HOME_STARTS.find(start => start.cluster === clusterIndex);
+      const homeStart = originalStart && {...originalStart,inwardSector:HOME_STARTS[homeOrder[clusterIndex]].inwardSector};
       const types = homeOwner !== null
         ? ['matter','energy','biomass','data','matter','energy','data']
         : shuffled(Array.from({ length: 7 }, (_, index) => resourceCycle[(clusterIndex * 2 + index) % 4]),`world-sectors:${clusterIndex}`);
@@ -578,7 +595,12 @@ function createGalacticReach(options = {}) {
 
   function newState() {
     cardSerial = 1;
-    const galaxy = generateGalaxy();
+    // Solo positions are shuffled; authority/simulation defaults and the practice game stay fixed.
+    const solo = !headless && !network && !replayMode && !TUTORIAL;
+    const homeOrder = validHomeOrder(options.homeOrder) ? [...options.homeOrder]
+      : validHomeOrder(newGameSettings.homeOrder) ? [...newGameSettings.homeOrder]
+      : solo ? rollHomeOrder() : DEFAULT_HOME_ORDER;
+    const galaxy = generateGalaxy(homeOrder);
     // The rival lineup is dealt after the map, so a solo game's galaxy is unchanged by it.
     const lineup = validLineup(options.lineup) ? options.lineup : validLineup(newGameSettings.lineup) ? newGameSettings.lineup
       : headless || options.names ? DEFAULT_LINEUP : rollLineup();
@@ -594,6 +616,7 @@ function createGalacticReach(options = {}) {
     players.forEach(player => drawCards(player, 5));
     const initial = {
       version: SAVE_FORMAT_VERSION, round: 1, phase: 'production', firstPlayer: 0, activePlayer: 0, players,
+      ...(solo || validHomeOrder(options.homeOrder) ? {homeOrder:[...homeOrder]} : {}),
       portalLinks: {...CORNER_PORTAL_LINKS}, planets: galaxy.planets, clusters: galaxy.clusters, fleets, marketDecks, market: [], capacitySupply: CAPACITY_SUPPLY,
       selected: null, actionMode: null, actionCardId: null, actionOptions: {}, moveSource: null, reachable: [],
       turnStage: 'waiting', log: [], winner: null,
@@ -4833,9 +4856,10 @@ function createGalacticReach(options = {}) {
 
 
 
-  // Rules #setup: name the rival dealt to your half of the map (seat 1) when a solo game starts.
+  // Rules #solo-seating: name the rival sharing your physical half of the map.
   function logNeighbor() {
-    const [neighbor,...far]=state.players.slice(1).map(p=>`${p.name} (${STRATEGY_NAMES[p.strategy]||p.strategy})`);
+    const seat=neighborSeat(state.homeOrder||DEFAULT_HOME_ORDER);
+    const [neighbor,...far]=[seat,...[1,2,3].filter(id=>id!==seat)].map(id=>{const p=state.players[id];return `${p.name} (${STRATEGY_NAMES[p.strategy]||p.strategy})`;});
     logEvent(`Your neighbor this game is ${neighbor}, sharing your half of the map. Across the map: ${far.join(' and ')}.`);
   }
 
@@ -5484,15 +5508,16 @@ function createGalacticReach(options = {}) {
       if (options.newTable) { options.newTable(); return; }
       const select=$('#new-game-target');
       select.innerHTML=VICTORY_TARGET_CHOICES.map(n=>`<option value="${n}" ${n===victoryTarget()?'selected':''}>${n} Prestige${n===DEFAULT_VICTORY_TARGET?' (default)':''}</option>`).join('');
-      // Rules #setup: the rivals are dealt to seats at random each game; show who shares your half.
-      newGameLineup=rollLineup();
-      const {neighbor,far}=lineupText(newGameLineup);
+      // Rules #solo-seating: deal physical homes and preview the rival sharing your half.
+      newGameLineup=validLineup(options.lineup) ? [...options.lineup] : rollLineup();
+      newGameHomeOrder=validHomeOrder(options.homeOrder) ? [...options.homeOrder] : TUTORIAL ? [...DEFAULT_HOME_ORDER] : rollHomeOrder();
+      const {neighbor,far}=lineupText(newGameLineup,newGameHomeOrder);
       $('#new-game-neighbor').innerHTML=`<strong>Your neighbor: ${esc(neighbor)}.</strong> It shares your half of the map. Across the map: ${esc(far)}.`;
       $('#new-game-dialog').showModal();
     });
     $('#new-game-dialog').addEventListener('close',()=>{
       if ($('#new-game-dialog').returnValue!=='start') return;
-      newGameSettings={victoryTarget:Number($('#new-game-target').value),lineup:newGameLineup};
+      newGameSettings={victoryTarget:Number($('#new-game-target').value),lineup:newGameLineup,homeOrder:newGameHomeOrder};
       clearTurnHistory();
       state=newState(); fillMarket(); logEvent(`The four factions entered the Reach and drew their opening five cards. First to ${victoryTarget()} Prestige at a round's end wins.`); logNeighbor(); saveGame(); render(); beginRound();
     });
