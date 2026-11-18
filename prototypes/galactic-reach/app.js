@@ -4133,7 +4133,16 @@ function createGalacticReach(options = {}) {
 
   function renderContextOrders(actions, coord) {
     const orders = availableContextOrders(coord);
-    if (!orders.length) return;
+    if (!orders.length) {
+      if (network?.tabletop) {
+        const note=document.createElement('p'); note.className='tabletop-requirement';
+        note.textContent=state.activePlayer!==ME || state.phase!=='operations'
+          ? 'Inspect and plan now. Choose map orders on your Operations turn.'
+          : 'No order in your hand starts here. Choose a sector with your units or an eligible building site.';
+        actions.appendChild(note);
+      }
+      return;
+    }
     if (state.actionMode) {
       actions.appendChild(actionButton('Choose another order',()=>{const excavation=state.actionMode==='excavate';clearAction();if(excavation)switchTab('hand');render();saveGame();}));
       return;
@@ -4263,7 +4272,14 @@ function createGalacticReach(options = {}) {
   }
 
   function actionButton(label,handler,enabled=true,cost=null) {
-    const button=document.createElement('button'); button.type='button'; button.className='button'; button.innerHTML=cost?`<span>${label}</span>${resourceDots(cost)}`:label; button.disabled=!enabled; button.addEventListener('click',handler); return button;
+    const button=document.createElement('button'); button.type='button'; button.className='button'; button.innerHTML=cost?`<span>${label}</span>${resourceDots(cost)}`:label; button.disabled=!enabled;
+    if (network?.tabletop && !enabled && cost) {
+      const missing=RESOURCES.filter(r=>(cost[r]||0)>state.players[ME].resources[r]).map(r=>`${cost[r]-state.players[ME].resources[r]} ${RESOURCE_NAMES[r]}`);
+      const note=document.createElement('small'); note.className='tabletop-requirement';
+      note.textContent=missing.length?`Need ${missing.join(', ')}`:'Requires an eligible site or unit.';
+      button.appendChild(note);button.title=note.textContent;
+    }
+    button.addEventListener('click',handler); return button;
   }
 
 
@@ -5792,7 +5808,21 @@ function createGalacticReach(options = {}) {
     wireUi();
     $('#new-game-button').hidden = true;
     adoptServerView(network.initial);
-    return { sync: adoptServerView, seat: ME };
+    return {
+      sync: adoptServerView, seat: ME,
+      inspectSector(coord) {
+        if (!boardHas(coord) || state.actionMode || state.pendingCombat) return false;
+        state.selected=coord;render();showSectorScan(true);return true;
+      },
+      selectedSector:()=>state.selected,
+      cardName(id) { const card=state.players[ME].hand.find(c=>c.id===id);return card?`${ALL_CARDS[card.key].name}${starterLevel(card)>1?' '+starterLevel(card):''}`:'Card no longer in hand'; },
+      describeChoice(intent) {
+        const held=state.players[ME].hand.find(c=>c.id===intent.card);
+        if(intent.type==='upgrade' && held)return `Upgrade ${ALL_CARDS[held.key].name} to level ${starterLevel(held)+1} · ${upgradePrice(held)} ${RESOURCE_NAMES[intent.resource]}`;
+        const action={...intent,...(held?{gain:cardResources(held)}:{})};
+        return describeDecision(ME,action,state,state.players.map(p=>p.name)).text;
+      }
+    };
   }
 
   wireUi();

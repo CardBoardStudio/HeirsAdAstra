@@ -326,3 +326,104 @@ async fn approve_and_start_cannot_accept_a_phone_outside_the_frozen_roster() {
         StatusCode::BAD_REQUEST
     );
 }
+
+#[tokio::test]
+async fn board_focus_is_public_ephemeral_and_only_reaches_the_acting_phone() {
+    let (app, host, id) = setup().await;
+    let (_, _, host_link) = scoped(&app, &id, "host-phone", &host, json!({})).await;
+    let mut phones = vec![redeem_phone(&app, &id, &host_link).await];
+    let (_, _, invite) = scoped(&app, &id, "phone-invite", &host, json!({})).await;
+    for name in ["A", "B", "C"] {
+        let (cookie, code) = join_phone(&app, &id, &invite, name).await;
+        let participant = requests(&app, &id, &host).await["requests"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|r| r["code"] == code)
+            .unwrap()["participant"]
+            .clone();
+        assert_eq!(
+            scoped(
+                &app,
+                &id,
+                "approve",
+                &host,
+                json!({"participant":participant,"approve":true})
+            )
+            .await
+            .0,
+            StatusCode::OK
+        );
+        phones.push(cookie);
+    }
+    call(
+        &app,
+        "POST",
+        &format!("/api/tables/{id}/lobby/start"),
+        &host,
+        json!({}),
+    )
+    .await;
+    let (_, _, link) = scoped(&app, &id, "board-grant", &host, json!({})).await;
+    let board = redeem_phone(&app, &id, &link).await;
+    let before = app.shared.public_view(&id).await.unwrap();
+    let seq = before["seq"].as_u64().unwrap();
+    assert_eq!(
+        scoped(
+            &app,
+            &id,
+            "focus",
+            &phones[0],
+            json!({"seq":seq,"coord":"0,0"})
+        )
+        .await
+        .0,
+        StatusCode::UNAUTHORIZED
+    );
+    for coord in ["99,0", "1,x,2", "0,0,0"] {
+        assert_eq!(
+            scoped(&app, &id, "focus", &board, json!({"seq":seq,"coord":coord}))
+                .await
+                .0,
+            StatusCode::BAD_REQUEST
+        );
+    }
+    assert_eq!(
+        scoped(
+            &app,
+            &id,
+            "focus",
+            &board,
+            json!({"seq":seq-1,"coord":"0,0"})
+        )
+        .await
+        .0,
+        StatusCode::CONFLICT
+    );
+    assert_eq!(
+        scoped(&app, &id, "focus", &board, json!({"seq":seq,"coord":"0,0"}))
+            .await
+            .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        before,
+        app.shared.public_view(&id).await.unwrap(),
+        "suggestion never mutates game state or log"
+    );
+    let mut recipients = 0;
+    for cookie in phones {
+        let v = view(&app, &id, &cookie).await.2;
+        if v["active"] == v["seat"] {
+            assert_eq!(v["board_focus"]["coord"], "0,0");
+            recipients += 1;
+        } else {
+            assert!(v.get("board_focus").is_none());
+        }
+    }
+    assert_eq!(recipients, 1);
+    assert!(
+        app.shared.sector_suggestion(&id, seq + 1).is_none(),
+        "suggestions expire when the position changes"
+    );
+}

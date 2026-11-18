@@ -31,6 +31,29 @@ async function wait(browser,expression){await browser.evaluate(`new Promise((res
     }
     await wait(phone,"document.querySelector('.app-shell') && !document.querySelector('.app-shell').inert");
     assert(await phone.evaluate(`document.querySelectorAll('#shared-seats li').length===4`));
+    const privateView=()=>phone.evaluate(`fetch('/api/tabletop/${id}/seat').then(r=>r.json())`);
+    for(let i=0;i<100;i++){const v=await privateView();if(v.seats[v.active]?.human)break;await new Promise(r=>setTimeout(r,100));}
+    let before=await privateView();
+    await phone.evaluate(`document.querySelector('#tabletop-plan').click();document.querySelector('#tabletop-plan-sector').value='0,0';document.querySelector('#tabletop-plan-card').selectedIndex=1;[...document.querySelectorAll('#tabletop-planner button')].find(b=>b.textContent==='Keep reminder').click()`);
+    assert.equal((await privateView()).seq,before.seq,'private reminder sends no game action');
+    await phone.evaluate(`document.querySelector('#convert-all-button').click()`);
+    await wait(phone,"document.querySelector('#tabletop-confirm').open");
+    assert.equal((await privateView()).seq,before.seq,'opening a preview spends nothing');
+    const {data:hostView}=await api(`/api/shared/${id}`,host);
+    const hostCard=hostView.state.players[hostView.seat].hand[0];
+    await api(`/api/shared/${id}/act`,host,{seq:hostView.seq,actions:[{type:'resource',card:hostCard.id}]});
+    await wait(phone,"document.querySelector('#tabletop-confirm button').disabled");
+    await phone.evaluate(`[...document.querySelectorAll('#tabletop-confirm button')].find(b=>b.textContent==='Back to planning').click()`);
+    before=await privateView();
+    await phone.evaluate(`document.querySelector('#convert-all-button').click()`);
+    assert.equal((await privateView()).seq,before.seq,'revised preview is still private');
+    await phone.evaluate(`[...document.querySelectorAll('#tabletop-confirm button')].find(b=>b.textContent==='Confirm').click()`);
+    await phone.evaluate(`new Promise((resolve,reject)=>{let tries=0;const timer=setInterval(async()=>{const v=await fetch('/api/tabletop/${id}/seat').then(r=>r.json());if(v.seq>${before.seq}){clearInterval(timer);resolve();}else if(++tries>100){clearInterval(timer);reject(Error('Confirmation was not committed'));}},50);})`);
+    assert.equal((await privateView()).state.players[before.seat].hand.length,0,'explicit confirmation commits the selected conversions');
+    // Close any optional automatic-turn preview; only explicit confirmation can send it.
+    await phone.evaluate(`if(document.querySelector('#tabletop-confirm').open)[...document.querySelectorAll('#tabletop-confirm button')].find(b=>b.textContent==='Back to planning').click()`);
+    console.log('ok - private reminders, preview cancellation on stale state, explicit confirmation');
+
     for(const [width,height] of [[390,844],[844,390],[1024,768],[768,1024]]){
       await phone.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:false});
       await phone.evaluate('new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)))');

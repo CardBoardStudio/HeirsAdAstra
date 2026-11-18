@@ -296,6 +296,12 @@ async fn player_view(app: &App, headers: &HeaderMap, id: &str) -> ApiResult<Valu
     let mut view = app.shared.view(id, &participant).await?;
     view["client_path"] = json!(format!("/api/tabletop/{id}/client/"));
     view["tabletop"] = json!(true);
+    if view["active"] == view["seat"] {
+        view["board_focus"] = app
+            .shared
+            .sector_suggestion(id, view["seq"].as_u64().unwrap_or_default())
+            .unwrap_or(Value::Null);
+    }
     Ok(view)
 }
 pub async fn seat(

@@ -9,6 +9,7 @@ const view={id,role:'board',name:'Tabletop playtest',status:'active',seq:19,clie
 const requests=[];
 const server=http.createServer((req,res)=>{
   requests.push([req.method,req.url]);
+  if(req.method==='POST'&&req.url===`/api/tabletop/${id}/focus`){res.setHeader('Content-Type','application/json');return res.end('{}');}
   if(req.url===`/api/tabletop/${id}/board`){res.setHeader('Content-Type','application/json');return res.end(JSON.stringify(view));}
   if(req.url===`/api/tabletop/${id}/stream`){res.setHeader('Content-Type','text/event-stream');return res.write(`event: view\ndata: ${JSON.stringify(view)}\n\n`);}
   const file=new URL(req.url,'http://localhost').pathname.split('/').pop();
@@ -39,6 +40,6 @@ const server=http.createServer((req,res)=>{
       if(process.env.SHOTS){fs.mkdirSync(process.env.SHOTS,{recursive:true});const shot=await browser.send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(process.env.SHOTS,`board-${width}x${height}.png`),Buffer.from(shot.data,'base64'));}
       console.log(`ok - public board ${width}x${height}`);
     }
-    assert(requests.every(([method,url])=>method==='GET'&&!url.includes('/api/shared/')),'board uses no private endpoint or game command');
+    assert(requests.every(([method,url])=>(method==='GET'||url===`/api/tabletop/${id}/focus`)&&!url.includes('/api/shared/')),'board uses no private endpoint or game command');
   }finally{browser.close();server.closeAllConnections();server.close();}
 })().catch(error=>{console.error(error);server.closeAllConnections();server.close();process.exit(1);});
