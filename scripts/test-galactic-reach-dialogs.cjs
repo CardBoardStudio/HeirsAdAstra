@@ -928,7 +928,7 @@ test('export downloads a private read-only report without using RNG or changing 
  assert.equal(report.rulesVersion,`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`);
  assert(report.coverage.complete);assert(report.save.gameHistory.initialState);
  assert.deepEqual(report.save.state,game.saved());assert.equal(report.factions.length,4);
- assert.equal(report.factions[1].botProfile.strategy,'military');assert.equal(report.factions[0].points.total,3);
+ assert.equal(report.factions[1].botProfile.strategy,game.saved().players[1].strategy);assert.deepEqual(report.factions.slice(1).map(f=>f.botProfile.strategy).sort(),['economy','expansion','military']);assert.equal(report.factions[0].points.total,3);
  assert(report.logText.includes('Controlled planets produced'));assert(report.logText.includes('+1 Matter'));
  // Rules #setup: the private opening hand is dealt at setup, so the report's initial position holds it.
  assert.equal(report.save.gameHistory.initialState.players[0].hand.length,5);assert.equal(report.save.gameHistory.initialState.players[0].deck.length,1);
@@ -974,20 +974,23 @@ test('New game asks for the Prestige target; Cancel keeps the current game', () 
  assert.equal(boot(storage).saved().victoryTarget,40,'The chosen target is saved with the game');
 });
 
-// 34.39 #setup: solo rivals are dealt to seats at random; New game names your neighbor (seat 1).
-test('New game shows the neighbor it deals; rivals keep their profiles in any seat', () => {
+// Rules #solo-seating: preview and log follow physical home assignment, which survives reload.
+test('New solo games randomize all four starting positions and name the actual neighbor', () => {
  const storage=createStorage(),game=boot(storage),profiles={'Ember Directorate':'military','Violet Assembly':'economy','Helios Compact':'expansion'};
- const check=s=>{assert.deepEqual(s.players.slice(1).map(p=>p.name).sort(),Object.keys(profiles).sort());s.players.slice(1).forEach(p=>assert.equal(p.strategy,profiles[p.name]));};
- check(game.saved());assert(game.saved().log.some(e=>String(e.text||e).includes(`Your neighbor this game is ${game.saved().players[1].name}`)));
- const seen=new Set();
- for(let n=0;n<12;n++){
+ const check=s=>{assert.deepEqual(s.players.slice(1).map(p=>p.name).sort(),Object.keys(profiles).sort());s.players.slice(1).forEach(p=>assert.equal(p.strategy,profiles[p.name]));assert.equal(s.firstPlayer,0);};
+ const neighbor=s=>s.players[s.homeOrder.indexOf(s.homeOrder[0]^1)];
+ check(game.saved());assert(game.saved().log.some(e=>String(e.text||e).includes(`Your neighbor this game is ${neighbor(game.saved()).name}`)));
+ const homes=new Set(),rivals=new Set();
+ for(let n=0;n<24;n++){
+  const before=game.saved();game.click('new-game-button');game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();game.settle();assert.deepEqual(game.saved(),before,'Cancel keeps the current map');
   game.click('new-game-button');const shown=game.dom.element('new-game-neighbor').innerHTML;
   game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
-  const s=game.saved();check(s);assert(shown.includes(`Your neighbor: ${s.players[1].name} (`),'The dialog names the rival dealt to seat 1');
-  assert.equal(s.players[1].color,{'Ember Directorate':'#ff9f6e','Violet Assembly':'#a58cff','Helios Compact':'#f2cf66'}[s.players[1].name],'A faction keeps its colour');
-  seen.add(s.players[1].name);
+  const s=game.saved(),near=neighbor(s);check(s);assert(shown.includes(`Your neighbor: ${near.name} (`),'The preview names the actual physical neighbor');
+  assert.equal(near.color,{'Ember Directorate':'#ff9f6e','Violet Assembly':'#a58cff','Helios Compact':'#f2cf66'}[near.name]);
+  homes.add(s.clusters[0].center);rivals.add(near.name);
  }
- assert(seen.size>=2,'The neighbor varies between games');
+ assert.equal(homes.size,4,'Real browser startup reaches every home position');assert.equal(rivals.size,3,'Every rival can be the neighbor');
+ const saved=game.saved(),reloaded=boot(storage);assert.deepEqual(reloaded.saved().homeOrder,saved.homeOrder);assert.deepEqual(reloaded.saved().clusters,saved.clusters,'Reload does not reroll positions');
 });
 
 test('Undo retains the audit and records which events it reverses, including across reload', () => {
