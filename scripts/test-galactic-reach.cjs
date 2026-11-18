@@ -119,3 +119,5 @@ require('./test-exchange-market.cjs');
 require('./test-random-solo-homes.cjs');
 
 require("./test-maxbot.cjs");
+
+require("./test-maxbot-study.cjs");
