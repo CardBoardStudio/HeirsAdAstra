@@ -15,11 +15,13 @@ export function config(env) {
   const url = new URL(origin);
   if (url.origin !== origin) throw new Error('MIXER_ORIGIN must be an exact origin with no path or trailing slash');
   const auth = list(env.MIXER_AUTH, 'dev-site');
-  for (const a of auth) if (!['dev-site', 'local'].includes(a)) throw new Error(`MIXER_AUTH: unknown mode ${a}`);
+  for (const a of auth) if (!['dev-site', 'local', 'tailnet'].includes(a)) throw new Error(`MIXER_AUTH: unknown mode ${a}`);
   const local = url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname);
   // `local` admits anyone who can reach the port. Only a laptop origin may use it:
   // behind `tailscale serve` the origin is https and every tailnet member could build.
   if (auth.includes('local') && !local) throw new Error('MIXER_AUTH=local needs a loopback http MIXER_ORIGIN');
+  if (auth.includes('tailnet') && (url.protocol !== 'https:' || !url.hostname.endsWith('.ts.net')))
+    throw new Error('MIXER_AUTH=tailnet needs a Tailscale Serve HTTPS origin (*.ts.net)');
   const bind = env.MIXER_BIND ?? '127.0.0.1';
   // Loopback only: `tailscale serve` is the way in. Bound wider, mix
   // containers and the LAN could reach the mixer directly.
@@ -107,6 +109,16 @@ export const mergeOrder = (prs) => [...prs].sort((a, b) => a.number - b.number);
 
 export const cookiePrefix = (key) => `mx${key}_`;
 
+/** Tailscale Serve replaces this header with the connected user's identity.
+ * Trust only behind Serve with a loopback backend; never a general HTTP proxy.
+ * Funnel and tagged devices supply no user identity and are refused.
+ */
+export function tailnetIdentity(headers) {
+  const login = headers['tailscale-user-login'];
+  return typeof login === 'string' && login.length <= 320 && /^[^\s,]+$/.test(login)
+    ? `tailnet:${login}` : null;
+}
+
 /** The Cookie header to forward to mix `key`, or null when none apply. */
 export function inboundCookies(header, key) {
   if (!header) return null;
@@ -141,6 +153,40 @@ export function cookieValue(header, name) {
     if (i > 0 && part.slice(0, i).trim() === name) return part.slice(i + 1).trim();
   }
   return null;
+}
+
+// A new phone has no mix-selection cookie. Remember which mix issued its
+// table's pairing links, without reading or storing the secret link itself.
+const TABLE_ROUTE_LIFETIME = 30 * 24 * 60 * 60_000;
+export function pruneTableRoutes(routes, mixes, now = Date.now()) {
+  return Object.fromEntries(Object.entries(routes ?? {}).map(([table, keys]) => [table,
+    Object.fromEntries(Object.entries(keys).filter(([key, until]) => mixes[key] && until > now)),
+  ]).filter(([, keys]) => Object.keys(keys).length)
+    .sort((a, b) => Math.max(...Object.values(b[1])) - Math.max(...Object.values(a[1])))
+    .slice(0, 4096));
+}
+
+/** Only successful host-authorized link issuance establishes table ownership. */
+export function recordTableRoute(state, method, path, status, key, now = Date.now()) {
+  const match = path.match(/^\/api\/tabletop\/([0-9a-f]{32})\/(?:host-phone|phone-invite|board-grant|repair)$/);
+  if (method !== 'POST' || status < 200 || status >= 300 || !match || !state.mixes[key]) return false;
+  const routes = state.tableRoutes ?? {};
+  routes[match[1]] = { ...routes[match[1]], [key]: now + TABLE_ROUTE_LIFETIME };
+  state.tableRoutes = pruneTableRoutes(routes, state.mixes, now);
+  return true;
+}
+
+/** Route only bootstrap pages. Credentials and all API access stay mix-scoped. */
+export function tabletopRoute(state, method, url, selected, now = Date.now()) {
+  if (method !== 'GET' || !/^\/tabletop\/(?:phone|board)\.html$/.test(url.pathname)) return null;
+  const tables = url.searchParams.getAll('table');
+  if (tables.length !== 1 || !/^[0-9a-f]{32}$/.test(tables[0])) return null;
+  const keys = Object.entries(state.tableRoutes?.[tables[0]] ?? {})
+    .filter(([key, until]) => until > now && ['built', 'running'].includes(state.mixes[key]?.status))
+    .map(([key]) => key);
+  if (!keys.length) return null;
+  if (keys.includes(selected)) return { key: selected };
+  return keys.length === 1 ? { key: keys[0] } : { ambiguous: true };
 }
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
