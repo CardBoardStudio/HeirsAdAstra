@@ -11,6 +11,8 @@
 // too), while a still click on a button stays a click; every drop target says what a drop does.
 //   CHROME_PATH=/path/to/chrome node scripts/check-viewport-fit.cjs
 //   SHOTS=dir node scripts/check-viewport-fit.cjs    # also save a screenshot per state
+//   CHECK_ENGINE_APP=/path/to/kept-app.js CHECK_ENGINE_ADAPTER=/path/to/kept-adapter.js
+//     # exercise a retained engine against the current shared markup and styles
 //   CHECK_ORIGIN=https://preview CHECK_ONLY='1280x720 (operations|buy)' node scripts/check-viewport-fit.cjs
 //     # run the save-based cases against a deployed origin (cases needing mocked APIs are skipped)
 const fs = require('node:fs');
@@ -52,8 +54,8 @@ function findChrome() {
 }
 
 // ---- Fixtures: real engine states, built headless exactly like the dialog suite does. ----
-const source = fs.readFileSync(path.join(GAME_DIR, 'app.js'), 'utf8');
-const adapterSource = fs.readFileSync(path.join(GAME_DIR, 'adapter.js'), 'utf8');
+const source = fs.readFileSync(process.env.CHECK_ENGINE_APP || path.join(GAME_DIR, 'app.js'), 'utf8');
+const adapterSource = fs.readFileSync(process.env.CHECK_ENGINE_ADAPTER || path.join(GAME_DIR, 'adapter.js'), 'utf8');
 const FORMAT = source.match(/const SAVE_FORMAT_VERSION = (\d+);/)[1];
 const SAVE_KEY = `galactic-reach-save-v${FORMAT}`;
 const RULES = `galactic-reach/${FORMAT}.${source.match(/const RULES_REVISION = (\d+);/)[1]}`;
@@ -254,6 +256,8 @@ function serve(request, response) {
   const file = path.join(dir, rel);
   if (!file.startsWith(dir) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { response.writeHead(404); return response.end(); }
   response.writeHead(200, { 'content-type': TYPES[path.extname(file)] || 'application/octet-stream' });
+  if (file === path.join(GAME_DIR, 'app.js')) return response.end(source);
+  if (file === path.join(GAME_DIR, 'adapter.js')) return response.end(adapterSource);
   fs.createReadStream(file).pipe(response);
 }
 
@@ -758,4 +762,5 @@ async function main() {
   console.log(`${checks - failures}/${checks} viewport-fit checks passed.`);
   if (failures) process.exit(1);
 }
-main().catch(error => { console.error(error); process.exit(1); });
+if (require.main === module) main().catch(error => { console.error(error); process.exit(1); });
+module.exports = { findChrome, launch };

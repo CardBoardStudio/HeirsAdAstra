@@ -1330,8 +1330,9 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 /* Trade opens as a dialog from the button beside the tabs. */
 .console-nav { display: flex; align-items: stretch; gap: 3px; }
 .console-nav .console-tabs { flex: 1 1 auto; min-width: 0; }
-.trade-panel .trade-form { margin-top: 4px; }
-.trade-panel .trade-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12.5px; }
+:is(.trade-panel, .trade-dialog) .trade-form { margin-top: 4px; }
+:is(.trade-panel, .trade-dialog) .trade-heading p { margin: 5px 0 0; color: var(--muted); font-size: 12.5px; }
+.trade-dialog { width: min(820px, calc(100vw - 24px)); }
 /* The desktop table folds the page header into a menu button; narrow layouts keep the header. */
 .table-menu-button { display: none; }
 /* Comms feed: who acted, an event icon, and resource / Prestige chips. */
