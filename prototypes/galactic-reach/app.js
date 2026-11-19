@@ -5199,6 +5199,7 @@ function createGalacticReach(options = {}) {
     // Only the current engine moves its controls into the non-modal drawer.
     const panel = $('#trade-panel'), dialog = $('#trade-dialog');
     if (panel?.append && dialog?.childNodes) panel.append(...dialog.childNodes);
+    drawer.classList.add('ready');
     handle.setAttribute('aria-controls', 'trade-panel');
     handle.removeAttribute?.('aria-haspopup');
     const show = open => {

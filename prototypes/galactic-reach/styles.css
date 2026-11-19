@@ -3148,9 +3148,12 @@ body.background-stars .galaxy-board::before {
 @media (min-width: 600px) and (min-height: 600px) {
   .app-shell { --track-head: 10px; --name-w: 44px; }
   .app-shell { --stats-gap: 4px; --line-gap: 14px; }
-  .prestige-line { top: var(--track-head) !important; left: calc(var(--name-w) + var(--stats-gap) + var(--stats-w) + var(--line-gap)) !important; right: calc(-1 * var(--stats-w)) !important; }
-  .standings-stats { left: calc(var(--name-w) + var(--stats-gap)) !important; }
-  .prestige-track-goal { right: calc(-1 * var(--stats-w)) !important; }
+  .prestige-line { top: var(--track-head) !important; left: var(--name-w) !important; }
+  /* Kept engines fit the map around the original standings footprint. Only the current engine
+     knows to avoid the repositioned race and goal; it marks its drawer ready during setup. */
+  :root:has(.trade-drawer.ready) .prestige-line { left: calc(var(--name-w) + var(--stats-gap) + var(--stats-w) + var(--line-gap)) !important; right: calc(-1 * var(--stats-w)) !important; }
+  :root:has(.trade-drawer.ready) .standings-stats { left: calc(var(--name-w) + var(--stats-gap)) !important; }
+  :root:has(.trade-drawer.ready) .prestige-track-goal { right: calc(-1 * var(--stats-w)) !important; }
   .standings-header { height: var(--track-head); }
   .prestige-names { position: absolute; top: var(--track-head); left: 0; display: flex; flex-direction: column; width: var(--name-w); }
   .prestige-lane-name { display: flex; align-items: center; gap: 3px; height: var(--lane-h); overflow: hidden; color: #dfe6e0; font-size: 9.5px; font-weight: 700; letter-spacing: .02em; line-height: 1; white-space: nowrap; }
