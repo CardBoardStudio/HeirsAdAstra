@@ -1,9 +1,12 @@
 // node --test deploy/pr-mixer/
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawn } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import net from 'node:net';
+import { once } from 'node:events';
+import { fileURLToPath } from 'node:url';
 import * as lib from './lib.mjs';
 import * as G from './git.mjs';
 
@@ -12,13 +15,58 @@ const cfg = lib.config({ HOME: '/home/t', MIXER_AUTH: 'local' });
 test('config refuses open access, non-loopback binds and unknown modes', () => {
   assert.throws(() => lib.config({ MIXER_AUTH: 'local', MIXER_ORIGIN: 'https://bitswell.example.ts.net:3300' }), /loopback http/);
   assert.throws(() => lib.config({ MIXER_BIND: '0.0.0.0' }), /loopback/);
-  assert.throws(() => lib.config({ MIXER_AUTH: 'tailscale' }), /unknown mode/, 'no Tailscale-login admins: Nido only');
+  assert.throws(() => lib.config({ MIXER_AUTH: 'tailscale' }), /unknown mode/);
   assert.throws(() => lib.config({ MIXER_AUTH: 'everyone' }), /unknown mode/);
   assert.throws(() => lib.config({ MIXER_ORIGIN: 'https://h.example/' }), /exact origin/);
   const c = lib.config({ MIXER_ORIGIN: 'https://bitswell.example.ts.net:3300' });
   assert.deepEqual(c.auth, ['dev-site']);
   assert.equal(c.https, true);
   assert.equal(c.devSitePublic, 'https://bitswell.example.ts.net:3200/');
+});
+
+test('tailnet mode is explicit and requires Serve HTTPS with a loopback backend', () => {
+  const env = { MIXER_AUTH: 'tailnet', MIXER_ORIGIN: 'https://mai.example.ts.net:3113' };
+  assert.deepEqual(lib.config(env).auth, ['tailnet']);
+  assert.throws(() => lib.config({ MIXER_AUTH: 'tailnet' }), /Tailscale Serve HTTPS/);
+  for (const origin of ['http://mai.example.ts.net', 'https://public.example', 'https://mai.example.ts.net.evil.example'])
+    assert.throws(() => lib.config({ ...env, MIXER_ORIGIN: origin }), /Tailscale Serve HTTPS/);
+  assert.throws(() => lib.config({ ...env, MIXER_BIND: '0.0.0.0' }), /loopback/);
+  assert.throws(() => lib.config({ ...env, MIXER_AUTH: 'tailnet,local' }), /loopback http/);
+});
+
+test('tailnet access needs the Serve user header, never an ordinary account or proxy hint', () => {
+  assert.equal(lib.tailnetIdentity({ 'tailscale-user-login': 'player@example.com' }), 'tailnet:player@example.com');
+  for (const headers of [{}, { cookie: 'drawing_board_alien_v11_session=ordinary' }, { 'x-forwarded-for': '100.64.0.1' },
+    { 'tailscale-user-name': 'Player' }, ...['', ' ', 'one,two', 'line\nbreak', 'x'.repeat(321), ['one','two']].map(login => ({ 'tailscale-user-login': login }))])
+    assert.equal(lib.tailnetIdentity(headers), null);
+});
+
+test('tailnet HTTP access works without a game account and preserves POST origin checks', async (t) => {
+  const root = mkdtempSync(`${tmpdir()}/pr-mixer-http-`);
+  const reservation = net.createServer().listen(0, '127.0.0.1');
+  await once(reservation, 'listening');
+  const port = reservation.address().port;
+  await new Promise(resolve => reservation.close(resolve));
+  const origin = `https://mixer.example.ts.net:${port}`, base = `http://127.0.0.1:${port}`;
+  const child = spawn(process.execPath, [fileURLToPath(new URL('./pr-mixer.mjs', import.meta.url))], {
+    env: { PATH: process.env.PATH, HOME: root, MIXER_AUTH: 'tailnet', MIXER_ORIGIN: origin, MIXER_PORT: String(port), MIXER_DATA: root },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  t.after(async () => {
+    if (child.exitCode === null) { const exited = once(child, 'exit'); child.kill('SIGTERM'); await exited; }
+    rmSync(root, { recursive: true, force: true });
+  });
+  await once(child.stdout, 'data', { signal: AbortSignal.timeout(5000) });
+  const request = async (path, options) => {
+    const r = await fetch(base + path, options); await r.text(); return r.status;
+  };
+  assert.equal(await request('/__mixer/'), 403);
+  assert.equal(await request('/__mixer/', { headers: { cookie: 'drawing_board_alien_v11_session=ordinary' } }), 403);
+  const identity = { 'tailscale-user-login': 'tester@example.com' };
+  assert.equal(await request('/__mixer/', { headers: identity }), 200);
+  assert.equal(await request('/__mixer/api/mixes', { headers: identity }), 200);
+  assert.equal(await request('/__mixer/api/apply', { method: 'POST', headers: { ...identity, origin: 'https://foreign.example' }, body: '{}' }), 403);
+  assert.equal(await request('/__mixer/api/unknown', { method: 'POST', headers: { ...identity, origin }, body: '{}' }), 404);
 });
 
 test('admins are Nido-wallet administrators of the sign-in server, nothing else', () => {

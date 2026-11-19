@@ -306,14 +306,19 @@ async function gc() {
 }
 
 // --- Access ------------------------------------------------------------------------
-// Admins only, and the mixer keeps no accounts of its own. `dev-site`: the
+// The mixer keeps no accounts of its own. `dev-site`: the
 // sign-in server's session cookie (sent here too: cookies are per host, not per
 // port) must belong to one of its administrators who signed in with Nido
 // (lib.isAdmin). `local`: laptop only (lib.config refuses it on https).
+// `tailnet`: any user who can reach this service through Tailscale Serve.
 const adminCache = new Map();
 async function whoIsAdmin(req) {
   for (const mode of cfg.auth) {
     if (mode === 'local') return 'local';
+    if (mode === 'tailnet') {
+      const identity = lib.tailnetIdentity(req.headers);
+      if (identity) return identity;
+    }
     if (mode === 'dev-site') {
       const session = lib.cookieValue(req.headers.cookie, cfg.devCookie);
       if (!session) continue;
@@ -356,7 +361,8 @@ async function handle(req, res) {
   const admin = await whoIsAdmin(req);
   if (!admin) {
     const signIn = cfg.auth.includes('dev-site') ? `<p>Sign in with Nido as an administrator at <a href="${lib.escapeHtml(cfg.devSitePublic)}">${lib.escapeHtml(cfg.devSitePublic)}</a> (same host name, so the session reaches this page), then reload.</p>` : '';
-    return send(res, 403, `<!doctype html><meta charset="utf-8"><title>PR mixer</title><h1>PR mixer: administrators only</h1>${signIn}`, 'text/html; charset=utf-8');
+    const tailnet = cfg.auth.includes('tailnet') ? '<p>Connect a device signed in to Tailscale and open this mixer through its private HTTPS address. No Nido administrator account is needed.</p>' : '';
+    return send(res, 403, `<!doctype html><meta charset="utf-8"><title>PR mixer</title><h1>PR mixer: access required</h1>${signIn}${tailnet}`, 'text/html; charset=utf-8');
   }
   const p = url.pathname;
   if (p === '/__mixer' || p === '/__mixer/') return send(res, 200, ui, 'text/html; charset=utf-8');
