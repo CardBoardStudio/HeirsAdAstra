@@ -100,7 +100,7 @@ if(!isMainThread && require.main===module) {
   const args=process.argv.slice(2),arg=(name,fallback)=>{const at=args.indexOf('--'+name);return at<0?fallback:args[at+1];};
   const baseline=arg('baseline',baseDefault);if(!/^[0-9a-f]{40}$/.test(baseline))throw Error('Baseline must be an exact commit');
   const count=Number(arg('seeds',8)),seedStart=Number(arg('seed-start',910701)),rotations=arg('rotations','0,1,2,3').split(',').map(Number),duplicates=arg('duplicates',profiles.join(',')).split(','),modes=arg('modes','baseline,updated,mixed').split(',');
-  const out=resultDirectory(arg('out','analysis/strategic-bots-results')),runId=crypto.randomUUID();console.log('Study output: '+out);
+  const out=resultDirectory(arg('out','output/strategic-bots-results')),runId=crypto.randomUUID();console.log('Study output: '+out);
   const sources={baseline:{},updated:{}};
   for(const asset of ['app','adapter']){sources.baseline[asset]=execFileSync('git',['show',`${baseline}:prototypes/galactic-reach/${asset}.js`],{cwd:root,encoding:'utf8',maxBuffer:20e6});sources.updated[asset]=fs.readFileSync(path.join(root,`prototypes/galactic-reach/${asset}.js`),'utf8');}
   const tasks=[];

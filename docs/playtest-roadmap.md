@@ -33,7 +33,7 @@ Status: implemented; 28 JavaScript suites, 52 dialog checks and 1,800 replay dec
 - Keep each ship-type count visible within a hex, including mixed groups and buildings. Preserve zoom and Sector Scan; use a pannable map on narrow screens.
 - Rerun strategy and resource simulations on26.31 with single-use orders and the ten-Fleet cap, against matched archived25.30 controls.
 
-Status: implemented. Desktop, zoom and phone fixtures pass; 2,592 frozen 26.31 trials completed with resource/score/combat audits. See analysis/galactic-reach-26.31/report.html. See the PR deployment and checks for publication verification. No other pending changes were listed.
+Status: implemented. Desktop, zoom and phone fixtures pass; 2,592 frozen 26.31 trials completed with resource/score/combat audits. See the [26.31 study report](https://github.com/CardBoardStudio/drawing_board/blob/41df2dd53088a3854c5fae59c8e930daf03be1c3/analysis/galactic-reach-26.31/report.html) in retained repository history. See the PR deployment and checks for publication verification. No other pending changes were listed.
 
 ## Nearest Probe24.29 correction
 
