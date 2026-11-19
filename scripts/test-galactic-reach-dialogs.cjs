@@ -172,7 +172,9 @@ function createDom(timers) {
   return { document, element, tabs, panels, toasts:()=>created.filter(e=>e.className==='toast').map(e=>e.textContent), contextButton:label=>created.filter(e=>e.tagName==='BUTTON'&&(e.textContent===label||e.getAttribute?.('aria-label')===label||e.innerHTML===label||e.innerHTML.startsWith(`<span>${label}</span>`))).at(-1), hex:key=>created.find(e=>e.dataset.coord===key), lastQuery: selector => queried.get(selector) || [] };
 }
 
-function boot(storage, seed = 20261013, location = {hostname:'localhost',search:''}, engineOptions = {}) {
+// The console warnings of the most recent boot (loadGame logs why it rejected a save).
+let bootWarnings = [];
+function boot(storage, seed = 20261013, location = {hostname:'localhost',search:''}, engineOptions = {}, globals = {}) {
   const timers = createTimers();
   const dom = createDom(timers);
   const errors = [];
@@ -191,8 +193,10 @@ function boot(storage, seed = 20261013, location = {hostname:'localhost',search:
     setTimeout: timers.setTimeout,
     clearTimeout: timers.clearTimeout,
     confirm: () => true,
-    console: { log() {}, warn() {}, error: (...args) => errors.push(args) }
+    console: { log() {}, warn: (...args) => bootWarnings.push(args.join(' ')), error: (...args) => errors.push(args) },
+    ...globals
   });
+  bootWarnings = [];
   vm.runInContext(`${adapterSource}\n${source}`, context, { filename: sourcePath });
   const client=context.createGalacticReach(engineOptions);
   const game = {
@@ -243,6 +247,103 @@ function test(name, body) {
  }
  tests.push({ name, body });
 }
+
+// Private (server-saved) tables on the dev channel: table.js seeds the save into the engine's
+// in-memory storage and picks the page whose engine dealt it (docs/release.md#dev-channel).
+const tableSource = fs.readFileSync(path.resolve(__dirname, '../prototypes/galactic-reach/table.js'), 'utf8');
+const RELEASED_RULES = () => `galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`;
+const devChannel = n => ({channel:'dev',rules:`${RELEASED_RULES()}+dev.${n}`,commit:`c${n}`,label:`dev · ${formatVersion}.${CURRENT_RULES_REVISION}+dev.${n} · c${n}`});
+// table.js's own functions, as the page defines them.
+function tablePageCode() {
+  const context = vm.createContext({location:{search:'',pathname:'/galactic-reach/'},URLSearchParams});
+  vm.runInContext(tableSource, context);
+  return context.galacticReachTable;
+}
+// The engine factory a page with this channel loads; `kept` strips storageKeys, as in a
+// dev revision kept from before the engine exposed its keys.
+function pageEngine(channel, {kept=false}={}) {
+  const app = kept ? source.replace(/\ncreateGalacticReach\.storageKeys = [^\n]+/, '') : source;
+  if (kept) assert.notEqual(app, source, 'the kept stand-in drops storageKeys');
+  const context = vm.createContext({galacticReachChannel:channel,setTimeout,clearTimeout});
+  vm.runInContext(`${adapterSource}\n${app}`, context);
+  return {create:context.createGalacticReach,app};
+}
+// Deals a fresh private table on a page with this channel and returns what onSave sent the server.
+function dealPrivateTable(channel) {
+  const saves = [];
+  boot(createStorage(), 20261118, undefined, {storage:createStorage(),onSave:value=>saves.push(JSON.parse(JSON.stringify(value)))}, {galacticReachChannel:channel});
+  assert(saves.length, 'dealing a table saves it');
+  return saves.at(-1);
+}
+// Reopens a server save exactly as table.js does on a page with this channel.
+function reopenPrivateTable(save, channel, {kept=false}={}) {
+  const table = tablePageCode(), engine = pageEngine(channel, {kept});
+  const page = table.tablePage({rules_version:RELEASED_RULES(),save,dev_client:null}, channel);
+  const storage = table.seededStorage(table.engineKeys(engine.create, channel, page.format), save);
+  const saved = () => JSON.parse(storage.getItem(table.engineKeys(engine.create, channel, page.format).save));
+  const savedSource = source;
+  source = engine.app;
+  try { boot(storage, 20261118, undefined, {storage,requireSave:true}, {galacticReachChannel:channel}); }
+  finally { source = savedSource; }
+  return {page, saved};
+}
+
+test('A private dev table reopens from the keys table.js seeds', () => {
+  const channel = devChannel(6), save = dealPrivateTable(channel);
+  assert.equal(save.state.devRules, channel.rules);
+  const reopened = reopenPrivateTable(save, channel);
+  assert.equal(reopened.page.path, null, 'a table dealt on this page stays on it');
+  assert.deepEqual(bootWarnings, []);
+  assert.equal(reopened.saved().round, save.state.round);
+  assert.deepEqual(reopened.saved().homeOrder, save.state.homeOrder, 'the same game resumed');
+  // The unsuffixed keys table.js seeded before are not where a dev engine looks.
+  const storage = createStorage({[SAVE_KEY]:JSON.stringify(save.state)});
+  assert.throws(() => boot(storage, 1, undefined, {storage,requireSave:true}, {galacticReachChannel:channel}), /could not be loaded. Your server save has been preserved/);
+  assert.match(bootWarnings.join('\n'), /did not load the save at galactic-reach-save-v\d+-\d+\.\d+\+dev\.6: no save under this key/);
+  assert.equal(storage.getItem(SAVE_KEY), JSON.stringify(save.state), 'a failed load writes nothing');
+});
+
+test('table.js derives the same keys as the engine it seeds', () => {
+  const {engineKeys} = tablePageCode();
+  for (const channel of [devChannel(3), {channel:'stable',rules:RELEASED_RULES()}, {channel:'archived',rules:'galactic-reach/37.42'}, undefined]) {
+    const exposed = engineKeys(pageEngine(channel).create, channel, formatVersion);
+    assert.equal(typeof pageEngine(channel).create.storageKeys, 'function');
+    assert.deepEqual({...engineKeys(pageEngine(channel, {kept:true}).create, channel, formatVersion)}, {...exposed}, `fallback keys for ${channel?.channel}`);
+  }
+  assert.equal(engineKeys(pageEngine(devChannel(3)).create, devChannel(3), formatVersion).save, `galactic-reach-save-v${formatVersion}-${formatVersion}.${CURRENT_RULES_REVISION}+dev.3`);
+});
+
+test('A private table dealt on an earlier dev revision opens on its kept engine', () => {
+  const dealtOn = devChannel(5), current = devChannel(6), save = dealPrivateTable(dealtOn);
+  const {tablePage} = tablePageCode();
+  const keptPath = `/galactic-reach/dev/${formatVersion}.${CURRENT_RULES_REVISION}+dev.5/`;
+  const table = {rules_version:RELEASED_RULES(),save,dev_rules:dealtOn.rules,dev_client:keptPath};
+  assert.equal(tablePage(table, current).path, keptPath, 'the current page sends it to the kept engine');
+  assert.equal(tablePage(table, dealtOn).path, null, 'the kept page keeps it (no redirect loop)');
+  // The current engine still refuses it, and says why.
+  const storage = createStorage();
+  const {seededStorage, engineKeys} = tablePageCode();
+  const seeded = seededStorage(engineKeys(pageEngine(current).create, current, formatVersion), save);
+  assert.throws(() => boot(storage, 1, undefined, {storage:seeded,requireSave:true}, {galacticReachChannel:current}), /could not be loaded/);
+  assert.match(bootWarnings.join('\n'), /dealt with dev rules .*\+dev\.5, not .*\+dev\.6/);
+  // The kept engine predates storageKeys; table.js's derived keys still reach it.
+  const reopened = reopenPrivateTable(save, dealtOn, {kept:true});
+  assert.equal(reopened.saved().devRules, dealtOn.rules, 'the save keeps its dealt rules');
+  assert.equal(reopened.saved().round, save.state.round);
+});
+
+test('A dev table whose engine is no longer kept says its save is preserved', () => {
+  const {tablePage} = tablePageCode(), save = dealPrivateTable(devChannel(2));
+  assert.throws(() => tablePage({rules_version:RELEASED_RULES(),save,dev_rules:save.state.devRules,dev_client:null}, devChannel(6)),
+    /dealt on dev rules \d+\.\d+\+dev\.2, which this host no longer keeps. Your server save is preserved./);
+});
+
+test('Released and archived private tables keep their pages', () => {
+  const {tablePage} = tablePageCode();
+  assert.deepEqual({...tablePage({rules_version:RELEASED_RULES(),save:null}, devChannel(6))}, {path:'/galactic-reach/',format:formatVersion,label:`${formatVersion}.${CURRENT_RULES_REVISION}`});
+  assert.equal(tablePage({rules_version:'galactic-reach/37.42',save:{state:{version:37}}}, {channel:'stable',rules:RELEASED_RULES()}).path, '/galactic-reach/rules/37.42/');
+  assert.throws(() => tablePage({rules_version:'galactic-reach/1.1',save:null}, undefined), /not available on this host/);
+});
 
 // Plays the fresh game's first round: the human leads Operations and Buy in round 1.
 function playFirstRound() {
