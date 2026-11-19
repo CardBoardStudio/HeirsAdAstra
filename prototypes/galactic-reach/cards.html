@@ -20,12 +20,15 @@
     .toolbar legend { float: left; margin-right: 8px; color: var(--muted); font-size: .9rem; }
     .store-status { color: var(--muted); font-size: .9rem; margin: 0 0 16px; }
     .store-status strong { color: var(--text); }
+    .tier-group { margin-top: 28px; }
+    .tier-group > h2 { display: flex; gap: 12px; align-items: baseline; font-size: 1.4rem; }
+    .tier-count { color: var(--muted); font-size: .9rem; font-weight: 400; }
     .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
     .gallery-card { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--accent, var(--line-bright)); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
     .gallery-card.military { --accent: var(--red); }
     .gallery-card .meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; }
     .gallery-card .code { color: var(--gold); font-weight: 700; }
-    .gallery-card h2 { margin: 0; font-size: 1.15rem; }
+    .gallery-card h3 { margin: 0; font-size: 1.15rem; }
     .gallery-card .effect { margin: 0; line-height: 1.45; }
     .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; font-size: .9rem; }
     .facts dt { color: var(--muted); }
@@ -65,7 +68,7 @@
       <div>
         <div class="eyebrow" id="gallery-version">GALACTIC REACH · 38.43 CONSTRUCT III PLAYTEST</div>
         <h1>Card gallery</h1>
-        <p class="lede">Every market card in this playtest: 19 normal-deck designs and 9 military designs. Use the printed id when leaving feedback. Market cards cannot convert to resources. The three draw-two and three 2:1 exchange designs fit your starting limits of 4. Other market cards need raised limits. Each design's art is credited under <a href="#card-art-credits">Card art credits</a>.</p>
+        <p class="lede">Every market card in this playtest: 19 normal-deck designs and 9 military designs. Cards follow the market’s Expensive, Medium, Cheap tiers. Use the printed id when leaving feedback. Market cards cannot convert to resources. The three draw-two and three 2:1 exchange designs fit your starting limits of 4. Other market cards need raised limits. Each design's art is credited under <a href="#card-art-credits">Card art credits</a>.</p>
       </div>
       <nav class="links" aria-label="Galactic Reach">
         <a class="button button-ghost" href="./" style="text-decoration:none">← Back to the game</a>
@@ -74,10 +77,10 @@
     </header>
     <div class="toolbar">
       <fieldset id="deck-filter"><legend>Show</legend></fieldset>
-      <label>Sort <select id="sort-cards"><option value="id">By id</option><option value="price">By price</option></select></label>
+      <label>Sort within tiers <select id="sort-cards"><option value="id">By id</option><option value="price">By price</option></select></label>
     </div>
     <p class="store-status" id="store-status" role="status">Checking where feedback is saved…</p>
-    <div class="card-grid" id="card-grid"></div>
+    <div id="card-grid"></div>
     <section class="export" aria-labelledby="export-title">
       <h2 id="export-title">All your feedback</h2>
       <p class="store-status">Copy this text into a message if you prefer. It lists every card you marked or commented on.</p>
@@ -129,15 +132,15 @@
       $('#deck-filter').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filter === filter)));
       const order = $('#sort-cards').value;
       const shown = cards.filter(c => filter === 'all' || (filter === 'military') === !!c.military)
-        .sort((a, b) => order === 'price' ? price(a) - price(b) || a.code.localeCompare(b.code) : Number(!!a.military) - Number(!!b.military) || a.code.localeCompare(b.code));
-      $('#card-grid').innerHTML = shown.map(card => {
+        .sort((a, b) => (order === 'price' ? price(a) - price(b) : 0) || a.code.localeCompare(b.code));
+      const markup = card => {
         const entry = saved[card.code] || {};
         const note = `note-${card.code}`;
         const work = art[card.key];
         return `<article class="gallery-card ${card.military ? 'military' : ''}" style="--accent:${card.accent}" aria-labelledby="name-${card.code}">
           ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : ''}
           <div class="meta"><span class="code">${card.code}</span><span>${card.military ? 'Military deck' : `Normal deck · ${esc(card.kind)}`}</span></div>
-          <h2 id="name-${card.code}">${esc(card.name)}</h2>
+          <h3 id="name-${card.code}">${esc(card.name)}</h3>
           <p class="effect">${esc(card.text)}</p>
           <dl class="facts">
             <dt>Buy</dt><dd>${chips(card.cost)}</dd>
@@ -151,6 +154,10 @@
           <textarea id="${note}" data-note="${card.code}" maxlength="1000" placeholder="Cost, effect, timing…">${esc(entry.note || '')}</textarea>
           <div class="save-row"><button type="button" class="button button-primary" data-save="${card.code}">Save feedback</button><span class="save-state" id="state-${card.code}" role="status">${entry.savedAt ? `Saved ${entry.where}` : ''}</span></div>
         </article>`;
+      };
+      $('#card-grid').innerHTML = catalog.MARKET_TIERS.map(tier => {
+        const group = shown.filter(card => catalog.marketTier(card.key) === tier.id);
+        return group.length ? `<section class="tier-group" data-market-tier="${tier.id}" aria-labelledby="tier-${tier.id}"><h2 id="tier-${tier.id}">${esc(tier.name)}<span class="tier-count">${group.length} design${group.length === 1 ? '' : 's'}</span></h2><div class="card-grid">${group.map(markup).join('')}</div></section>` : '';
       }).join('');
       $('#card-grid').querySelectorAll('[data-vote]').forEach(button => button.addEventListener('click', () => {
         const entry = saved[button.dataset.card] ||= {};
