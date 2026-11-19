@@ -124,14 +124,16 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
   background: transparent; color: var(--coach-muted); font: 400 22px/1 system-ui, -apple-system, 'Segoe UI', sans-serif; cursor: pointer; }
 .gr-bubble .scan-close:hover { color: var(--coach-ink); border-color: #a89d83; background: #fff3cf; }
 .gr-bubble .scan-close:focus-visible { outline: 2px solid #8a6a1f; outline-offset: 1px; }
-/* What the hex holds on one line: the world's resource, then a dark chip per fact (owner,
-   building or colony site, relic, each faction's ships, portal) in the owner's colour. */
-.gr-bubble .scan-summary { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin: 0 0 6px; }
-.gr-bubble .scan-summary:has(> p:empty):has(> .scan-facts:empty) { display: none; }
-.gr-bubble .scan-summary > p { display: inline-flex; align-items: center; margin: 0 4px 0 0; color: var(--coach-ink); font-size: 12.5px; font-weight: 600; }
-.gr-bubble .scan-summary > p:empty, .gr-bubble .scan-facts:empty { display: none; }
-.gr-bubble .scan-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
-.gr-bubble .scan-facts .fact { flex: 1 1 100%; }
+/* The title line: the world's resource, its name, then a dark chip per fact (owner, building or
+   colony site, relic, each faction's ships, portal) in the owner's colour. It wraps, never truncates. */
+.gr-bubble .scan-title-line { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
+.gr-bubble .scan-title-line h2 { margin: 0; overflow-wrap: anywhere; }
+.gr-bubble .scan-kind:empty, .gr-bubble .scan-facts:empty, .gr-bubble .scan-notes:empty { display: none; }
+.gr-bubble .scan-kind-symbol { display: inline-grid; place-items: center; }
+.gr-bubble .scan-kind .resource-dot-large { margin: 0; }
+.gr-bubble .scan-moon { color: #8d9596; font-size: 15px; line-height: 1; }
+.gr-bubble .scan-facts { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.gr-bubble .scan-notes { display: grid; gap: 4px; margin: 0 0 6px; }
 .scan-symbol { --scan-owner: #f7f0dd; display: inline-flex; align-items: center; gap: 3px; min-height: 22px; padding: 1px 6px; border-radius: 999px;
   border: 1px solid color-mix(in srgb, var(--scan-owner) 60%, #a89d83); background: #253436; color: var(--scan-owner); font-size: 12px; line-height: 1; }
 .scan-symbol .board-icon { width: 15px; height: 15px; filter: none; }

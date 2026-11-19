@@ -890,6 +890,15 @@ function createGalacticReach(options = {}) {
     return chosen;
   }
 
+  // A Move order is named by what it moves: Explorers travel apart from the rest, and the other
+  // group is named for the Settlers and Fleets actually in it.
+  function moveOrderLabel(units) {
+    if (units?.explorer && !units.settler && !units.fleet) return 'Move Explorers';
+    if (units?.settler && !units.fleet) return 'Move Settlers';
+    if (units?.fleet && !units.settler) return 'Move Fleets';
+    return 'Move Settlers & Fleets';
+  }
+
   function formatFleet(fleet) {
     if (!fleet || !fleetCount(fleet)) return 'No ships';
     const parts = [];
@@ -3952,7 +3961,7 @@ function createGalacticReach(options = {}) {
         for (const group of ['ships','explorer']) {
           const moving = fleetGroup(fleet,group);
           if (fleetCount(moving) && reachableFrom(coord,ME,movementRange(moving,card),avoidsHostile(def.tag),moving).length)
-            add('move',group === 'ships' ? 'Move ships' : 'Move Explorers',group);
+            add('move',moveOrderLabel(moving),group);
         }
       }
       const canRecoverHere = relicSignal && !planet.relicClaimed && fleet?.explorer > 0;
@@ -4035,11 +4044,11 @@ function createGalacticReach(options = {}) {
 
   function renderInspector() {
     const key = state.selected;
-    const title = $('#inspect-title'); const detail = $('#inspect-detail'); const facts = $('#inspect-facts'); const actions = $('#context-actions');
-    actions.innerHTML='';
+    const title = $('#inspect-title'); const scanKind = $('#inspect-kind'); const detail = $('#inspect-detail'); const facts = $('#inspect-facts'); const actions = $('#context-actions');
+    actions.innerHTML=''; scanKind.innerHTML=''; detail.textContent=''; facts.innerHTML='';
     const discount=!replayMode&&state.actionMode==='construct'&&!state.pendingConstruct?state.actionOptions.discountResource??null:null;
     const buildButton=(label,kind)=>actionButton(label,()=>contextBuild(kind,key),constructAt(ME,key,kind,discount,true),constructionCost(ME,key,kind,discount));
-    if (!key) { title.textContent='Select a hex'; detail.textContent='Choose a planet or space hex to inspect fleets, control, and possible actions.'; facts.innerHTML=''; return; }
+    if (!key) { title.textContent='Select a hex'; detail.textContent='Choose a planet or space hex to inspect fleets, control, and possible actions.'; return; }
     renderContextOrders(actions,key);
     const actualPlanet = state.planets[key];
     const planet = actualPlanet && (knownToViewer(state.clusters[actualPlanet.cluster]) || relicKnownToViewer(actualPlanet)) ? actualPlanet : null;
@@ -4053,11 +4062,12 @@ function createGalacticReach(options = {}) {
     }
     if (planet) {
       title.textContent=planet.name;
-      detail.innerHTML=planet.type==='moon'?'Gray moon · no production':`${resourceDot(planet.type,'resource-dot-large')}${RESOURCE_NAMES[planet.type]}`;
+      const kindLabel=planet.type==='moon'?'Gray moon: no production':`${RESOURCE_NAMES[planet.type]} world`;
+      scanKind.innerHTML=`<span class="scan-kind-symbol" role="img" aria-label="${kindLabel}" title="${kindLabel}">${planet.type==='moon'?'<b class="scan-moon" aria-hidden="true">●</b>':resourceDot(planet.type,'resource-dot-large')}</span>`;
       facts.innerHTML=scanPlanetSymbols(key,planet)+relicFact;
     } else {
       // Uncharted terrain reads as space too, so the scan never reveals a hidden moon.
-      title.textContent='Empty Space'; detail.textContent=''; facts.innerHTML='';
+      title.textContent='Empty Space';
     }
     facts.innerHTML+=scanFleetSymbols(key)+portalFact;
     if (replayMode) {
@@ -4067,7 +4077,7 @@ function createGalacticReach(options = {}) {
       if (pending && state.reachable.includes(key)) notes.push(['Colonize II', `${esc(state.players[pending.playerId].name)} may build here at full cost`]);
       if (state.replayDecision?.coords?.includes(key)) notes.push(['This decision', esc(state.replayDecision.text)]);
       if (state.lastCombat?.coord === key) notes.push(['Last combat', esc(state.lastCombat.outcome)]);
-      facts.insertAdjacentHTML('beforeend', notes.map(([label,text])=>`<div class="fact"><span>${label}</span><strong>${text}</strong></div>`).join(''));
+      detail.insertAdjacentHTML('beforeend', notes.map(([label,text])=>`<div class="fact"><span>${label}</span><strong>${text}</strong></div>`).join(''));
       return;
     }
     if(state.pendingConstruct?.playerId===ME) actions.appendChild(actionButton('Finish after one build',()=>finishConstruct(ME)));
@@ -4589,7 +4599,7 @@ function createGalacticReach(options = {}) {
       case 'increase_storage': return { text: `Buy 4 capacity points · ${RESOURCES.filter(r=>action.allocation?.[r]).map(r=>`+${action.allocation[r]} ${RESOURCE_NAMES[r]}`).join(', ')}` };
       case 'discard_resources': return { text: `Discard ${amount(action.amount,action.resource)} to free storage` };
       case 'resource': return { text: `Convert to resources · ${cardName('Card')} → ${gains(action.gain)}` };
-      case 'move': return { text: `${order} · ${action.moveGroup === 'explorer' ? 'Move Explorers' : 'Move Ships'} from ${place(action.source)} to ${place(action.destination)}`, coords: [action.source, action.destination], source: action.source };
+      case 'move': return { text: `${order} · ${action.units ? moveOrderLabel(action.units) : action.moveGroup === 'explorer' ? 'Move Explorers' : 'Move Settlers & Fleets'} from ${place(action.source)} to ${place(action.destination)}`, coords: [action.source, action.destination], source: action.source };
       case 'build': {
         const planet = before.planets[action.coord];
         const label = STRUCTURES[action.kind] ? `Build ${STRUCTURES[action.kind].name}`
