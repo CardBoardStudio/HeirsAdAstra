@@ -120,3 +120,6 @@ require('./test-inward-worlds.cjs');
 require('./test-exchange-market.cjs');
 
 require('./test-random-solo-homes.cjs');
+
+require("./test-bot-family-plan.cjs");
+require("./test-bot-family-study.cjs");
