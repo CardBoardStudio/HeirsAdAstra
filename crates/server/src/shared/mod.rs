@@ -173,7 +173,7 @@ impl Live {
         }
         if matches!(
             self.table.rules.split('+').next().unwrap_or_default(),
-            "galactic-reach/36.41" | "galactic-reach/37.42"
+            "galactic-reach/36.41" | "galactic-reach/37.42" | "galactic-reach/38.43"
         ) {
             if !self.table.seats[seat].human() {
                 return Err("Only human players can undo.".into());

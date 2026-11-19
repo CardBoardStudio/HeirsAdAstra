@@ -20,7 +20,7 @@ impl GameKind {
     fn pool(self) -> &'static str {
         match self {
             Self::Voidwright => "voidwright/2:duel:20-rounds:policies-v1",
-            Self::GalacticReach => "galactic-reach/37.42:four-player:placement:policies-v29",
+            Self::GalacticReach => "galactic-reach/38.43:four-player:placement:policies-v29",
         }
     }
     fn seats(self) -> usize {
