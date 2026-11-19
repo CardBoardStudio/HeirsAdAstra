@@ -1,5 +1,7 @@
 # Simulation archives
 
+New Galactic Reach studies use the [canonical browser policy runner](rules/browser-bots.md). Rust bot policies are archived for historical reproduction only.
+
 Every normal run of `balance-simulations.cjs`, `strategic-bot-study.cjs`, `profile-bot-search.cjs`, and `card-evolution/run.cjs` now creates a full archive for each game. Summary output is additional evidence, never the only retained result. The exported study `factory` also archives by default, so a custom study using that factory inherits recording. Custom policy handoffs share one recorder for the entire game.
 
 Use the canonical factory for new bot studies. Do not copy an older summary-only harness. Pass the complete task as `archiveMetadata` and any external policy/harness text as `archiveSources`. The actual transformed engine and adapter are frozen automatically. A custom runner must call `archive.finish({reason, incomplete, summary})` when its own limits stop a game; winning games close automatically. The archive directory is returned as `archive.directory` (or the `archive` path in study results).

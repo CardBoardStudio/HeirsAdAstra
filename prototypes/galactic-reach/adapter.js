@@ -307,10 +307,23 @@ function createGalacticAdapter(e) {
   function hints(seat) {
     return { probe: legalActions(seat).filter(a => a.type === 'probe').map(a => ({card: a.card, coord: a.coord})) };
   }
+  // Server-only entry point: a registered AI seat uses the unmodified browser policy.
+  // Invalidate cached native commands before and after direct browser mutations.
+  function browserStep(seat, profile) {
+    if (activeSeat() !== seat || !['military','economy','market','expansion'].includes(profile)) throw new Error('Invalid browser policy seat or profile');
+    cached = null;
+    s().players[seat].strategy = profile;
+    try {
+      if (s().pendingCombat) e.applyCombatAction(seat, e.chooseCombatAction(e.combatView(seat), e.combatActions(seat)));
+      else if (s().phase === 'operations') e.runAiOperation();
+      else if (s().phase === 'buy') e.runAiBuy();
+      else throw new Error('No browser policy action in this phase');
+    } finally { cached = null; }
+  }
   function snapshot() {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/38.43', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
+  return { browserStep, rulesVersion: 'galactic-reach/38.43', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;

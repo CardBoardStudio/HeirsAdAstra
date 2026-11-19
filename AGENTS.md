@@ -50,3 +50,9 @@
 - Use the archival `factory` in `scripts/strategic-bot-study.cjs` or the `SimulationArchive` recorder in `scripts/lib/simulation-archive.cjs`. Include exact rules/policy/harness sources, task configuration, full private state and engine counters, action/event history and the random stream. Do not copy an old summary-only harness.
 - Put study archives in a persistent output directory (`GR_SIMULATION_ARCHIVE_DIR` when using a temporary checkout), and link it with the results. Do not prune or overwrite previous runs without explicit instruction.
 - Use saved checkpoints and round/resource events for reanalysis. See [simulation archives](docs/simulation-archives.md) for the schema, reader, crash recovery and CI retention limits.
+
+## Canonical bot policy
+
+- Use the browser rival policy for every new Galactic Reach game, bot study, and ORCD tournament. Run `scripts/browser-bot-study.cjs`; do not create or tune a separate Rust decision policy.
+- Rust policies are archived in `crates/galactic-reach/src/archived_rust.rs` and the older `legacy_v*` modules. Keep them immutable for previously dealt tables and historical replay/result reproduction only. Never use them for new balance claims or default opponents.
+- `archived-rust-bots` and `GR_ALLOW_ARCHIVED_RUST_BOTS=1` are historical reproduction opt-ins, not ways to start a new study. Keep all prior sources, binaries and full game archives.

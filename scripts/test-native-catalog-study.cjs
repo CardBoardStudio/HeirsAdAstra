@@ -1,3 +1,5 @@
+// Historical Rust policy compatibility fixture only. New studies use browser-bot-study.cjs.
+process.env.GR_ALLOW_ARCHIVED_RUST_BOTS='1';
 const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
 const {factory}=require('./strategic-bot-study.cjs'),{bridge}=require('./native-investment-study.cjs');
 const root=path.resolve(__dirname,'..'),read=n=>fs.readFileSync(path.join(root,'prototypes/galactic-reach',n),'utf8'),bin=process.env.GR_NATIVE_POLICY_BIN;if(!bin)throw Error('GR_NATIVE_POLICY_BIN required');

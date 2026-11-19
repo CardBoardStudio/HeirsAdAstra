@@ -1176,7 +1176,12 @@ fn start_deals_people_to_random_seats_and_rivals_fill_the_rest() {
                 seat.name, rivals[seat.seat],
                 "rivals keep their seat's faction"
             );
-            assert!(seat.policy.is_some());
+            assert!(
+                seat.policy
+                    .as_deref()
+                    .and_then(BrowserProfile::parse)
+                    .is_some()
+            );
         }
         host_seats.insert(ada);
         split += usize::from(ada / 2 != bo / 2);
@@ -1806,4 +1811,55 @@ fn shared_tables_resume_exactly_on_current_rules() {
         game.snapshot().unwrap(),
         "plays on identically"
     );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn new_browser_rivals_are_logged_and_refold_exactly() {
+    let store = store_with(&["a"]);
+    let log = Arc::new(SqliteTableLog(store));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    let mut t = table("browser-policy", &[("a", "Ada")]);
+    t.seats = seats_at(&[("a".into(), "Ada".into())], &[0, 1, 2, 3]);
+    service.open(t).await.unwrap();
+    let seq = service.view("browser-policy", "a").await.unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    assert!(
+        service
+            .act(
+                "browser-policy",
+                "a",
+                seq,
+                vec![json!({"type":"browser_policy","profile":"military"})]
+            )
+            .await
+            .is_err()
+    );
+    service
+        .act(
+            "browser-policy",
+            "a",
+            seq,
+            vec![json!({"type":"pass"}), json!({"type":"finish_buy"})],
+        )
+        .await
+        .unwrap();
+    let mut moved = false;
+    for _ in 0..400 {
+        let events = log.read("browser-policy").unwrap();
+        if [1, 2, 3].iter().all(|seat| {
+            events.iter().any(|e| {
+                e.seat == Some(*seat)
+                    && e.kind == "action"
+                    && e.public["action"]["type"] == "browser_policy"
+            })
+        }) {
+            moved = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    assert!(moved, "Every new rival must use the browser decision path");
+    assert!(service.view("browser-policy", "a").await.unwrap()["ai_error"].is_null());
+    service.refolded("browser-policy", 0).await;
 }

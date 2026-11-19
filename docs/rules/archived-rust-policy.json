@@ -1,0 +1,7 @@
+{
+  "source": "crates/galactic-reach/src/archived_rust.rs",
+  "sha256": "719dfe0d358fa89f1a3777f8ad0dc42664a5ba40342df24ad93b5becc22d7a5a",
+  "base": "3f1b5135e12bb6bcb58f03a21f517b078ba5c45d",
+  "policyVersions": "gr-*/1 through gr-*/29 are historical only",
+  "replacement": "browser policy functions in prototypes/galactic-reach/app.js"
+}

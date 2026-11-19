@@ -13,6 +13,11 @@ pub(super) fn simulate(
         .zip(agent_seeds)
         .map(|(policy, seed)| galactic_reach::agent(policy, *seed))
         .collect::<Result<_, _>>()?;
+    game.set_browser_profiles(std::array::from_fn(|seat| {
+        policies
+            .get(seat)
+            .and_then(|p| galactic_reach::BrowserProfile::parse(p))
+    }))?;
     game.start_trace()?;
     let result = run_match(&mut game, &mut agents, 10000)?;
     Ok((result, game.take_trace().unwrap().finish()))

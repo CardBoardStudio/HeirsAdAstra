@@ -1,3 +1,5 @@
+// Historical Rust policy compatibility fixture only. New studies use browser-bot-study.cjs.
+process.env.GR_ALLOW_ARCHIVED_RUST_BOTS='1';
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {bridge}=require('./native-investment-study.cjs');
 const root=path.resolve(__dirname,'../prototypes/galactic-reach');
