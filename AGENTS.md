@@ -1,5 +1,10 @@
 # Project instructions
 
+## Interface scope
+
+- Design, adjust, and verify the UI for desktop only. Do not spend work on mobile layouts or mobile UI tests.
+- Accessibility work still covers desktop keyboard operation, screen-reader labels, focus visibility, contrast, and desktop window sizes. State the coverage actually tested.
+
 ## GitHub workflow
 
 - Use HTTPS remotes, never SSH.
@@ -21,12 +26,12 @@
 - Drawing Board deployments on Render are the canonical live playtest sites. Never present a `chatgpt.site` deployment as the live game or rulebook unless the user explicitly requests that separate host.
 - The stable deployment is <https://drawing-board-p0g3.onrender.com/>. Before sharing any live link, verify the latest successful GitHub deployment status for the intended commit and use its `environment_url`; preview URLs can change.
 - An unmerged PR must link to its own successful Render deployment, including `/galactic-reach/rulebook.html` on that same origin. Do not link a preview game to `main`'s rules or a hard-coded old PR preview.
-- The build must package the canonical rulebook and stylesheet with the game. Verify anonymous access, game-to-rules navigation, section links, and a narrow viewport. Rules changes need a preview just like code changes; never add `render-preview-skip` to a rules PR.
+- The build must package the canonical rulebook and stylesheet with the game. Verify anonymous access, game-to-rules navigation, section links, and a narrow desktop window. Rules changes need a preview just like code changes; never add `render-preview-skip` to a rules PR.
 - Publishing means pushing to GitHub and confirming the corresponding Render deployment. Opening a PR does not authorize merging it. Report missing or failed deployments honestly.
 
 ## Playtest change lanes
 
-- `main` is the current stable lane: Long Reach 6.11 was promoted in PR #16. The former `codex/add-galactic-reach-prototype` lane has merged; do not target it or a closed PR by default. If a new stable playtest lane is explicitly established, update this file and the workflow together.
+- `main` is the current stable lane: Galactic Reach 33.38 Split Moves was promoted in PR #49, with the deterministic server-test follow-up in PR #51. Existing shared tables keep their dealt 30.35, 31.36 or 32.37 revision. Earlier pinned tables and replays retain their archived engines. The former `codex/add-galactic-reach-prototype` lane has merged; do not target it or a closed PR by default. If a new stable playtest lane is explicitly established, update this file and the workflow together.
 - Use a `codex/<short-name>` branch from latest `origin/main` and a PR into `main` for save-compatible work. Apply `playtest-safe`. Examples: layout, accessibility, wording, diagnostics, and fixes that do not change legal decisions or saved-state meaning.
 - Put every breaking rules experiment on its own `codex/experiment-<short-name>` branch from the latest stable head, target `main`, and apply `playtest-breaking`. Never mix both labels. A change is breaking if it can invalidate an ongoing game or materially change player decisions, including setup, topology, phases, economy, combat, card contents, scoring, victory, limits, or persisted state meaning.
 - Test experiments only on their successful Render preview and start a new game there. The distinct origin keeps guest saves separate. Preserve pinned table versions and their archived engines; never redirect an existing game to an incompatible ruleset.
@@ -38,3 +43,10 @@
 - Run `node scripts/test-rules-contract.cjs` and `node scripts/check-rulebook.cjs` for rules/tooling edits. Run the check against `dist/galactic-reach` after `./scripts/build-web.sh` to verify packaged assets too.
 - Run the relevant Galactic Reach mechanic, dialog, and replay suites for changes affecting their behavior. Rust changes require workspace tests, formatting, and Clippy; build/package changes require the Wasm build and container smoke. See `.github/workflows/ci.yml` for exact commands.
 - In the PR, state the rule sections, gameplay impact, compatibility label, verification performed, and verified preview game/rulebook URLs. Distinguish tests run from checks still pending.
+
+## Canonical bot policy
+
+- Use the browser rival policy for every new Galactic Reach game simulation, balance study, and ORCD tournament. Do not use or tune a separate Rust decision policy.
+- The Rust policies are retired. Preserve them only for previously dealt tables and historical replay/result reproduction; never use them for new balance claims or default opponents.
+- PR #134 (`codex/experiment-browser-bots`) implements the shared browser-policy runner and server cutover. Until it is adopted, use the existing browser-policy harness on current main, or that PR branch; do not fall back to a Rust runner.
+- Keep all prior sources, binaries and full per-game archives intact. Explicit archival reproduction flags are for reproducing old evidence, not for starting new studies.
