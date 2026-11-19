@@ -2250,7 +2250,10 @@ function createGalacticReach(options = {}) {
       if (!Object.keys(state.fleets[coord]).length) delete state.fleets[coord];
     }
     const planet = state.planets[coord];
-    if (planet && planet.owner === playerId && planet.upgrade === 'starbase' && pieces.some(p=>p.type==='starbase') && !pieces.some(p => p.type === 'starbase' && p.damage < p.hull)) planet.upgrade = null;
+    if (planet && planet.owner === playerId && planet.upgrade === 'starbase' && pieces.some(p=>p.type==='starbase') && !pieces.some(p => p.type === 'starbase' && p.damage < p.hull)) {
+      planet.upgrade = null;
+      planet.owner = null; // #destroyed-shipyards: ordinary claim/build rules apply again.
+    }
   }
 
   function findRetreat(coord, playerId, preferred = null) {
