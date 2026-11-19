@@ -1,0 +1,309 @@
+{
+  "format_version": 1,
+  "algorithm": "AES-256-GCM",
+  "entries": [
+    {
+      "file": "sealed/segment-000.aesgcm",
+      "restore_as": "board-git-metadata.tar.gz",
+      "kind": "metadata",
+      "bytes": 8640194,
+      "sha256": "c2c7e3c4ee23ed2aef9734ea7264751600ea8257644c45d47f5dc30854b970db"
+    },
+    {
+      "file": "sealed/segment-001.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-000",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "42c07fd7f417a1e6b58458f21167468b251fd7f38fa53f886245bb76fde47310"
+    },
+    {
+      "file": "sealed/segment-002.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-001",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "bdc072ae107f13e084aecc1076746fdc6593a5db17b0f375e3d5c92e08110b50"
+    },
+    {
+      "file": "sealed/segment-003.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-002",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "1ac8e5dd5611272d9e2787fe2a92da5ad0f3d66377da12beeb040442e949020e"
+    },
+    {
+      "file": "sealed/segment-004.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-003",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "a238c56b8d4dc175092752a3fd4b2dac5b4729812f65f563b6c5fadf9423a7f8"
+    },
+    {
+      "file": "sealed/segment-005.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-004",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "d12c8f25cdff70a448e2775d9fffddc2ead407b7acde8cd710eefd7cb6e686bc"
+    },
+    {
+      "file": "sealed/segment-006.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-005",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "150826ad92babd93ef1055f7089de8ebe98cf649eb33552b07879e3f004a69b8"
+    },
+    {
+      "file": "sealed/segment-007.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-006",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "0398fa9b03c78445617c3c49baedb03a081dc3e7d42ccdb6b37b8e4939208f13"
+    },
+    {
+      "file": "sealed/segment-008.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-007",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "028a5367ee2a4319fce52b1ed2c26472fbdaa22ba8440577355ba883cdfc8333"
+    },
+    {
+      "file": "sealed/segment-009.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-008",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "36224fc62f7c72daf9e43f6412723c3c70548740b8f113e0b889fddc74cc4553"
+    },
+    {
+      "file": "sealed/segment-010.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-009",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "7f483365d4d6f5e1cb91abe83c059e405f3891b11f3c7c3f83092c34120cfbd6"
+    },
+    {
+      "file": "sealed/segment-011.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-010",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "51f113f3feb3af07fd7c4ded4e7f5508908d9e13d28aade1f65bd01552722d4b"
+    },
+    {
+      "file": "sealed/segment-012.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-011",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "ebeb4c2d98c1c31a28c0dd01ea1804f442c76688a1037ac5167b7422dff3adb0"
+    },
+    {
+      "file": "sealed/segment-013.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-012",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "07e95e2a7c600fec254bdfa08a71c7846c7cebf5b0afd75a6792defab96a3caf"
+    },
+    {
+      "file": "sealed/segment-014.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-013",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "0ed0b4ccec816e0deaba9ef2eee76e5e6a475534b7dc3a37e66242ce21ef756e"
+    },
+    {
+      "file": "sealed/segment-015.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-014",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "847fa1b854900a9b5d5ea5e1a0ce446d36160d9673870605f764dd3d9bbedba0"
+    },
+    {
+      "file": "sealed/segment-016.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-015",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "d1fdd96446eacc347cc01bf8d318f4aa3a766ee5c4639bdf7fd0d13356f5c06b"
+    },
+    {
+      "file": "sealed/segment-017.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-016",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "5862fb6b7bf80faad14b7857ddae7b1bae636aac12be8794d79dbec99ce9c13c"
+    },
+    {
+      "file": "sealed/segment-018.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-017",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "8afbb3c46aef42045579640815af45d5e36f120122f925828ba4a4e6c7106e05"
+    },
+    {
+      "file": "sealed/segment-019.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-018",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "ee9e17a3378135ccd02a4d636e83a5bbabcadbfcac380c79bf243e26d253e23d"
+    },
+    {
+      "file": "sealed/segment-020.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-019",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "48e2f44e2dbc7dfa9fcd3ad03b11db05f39e0992d478da69eeca699122310188"
+    },
+    {
+      "file": "sealed/segment-021.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-020",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "5b25e3e9d20464f15eec7e04ab8a88cdc5e0ac53ee91a5a68d1c49179f9c3c1e"
+    },
+    {
+      "file": "sealed/segment-022.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-021",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "7ca874ec28662f1dda375c8a5405825b650219425eeecabaeae8eee1e822400f"
+    },
+    {
+      "file": "sealed/segment-023.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-022",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "5352ae24ebf990b1c465378cfffceed1f7027b3a5ee8db7e2714505282e51bed"
+    },
+    {
+      "file": "sealed/segment-024.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-023",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "4d0bfa2eca1cda41138bc242c2edaa277ac8d9ea5a1532094f21d5726fde62d9"
+    },
+    {
+      "file": "sealed/segment-025.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-024",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "5baef1b3a29a01e9a7a93ae164c6ea4a5602f780cc31187185635544e3ec1846"
+    },
+    {
+      "file": "sealed/segment-026.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-025",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "4dedd874acd8fd08ff66d38b83baad060f12af5d1da9f19dc60313212e32ef9f"
+    },
+    {
+      "file": "sealed/segment-027.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-026",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "c170e1a700272e25a43b66679f1ccfbfb4499946855c19d77743efc1387b7736"
+    },
+    {
+      "file": "sealed/segment-028.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-027",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "059d09d135a55ac127a99c97b893194dfb37a0cba858312f5c25abef795ceec7"
+    },
+    {
+      "file": "sealed/segment-029.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-028",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "67331ff19861c4892037f1fba2424105d73c3f33fcf6157eb545dcb54dd54737"
+    },
+    {
+      "file": "sealed/segment-030.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-029",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "cd9e943cd20e326d68f40560e8c360abd727941d14d372239aaaf7be7f4c3a09"
+    },
+    {
+      "file": "sealed/segment-031.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-030",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "805c4cf73f4151b44b18b4f7d944c9cb0100b0327de3c1f0b5594329122db2d2"
+    },
+    {
+      "file": "sealed/segment-032.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-031",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "45cbc81700576164d3d76d4fa888c54801a41332e24f67a00c5702f886e40935"
+    },
+    {
+      "file": "sealed/segment-033.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-032",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "92cc622217ad6505194dc7e98c5180d8aea718d932bca75c64cd2d6769be24b1"
+    },
+    {
+      "file": "sealed/segment-034.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-033",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "c5ffea26bbfcaa6a07c09f6f53937107025b3c15d682a38ea7542e58474d3578"
+    },
+    {
+      "file": "sealed/segment-035.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-034",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "2ea45ec00636ced0700cc6ddddbefecedb8ac104323d1850c937399146dbfd00"
+    },
+    {
+      "file": "sealed/segment-036.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-035",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "32db1ed41a04a522ed26e03e8aaaf52496f1b6eaf80af3e4bbca64a9b2f35956"
+    },
+    {
+      "file": "sealed/segment-037.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-036",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "87f5f29a95e25c6f36297960e66c555f1539963a7f157c19a7566e65362c1c4a"
+    },
+    {
+      "file": "sealed/segment-038.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-037",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "bf652012c4abe796a9926c5fc7180b9d15396ce3a4c24b1435925256ac0c6a4b"
+    },
+    {
+      "file": "sealed/segment-039.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-038",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "18cc6b80ecffd2b1367a2d2420bde63ebd95ebe0b7bde224ef650cbc8bb655e1"
+    },
+    {
+      "file": "sealed/segment-040.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-039",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "17dd24b78c1f18c9172c3a14cb19d6ed6ebe55532290d36519e6b57b708938df"
+    },
+    {
+      "file": "sealed/segment-041.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-040",
+      "kind": "part",
+      "bytes": 536870964,
+      "sha256": "ba26eccc9c6e24ab73a2c8b1ac7042d401edb67d4b7a688df5bd28a5396e086b"
+    },
+    {
+      "file": "sealed/segment-042.aesgcm",
+      "restore_as": "archives/board-game-files.tar.gz.part-041",
+      "kind": "part",
+      "bytes": 301409497,
+      "sha256": "3753b728b7a5139077687fa4c1baad2eb74f7fb6252d3a65e1270b19be207b03"
+    }
+  ],
+  "key_location": "Private Dropbox handoff: GITHUB-LFS-RESTORE-KEY.json",
+  "plaintext_on_github": false
+}
