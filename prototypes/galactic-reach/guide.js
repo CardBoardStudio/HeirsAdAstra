@@ -362,6 +362,8 @@
     const dialog = $$('dialog[open]').find(d => d.matches(':modal'));
     const host = tip.inDialog && dialog?.matches(tip.inDialog) ? dialog : dialog ? null : document.body;
     if (!host) { hide(); return; }
+    // While the Trade panel is pulled out, table notes wait, as they do for a dialog.
+    if (host === document.body && $$('.trade-drawer.open').length) { hide(); return; }
     // On the table the note is a manual popover, so it stays above the Sector Scan popover;
     // inside a modal dialog (a battle, a choice) it sits at the top of that dialog instead.
     if (box.parentElement !== host) {

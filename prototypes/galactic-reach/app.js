@@ -5190,6 +5190,29 @@ function createGalacticReach(options = {}) {
     document.addEventListener('click', event => { if (panel.classList.contains('open') && !panel.contains(event.target)) show(false); });
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && panel.classList.contains('open')) { show(false); toggle.focus(); } });
   }
+  // Trade pulls out from the table's left edge: its handle opens and tucks it back, as do Close
+  // and Escape. It is not modal, so the map stays in play beside it.
+  function setupTradeDrawer() {
+    const drawer = $('#trade-drawer'), handle = $('#open-trade');
+    if (!drawer?.classList || !handle?.addEventListener) return;
+    // Kept dev engines still open #trade-dialog against this shared markup.
+    // Only the current engine moves its controls into the non-modal drawer.
+    const panel = $('#trade-panel'), dialog = $('#trade-dialog');
+    if (panel?.append && dialog?.childNodes) panel.append(...dialog.childNodes);
+    drawer.classList.add('ready');
+    handle.setAttribute('aria-controls', 'trade-panel');
+    handle.removeAttribute?.('aria-haspopup');
+    const show = open => {
+      if (open) renderTrade();
+      drawer.classList.toggle('open', open);
+      handle.setAttribute('aria-expanded', String(open));
+    };
+    handle.addEventListener('click', () => show(!drawer.classList.contains('open')));
+    $('#close-trade').addEventListener('click', () => { show(false); handle.focus?.(); });
+    if (typeof document !== 'undefined') document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && drawer.classList.contains('open') && !document.querySelector?.('dialog[open]')) { show(false); handle.focus?.(); }
+    });
+  }
   function setupPhoneCardSheet() {
     const row = $('#hand-row');
     if (!row?.addEventListener || typeof document === 'undefined' || !document.createElement || typeof document.body?.append !== 'function') return;
@@ -5305,7 +5328,8 @@ function createGalacticReach(options = {}) {
     const log = fitMapLog;
     // The bottom band's pieces too: the map reaches down between your hand, piles, buttons and mat.
     const band = [...document.querySelectorAll('#hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].map(e => rect(e));
-    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
+    // The race line and its goal stick out past the track's box on the right (the counts sit before them).
+    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
     const clear = (width, top) => {
       const left = box.right - width;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
@@ -5422,6 +5446,11 @@ function createGalacticReach(options = {}) {
     const key = landscape ? legend?.getBoundingClientRect?.() : null;
     if (key?.height) root.style.setProperty('--notice-top', `${Math.round(key.top)}px`);
     else root.style.removeProperty('--notice-top');
+    // Trade's handle lies on the table's left edge in the gap between the comms card and the map key,
+    // ending above the key where notices appear (in a tight column it may overlap the comms card).
+    const stackBottom = landscape ? last?.getBoundingClientRect?.() : null, handleH = $('#open-trade')?.getBoundingClientRect?.().height || 0;
+    if (key?.height && stackBottom?.height) root.style.setProperty('--trade-top', `${Math.round(Math.min((stackBottom.bottom + key.top) / 2, key.top - 4 * zoom - handleH / 2))}px`);
+    else root.style.removeProperty('--trade-top');
     // When the stack and the map key cannot both fit above your piles and hand, tighten the column
     // once (the latest comms entry only) and stack again; a second step drops the icon list from
     // the key (the Map key button lists them). At most two steps, whatever the class list reports.
@@ -5509,10 +5538,8 @@ function createGalacticReach(options = {}) {
     }
     setupMatTrades();
     setupPhoneCardSheet();
-    // Trade lies with the turn's buttons (beside the mat on the table, in the action strip on a phone).
-    const tradeButton=$('#open-trade'), turnButtons=$('#hand-panel .hand-tools');
-    if (tradeButton && turnButtons?.append) turnButtons.append(tradeButton);
     setupLogCard();
+    setupTradeDrawer();
     $('#bank-trade-form').addEventListener('submit',event => {
       event.preventDefault();
       bankTrade(ME,bankSelection.give,bankSelection.get);
@@ -5649,14 +5676,12 @@ function createGalacticReach(options = {}) {
     $('#open-trash').addEventListener('click',()=>{renderMarket();if(!$('#trash-dialog').open)$('#trash-dialog').showModal();});
     $('#close-trash').addEventListener('click',()=>$('#trash-dialog').close());
     $('#close-upgrade').addEventListener('click',()=>$('#upgrade-dialog').close());
-    $('#open-trade').addEventListener('click',()=>{renderTrade();$('#trade-dialog').showModal();});
     const menuButton=$('#table-menu-button');
     const setMenu=open=>{document.body.classList.toggle('menu-open',open);menuButton.setAttribute('aria-expanded',String(open));};
     menuButton.addEventListener('click',()=>setMenu(!document.body.classList.contains('menu-open')));
     document.addEventListener('keydown',event=>{if(event.key==='Escape'&&document.body.classList.contains('menu-open')){setMenu(false);menuButton.focus();}});
     document.addEventListener('click',event=>{if(document.body.classList.contains('menu-open')&&!event.target.closest('.topbar, .playtest-changes, .personal-report, #table-menu-button'))setMenu(false);});
     $$('.topbar .header-actions').forEach(actions=>actions.addEventListener('click',event=>{if(event.target.closest('button, a'))setMenu(false);}));
-    $('#close-trade').addEventListener('click',()=>$('#trade-dialog').close());
     $('#board-primary').addEventListener('click',()=>{ const target=$(`#${$('#board-primary').dataset.target}`); if (target && !target.hidden) target.click(); });
     $('#consortium-form').addEventListener('submit',event=>{event.preventDefault();consortiumExchange(ME,$('#consortium-give').value,$('#consortium-get').value);});
     $('#consortium-cancel').addEventListener('click',()=>finishConsortium(ME,true));

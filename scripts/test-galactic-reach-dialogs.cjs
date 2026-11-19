@@ -452,10 +452,14 @@ test('Only level I starters show conversion controls; bulk conversion preserves 
  const game=boot(storage),before=game.saved();
  assert.deepEqual(game.dom.lastQuery('[data-resource-card]').map(b=>b.dataset.resourceCard),['level-I']);
  assert.equal(game.dom.element('convert-all-button').disabled,false);
+ assert.equal(game.dom.element('convert-all-button').hidden,false,'Convert level I starters is shown while the hand holds one');
  game.click('convert-all-button');const after=game.saved();
  assert.deepEqual(after.players[0].hand.map(c=>c.id),before.players[0].hand.filter(c=>c.id!=='level-I').map(c=>c.id));
  assert.equal(after.players[0].resources.energy,1);assert.equal(after.phase,'operations');assert.equal(after.activePlayer,0);
  assert.equal(game.dom.element('convert-all-button').disabled,true);
+ // It keys off the hand alone: level I starters left in the deck or discard do not bring it back.
+ assert(after.players[0].deck.concat(after.players[0].discard).some(c=>c.starter&&!c.upgraded),'Starters remain outside the hand');
+ assert.equal(game.dom.element('convert-all-button').hidden,true,'Absent once the hand holds none');
  assert.equal(game.dom.lastQuery('[data-resource-card]').length,0);
  const reload=boot(storage);assert.equal(reload.dom.lastQuery('[data-resource-card]').length,0);
 });

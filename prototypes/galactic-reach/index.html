@@ -188,7 +188,6 @@
             <button class="console-tab active" id="market-tab" type="button" data-tab="market" role="tab" aria-selected="true" aria-controls="market-panel" tabindex="0">Market</button>
             <button class="console-tab" id="relics-tab" type="button" data-tab="relics" role="tab" aria-selected="false" aria-controls="relics-panel" tabindex="-1">Relics</button>
           </div>
-          <button class="console-tab trade-open" id="open-trade" type="button" aria-haspopup="dialog" aria-controls="trade-dialog">Trade</button>
         </div>
         <div class="console-body">
           <div class="tab-panel chain-panel" id="chain-panel" data-panel="chain" aria-label="Testnet seat" hidden>
@@ -323,18 +322,26 @@
     <div id="upgrade-options" class="upgrade-options"></div>
   </dialog>
 
+  <!-- Trade (rules #trade): a panel that pulls out from the table's left edge by its handle. It
+       stays open beside the map (non-modal) until the handle, Close or Escape tucks it back. -->
+  <aside class="trade-drawer" id="trade-drawer" aria-label="Trade">
+    <button class="trade-handle" id="open-trade" type="button" aria-expanded="false" aria-haspopup="dialog" aria-controls="trade-dialog">Trade</button>
+    <section id="trade-panel" class="trade-panel" aria-labelledby="trade-dialog-title"></section>
+  </aside>
+  <!-- Older retained dev engines keep their dialog. The current engine moves these
+       same controls into trade-panel during setup; their IDs remain unique. -->
   <dialog id="trade-dialog" class="choice-dialog trade-dialog" aria-labelledby="trade-dialog-title">
-            <div class="dialog-heading trade-heading"><div><div class="eyebrow">OPERATIONS</div><h2 id="trade-dialog-title">Trade channel</h2><p>Publish one open offer per round as your action. Each other faction can accept or reject on its turn, without spending an action. First acceptance settles the trade. Offers expire when Operations end; resources must still be available when accepted.</p></div><button class="button button-ghost dialog-close" id="close-trade" type="button">Close</button></div>
-            <form id="trade-form" class="trade-form">
-              <label>You give<select id="trade-give-type"></select></label>
-              <label>Amount to give<input id="trade-give-amount" type="number" min="1" max="5" value="1"></label>
-              <label>You receive<select id="trade-get-type"></select></label>
-              <label>Amount to receive<input id="trade-get-amount" type="number" min="1" max="5" value="1"></label>
-              <button class="button button-primary" type="submit">Publish open offer</button>
-            </form>
-            <div class="trade-response" id="trade-response" role="status"></div>
-            <div id="trade-offers" role="group" class="trade-offers" aria-label="Open trade offers"></div>
-            <div class="trade-ledger" id="trade-ledger" role="group" aria-label="Completed trades by rival"></div>
+      <div class="dialog-heading trade-heading"><div><div class="eyebrow">OPERATIONS</div><h2 id="trade-dialog-title">Trade channel</h2><p>Publish one open offer per round as your action. Each other faction can accept or reject on its turn, without spending an action. First acceptance settles the trade. Offers expire when Operations end; resources must still be available when accepted.</p></div><button class="button button-ghost dialog-close" id="close-trade" type="button">Close</button></div>
+      <form id="trade-form" class="trade-form">
+        <label>You give<select id="trade-give-type"></select></label>
+        <label>Amount to give<input id="trade-give-amount" type="number" min="1" max="5" value="1"></label>
+        <label>You receive<select id="trade-get-type"></select></label>
+        <label>Amount to receive<input id="trade-get-amount" type="number" min="1" max="5" value="1"></label>
+        <button class="button button-primary" type="submit">Publish open offer</button>
+      </form>
+      <div class="trade-response" id="trade-response" role="status"></div>
+      <div id="trade-offers" role="group" class="trade-offers" aria-label="Open trade offers"></div>
+      <div class="trade-ledger" id="trade-ledger" role="group" aria-label="Completed trades by rival"></div>
   </dialog>
 
   <dialog id="trash-dialog" class="choice-dialog trash-dialog" aria-labelledby="trash-dialog-title">
