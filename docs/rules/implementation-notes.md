@@ -18,3 +18,7 @@ Before declaring the rules ready for tutorial production, review the following w
 Open proposals such as voluntary resource discards and upgrading purchased basic cards are not current rules. The initial rulebook must not pre-adopt them. The tutorial should link to these decisions through its source rule sections and avoid teaching unresolved exceptions as deliberate strategy.
 
 The 8.13 Resource Actions experiment resolves the Trade Consortium exception: its order explicitly chooses a resource gain or up to two chosen 2:1 exchanges. Its conversion remains 2 Data. The archived 6.11 and 7.12 behavior above is unchanged.
+
+## Saved tables on the dev channel
+
+A private table saved on the dev site records its dev revision only inside the save (`state.devRules`, for example `38.43+dev.6`). The table's `rules_version` stays the released `38.43`. The save's meaning is the revision that dealt it: it reopens only on that revision's engine, which the dev host keeps while the game is unfinished ([dev channel](../release.md#dev-channel), rulebook [Playing with friends](../../prototypes/galactic-reach/rulebook.html#shared-tables), "Dev site"). Loading never relabels `devRules` to make a save fit a newer engine. From `dfdb87d` until this was fixed, `table.js` seeded saves under the stable keys and routed only by `rules_version`, so every saved dev table failed to reopen with "The saved table could not be loaded." The saves were not changed, and they reopen once the fixed `table.js` is deployed.

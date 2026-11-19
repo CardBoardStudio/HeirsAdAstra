@@ -35,6 +35,8 @@ function createGalacticReach(options = {}) {
   const SAVE_KEY = `${KEY_BASE}-save-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
   const TURN_HISTORY_KEY = `${KEY_BASE}-turn-history-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
   const HISTORY_KEY = `${KEY_BASE}-history-v${SAVE_FORMAT_VERSION}${KEY_SUFFIX}`;
+  // table.js seeds a server save under exactly these keys (createGalacticReach.storageKeys).
+  if (options.storageKeys === true) return {save:SAVE_KEY,turnHistory:TURN_HISTORY_KEY,history:HISTORY_KEY};
   if (CHANNEL && typeof document !== 'undefined') document.querySelectorAll('.rules-badge').forEach(badge => { badge.textContent = CHANNEL.label; });
   const COLONY_LIFE_COST = 3;
   const RESOURCES = ['matter', 'energy', 'biomass', 'data'];
@@ -817,16 +819,24 @@ function createGalacticReach(options = {}) {
     toast(`${snapshot.label} restored.`);
   }
 
+  // A save this engine will not resume is left untouched; the reason goes to the console,
+  // because the page itself only says the save could not be loaded.
+  function rejectSave(reason) {
+    globalThis.console?.warn?.(`Galactic Reach did not load the save at ${SAVE_KEY}: ${reason}`);
+    return false;
+  }
+
   function loadGame() {
     try {
       const raw = storage.getItem(SAVE_KEY);
-      if (!raw) return false;
+      if (!raw) return options.requireSave ? rejectSave('no save under this key') : false;
       const parsed = JSON.parse(raw);
-      if (!parsed || parsed.version !== SAVE_FORMAT_VERSION || parsed.rulesRevision !== RULES_REVISION) return false;
-      if (CHANNEL && parsed.devRules !== RULES_ID) return false;
+      if (!parsed || parsed.version !== SAVE_FORMAT_VERSION || parsed.rulesRevision !== RULES_REVISION)
+        return rejectSave(`it was dealt with rules ${parsed?.version}.${parsed?.rulesRevision}, not ${SAVE_FORMAT_VERSION}.${RULES_REVISION}`);
+      if (CHANNEL && parsed.devRules !== RULES_ID) return rejectSave(`it was dealt with dev rules ${parsed.devRules || '(none)'}, not ${RULES_ID}`);
       // A save from before the tiered market has one market deck; it belongs to the earlier rules.
-      if (!parsed.marketDecks) return false;
-      if (!Array.isArray(parsed.players) || parsed.players.length!==4 || parsed.players.some(p=>!p.resourceLimits || RESOURCES.some(r=>!Number.isSafeInteger(p.resourceLimits[r])||p.resourceLimits[r]<4))) return false;
+      if (!parsed.marketDecks) return rejectSave('it has no tiered market decks');
+      if (!Array.isArray(parsed.players) || parsed.players.length!==4 || parsed.players.some(p=>!p.resourceLimits || RESOURCES.some(r=>!Number.isSafeInteger(p.resourceLimits[r])||p.resourceLimits[r]<4))) return rejectSave('its players or resource limits are malformed');
       state = parsed;
       if (!Number.isInteger(state.capacitySupply)) state.capacitySupply = CAPACITY_SUPPLY;
       state.players.forEach(p => { if (!Array.isArray(p.storage)) p.storage = []; });
@@ -846,7 +856,7 @@ function createGalacticReach(options = {}) {
         saveGame();
       }
       return true;
-    } catch (_) { return false; }
+    } catch (error) { return rejectSave(`it could not be read (${error?.message || error})`); }
   }
 
   function logEvent(text) {
@@ -5838,5 +5848,8 @@ function createGalacticReach(options = {}) {
     if (state.winner === null && state.activePlayer !== ME && state.phase === 'buy') scheduleAiTurn('buy', runAiBuy, 650);
   }
  }
+// The browser storage keys this engine reads and writes on this page (dev pages add their
+// revision, docs/release.md#dev-channel). Builds no game, so it touches no DOM or storage.
+createGalacticReach.storageKeys = () => createGalacticReach({storageKeys:true});
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticReach;
 else if (typeof document !== 'undefined' && !globalThis.drawingBoardTableBoot) createGalacticReach(globalThis.galacticReachTutorial?.engineOptions?.() || {});

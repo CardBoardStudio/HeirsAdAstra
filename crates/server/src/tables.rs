@@ -193,8 +193,17 @@ pub async fn get(
         .transpose()
         .map_err(internal)?
         .unwrap_or_default();
+    // A save dealt on the dev channel plays only on its own dev revision: name the page
+    // that runs it, or null when this server does not keep that engine (table.js).
+    let channel = &app.shared.channel;
+    let dev_rules = save["state"]["devRules"]
+        .as_str()
+        .filter(|r| crate::shared::channel::is_dev_rules(r));
+    let dev_client = dev_rules
+        .filter(|r| channel.engine(r).is_some())
+        .map(|r| channel.client_path(r));
     Ok(Json(
-        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"save":save,"lobby":lobby,"lobby_url":crate::lobby::url(&id),"settings":settings,"shared_url":shared}),
+        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"dev_rules":dev_rules,"dev_client":dev_client,"save":save,"lobby":lobby,"lobby_url":crate::lobby::url(&id),"settings":settings,"shared_url":shared}),
     ))
 }
 #[derive(Deserialize)]
