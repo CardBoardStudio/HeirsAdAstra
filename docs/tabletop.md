@@ -42,3 +42,36 @@ network or visibility changes. No credential is placed in a request URL.
   screenshots. Browser emulation does not certify physical Android or iOS.
 
 Player-facing rules live only in the [canonical rulebook](../prototypes/galactic-reach/rulebook.html#public-board).
+
+## Guest phone pairing
+
+In an account-owned waiting room, **Pair phones / public tablet** opens the host
+setup page. The host's phone uses the host's existing player seat. Guests scan a
+room QR or follow its link, choose a local name and request approval. Match the
+six-character pairing code before approving. QR encoding uses the local
+[`qrcode` SVG renderer](https://docs.rs/qrcode/0.14.1/qrcode/render/svg/); no
+external QR service sees the link. The text link is the manual fallback.
+
+A guest has an internal participant row without a login credential. Its pending
+cookie gains the player role only after host approval. It cannot authenticate to
+ordinary account, shared, admin or arena endpoints. The host can replace a lost
+phone's grant, invalidating every old grant for that participant while preserving
+the seat. Guests cannot approve themselves or another phone. Pending requests
+are bounded; room invitations expire after 24 hours and rotate when reissued.
+
+Starting a paired table requires two to four humans. A transaction freezes the
+approved roster and random seat assignment before the engine starts. Retries
+use that saved deal. An approval racing Start either enters the frozen roster or
+is refused; an unapproved phone cannot join a game already in progress. Existing
+account-only waiting rooms retain their existing start path.
+
+Player commands and streams resolve the participant from the cookie, not from a
+submitted seat number. The game bundle is served beneath the table cookie path,
+with role validation on every asset and the table's pinned engine. The ordinary
+`/galactic-reach/` access gate stays intact. The independent ZK Testnet demo does
+not load in guest play. `shared.js` handles either account or scoped phone APIs.
+
+`TABLETOP_ORIGIN=http://127.0.0.1:PORT node scripts/check-tabletop-flow.cjs`
+exercises the real local DEV_AUTH server: scan/link entry, request, approval,
+private game loading, phone/tablet viewports, reload and a separate public board.
+Run the web build and server first. The test rejects non-loopback targets.

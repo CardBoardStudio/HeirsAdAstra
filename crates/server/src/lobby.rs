@@ -358,6 +358,13 @@ pub async fn start(
     Path(id): Path<String>,
 ) -> ApiResult<Json<serde_json::Value>> {
     let u = user(&app, &headers)?;
+    let paired = {
+        let db = app.store.0.lock().map_err(internal)?;
+        crate::tabletop::enabled(&db, &id)?
+    };
+    if paired {
+        return crate::tabletop::start_paired(State(app), headers, Path(id)).await;
+    }
     let lobby = {
         let db = app.store.0.lock().map_err(internal)?;
         host_lobby(&db, &id, &u.id)?

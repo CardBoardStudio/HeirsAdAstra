@@ -1,10 +1,12 @@
 //! Table-scoped device capabilities. These never create ordinary account sessions
 //! or change membership. A host delegates only the role named by the capability.
+mod phones;
 use crate::*;
 use axum::response::{
     Html,
     sse::{Event, KeepAlive, Sse},
 };
+pub use phones::*;
 use rusqlite::{Connection, OptionalExtension, params};
 use serde_json::Value;
 
@@ -17,8 +19,10 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
         token_hash TEXT PRIMARY KEY, table_id TEXT NOT NULL, role TEXT NOT NULL,
         participant TEXT, kind TEXT NOT NULL, expires INTEGER NOT NULL);
         CREATE INDEX IF NOT EXISTS tabletop_grants_table ON tabletop_grants(table_id,role);",
-    )
+    )?;
+    phones::migrate(db)
 }
+
 fn token() -> String {
     let mut bytes = [0u8; 32];
     rand::rngs::OsRng.fill_bytes(&mut bytes);
@@ -77,17 +81,34 @@ fn principal(app: &App, headers: &HeaderMap, id: &str, role: &str) -> ApiResult<
 pub fn delegated_path(path: &str) -> bool {
     if matches!(
         path,
-        "/tabletop/board.html" | "/tabletop/board.js" | "/tabletop/board.css"
+        "/tabletop/board.html"
+            | "/tabletop/board.js"
+            | "/tabletop/board.css"
+            | "/tabletop/phone.html"
+            | "/tabletop/pairing.js"
     ) {
         return true;
     }
     let parts: Vec<_> = path.split('/').collect();
-    parts.len() == 5
-        && parts[1] == "api"
-        && parts[2] == "tabletop"
-        && valid_id(parts[3])
-        && matches!(parts[4], "redeem" | "board" | "stream")
+    if parts.len() < 5 || parts[1] != "api" || parts[2] != "tabletop" || !valid_id(parts[3]) {
+        return false;
+    }
+    (parts.len() == 5
+        && matches!(
+            parts[4],
+            "redeem"
+                | "board"
+                | "stream"
+                | "join"
+                | "seat"
+                | "act"
+                | "undo"
+                | "report"
+                | "player-stream"
+        ))
+        || (parts.len() >= 6 && parts[4] == "client")
 }
+
 pub async fn issue_board(
     State(app): State<App>,
     headers: HeaderMap,
@@ -513,3 +534,7 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+#[path = "tabletop/pairing_tests.rs"]
+mod pairing_tests;
