@@ -18,8 +18,8 @@ function createGalacticReach(options = {}) {
   }
   const clearTimeout = headless ? () => {} : globalThis.clearTimeout.bind(globalThis);
 
-  const SAVE_FORMAT_VERSION = 37;
-  const RULES_REVISION = 42;
+  const SAVE_FORMAT_VERSION = 38;
+  const RULES_REVISION = 43;
   // A dev build of main names its own rules in channel.js (docs/release.md#dev-channel).
   // Its saves get their own keys and are stamped with those rules, so a later dev
   // revision never reads them. Headless engines and released pages have no channel.
