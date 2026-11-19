@@ -821,6 +821,7 @@ pub struct Service {
     /// old process keeps serving a frozen copy of every table.)
     closing: tokio::sync::watch::Sender<bool>,
     ai_running: Mutex<HashSet<String>>,
+    board_focus: Mutex<HashMap<String, (std::time::Instant, u64, Value)>>,
     /// The rules this server deals and the engines it keeps (channel.rs).
     pub channel: Arc<Channel>,
     /// Tests only: see [`Service::start_seeded`].
@@ -889,10 +890,40 @@ impl Service {
             ping_ms: (PING_EVERY.as_millis() as u64).into(),
             closing: tokio::sync::watch::channel(false).0,
             ai_running: Mutex::new(HashSet::new()),
+            board_focus: Mutex::new(HashMap::new()),
             channel,
             #[cfg(test)]
             seed: None,
         })
+    }
+    /// Bounded, short-lived presentation hints; never part of the game log/save.
+    pub fn suggest_sector(&self, id: &str, seq: u64, coord: &str) -> Result<(), Refusal> {
+        let mut focus = self.board_focus.lock().map_err(broken)?;
+        focus.retain(|_, (at, _, _)| at.elapsed() < Duration::from_secs(120));
+        if focus.len() >= 256 && !focus.contains_key(id) {
+            return Err(Refusal::Bad(
+                "Too many board suggestions; try again shortly.".into(),
+            ));
+        }
+        focus.insert(
+            id.into(),
+            (
+                std::time::Instant::now(),
+                seq,
+                json!({"coord":coord,"nonce":uuid::Uuid::new_v4().simple().to_string()}),
+            ),
+        );
+        drop(focus);
+        let _ = self.changes.send((id.into(), seq));
+        Ok(())
+    }
+    pub fn sector_suggestion(&self, id: &str, seq: u64) -> Option<Value> {
+        self.board_focus
+            .lock()
+            .ok()?
+            .get(id)
+            .filter(|(at, head, _)| *head == seq && at.elapsed() < Duration::from_secs(120))
+            .map(|(_, _, v)| v.clone())
     }
     /// Ends every live stream (server shutdown).
     pub fn close(&self) {

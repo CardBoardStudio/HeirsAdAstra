@@ -607,6 +607,7 @@ fn router(app: App) -> Router {
         .route("/api/tabletop/{id}/board-revoke", post(tabletop::revoke_board))
         .route("/api/tabletop/{id}/redeem", post(tabletop::redeem))
         .route("/api/tabletop/{id}/board", get(tabletop::board))
+        .route("/api/tabletop/{id}/focus", post(tabletop::focus))
         .route("/api/tabletop/{id}/stream", get(tabletop::stream))
         .route("/api/shared", get(shared::list))
         .route("/api/shared/{id}", get(shared::view))

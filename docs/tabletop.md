@@ -75,3 +75,23 @@ not load in guest play. `shared.js` handles either account or scoped phone APIs.
 exercises the real local DEV_AUTH server: scan/link entry, request, approval,
 private game loading, phone/tablet viewports, reload and a separate public board.
 Run the web build and server first. The test rejects non-loopback targets.
+
+## Private interaction
+
+The scoped phone UI wraps outgoing choices in a local confirmation dialog. It
+captures the current authority sequence, sends nothing while previewing, and
+disables Confirm if a newer position arrives. Confirmation sends the original
+choice at the current sequence; the existing authority still validates legality.
+Off-turn resource conversion remains legal and uses the same confirmation.
+
+The private reminder stores a card and sector only in the current page. It
+survives live updates but never executes, schedules a command, or sends the plan
+to another device. A reminder whose card left the hand says so. Map actions reuse
+the existing engine controls; disabled costs name the missing resources.
+
+A tablet tap can send only a coordinate and observed sequence. The server checks
+the map boundary and board role, keeps at most 256 ephemeral suggestions for two
+minutes, and discards a suggestion when the game sequence changes. Only the
+acting phone receives it. Inspection never invokes the engine's action-taking
+map click path, and an existing private selection is left for the player to
+finish or cancel. Suggestions are absent from saves, hashes and game reports.

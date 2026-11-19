@@ -98,6 +98,7 @@ pub fn delegated_path(path: &str) -> bool {
             parts[4],
             "redeem"
                 | "board"
+                | "focus"
                 | "stream"
                 | "join"
                 | "seat"
@@ -538,3 +539,44 @@ mod tests {
 #[cfg(test)]
 #[path = "tabletop/pairing_tests.rs"]
 mod pairing_tests;
+
+#[derive(Deserialize)]
+pub struct Focus {
+    seq: u64,
+    coord: String,
+}
+pub async fn focus(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(input): Json<Focus>,
+) -> ApiResult<Json<Value>> {
+    principal(&app, &headers, &id, "board")?;
+    let view = app.shared.public_view(&id).await?;
+    if view["seq"].as_u64() != Some(input.seq) {
+        return Err(ApiError(
+            StatusCode::CONFLICT,
+            "The board changed. Tap the sector again.".into(),
+        ));
+    }
+    let radius = view["state"]["boardRadius"]
+        .as_i64()
+        .ok_or_else(|| bad("The board has no map."))?;
+    let coords: Vec<i64> = input
+        .coord
+        .split(',')
+        .map(|n| n.parse())
+        .collect::<Result<_, _>>()
+        .map_err(|_| bad("Choose a valid sector."))?;
+    if input.coord.len() > 8
+        || coords.len() != 2
+        || coords[0].abs() > radius
+        || coords[1].abs() > radius
+        || (coords[0] + coords[1]).abs() > radius
+    {
+        return Err(bad("Choose a sector on this board."));
+    }
+    app.shared
+        .suggest_sector(&id, input.seq, &format!("{},{}", coords[0], coords[1]))?;
+    Ok(Json(json!({"ok":true})))
+}

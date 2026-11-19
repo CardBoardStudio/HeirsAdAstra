@@ -14,7 +14,7 @@
     if(!response.ok)throw Object.assign(new Error(result.error||'Cannot reach the table. Reconnecting…'),{status:response.status});
     return result;
   }
-  function inspect(coord) {
+  function inspect(coord, suggest=false) {
     selected=coord;nodes.forEach((node,key)=>node.classList.toggle('selected',key===coord));
     const state=current.state,p=state.planets[coord];
     $('sector-title').textContent=p?.name||`Space ${coord}`;
@@ -27,6 +27,7 @@
     }
     if(state.portalLinks[coord])text.push(`Portal to ${state.portalLinks[coord]} · 2 movement`);
     $('sector').textContent=text.join('. ');
+    if(suggest)api('focus',{seq:current.seq,coord}).catch(error=>{status.textContent=error.message;});
   }
   function buildMap(radius) {
     const x=radius*32+20,y=radius*27.713+20;$('map').setAttribute('viewBox',`${-x} ${-y} ${x*2} ${y*2}`);
@@ -35,7 +36,7 @@
       g.setAttribute('transform',`translate(${(q+r/2)*32},${r*27.713})`);g.classList.add('hex');
       g.dataset.coord=key;g.setAttribute('role','button');g.setAttribute('tabindex','0');
       hex.setAttribute('points',Array.from({length:6},(_,i)=>{const a=(i*60-30)*Math.PI/180;return `${Math.cos(a)*18},${Math.sin(a)*18}`;}).join(' '));
-      g.append(hex);g.addEventListener('click',()=>inspect(key));g.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();inspect(key);}});
+      g.append(hex);g.addEventListener('click',()=>inspect(key,true));g.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();inspect(key,true);}});
       $('map').append(g);nodes.set(key,g);
     }
   }

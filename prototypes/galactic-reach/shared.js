@@ -34,7 +34,7 @@
     const seatList = bar.querySelector('#shared-seats');
     const undoNote = bar.querySelector('#shared-undo-note');
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    let current = null, game = null, busy = false, stream = null;
+    let current = null, game = null, controls = null, busy = false, stream = null;
     async function api(path, body) {
       const response = await fetch(path, {method: body === undefined ? 'GET' : 'POST', credentials: 'same-origin',
         headers: body === undefined ? {} : {'Content-Type': 'application/json', 'x-drawing-board': '1'},
@@ -61,9 +61,10 @@
       current = view;
       describe(view);
       game?.sync(view);
+      controls?.update(view);
     }
     async function refresh() { adopt(await api(endpoint(''))); }
-    function act(intents) {
+    function send(intents) {
       if (busy || !current) { status.textContent = 'Still sending your last choice…'; return false; }
       busy = true;
       status.textContent = 'Sending…';
@@ -159,10 +160,13 @@
       bar.querySelector('#saved-table-name').textContent = view.name;
       bar.querySelector('#table-rules').textContent = `Rules ${view.rules_version.split('/')[1]} · shared`;
       describe(view);
+      if (tabletop) controls = globalThis.createTabletopControls({bar, status, current:()=>current, game:()=>game, send, busy:()=>busy});
       game = globalThis.createGalacticReach({
-        network: {seat: view.seat, rules: view.rules_version, initial: view, act, undo, busy: () => busy, report},
-        paused: () => busy, newTable: leave
+        network: {tabletop, seat: view.seat, rules: view.rules_version, initial: view,
+          act: intents=>controls?controls.preview(intents):send(intents), undo, busy: () => busy || !!controls?.pending(), report},
+        paused: () => busy || !!controls?.pending(), newTable: leave
       });
+      controls?.update(view);
       if (tabletop) { bar.querySelector('a').textContent='Phone pairing'; bar.querySelector('a').href=`/tabletop/phone.html?table=${id}`; }
       const library = document.querySelector('.header-actions a');
       if (library) { library.textContent = tabletop ? 'Phone pairing' : 'Your tables'; library.href = tabletop ? `/tabletop/phone.html?table=${id}` : '/?game=galactic-reach#tables'; }
