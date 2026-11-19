@@ -1,7 +1,7 @@
 // Keeps the repository small after the history rewrite (docs/history-slim.md):
 // a PR may not add study output, screenshots or other large binaries, and may
-// not bring the pre-rewrite history back. Study data lives in
-// CardBoardStudio/galactic-reach-studies instead.
+// not bring the pre-rewrite history back. Retain study data in persistent storage;
+// external archive publication is a separate step (docs/history-slim.md).
 //   node scripts/check-large-files.cjs <base>   # base defaults to the PR's base sha
 const { execFileSync } = require('node:child_process');
 const fs = require('node:fs');
@@ -20,8 +20,8 @@ function checkFiles(files) {
   const errors = [];
   for (const { path, size } of files) {
     if (ALLOW.some(pattern => pattern.test(path))) continue;
-    if (MOVED_OUT.test(path)) errors.push(`${path}: study data and screenshots live in CardBoardStudio/galactic-reach-studies, not this repository.`);
-    else if (STUDY_OUTPUT.test(path)) errors.push(`${path}: study output and archives belong in CardBoardStudio/galactic-reach-studies or a release asset.`);
+    if (MOVED_OUT.test(path)) errors.push(`${path}: study data and screenshots belong in persistent storage outside the source tree; see docs/history-slim.md.`);
+    else if (STUDY_OUTPUT.test(path)) errors.push(`${path}: study output and archives belong in persistent storage or a verified archive; see docs/history-slim.md.`);
     else if (MEDIA.test(path) && size > MEDIA_LIMIT) errors.push(`${path}: ${kib(size)} image or media file is over ${kib(MEDIA_LIMIT)}; compress it or link it from the studies repository.`);
     else if (size > TEXT_LIMIT) errors.push(`${path}: ${kib(size)} is over ${kib(TEXT_LIMIT)}.`);
   }

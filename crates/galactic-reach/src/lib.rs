@@ -294,6 +294,13 @@ impl GalacticReach {
     pub fn private_state(&self, seat: usize) -> Result<Value, String> {
         self.eval_json(&format!("JSON.stringify(game.privateState({seat}))"))
     }
+    /// Public tablet projection, with no player seat or hidden cards. Older
+    /// pinned engines do not acquire new display semantics implicitly.
+    pub fn public_state(&self) -> Result<Value, String> {
+        self.eval_json(
+            "JSON.stringify(typeof game.publicState === 'function' ? game.publicState() : null)",
+        )
+    }
     /// The whole position, secrets included, for [`Self::shared_on`], as the
     /// engine's JSON text (keep it as text: object key order matters to the rules).
     pub fn snapshot(&self) -> Result<String, String> {
@@ -523,6 +530,7 @@ impl GameAdapter for GalacticReach {
 pub enum Strategy {
     Military,
     Economy,
+    Market,
     Expansion,
     Wanderer,
 }
@@ -531,6 +539,7 @@ impl Strategy {
         match self {
             Self::Military => "gr-military/29",
             Self::Economy => "gr-economy/29",
+            Self::Market => "gr-market/29",
             Self::Expansion => "gr-expansion/29",
             Self::Wanderer => "gr-wanderer/29",
         }
@@ -539,6 +548,7 @@ impl Strategy {
         match version {
             "gr-military/29" => Some(Self::Military),
             "gr-economy/29" => Some(Self::Economy),
+            "gr-market/29" => Some(Self::Market),
             "gr-expansion/29" => Some(Self::Expansion),
             "gr-wanderer/29" => Some(Self::Wanderer),
             _ => None,
@@ -621,7 +631,10 @@ fn bot_units(view: &Value, seat: usize, kind: &str) -> f64 {
 /// Data, printed Prestige (reusable Prestige weighted x3) and whether it joins the
 /// military deck. Policy 26 meets these keys only in 31.36 games, so its play under
 /// earlier rules is unchanged.
-const CAPACITY_CARDS: [(&str, [f64; 4], f64, bool); 39] = [
+const CAPACITY_CARDS: [(&str, [f64; 4], f64, bool); 42] = [
+    ("exchangeProtocol", [0.0, 2.0, 0.0, 1.0], 0.0, false),
+    ("barterNetwork", [0.0, 0.0, 1.0, 2.0], 0.0, false),
+    ("clearingHouse", [1.0, 0.0, 0.0, 2.0], 0.0, false),
     ("signalRelay", [0.0, 2.0, 0.0, 1.0], 0.0, false),
     ("surveyNetwork", [0.0, 0.0, 1.0, 2.0], 0.0, false),
     ("tacticalBriefing", [1.0, 0.0, 0.0, 2.0], 0.0, false),
@@ -676,6 +689,152 @@ const CAPACITY_TACTICS: [(&str, f64, f64, bool); 10] = [
     ("victoryDoctrine", 2.0, 0.0, false),
 ];
 const RESOURCE_KEYS: [&str; 4] = ["matter", "energy", "biomass", "data"];
+fn bank_rate(view: &Value, seat: usize, resource: &str) -> f64 {
+    if view["players"][seat]["bankTradeRates"][resource] == 2 {
+        2.0
+    } else {
+        4.0
+    }
+}
+/// Fund one concrete, currently reachable goal. Never borrow production or fill reserves alone.
+fn goal_trade_plan(view: &Value, seat: usize) -> Value {
+    let me = &view["players"][seat];
+    let Some(goals) = view["tradeGoals"].as_array() else {
+        return Value::Null;
+    };
+    let stock: [f64; 4] = std::array::from_fn(|i| number(&me["resources"][RESOURCE_KEYS[i]]));
+    let limits: [f64; 4] = std::array::from_fn(|i| bot_limit(view, seat, RESOURCE_KEYS[i]));
+    let rates: [f64; 4] = std::array::from_fn(|i| bank_rate(view, seat, RESOURCE_KEYS[i]));
+    let income = bot_income(view, seat);
+    let can_enable = view["phase"] == "operations"
+        && me["passed"] != true
+        && me["hand"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .any(|c| view["cardStats"][c["key"].as_str().unwrap_or("")]["bankRate"] == 2);
+    let mut best = Value::Null;
+    let mut best_score = f64::NEG_INFINITY;
+    for goal in goals {
+        let mut priority = number(&goal["priority"]);
+        let mut cost: [f64; 4] = std::array::from_fn(|i| number(&goal["cost"][RESOURCE_KEYS[i]]));
+        let mut keep: [f64; 4] = std::array::from_fn(|i| number(&goal["keep"][RESOURCE_KEYS[i]]));
+        if goal["kind"] == "market" {
+            let key = goal["key"].as_str().unwrap_or("");
+            let Some(value) = capacity_value(view, seat, key) else {
+                continue;
+            };
+            if value < 18.0 {
+                continue;
+            }
+            let Some(bill) = observed_payment_cost(view, key) else {
+                continue;
+            };
+            cost = bill;
+            keep = planning_protection(view, seat);
+            priority = 70.0
+                + value.min(60.0) * 0.25
+                + observed_buy_prestige(view, key).unwrap_or(0.0) * 4.0;
+        }
+        let budget: [f64; 4] = std::array::from_fn(|i| {
+            cost[i]
+                + if cost[i] > 0.0 {
+                    keep[i]
+                } else {
+                    keep[i].min(stock[i])
+                }
+        });
+        if (0..4).any(|i| budget[i] > limits[i]) {
+            continue;
+        }
+        let enables =
+            std::iter::once(None).chain((0..4).filter(|i| can_enable && rates[*i] > 2.0).map(Some));
+        for enable in enables {
+            let mut funds = stock;
+            let mut trial = rates;
+            if let Some(i) = enable {
+                trial[i] = 2.0;
+            }
+            let mut steps = Vec::new();
+            let mut loss = 0.0;
+            for get in 0..4 {
+                while funds[get] < budget[get] {
+                    let give = (0..4)
+                        .filter(|i| *i != get && funds[*i] - budget[*i] >= trial[*i])
+                        .min_by(|a, b| {
+                            let overflow = |i: usize| {
+                                (funds[i] + number(&income[RESOURCE_KEYS[i]]) - limits[i]).max(0.0)
+                            };
+                            trial[*a]
+                                .total_cmp(&trial[*b])
+                                .then_with(|| overflow(*b).total_cmp(&overflow(*a)))
+                                .then_with(|| {
+                                    (funds[*b] - budget[*b]).total_cmp(&(funds[*a] - budget[*a]))
+                                })
+                                .then_with(|| a.cmp(b))
+                        });
+                    let Some(give) = give else {
+                        break;
+                    };
+                    funds[give] -= trial[give];
+                    funds[get] += 1.0;
+                    loss += trial[give] - 1.0;
+                    steps
+                        .push(json!({"giveType":RESOURCE_KEYS[give],"getType":RESOURCE_KEYS[get]}));
+                }
+            }
+            if (0..4).any(|i| funds[i] < budget[i])
+                || enable.is_some_and(|i| !steps.iter().any(|s| s["giveType"] == RESOURCE_KEYS[i]))
+            {
+                continue;
+            }
+            let score = priority
+                - loss * 1.5
+                - steps.len() as f64 * 2.0
+                - if enable.is_some() { 3.0 } else { 0.0 };
+            if score > best_score {
+                best_score = score;
+                best = json!({"goal":goal,"priority":priority,"score":score,"enable":enable.map(|i|RESOURCE_KEYS[i]),"steps":steps});
+            }
+        }
+    }
+    best
+}
+
+/// Current stock only: improve a rate when a useful trade can follow immediately.
+fn exchange_surplus(view: &Value, seat: usize, resource: &str) -> f64 {
+    if bank_rate(view, seat, resource) <= 2.0 {
+        return 0.0;
+    }
+    let i = RESOURCE_KEYS.iter().position(|r| *r == resource).unwrap();
+    if view["cardPurchasePlanning"] != true {
+        return (number(&view["players"][seat]["resources"][resource])
+            - planning_protection(view, seat)[i])
+            .max(0.0)
+            + number(&bot_income(view, seat)[resource]);
+    }
+    let goal = bot_storage_reserve(view, seat);
+    let me = &view["players"][seat];
+    if RESOURCE_KEYS.iter().any(|give| {
+        bank_rate(view, seat, give) == 2.0
+            && number(&me["resources"][*give]) - number(&goal[*give]) >= 2.0
+            && RESOURCE_KEYS.iter().any(|get| {
+                get != give
+                    && number(&me["resources"][*get])
+                        < number(&goal[*get]).min(bot_limit(view, seat, get))
+            })
+    }) {
+        return 0.0;
+    }
+    let deficit = RESOURCE_KEYS.iter().any(|get| {
+        *get != resource
+            && number(&me["resources"][*get]) < number(&goal[*get]).min(bot_limit(view, seat, get))
+    });
+    if !deficit {
+        return 0.0;
+    }
+    (number(&me["resources"][resource]) - number(&goal[resource])).max(0.0)
+}
 fn capacity_card(key: &str) -> Option<([f64; 4], f64, bool)> {
     CAPACITY_CARDS
         .iter()
@@ -718,6 +877,20 @@ fn observed_cost(view: &Value, key: &str) -> Option<[f64; 4]> {
         number(&costs[index][RESOURCE_KEYS[i]])
     }))
 }
+fn observed_payment_cost(view: &Value, key: &str) -> Option<[f64; 4]> {
+    if view["investmentPlanning"] == true
+        && let Some(index) = view["market"]
+            .as_array()?
+            .iter()
+            .position(|c| c["key"] == key)
+        && let Some(cost) = view["marketPaymentCosts"]
+            .as_array()
+            .and_then(|costs| costs.get(index))
+    {
+        return Some(std::array::from_fn(|i| number(&cost[RESOURCE_KEYS[i]])));
+    }
+    observed_cost(view, key)
+}
 /// Prestige a market card gives when bought, as printed in the observation (34.39
 /// `marketPrestige`, e.g. Dyson Lattice 5); `None` for earlier rules or other cards.
 fn observed_buy_prestige(view: &Value, key: &str) -> Option<f64> {
@@ -726,12 +899,91 @@ fn observed_buy_prestige(view: &Value, key: &str) -> Option<f64> {
     let prestige = number(&view["marketPrestige"].as_array()?[index]);
     (prestige > 0.0).then_some(prestige)
 }
+fn market_combat_opportunity(view: &Value, seat: usize) -> bool {
+    let mut own_fleets = Vec::new();
+    let mut enemy_fleets = Vec::new();
+    let mut own_yards = Vec::new();
+    let mut enemy_yards = Vec::new();
+    for (at, group) in view["fleets"].as_object().into_iter().flatten() {
+        if number(&group[seat.to_string()]["fleet"]) > 0.0 {
+            own_fleets.push(at.as_str());
+        }
+        if group
+            .as_object()
+            .into_iter()
+            .flatten()
+            .any(|(id, f)| *id != seat.to_string() && number(&f["fleet"]) > 0.0)
+        {
+            enemy_fleets.push(at.as_str());
+        }
+    }
+    for (at, p) in view["planets"].as_object().into_iter().flatten() {
+        if p["upgrade"] != "starbase" {
+            continue;
+        }
+        if p["owner"] == json!(seat) {
+            own_yards.push(at.as_str());
+        } else if p["owner"].as_u64().is_some_and(|id| id as usize != seat) {
+            enemy_yards.push(at.as_str());
+        }
+    }
+    own_fleets.iter().any(|a| {
+        enemy_fleets
+            .iter()
+            .chain(&enemy_yards)
+            .any(|b| travel_distance(view, a, b) <= 3.0)
+    }) || own_yards.iter().any(|a| {
+        enemy_fleets
+            .iter()
+            .any(|b| travel_distance(view, a, b) <= 3.0)
+    })
+}
+fn public_colony_opportunity(view: &Value, seat: usize) -> bool {
+    view["clusters"].as_array().into_iter().flatten().any(|c| {
+        let Some(center) = c["center"].as_str() else {
+            return false;
+        };
+        let planet = &view["planets"][center];
+        c["kind"] == "world"
+            && planet.is_object()
+            && planet["owner"] != json!(seat)
+            && (planet["owner"].is_null()
+                || view["captureNeedsFleet"] != true
+                || bot_units(view, seat, "fleet") > 0.0)
+    })
+}
 fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
+    if view["excludedMarketCards"]
+        .as_array()
+        .is_some_and(|cards| cards.iter().any(|c| c == key))
+    {
+        return None;
+    }
     let (table_cost, table_prestige, military) = capacity_card(key)?;
-    let cost = observed_cost(view, key).unwrap_or(table_cost);
     let prestige = observed_buy_prestige(view, key).unwrap_or(table_prestige);
+    let immediate_prestige = if view["cardStats"][key].is_object() {
+        number(&view["cardStats"][key]["gainPrestige"])
+    } else if military {
+        0.0
+    } else {
+        prestige
+    };
+    match view["marketPurchasePolicy"].as_str().unwrap_or("normal") {
+        "none" => return None,
+        "points-only" if immediate_prestige <= 0.0 => return None,
+        _ => {}
+    }
+    let cost = observed_cost(view, key).unwrap_or(table_cost);
     let me = &view["players"][seat];
     if military && bot_units(view, seat, "fleet") == 0.0 {
+        return None;
+    }
+    if military
+        && view["investmentPlanning"] == true
+        && view["_rival_market_focus"] == true
+        && view["marketOpportunityFilter"] != false
+        && view["_rival_market_combat_opportunity"] != true
+    {
         return None;
     }
     let owned = ["hand", "discard", "inPlay", "military"]
@@ -763,9 +1015,76 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
     let horizon = ((view["victoryTarget"].as_f64().unwrap_or(40.0) - leader) / 5.0)
         .ceil()
         .clamp(1.0, 5.0);
-    let draw = number(&stats["draw"]);
+    let fallback_draw = number(&stats["fallbackDraw"]);
+    let draw = number(&stats["draw"]).max(fallback_draw);
+    let acquisition = if view["cardPurchasePlanning"] == true {
+        ((horizon - (number(&me["deckCount"]) / 5.0).ceil()).max(0.0) / horizon).min(1.0)
+    } else {
+        1.0
+    };
+    let draw_value = acquisition * draw * (7.0 + size.min(18.0) * 0.25) * (horizon / 2.0).min(1.0);
     let mut value = 6.0 + prestige * 9.0 + number(&stats["prestige"]) * horizon.min(4.0) * 8.0;
-    value += draw * (7.0 + size.min(18.0) * 0.25) * (horizon / 2.0).min(1.0);
+    value += draw_value;
+    if stats["bankRate"] == 2 {
+        let income = bot_income(view, seat);
+        let exchanges = RESOURCE_KEYS
+            .iter()
+            .map(|r| {
+                if view["cardPurchasePlanning"] == true {
+                    let future = (number(&me["resources"][*r]) + number(&income[*r]) * 2.0)
+                        .min(bot_limit(view, seat, r));
+                    let missing = RESOURCE_KEYS.iter().any(|get| {
+                        get != r
+                            && number(&me["resources"][*get]) + number(&income[*get]) * 2.0
+                                < bot_limit(view, seat, get)
+                    });
+                    if missing {
+                        ((future - 2.0).max(0.0) / 2.0).min(3.0)
+                    } else {
+                        0.0
+                    }
+                } else {
+                    ((number(&me["resources"][*r]) + number(&income[*r]) * 2.0) / 2.0)
+                        .clamp(0.0, 3.0)
+                }
+            })
+            .fold(0.0, f64::max);
+        let family: f64 = ["hand", "discard", "inPlay", "deckContents"]
+            .iter()
+            .flat_map(|pile| me[*pile].as_array().into_iter().flatten())
+            .filter(|c| view["cardStats"][c["key"].as_str().unwrap_or("")]["bankRate"] == 2)
+            .map(|c| c["count"].as_f64().unwrap_or(1.0))
+            .sum();
+        value += exchanges * 4.0 * (horizon * 5.0 / size.max(5.0)).min(3.0) - family * 10.0;
+    }
+    // Research only: printed one-less-of-each coupons need a later purchase to pay off.
+    // Face-up prices bound possible savings; this is not a promise of future spending.
+    if view["investmentPlanning"] == true
+        && (view["buyDiscountPlanning"] == true || view["cardPurchasePlanning"] == true)
+        && horizon > 1.0
+        && matches!(
+            stats["buyEffect"].as_str(),
+            Some("hubDiscount" | "discountEach")
+        )
+    {
+        let saving = view["market"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|card| card["key"].as_str())
+            .filter(|other| {
+                view["cardStats"][*other].is_object()
+                    && view["cardStats"][*other]["buyEffect"].as_str().is_none()
+                    && !view["excludedMarketCards"]
+                        .as_array()
+                        .is_some_and(|cards| cards.iter().any(|c| c == *other))
+            })
+            .filter_map(|other| observed_cost(view, other))
+            .map(|cost| cost.iter().filter(|n| **n > 0.0).count() as f64)
+            .fold(0.0_f64, f64::max);
+        let uses = ((horizon - 1.0) * 5.0 / size.max(5.0)).min(3.0);
+        value += saving * uses * 2.0;
+    }
     if military {
         let power = |s: &Value| {
             number(&s["attack"])
@@ -785,6 +1104,15 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
         if tactics.len() >= 3 && improvement <= 0.0 {
             value -= 18.0;
         }
+        // Like other engine investments, a tactic needs an opportunity to pay off.
+        if view["cardPurchasePlanning"] == true && !market_combat_opportunity(view, seat) {
+            value *= 0.35;
+        }
+        if (view["militaryHorizon"] == true || view["cardPurchasePlanning"] == true)
+            && horizon == 1.0
+        {
+            value -= 15.0;
+        }
     } else {
         value -= owned * if draw >= 2.0 { 9.0 } else { 12.0 };
         match stats["order"].as_str().unwrap_or("") {
@@ -803,13 +1131,71 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
                 }
             }
             "colonize" => {
-                value += if bot_units(view, seat, "settler") > 0.0 {
+                let printed = (view["colonyPlanning"] == true
+                    || view["cardPurchasePlanning"] == true)
+                    && view["investmentPlanning"] == true;
+                let useful = bot_units(view, seat, "settler") > 0.0
+                    && (!printed || public_colony_opportunity(view, seat));
+                let mut colony_value = if useful {
                     (16.0 - bot_cards(me, "colonize") * 8.0).max(0.0)
                 } else {
                     -15.0
+                };
+                if printed && useful {
+                    let uses = (horizon * 5.0 / size.max(5.0)).min(3.0);
+                    colony_value +=
+                        ((if stats["keepSettler"] == true {
+                            6.0
+                        } else {
+                            0.0
+                        }) + (2.0 - stats["colonyCost"].as_f64().unwrap_or(2.0)).max(0.0) * 2.0
+                            + number(&stats["colonyPrestige"]) * 6.0)
+                            * uses;
                 }
+                value += if fallback_draw > 0.0 {
+                    (colony_value - draw_value).max(0.0)
+                } else {
+                    colony_value
+                };
             }
             _ => {}
+        }
+        if (view["orderBenefitPlanning"] == true || view["cardPurchasePlanning"] == true)
+            && view["investmentPlanning"] == true
+        {
+            let uses = (horizon * 5.0 / size.max(5.0)).min(3.0);
+            match stats["order"].as_str().unwrap_or("") {
+                "move" => {
+                    let ships = ["settler", "explorer", "fleet"]
+                        .iter()
+                        .any(|k| bot_units(view, seat, k) > 0.0);
+                    if ships {
+                        value += number(&stats["range"]) * 2.0;
+                    } else {
+                        value -= if bot_cards(me, "move") < 4.0 {
+                            12.0
+                        } else {
+                            3.0
+                        };
+                    }
+                }
+                "construct" => {
+                    if let Some(discount) = stats["buildDiscount"].as_str() {
+                        value += (if view["cardPurchasePlanning"] == true {
+                            if discount == "free" { 8.0 } else { 6.0 }
+                        } else if discount == "free" {
+                            2.5
+                        } else {
+                            2.0
+                        }) * uses
+                            * acquisition;
+                        if stats["secondBuild"] == true {
+                            value += 3.0;
+                        }
+                    }
+                }
+                _ => {}
+            }
         }
         value += stats["limits"]
             .as_object()
@@ -824,6 +1210,25 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
             value -= 15.0;
         }
     }
+    if view["cardPurchasePlanning"] == true && !military {
+        let pressure = bot_income(view, seat);
+        value += stats["limits"]
+            .as_object()
+            .into_iter()
+            .flat_map(|m| m.iter())
+            .map(|(r, n)| {
+                number(n).min(
+                    (number(&me["resources"][r]) + number(&pressure[r]) * horizon
+                        - bot_limit(view, seat, r))
+                    .max(0.0),
+                ) * 2.0
+            })
+            .sum::<f64>()
+            * acquisition;
+        if stats["trashSelf"] == true {
+            value += 4.0 * acquisition;
+        }
+    }
     let income = bot_income(view, seat);
     value -= cost
         .iter()
@@ -835,20 +1240,65 @@ fn capacity_value(view: &Value, seat: usize, key: &str) -> Option<f64> {
         .sum::<f64>();
     Some(value)
 }
-/// The resource limits a rival still needs for its best-valued market card.
-fn capacity_need(view: &Value, seat: usize) -> Option<[f64; 4]> {
-    let target = view["market"]
+/// Market funding goal: the printed bill, optionally together with the same
+/// protected payment checked by the buyer. Kept funds are not part of the price.
+fn market_target_cost(view: &Value, seat: usize) -> Option<[f64; 4]> {
+    let protection = (view["investmentPlanning"] == true && view["protectedMarketBudget"] == true)
+        .then(|| planning_protection(view, seat));
+    view["market"]
         .as_array()?
         .iter()
-        .filter_map(|c| {
-            let key = c["key"].as_str()?;
-            Some((
-                capacity_value(view, seat, key)?,
-                observed_cost(view, key).or_else(|| capacity_card(key).map(|c| c.0))?,
-            ))
+        .filter_map(|card| {
+            let key = card["key"].as_str()?;
+            let mut value = capacity_value(view, seat, key)?;
+            let bill =
+                observed_payment_cost(view, key).or_else(|| capacity_card(key).map(|c| c.0))?;
+            let budget = if let Some(keep) = protection {
+                std::array::from_fn(|i| {
+                    if bill[i] > 0.0 {
+                        bill[i] + keep[i]
+                    } else {
+                        0.0
+                    }
+                })
+            } else {
+                bill
+            };
+            if view["investmentPlanning"] == true {
+                if value <= 0.0 {
+                    return None;
+                }
+                let income = bot_income(view, seat);
+                let room = RESOURCE_KEYS
+                    .iter()
+                    .enumerate()
+                    .map(|(i, r)| (budget[i] - bot_limit(view, seat, r)).max(0.0))
+                    .sum::<f64>();
+                let saving = RESOURCE_KEYS
+                    .iter()
+                    .enumerate()
+                    .map(|(i, r)| {
+                        (budget[i] - number(&view["players"][seat]["resources"][*r])).max(0.0)
+                            / number(&income[*r]).max(0.5)
+                    })
+                    .fold(0.0_f64, f64::max);
+                value /= 1.0
+                    + 0.55
+                        * (saving
+                            + if room > 0.0 {
+                                (room / 4.0).ceil() * 2.0
+                            } else {
+                                0.0
+                            });
+            }
+            Some((value, budget))
         })
-        .max_by(|a, b| a.0.total_cmp(&b.0))?
-        .1;
+        .max_by(|a, b| a.0.total_cmp(&b.0))
+        .map(|(_, budget)| budget)
+}
+
+fn capacity_need(view: &Value, seat: usize) -> Option<[f64; 4]> {
+    let target = market_target_cost(view, seat)?;
     let need: [f64; 4] =
         std::array::from_fn(|i| (target[i] - bot_limit(view, seat, RESOURCE_KEYS[i])).max(0.0));
     need.iter().any(|n| *n > 0.0).then_some(need)
@@ -966,7 +1416,141 @@ fn colony_defense(view: &Value, seat: usize) -> Vec<(&str, f64, f64)> {
         })
         .collect()
 }
+fn investment_horizon(view: &Value) -> f64 {
+    let leader = view["players"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|p| number(&p["prestige"]))
+        .fold(0.0_f64, f64::max);
+    let pace = ((leader - 3.0) / (number(&view["round"]) - 1.0).max(1.0)).max(2.0);
+    ((victory_target(view) - leader) / pace)
+        .ceil()
+        .clamp(0.0, 6.0)
+}
+// Research only: one delayed return when existing stock/income leaves no marginal room.
+// Printed costs account for payment freeing room; free first builds have no delay.
+fn harvester_headroom_delay(
+    view: &Value,
+    seat: usize,
+    action: &Value,
+    resource: &str,
+    income: f64,
+) -> Option<(f64, bool)> {
+    if view["harvesterHeadroomPlanning"] != true || !view["harvesterCost"].is_object() {
+        return None;
+    }
+    let printed = view["harvesterCost"].as_object()?;
+    if printed.is_empty()
+        || printed.iter().any(|(r, v)| {
+            !RESOURCE_KEYS.contains(&r.as_str())
+                || v.as_f64().is_none_or(|n| !n.is_finite() || n < 0.0)
+        })
+    {
+        return None;
+    }
+    let index = RESOURCE_KEYS.iter().position(|r| *r == resource)?;
+    let mut cost: [f64; 4] =
+        std::array::from_fn(|i| number(&view["harvesterCost"][RESOURCE_KEYS[i]]));
+    if action["type"] == "build" {
+        match action["discountResource"].as_str() {
+            Some("free") => cost = [0.0; 4],
+            Some("each") => cost.iter_mut().for_each(|n| *n = (*n - 1.0).max(0.0)),
+            Some(r) => {
+                if let Some(i) = RESOURCE_KEYS.iter().position(|key| *key == r) {
+                    cost[i] = (cost[i] - 1.0).max(0.0);
+                }
+            }
+            None => {}
+        }
+    }
+    let free = cost.iter().all(|n| *n == 0.0);
+    let stock_after =
+        (number(&view["players"][seat]["resources"][resource]) - cost[index]).max(0.0);
+    let delay = if !free && stock_after + income >= bot_limit(view, seat, resource) {
+        1.0
+    } else {
+        0.0
+    };
+    Some((delay, free))
+}
+// Printed ship costs, with discounts applied only to the first construction.
+fn paid_ship_cost(view: &Value, action: &Value) -> Option<f64> {
+    let kind = action["kind"].as_str()?;
+    let printed = view["shipCosts"][kind].as_object()?;
+    if printed.is_empty()
+        || printed.iter().any(|(r, v)| {
+            !RESOURCE_KEYS.contains(&r.as_str())
+                || v.as_f64().is_none_or(|n| !n.is_finite() || n < 0.0)
+        })
+    {
+        return None;
+    }
+    let mut cost: [f64; 4] =
+        std::array::from_fn(|i| number(&view["shipCosts"][kind][RESOURCE_KEYS[i]]));
+    if action["type"] == "build" {
+        match action["discountResource"].as_str() {
+            Some("free") => cost = [0.0; 4],
+            Some("each") => cost.iter_mut().for_each(|n| *n = (*n - 1.0).max(0.0)),
+            Some(r) => {
+                if let Some(i) = RESOURCE_KEYS.iter().position(|key| *key == r) {
+                    cost[i] = (cost[i] - 1.0).max(0.0);
+                }
+            }
+            None => {}
+        }
+    }
+    Some(cost.iter().sum())
+}
+fn established_construction(me: &Value) -> bool {
+    ["hand", "discard", "inPlay", "deckContents"]
+        .iter()
+        .flat_map(|pile| me[*pile].as_array().into_iter().flatten())
+        .any(|c| {
+            c["key"] == "construct"
+                && c["starter"] == true
+                && (c["upgraded"] == true || number(&c["level"]) >= 2.0)
+        })
+}
 fn planning_protection(view: &Value, seat: usize) -> [f64; 4] {
+    if view["investmentPlanning"] == true {
+        if bot_yards(view, seat) == 0 {
+            return [2.0, 1.0, 1.0, 1.0];
+        }
+        let me = &view["players"][seat];
+        let mut keep = [0.0_f64; 4];
+        for (coord, p) in view["planets"].as_object().into_iter().flatten() {
+            let group = &view["fleets"][coord][seat.to_string()];
+            let center = p["cluster"]
+                .as_u64()
+                .is_some_and(|id| view["clusters"][id as usize]["center"] == *coord);
+            if center
+                && p["owner"] != json!(seat)
+                && number(&group["settler"]) > 0.0
+                && bot_cards(me, "colonize") > 0.0
+            {
+                keep[2] = if p["owner"].is_null() { 2.0 } else { 1.0 };
+            }
+            if p["special"] == "relic"
+                && p["relicClaimed"] != true
+                && number(&group["explorer"]) > 0.0
+            {
+                keep[0] = 1.0;
+                keep[1] = 1.0;
+                keep[3] = 2.0;
+            }
+        }
+        if colony_defense(view, seat)
+            .iter()
+            .any(|(_, a, g)| *a > 0.0 && *g < *a + 1.0)
+        {
+            for (i, c) in [2.0_f64, 1.0, 1.0, 0.0].into_iter().enumerate() {
+                keep[i] = keep[i].max(c);
+            }
+        }
+        return keep;
+    }
+
     let settlers = bot_units(view, seat, "settler") > 0.0;
     let explorers = bot_units(view, seat, "explorer") > 0.0;
     let mut keep: [f64; 4] = [
@@ -1018,6 +1602,162 @@ fn bot_cost(view: &Value, seat: usize) -> Value {
         json!({"matter":2,"energy":2,"biomass":2,"data": if view["relicRow"].as_array().is_some_and(|r|!r.is_empty()){2}else{1}})
     }
 }
+// Restricted public-tactic model: one Fleet each, no reaction/order bonuses.
+fn fleet_tactic_hand(view: &Value, seat: usize, used: &Value) -> Value {
+    let mut hand = json!({"concentratedFire":2,"defensiveScreen":2});
+    for card in view["players"][seat]["military"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        if let Some(key) = card["key"].as_str() {
+            hand[key] = json!(hand[key].as_u64().unwrap_or(0) + 1);
+        }
+    }
+    for key in used
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter_map(Value::as_str)
+    {
+        hand[key] = json!(hand[key].as_u64().unwrap_or(0).saturating_sub(1));
+    }
+    hand
+}
+fn fleet_tactic_plan(
+    view: &Value,
+    own: &Value,
+    enemy: &Value,
+    hull: i16,
+    enemy_hull: i16,
+    volley: u8,
+) -> Option<(i8, String)> {
+    use std::collections::HashMap;
+    type Position = (i16, i16, u64, u64, u8);
+    type Plan = (i8, usize);
+    struct Search {
+        stats: Vec<(i16, i16, bool)>,
+        memo: HashMap<Position, Plan>,
+    }
+    impl Search {
+        fn visit(&mut self, a: i16, b: i16, ours: u64, theirs: u64, n: u8) -> (i8, usize) {
+            if a <= 0 {
+                return (-1, 0);
+            }
+            if b <= 0 {
+                return (1, 0);
+            }
+            if n >= 3 {
+                return (0, 0);
+            }
+            let key = (a, b, ours, theirs, n);
+            if let Some(v) = self.memo.get(&key) {
+                return *v;
+            }
+            let mut best = (-2, 0);
+            for i in 0..self.stats.len() {
+                if (ours >> (2 * i)) & 3 == 0 {
+                    continue;
+                }
+                let (attack, shield, pierce) = self.stats[i];
+                let mut worst = 1;
+                for j in 0..self.stats.len() {
+                    if (theirs >> (2 * j)) & 3 == 0 {
+                        continue;
+                    }
+                    let (enemy_attack, enemy_shield, enemy_pierce) = self.stats[j];
+                    let damage = (3 + attack - if pierce { 0 } else { enemy_shield }).max(0);
+                    let received =
+                        (3 + enemy_attack - if enemy_pierce { 0 } else { shield }).max(0);
+                    worst = worst.min(
+                        self.visit(
+                            a - received,
+                            b - damage,
+                            ours - (1 << (2 * i)),
+                            theirs - (1 << (2 * j)),
+                            n + 1,
+                        )
+                        .0,
+                    );
+                    if worst == -1 {
+                        break;
+                    }
+                }
+                if worst > best.0 {
+                    best = (worst, i)
+                }
+                if best.0 == 1 {
+                    break;
+                }
+            }
+            self.memo.insert(key, best);
+            best
+        }
+    }
+    let keys: Vec<&str> = view["tacticStats"]
+        .as_object()?
+        .keys()
+        .map(String::as_str)
+        .collect();
+    if keys.is_empty() || keys.len() > 32 || hull <= 0 || enemy_hull <= 0 || volley >= 3 {
+        return None;
+    }
+    let encode = |hand: &Value| {
+        keys.iter().enumerate().fold(0_u64, |bits, (i, k)| {
+            bits | (hand[*k].as_u64().unwrap_or(0).min(3) << (2 * i))
+        })
+    };
+    let ours = encode(own);
+    let theirs = encode(enemy);
+    if ours == 0 || theirs == 0 {
+        return None;
+    }
+    let stats = keys
+        .iter()
+        .map(|k| {
+            let (a, s, p) = tactic_stats(view, k);
+            (a as i16, s as i16, p)
+        })
+        .collect();
+    let (score, index) = Search {
+        stats,
+        memo: HashMap::new(),
+    }
+    .visit(hull, enemy_hull, ours, theirs, volley);
+    Some((score, keys[index].to_string()))
+}
+fn combat_fleet_tactic_plan(view: &Value) -> Option<String> {
+    if view["singleFleetForecast"] != true {
+        return None;
+    }
+    let combat = &view["combat"];
+    let side = combat["side"].as_str()?;
+    let own = &combat["sides"][side];
+    let enemy = &combat["sides"][if side == "attacker" {
+        "defender"
+    } else {
+        "attacker"
+    }];
+    let piece = |force: &Value| -> Option<i16> {
+        let pieces = force["pieces"].as_array()?;
+        if pieces.len() != 1 || pieces[0]["type"] != "fleet" {
+            return None;
+        }
+        Some((number(&pieces[0]["hull"]) - number(&pieces[0]["damage"])) as i16)
+    };
+    let enemy_id = enemy["playerId"].as_u64()? as usize;
+    let hand = fleet_tactic_hand(view, enemy_id, &enemy["used"]);
+    let (score, tactic) = fleet_tactic_plan(
+        view,
+        &own["hand"],
+        &hand,
+        piece(own)?,
+        piece(enemy)?,
+        combat["volley"].as_u64()?.saturating_sub(1) as u8,
+    )?;
+    (score == 1).then_some(tactic)
+}
+
 fn bot_safe_fight(view: &Value, seat: usize, moving: &Value, target: &str) -> bool {
     let opponent = view["fleets"][target].as_object().and_then(|g| {
         g.iter().find(|(id, f)| {
@@ -1047,7 +1787,25 @@ fn bot_safe_fight(view: &Value, seat: usize, moving: &Value, target: &str) -> bo
     if number(&moving["settler"]) > 0.0 {
         return enemy_attack <= 1.0 && attack - 2.0 >= enemy_hull;
     }
-    attack * 3.0 - 4.0 >= enemy_hull && hull > enemy_attack * 3.0 + 2.0
+    let old_safe = attack * 3.0 - 4.0 >= enemy_hull && hull > enemy_attack * 3.0 + 2.0;
+    if old_safe {
+        return true;
+    }
+    if view["singleFleetForecast"] == true
+        && !yard
+        && number(&moving["fleet"]) == 1.0
+        && number(&moving["explorer"]) == 0.0
+        && number(&enemy["fleet"]) == 1.0
+        && number(&enemy["settler"]) == 0.0
+        && number(&enemy["explorer"]) == 0.0
+        && let Some((id, _)) = opponent
+        && let Ok(enemy_id) = id.parse::<usize>()
+    {
+        let own_hand = fleet_tactic_hand(view, seat, &Value::Null);
+        let enemy_hand = fleet_tactic_hand(view, enemy_id, &Value::Null);
+        return fleet_tactic_plan(view, &own_hand, &enemy_hand, 7, 7, 0).is_some_and(|p| p.0 == 1);
+    }
+    false
 }
 fn bot_limit(view: &Value, seat: usize, resource: &str) -> f64 {
     view["players"][seat]["resourceLimits"][resource]
@@ -1098,7 +1856,7 @@ fn bot_split_value(view: &Value, seat: usize, action: &Value, paid: bool, biomas
     let me = &view["players"][seat];
     let income = bot_income(view, seat);
     let protection = bot_cost(view, seat);
-    let next_price = number(&me["storageUpgradeCost"]["matter"]) + if paid { 1.0 } else { 0.0 };
+    let next_price = number(&me["storageUpgradeCost"]["matter"]);
     let mut value = 0.0;
     for r in ["matter", "energy", "biomass", "data"] {
         let count = action["allocation"][r].as_u64().unwrap_or(0);
@@ -1162,7 +1920,15 @@ fn bot_storage_budget(view: &Value, seat: usize) -> Option<(Value, Value)> {
 }
 
 fn bot_storage_reserve(view: &Value, seat: usize) -> Value {
-    let base = bot_cost(view, seat);
+    let mut base = bot_cost(view, seat);
+    if view["investmentPlanning"] == true
+        && bot_yards(view, seat) > 0
+        && let Some(cost) = market_target_cost(view, seat)
+    {
+        for (i, r) in RESOURCE_KEYS.iter().enumerate() {
+            base[*r] = json!(number(&base[*r]).max(cost[i]).min(bot_limit(view, seat, r)));
+        }
+    }
     let Some((cost, protection)) = bot_storage_budget(view, seat) else {
         return base;
     };
@@ -1236,7 +2002,35 @@ impl BuiltinAgent {
         let seat = view["seat"].as_u64().unwrap() as usize;
         let me = &view["players"][seat];
         let military = matches!(self.strategy, Strategy::Military);
-        let economy = matches!(self.strategy, Strategy::Economy);
+        let economy = matches!(self.strategy, Strategy::Economy | Strategy::Market);
+        if view["goalDirectedTrading"] == true {
+            let bank = action["type"] == "bank_trade";
+            let exchange = action["type"] == "special"
+                && view["cardStats"][action["key"].as_str().unwrap_or("")]["bankRate"] == 2;
+            if bank || exchange {
+                let plan = view
+                    .get("_rival_goal_trade")
+                    .cloned()
+                    .unwrap_or_else(|| goal_trade_plan(view, seat));
+                if exchange {
+                    return if plan["enable"].is_string() && plan["enable"] == action["resource"] {
+                        130.0 + number(&plan["priority"]) * 0.02
+                    } else {
+                        -20.0
+                    };
+                }
+                let first = &plan["steps"][0];
+                return if plan["enable"].is_null()
+                    && first.is_object()
+                    && first["giveType"] == action["giveType"]
+                    && first["getType"] == action["getType"]
+                {
+                    125.0 + number(&plan["priority"]) * 0.02
+                } else {
+                    -20.0
+                };
+            }
+        }
         match action["type"].as_str().unwrap_or("") {
             "combat_stay" => 30.0,
             "combat_escape" => {
@@ -1267,6 +2061,13 @@ impl BuiltinAgent {
                 }
             }
             "combat_tactic" => {
+                if let Some(tactic) = view["_rival_fleet_tactic"].as_str() {
+                    return if action["tactic"] == tactic {
+                        10000.0
+                    } else {
+                        -10000.0
+                    };
+                }
                 // Only public used tactics and our own hand are in this view.
                 // An opponent's pending commitment is deliberately unavailable.
                 let combat = &view["combat"];
@@ -1364,6 +2165,19 @@ impl BuiltinAgent {
                 }
             }
             // Current engines expose this choice; archived observations never do.
+            "order_draw" => {
+                if number(&view["cardStats"][action["key"].as_str().unwrap_or("")]["fallbackDraw"])
+                    > 0.0
+                    && (number(&me["deckCount"]) > 0.0
+                        || me["discard"]
+                            .as_array()
+                            .is_some_and(|cards| !cards.is_empty()))
+                {
+                    95.0
+                } else {
+                    -10.0
+                }
+            }
             "construct_draw" => {
                 if view["constructDrawOnly"] == true
                     && (number(&me["deckCount"]) > 0.0
@@ -1376,7 +2190,30 @@ impl BuiltinAgent {
                     -10.0
                 }
             }
-            "colonize" => 160.0,
+            "colonize" => {
+                if (view["colonyPlanning"] == true || view["colonyExecutionPlanning"] == true)
+                    && view["investmentPlanning"] == true
+                {
+                    let stats = &view["cardStats"][action["key"].as_str().unwrap_or("")];
+                    let owner = &view["planets"][action["coord"].as_str().unwrap_or("")]["owner"];
+                    let capture = owner.as_u64().is_some_and(|id| id as usize != seat);
+                    let cost = stats["colonyCost"].as_f64().unwrap_or(2.0).min(if capture {
+                        1.0
+                    } else {
+                        2.0
+                    });
+                    160.0
+                        + (if stats["keepSettler"] == true {
+                            10.0
+                        } else {
+                            0.0
+                        })
+                        + number(&stats["colonyPrestige"]) * 3.0
+                        - cost
+                } else {
+                    160.0
+                }
+            }
             "build" | "second_build" | "colony_build" => {
                 let value = match action["kind"].as_str().unwrap_or("") {
                     "starbase" => {
@@ -1384,6 +2221,58 @@ impl BuiltinAgent {
                             110.0
                         } else {
                             -5.0
+                        }
+                    }
+                    "harvester" if view["investmentPlanning"] == true => {
+                        let planet = &view["planets"][action["coord"].as_str().unwrap()];
+                        let resource = planet["type"].as_str().unwrap_or("");
+                        let income = number(&bot_income(view, seat)[resource]);
+                        let target: f64 = match resource {
+                            "matter" => 5.0,
+                            "energy" => 4.0,
+                            "biomass" => {
+                                if matches!(self.strategy, Strategy::Expansion) {
+                                    4.0
+                                } else {
+                                    3.0
+                                }
+                            }
+                            "data" => {
+                                if view["relicRow"].as_array().is_some_and(|r| !r.is_empty()) {
+                                    4.0
+                                } else {
+                                    3.0
+                                }
+                            }
+                            _ => 0.0,
+                        };
+                        let shortage =
+                            (target.min(bot_limit(view, seat, resource)) - income).max(0.0);
+                        let gain = if planet["owner"] == json!(seat) {
+                            (view["harvesterYield"].as_f64().unwrap_or(2.0) - 1.0).max(0.0)
+                        } else {
+                            view["harvesterYield"].as_f64().unwrap_or(2.0)
+                        };
+                        let headroom =
+                            harvester_headroom_delay(view, seat, action, resource, income);
+                        let (delay, free) = headroom.unwrap_or((
+                            0.0,
+                            action["type"] == "build"
+                                && matches!(
+                                    action["discountResource"].as_str(),
+                                    Some("free" | "each")
+                                ),
+                        ));
+                        let returns = (investment_horizon(view) - 1.0 - delay).max(0.0);
+                        if resource == "data" && income == 0.0 && number(&view["round"]) <= 2.0 {
+                            53.0
+                        } else if shortage > 0.0 && gain.min(shortage) * returns >= 3.0 {
+                            10.0 + shortage * 7.0 + if economy { 4.0 } else { 0.0 }
+                        } else if (view["productionDiscipline"] == true || delay > 0.0) && !free {
+                            // Pass scores zero. Merely lowering this to +1 still pays for it.
+                            -1.0
+                        } else {
+                            1.0
                         }
                     }
                     "harvester" => {
@@ -1412,6 +2301,11 @@ impl BuiltinAgent {
                             }
                         {
                             86.0
+                        } else if view["investmentPlanning"] == true
+                            && view["settlerInvestmentDiscipline"] == true
+                            && paid_ship_cost(view, action).is_some_and(|cost| cost > 0.0)
+                        {
+                            -1.0
                         } else {
                             5.0
                         }
@@ -1453,6 +2347,11 @@ impl BuiltinAgent {
                                 < (colony_defense(view, seat).len() as f64).min(3.0)
                         {
                             80.0
+                        } else if view["investmentPlanning"] == true
+                            && view["fleetInvestmentDiscipline"] == true
+                            && !(action["type"] == "build" && action["discountResource"] == "free")
+                        {
+                            -1.0
                         } else {
                             8.0
                         }
@@ -1495,7 +2394,9 @@ impl BuiltinAgent {
                     .any(|(k, v)| number(v) > number(&me["resources"][k]));
                 let bankable: f64 = gain
                     .iter()
-                    .filter(|(k, _)| number(&me["resources"][*k]) < number(&cost[*k]) + 4.0)
+                    .filter(|(k, _)| {
+                        number(&me["resources"][*k]) < number(&cost[*k]) + bank_rate(view, seat, k)
+                    })
                     .map(|(r, v)| {
                         number(v)
                             .min((bot_limit(view, seat, r) - number(&me["resources"][r])).max(0.0))
@@ -1746,6 +2647,22 @@ impl BuiltinAgent {
             {
                 95.0
             }
+            "special"
+                if view["cardStats"][action["key"].as_str().unwrap_or("")]["bankRate"] == 2 =>
+            {
+                let resource = action["resource"].as_str().unwrap_or("");
+                if !RESOURCE_KEYS.contains(&resource)
+                    || exchange_surplus(view, seat, resource) < 2.0
+                {
+                    -10.0
+                } else {
+                    (if view["cardPurchasePlanning"] == true {
+                        110.0
+                    } else {
+                        75.0
+                    }) + exchange_surplus(view, seat, resource).min(8.0)
+                }
+            }
             "special" => {
                 50.0 + if action["key"] == "cradleOfLostSuns" {
                     bot_allocation_value(view, seat, action, false) * 0.1
@@ -1761,6 +2678,7 @@ impl BuiltinAgent {
                 }
             }
 
+            "buy_effect" if view["investmentPlanning"] == true => 200.0,
             "buy_effect" => 100.0,
             "upgrade" => {
                 let r = action["resource"].as_str().unwrap();
@@ -1784,7 +2702,12 @@ impl BuiltinAgent {
                     && number(&me["resources"][r]) >= planning_protection(view, seat)[index] + price
                     && view["victoryTarget"].as_f64().unwrap_or(40.0) - leader > 3.0
                 {
-                    if level_iii {
+                    if view["investmentPlanning"] == true
+                        && !established_construction(me)
+                        && card.is_some_and(|c| c["key"] == "construct")
+                    {
+                        128.0
+                    } else if level_iii {
                         116.0
                     } else if card.is_some_and(|c| c["key"] == "construct") {
                         112.0
@@ -1808,6 +2731,29 @@ impl BuiltinAgent {
                     });
                 if bot_unplayed_modules(me) > 0.0 {
                     -20.0
+                } else if view["investmentPlanning"] == true {
+                    let keep = planning_protection(view, seat);
+                    let consumes_scoring = RESOURCE_KEYS.iter().enumerate().any(|(i, r)| {
+                        let held = number(&me["resources"][*r]);
+                        held - number(&me["storageUpgradeCost"][*r]) < keep[i].min(held)
+                    });
+                    if investment_horizon(view) < 3.0 || consumes_scoring {
+                        -20.0
+                    } else if capacity_need(view, seat).is_some() || worthwhile {
+                        if established_construction(me) {
+                            if matches!(self.strategy, Strategy::Market)
+                                && capacity_need(view, seat).is_some()
+                            {
+                                134.0
+                            } else {
+                                100.0
+                            }
+                        } else {
+                            90.0
+                        }
+                    } else {
+                        -20.0
+                    }
                 } else if capacity_need(view, seat).is_some() {
                     130.0
                 } else if worthwhile {
@@ -1821,7 +2767,7 @@ impl BuiltinAgent {
                 if bot_yards(view, seat) == 0 {
                     -10.0
                 } else {
-                    let cost = observed_cost(view, key).unwrap_or([0.0; 4]);
+                    let cost = observed_payment_cost(view, key).unwrap_or([0.0; 4]);
                     let keep = planning_protection(view, seat);
                     if RESOURCE_KEYS.iter().enumerate().any(|(i, r)| {
                         number(&me["resources"][*r]) - cost[i]
@@ -1829,8 +2775,24 @@ impl BuiltinAgent {
                     }) {
                         -10.0
                     } else {
-                        capacity_value(view, seat, key)
-                            .map_or(-10.0, |v| if v > 0.0 { 60.0 + v } else { -10.0 })
+                        capacity_value(view, seat, key).map_or(-10.0, |v| {
+                            if v > 0.0 {
+                                if view["investmentPlanning"] == true
+                                    && established_construction(me)
+                                    && v >= if matches!(self.strategy, Strategy::Market) {
+                                        18.0
+                                    } else {
+                                        24.0
+                                    }
+                                {
+                                    120.0 + v
+                                } else {
+                                    60.0 + v
+                                }
+                            } else {
+                                -10.0
+                            }
+                        })
                     }
                 }
             }
@@ -1858,7 +2820,15 @@ impl BuiltinAgent {
                     -10.0
                 }
             }
-            "finish_construct" => -20.0,
+            "finish_construct" => {
+                if view["investmentPlanning"] == true
+                    && view["optionalConstructionPlanning"] == true
+                {
+                    0.0
+                } else {
+                    -20.0
+                }
+            }
             // 31.36: during Buy, raise the limits the best market card needs.
             "increase_storage" if view["phase"] == "buy" && capacity_need(view, seat).is_some() => {
                 let need = capacity_need(view, seat).unwrap();
@@ -1886,19 +2856,32 @@ impl BuiltinAgent {
             "bank_trade" => {
                 let give = action["giveType"].as_str().unwrap();
                 let get = action["getType"].as_str().unwrap();
-                let cost = bot_cost(view, seat);
+                let cost = if view["investmentPlanning"] == true {
+                    bot_storage_reserve(view, seat)
+                } else {
+                    bot_cost(view, seat)
+                };
                 let bootstrap = get == "data"
                     && bot_yards(view, seat) == 0
                     && number(&me["resources"]["data"]) < 1.0
-                    && number(&me["resources"][give]) >= 4.0;
+                    && number(&me["resources"][give]) >= bank_rate(view, seat, give);
                 let funded = number(&me["resources"][get]) < number(&cost[get])
-                    && number(&me["resources"][give]) >= 4.0
-                    && (number(&me["resources"][give]) >= number(&cost[give]) + 4.0
-                        || number(&me["resources"][give]) >= bot_limit(view, seat, give));
+                    && number(&me["resources"][give]) >= bank_rate(view, seat, give)
+                    && (number(&me["resources"][give])
+                        >= number(&cost[give]) + bank_rate(view, seat, give)
+                        || (view["investmentPlanning"] != true
+                            && number(&me["resources"][give]) >= bot_limit(view, seat, give)));
                 if number(&me["resources"][get]) >= bot_limit(view, seat, get) {
                     -100.0
                 } else if bootstrap || funded {
                     100.0
+                        + if view["cardPurchasePlanning"] == true
+                            && bank_rate(view, seat, give) == 2.0
+                        {
+                            5.0
+                        } else {
+                            0.0
+                        }
                 } else {
                     -20.0
                 }
@@ -1945,7 +2928,12 @@ impl BuiltinAgent {
                 };
                 let r = action["resource"].as_str().unwrap();
                 let reserve = bot_cost(view, seat);
+                let basic = matches!(
+                    card["key"].as_str().unwrap_or(""),
+                    "construct" | "move" | "colonize" | "excavate" | "probe"
+                );
                 if redundant
+                    && (view["investmentPlanning"] != true || basic)
                     && card["upgraded"] != true
                     && number(&me["resources"][r]) >= number(&reserve[r]) + 3.0
                 {
@@ -1967,12 +2955,25 @@ impl PlayerAgent<GalacticReach> for BuiltinAgent {
         // Hundreds of legal split moves share the same public defense plan.
         // Cache it only for this decision, never across changes to the table.
         let mut planned = observation.clone();
+        planned["_rival_fleet_tactic"] = json!(combat_fleet_tactic_plan(observation));
+        planned["_rival_market_focus"] = json!(matches!(self.strategy, Strategy::Market));
+        planned["_rival_market_combat_opportunity"] = json!(
+            matches!(self.strategy, Strategy::Market)
+                && market_combat_opportunity(
+                    observation,
+                    observation["seat"].as_u64().unwrap() as usize
+                )
+        );
         let defense: Vec<Value> =
             colony_defense(observation, observation["seat"].as_u64().unwrap() as usize)
                 .into_iter()
                 .map(|(at, a, g)| json!([at, a, g]))
                 .collect();
         planned["_rival_colony_defense"] = json!(defense);
+        if observation["goalDirectedTrading"] == true {
+            planned["_rival_goal_trade"] =
+                goal_trade_plan(&planned, observation["seat"].as_u64().unwrap() as usize);
+        }
         legal
             .iter()
             .enumerate()
@@ -2123,6 +3124,639 @@ mod tests {
             "gr-economy/28"
         );
         assert_eq!(Strategy::Economy.version(), "gr-economy/29");
+    }
+    #[test]
+    fn investment_planning_adds_profitable_harvesters_without_changing_archived_views() {
+        let agent = BuiltinAgent::new(Strategy::Economy, [5; 32]);
+        let mut view = json!({"seat":0,"round":4,"victoryTarget":40,"players":[{"prestige":10,"resourceLimits":{"matter":8,"energy":8,"biomass":8,"data":8}},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"},"1,0":{"owner":0,"type":"matter"},"2,0":{"owner":0,"type":"matter"}},"fleets":{},"harvesterYield":2,"relicRow":[{"key":"memoryPrism"}]});
+        let action = json!({"type":"build","coord":"1,0","kind":"harvester"});
+        let archived = agent.score(&view, &action);
+        assert_eq!(archived, 4.0);
+        view["investmentPlanning"] = json!(true);
+        assert!(agent.score(&view, &action) > archived);
+        view["players"][1]["hand"] = json!([{"key":"commandNexus"}]);
+        let public_score = agent.score(&view, &action);
+        view["players"][1]["hand"] = json!([]);
+        assert_eq!(agent.score(&view, &action), public_score);
+        view["players"][1]["prestige"] = json!(39);
+        assert_eq!(
+            agent.score(&view, &action),
+            1.0,
+            "Late production cannot pay back"
+        );
+        view.as_object_mut().unwrap().remove("investmentPlanning");
+        assert_eq!(agent.score(&view, &action), archived);
+    }
+    #[test]
+    fn order_benefits_value_range_and_build_savings_without_inventing_draws() {
+        let mut agent = BuiltinAgent::new(Strategy::Market, [5; 32]);
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":5,"phase":"buy","victoryTarget":40,"players":[{"prestige":10,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":8,"energy":8,"biomass":8,"data":8},"hand":[{"id":"c","key":"construct","starter":true,"level":2,"upgraded":true}],"handCount":1,"deckCount":5,"deckContents":[{"key":"construct","starter":true,"level":3,"upgraded":true,"count":2},{"key":"move","starter":true,"level":3,"upgraded":true,"count":3}],"discard":[],"inPlay":[],"military":[]},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"},"1,0":{"owner":0,"type":"energy","upgrade":"harvester"}},"fleets":{"0,0":{"0":{"settler":1}}},"harvesterYield":2,"market":[{"key":"worldEngine"},{"key":"foldSpaceGate"},{"key":"prefabYards"}],"marketCosts":[{"matter":6,"energy":1,"biomass":1},{"energy":6,"data":1},{"matter":4}],"cardStats":{"worldEngine":{"order":"construct","draw":1,"buildDiscount":"free"},"foldSpaceGate":{"order":"move","range":5},"prefabYards":{"order":"construct","buildDiscount":"each","secondBuild":true}}});
+        let world = capacity_value(&view, 0, "worldEngine").unwrap();
+        let gate = capacity_value(&view, 0, "foldSpaceGate").unwrap();
+        let prefab = capacity_value(&view, 0, "prefabYards").unwrap();
+        let buy = json!({"type":"buy","source":"market","key":"worldEngine"});
+        let upgrade = json!({"type":"upgrade","card":"c","resource":"data"});
+        assert_eq!(
+            agent.select_action(&view, &[upgrade.clone(), buy.clone()]),
+            0
+        );
+        view["orderBenefitPlanning"] = json!(true);
+        assert!((capacity_value(&view, 0, "worldEngine").unwrap() - world - 7.5).abs() < 1e-9);
+        assert_eq!(
+            capacity_value(&view, 0, "foldSpaceGate").unwrap(),
+            gate + 10.0
+        );
+        assert_eq!(
+            capacity_value(&view, 0, "prefabYards").unwrap(),
+            prefab + 9.0
+        );
+        assert_eq!(
+            agent.select_action(&view, &[upgrade, buy]),
+            1,
+            "Printed savings can prioritize the purchase before another starter upgrade"
+        );
+        view["cardStats"]["prefabYards"]["secondBuild"] = json!(false);
+        assert_eq!(
+            capacity_value(&view, 0, "prefabYards").unwrap(),
+            prefab + 6.0
+        );
+        view["fleets"] = json!({});
+        assert!(
+            capacity_value(&view, 0, "foldSpaceGate").unwrap() < gate,
+            "An extra Move needs an actual ship"
+        );
+        view["fleets"] = json!({"0,0":{"0":{"settler":1}}});
+        view["orderBenefitPlanning"] = json!(false);
+        assert_eq!(capacity_value(&view, 0, "worldEngine").unwrap(), world);
+    }
+    #[test]
+    fn market_purchase_ablation_changes_purchases_and_targets_not_order_legality() {
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":5,"victoryTarget":40,"players":[{"prestige":10,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":10,"energy":10,"biomass":10,"data":10},"hand":[],"discard":[],"inPlay":[],"military":[],"deckContents":[]}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"}},"fleets":{"0,0":{"0":{"fleet":1}}},"market":[{"key":"signalRelay"},{"key":"monumentOfAccord"},{"key":"victoryDoctrine"}],"marketCosts":[{"data":3},{"matter":6,"biomass":2,"data":2},{"matter":1,"energy":2,"data":6}],"marketPrestige":[0,3,0],"cardStats":{"signalRelay":{"order":"special","draw":2},"monumentOfAccord":{"gainPrestige":3},"victoryDoctrine":{"military":true,"attack":2,"victoryPrestige":2}}});
+        let normal = capacity_value(&view, 0, "signalRelay");
+        assert!(normal.is_some());
+        view["marketPurchasePolicy"] = json!("points-only");
+        assert!(capacity_value(&view, 0, "signalRelay").is_none());
+        assert!(
+            capacity_value(&view, 0, "victoryDoctrine").is_none(),
+            "Combat Prestige is not Prestige on purchase"
+        );
+        assert!(capacity_value(&view, 0, "monumentOfAccord").is_some());
+        assert_eq!(market_target_cost(&view, 0), Some([6.0, 0.0, 2.0, 2.0]));
+        view["marketPurchasePolicy"] = json!("none");
+        for key in ["signalRelay", "monumentOfAccord", "victoryDoctrine"] {
+            assert!(capacity_value(&view, 0, key).is_none());
+        }
+        assert!(market_target_cost(&view, 0).is_none());
+        assert!(
+            capacity_need(&view, 0).is_none(),
+            "Never fund cards the policy will not buy"
+        );
+        let agent = BuiltinAgent::new(Strategy::Economy, [5; 32]);
+        assert!(
+            agent.score(
+                &view,
+                &json!({"type":"buy","source":"market","key":"monumentOfAccord"})
+            ) < agent.score(&view, &json!({"type":"finish_buy"}))
+        );
+        assert_eq!(
+            agent.score(&view, &json!({"type":"colonize"})),
+            160.0,
+            "Already-held orders remain available"
+        );
+        view["marketPurchasePolicy"] = json!("normal");
+        assert_eq!(capacity_value(&view, 0, "signalRelay"), normal);
+    }
+    #[test]
+    fn protected_market_budget_funds_the_bill_and_preserved_scoring_payment() {
+        let mut agent = BuiltinAgent::new(Strategy::Market, [5; 32]);
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":5,"phase":"buy","victoryTarget":40,"players":[{"prestige":10,"resources":{"matter":2,"energy":3,"biomass":1,"data":6},"resourceLimits":{"matter":4,"energy":4,"biomass":4,"data":6},"hand":[{"key":"construct","id":"c","starter":true,"upgraded":true,"level":2},{"key":"probe","id":"p"}],"handCount":2,"deckCount":8,"deckContents":[{"key":"move","count":8}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"data","upgrade":"starbase","cluster":0},"3,0":{"owner":null,"type":"moon","special":"relic","cluster":1}},"clusters":[{"center":"0,0","kind":"world"},{"center":"3,0","kind":"moon"}],"fleets":{"3,0":{"0":{"explorer":1}}},"market":[{"key":"commandNexus"}],"marketCosts":[{"energy":2,"data":6}],"cardStats":{"commandNexus":{"order":"special","draw":4}}});
+        let buy = json!({"type":"buy","source":"market","key":"commandNexus"});
+        assert_eq!(planning_protection(&view, 0), [1.0, 1.0, 0.0, 2.0]);
+        assert_eq!(market_target_cost(&view, 0), Some([0.0, 2.0, 0.0, 6.0]));
+        assert!(capacity_need(&view, 0).is_none());
+        assert!(
+            agent.score(&view, &buy) < 0.0,
+            "The printed price alone cannot preserve the excavation payment"
+        );
+        view["protectedMarketBudget"] = json!(true);
+        assert_eq!(market_target_cost(&view, 0), Some([0.0, 3.0, 0.0, 8.0]));
+        assert_eq!(capacity_need(&view, 0), Some([0.0, 0.0, 0.0, 2.0]));
+        assert!(
+            agent.score(&view, &buy) < 0.0,
+            "Planning does not waive the actual purchase guard"
+        );
+        view["players"][0]["resourceLimits"]["data"] = json!(8);
+        assert_eq!(
+            bot_storage_reserve(&view, 0)["data"],
+            8.0,
+            "Banking funds the whole budget once it fits"
+        );
+        view["players"][0]["resources"]["data"] = json!(8);
+        assert_eq!(
+            agent.select_action(&view, &[json!({"type":"finish_buy"}), buy.clone()]),
+            1
+        );
+        view["fleets"] = json!({});
+        view["players"][0]["hand"] = json!([]);
+        assert_eq!(
+            market_target_cost(&view, 0),
+            Some([0.0, 2.0, 0.0, 6.0]),
+            "Without a protected payment the target remains the printed bill"
+        );
+    }
+    #[test]
+    fn colony_planning_values_printed_terms_and_chooses_the_better_legal_order() {
+        let mut agent = BuiltinAgent::new(Strategy::Market, [5; 32]);
+        let mut view = json!({"investmentPlanning":true,"captureNeedsFleet":true,"seat":0,"round":5,"phase":"buy","victoryTarget":40,"players":[{"prestige":10,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":10,"energy":10,"biomass":10,"data":10},"hand":[{"id":"c","key":"construct","starter":true,"level":2,"upgraded":true}],"handCount":1,"deckCount":9,"deckContents":[{"key":"move","count":9}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase","cluster":0},"3,0":{"owner":null,"type":"biomass","cluster":1}},"clusters":[{"kind":"world","center":"0,0"},{"kind":"world","center":"3,0"}],"fleets":{"0,0":{"0":{"settler":1}}},"market":[{"key":"seedArk"},{"key":"colonyPods"},{"key":"genesisCharter"}],"marketCosts":[{"biomass":4},{"energy":1,"biomass":4},{"matter":2,"biomass":8,"data":1}],"cardStats":{"seedArk":{"order":"colonize","colonyCost":1},"colonyPods":{"order":"colonize","colonyCost":1,"keepSettler":true},"genesisCharter":{"order":"colonize","colonyCost":0,"keepSettler":true,"colonyPrestige":2}}});
+        assert!(
+            capacity_value(&view, 0, "seedArk") > capacity_value(&view, 0, "colonyPods"),
+            "Old generic-order valuation misses the retained Settler"
+        );
+        view["colonyPlanning"] = json!(true);
+        assert!(capacity_value(&view, 0, "colonyPods") > capacity_value(&view, 0, "seedArk"));
+        assert_eq!(
+            agent.select_action(
+                &view,
+                &[
+                    json!({"type":"buy","source":"market","key":"seedArk"}),
+                    json!({"type":"buy","source":"market","key":"colonyPods"})
+                ]
+            ),
+            1
+        );
+        let useful = capacity_value(&view, 0, "colonyPods").unwrap();
+        view["planets"]["3,0"]["owner"] = json!(1);
+        assert!(
+            !public_colony_opportunity(&view, 0),
+            "Enemy worlds still need a Fleet"
+        );
+        assert!(capacity_value(&view, 0, "colonyPods").unwrap() < useful);
+        view["fleets"]["0,0"]["0"]["fleet"] = json!(1);
+        assert!(public_colony_opportunity(&view, 0));
+        let a = |key| json!({"type":"colonize","key":key,"coord":"3,0"});
+        assert!(agent.score(&view, &a("colonyPods")) > agent.score(&view, &a("seedArk")));
+        assert!(
+            agent.score(&view, &a("genesisCharter")) > agent.score(&view, &a("colonyPods")),
+            "Zero cost and bonus Prestige remain distinct"
+        );
+        let charter = agent.score(&view, &a("genesisCharter"));
+        view["planets"]["3,0"]["owner"] = Value::Null;
+        assert_eq!(
+            agent.score(&view, &a("genesisCharter")),
+            charter,
+            "Zero cost stays zero for founding and capture"
+        );
+        view["fleets"]["0,0"]["0"]["settler"] = json!(0);
+        assert!(
+            capacity_value(&view, 0, "colonyPods").unwrap() < useful,
+            "A card never supplies its own Settler"
+        );
+        view["colonyPlanning"] = json!(false);
+        assert_eq!(agent.score(&view, &a("seedArk")), 160.0);
+        assert_eq!(
+            agent.score(&view, &a("colonyPods")),
+            160.0,
+            "Unflagged decision ranking is unchanged"
+        );
+    }
+    #[test]
+    fn production_discipline_prefers_pass_to_unprofitable_paid_harvesters() {
+        let mut agent = BuiltinAgent::new(Strategy::Economy, [5; 32]);
+        let mut view = json!({"investmentPlanning":true,"constructDrawOnly":true,"seat":0,"round":12,"victoryTarget":40,"players":[{"prestige":10,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":8,"energy":8,"biomass":8,"data":8},"hand":[{"key":"construct","id":"iii","starter":true,"level":3}],"deckContents":[],"inPlay":[],"discard":[]},{"prestige":39},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"},"1,0":{"owner":0,"type":"matter"},"2,0":{"owner":0,"type":"matter"}},"fleets":{},"harvesterYield":2,"relicRow":[{"key":"memoryPrism"}],"cardStats":{"prefabYards":{"buildDiscount":"each"},"worldEngine":{"buildDiscount":"free"}}});
+        let paid = json!({"type":"build","coord":"1,0","kind":"harvester","card":"iii","key":"construct","discountResource":null});
+        let pass = json!({"type":"pass"});
+        assert_eq!(
+            agent.select_action(&view, &[paid.clone(), pass.clone()]),
+            0,
+            "The existing positive fallback still builds"
+        );
+        view["productionDiscipline"] = json!(true);
+        assert_eq!(
+            agent.select_action(&view, &[paid.clone(), pass.clone()]),
+            1,
+            "Even the III build bonus must remain below Pass"
+        );
+        for (key, discount) in [("prefabYards", "each"), ("worldEngine", "free")] {
+            let mut free = paid.clone();
+            free["key"] = json!(key);
+            free["discountResource"] = json!(discount);
+            assert_eq!(
+                agent.select_action(&view, &[free, pass.clone()]),
+                0,
+                "A free first Harvester remains an option"
+            );
+        }
+        assert_eq!(
+            agent.select_action(
+                &view,
+                &[
+                    json!({"type":"second_build","coord":"1,0","kind":"harvester"}),
+                    pass.clone()
+                ]
+            ),
+            1,
+            "An optional second build pays full cost"
+        );
+        view["round"] = json!(4);
+        view["players"][1]["prestige"] = json!(3);
+        assert_eq!(
+            agent.select_action(&view, &[paid.clone(), pass.clone()]),
+            0,
+            "Profitable investment is unchanged"
+        );
+        view["planets"]["3,0"] = json!({"owner":0,"type":"matter"});
+        view["planets"]["4,0"] = json!({"owner":0,"type":"matter"});
+        assert_eq!(
+            agent.select_action(&view, &[paid.clone(), pass.clone()]),
+            1,
+            "Production already at the target need not grow"
+        );
+        view["round"] = json!(1);
+        view["planets"]["1,0"]["type"] = json!("data");
+        view["planets"]["1,0"]["owner"] = Value::Null;
+        assert_eq!(
+            agent.select_action(&view, &[paid, pass]),
+            0,
+            "Keep the zero-Data bootstrap"
+        );
+    }
+    #[test]
+    fn investment_planning_values_reachable_targets_and_preserves_first_construct_upgrade() {
+        let agent = BuiltinAgent::new(Strategy::Economy, [6; 32]);
+        let mut view = json!({"seat":0,"round":4,"phase":"buy","victoryTarget":40,"players":[{"prestige":8,"resources":{"matter":8,"energy":8,"biomass":8,"data":8},"resourceLimits":{"matter":8,"energy":8,"biomass":8,"data":8},"hand":[{"id":"c","key":"construct","starter":true}],"handCount":1,"deckCount":9,"deckContents":[{"key":"move","count":9}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"}},"fleets":{},"clusters":[],"market":[{"key":"commandNexus"}],"marketCosts":[{"energy":2,"data":6}],"cardStats":{"commandNexus":{"draw":4,"order":"special"}}});
+        let upgrade = json!({"type":"upgrade","card":"c","resource":"matter"});
+        let buy = json!({"type":"buy","source":"market","key":"commandNexus"});
+        let old_upgrade = agent.score(&view, &upgrade);
+        let old_buy = agent.score(&view, &buy);
+        assert!(old_upgrade > old_buy);
+        view["investmentPlanning"] = json!(true);
+        assert!(
+            agent.score(&view, &upgrade) > agent.score(&view, &buy),
+            "First Construct II comes first"
+        );
+        view["players"][0]["hand"][0]["upgraded"] = json!(true);
+        assert!(
+            agent.score(&view, &buy) > agent.score(&view, &upgrade),
+            "A useful affordable draw card can precede further upgrades"
+        );
+        view.as_object_mut().unwrap().remove("investmentPlanning");
+        assert!(
+            agent.score(&view, &upgrade) > agent.score(&view, &buy),
+            "Archived ranking is unchanged"
+        );
+        view["investmentPlanning"] = json!(true);
+        assert!(
+            agent.score(&view, &json!({"type":"buy_effect"})) > agent.score(&view, &buy),
+            "Activate a held discount before paying for a market card"
+        );
+        let mut ready = view.clone();
+        ready["planets"]["0,0"]["special"] = json!("relic");
+        ready["planets"]["0,0"]["cluster"] = json!(0);
+        ready["clusters"] = json!([{"center":"0,0","kind":"world"}]);
+        ready["fleets"] = json!({"0,0":{"0":{"explorer":1}}});
+        ready["players"][0]["resources"] = json!({"matter":3,"energy":2,"biomass":8,"data":7});
+        ready["marketPaymentCosts"] = json!([{"energy":1,"data":5}]);
+        assert!(
+            agent.score(&ready, &buy) > 0.0,
+            "Discounted payment retains the ready excavation cost"
+        );
+        ready.as_object_mut().unwrap().remove("marketPaymentCosts");
+        assert!(
+            agent.score(&ready, &buy) < 0.0,
+            "Full price would consume that excavation payment"
+        );
+        ready["players"][0]["resources"] = json!({"matter":1,"energy":1,"biomass":2,"data":2});
+        ready["players"][0]["resourceLimits"]["data"] = json!(4);
+        ready["players"][0]["storageUpgradeCost"] =
+            json!({"matter":1,"energy":1,"biomass":1,"data":1});
+        assert!(capacity_need(&ready, 0).is_some());
+        assert!(
+            agent.score(&ready, &json!({"type":"buy","source":"capacity"})) < 0.0,
+            "A module cannot consume the ready scoring payment"
+        );
+        view.as_object_mut().unwrap().remove("investmentPlanning");
+        view["market"] = json!([{"key":"signalRelay"},{"key":"ascendancyCodex"}]);
+        view["marketCosts"] = json!([{"energy":2,"data":1},{"energy":2,"biomass":4,"data":8}]);
+        view["cardStats"] = json!({"signalRelay":{"draw":2,"order":"special"},"ascendancyCodex":{"draw":1,"prestige":2,"order":"special"}});
+        view["players"][0]["resources"] = json!({"matter":0,"energy":0,"biomass":0,"data":0});
+        view["players"][0]["resourceLimits"] = json!({"matter":4,"energy":4,"biomass":4,"data":4});
+        assert!(capacity_need(&view, 0).is_some());
+        view["investmentPlanning"] = json!(true);
+        assert!(
+            capacity_need(&view, 0).is_none(),
+            "Near-term draw outranks a distant expensive target"
+        );
+    }
+    #[test]
+    fn investment_planning_banks_toward_the_market_price_not_just_the_next_unit() {
+        let agent = BuiltinAgent::new(Strategy::Economy, [7; 32]);
+        let mut view = json!({"seat":0,"round":4,"victoryTarget":30,"players":[{"prestige":6,"resources":{"matter":6,"energy":8,"biomass":3,"data":2},"resourceLimits":{"matter":12,"energy":12,"biomass":12,"data":12},"hand":[],"handCount":0,"deckCount":10,"deckContents":[],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"data","upgrade":"starbase"}},"fleets":{},"market":[{"key":"strategyCore"}],"marketCosts":[{"energy":1,"data":5}],"cardStats":{"strategyCore":{"draw":3,"order":"special"}}});
+        let bank = json!({"type":"bank_trade","giveType":"energy","getType":"data"});
+        assert!(agent.score(&view, &bank) < 0.0);
+        view["investmentPlanning"] = json!(true);
+        assert_eq!(number(&bot_storage_reserve(&view, 0)["data"]), 5.0);
+        assert!(agent.score(&view, &bank) > 0.0);
+        view["players"][0]["resources"]["energy"] = json!(4);
+        view["players"][0]["resourceLimits"]["energy"] = json!(4);
+        assert!(
+            agent.score(&view, &bank) < 0.0,
+            "Full tracks cannot be burned when the market reserve still needs them"
+        );
+        view["players"][1]["hand"] = json!([{"key":"genesisCharter"}]);
+        assert_eq!(number(&bot_storage_reserve(&view, 0)["data"]), 5.0);
+    }
+    #[test]
+    fn market_research_profile_keeps_economy_core_and_prioritizes_useful_purchases() {
+        let mut market = BuiltinAgent::new(Strategy::Market, [8; 32]);
+        let mut economy = BuiltinAgent::new(Strategy::Economy, [8; 32]);
+        assert!(agent("gr-market/29", [0; 32]).is_ok());
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":4,"phase":"buy","victoryTarget":30,"players":[{"prestige":6,"resources":{"matter":4,"energy":4,"biomass":4,"data":4},"resourceLimits":{"matter":4,"energy":4,"biomass":4,"data":4},"hand":[{"id":"c","key":"construct","starter":true,"upgraded":true,"level":2}],"handCount":1,"deckCount":9,"deckContents":[{"key":"move","count":9}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"}},"fleets":{},"clusters":[],"market":[{"key":"signalRelay"}],"marketCosts":[{"energy":2,"data":1}],"cardStats":{"signalRelay":{"draw":2,"order":"special"}}});
+        let legal = vec![
+            json!({"type":"upgrade","card":"c","resource":"matter"}),
+            json!({"type":"buy","source":"market","key":"signalRelay"}),
+        ];
+        assert_eq!(economy.select_action(&view, &legal), 0);
+        assert_eq!(market.select_action(&view, &legal), 1);
+        view["players"][0]["hand"][0]["upgraded"] = json!(false);
+        view["players"][0]["hand"][0]["level"] = json!(1);
+        assert_eq!(
+            market.select_action(&view, &legal),
+            0,
+            "First Construct II is protected"
+        );
+        view["phase"] = json!("operations");
+        view["planets"]["0,0"]["hasColony"] = json!(true);
+        view["planets"]["1,0"] = json!({"owner":0,"type":"matter","cluster":0});
+        let build = json!({"type":"build","kind":"harvester","coord":"1,0"});
+        assert_eq!(
+            market.score(&view, &build),
+            economy.score(&view, &build),
+            "Market priority does not replace the Economy production core"
+        );
+        view["phase"] = json!("buy");
+        view["players"][0]["hand"][0]["upgraded"] = json!(true);
+        view["players"][0]["hand"][0]["level"] = json!(2);
+        view["players"][0]["storageUpgradeCost"] =
+            json!({"matter":1,"energy":1,"biomass":1,"data":1});
+        view["market"] = json!([{"key":"commandNexus"}]);
+        view["marketCosts"] = json!([{"energy":2,"data":6}]);
+        view["cardStats"] = json!({"commandNexus":{"draw":4,"order":"special"}});
+        let capacity = vec![
+            legal[0].clone(),
+            json!({"type":"buy","source":"capacity","key":"capacityModule"}),
+        ];
+        assert_eq!(economy.select_action(&view, &capacity), 0);
+        assert_eq!(
+            market.select_action(&view, &capacity),
+            1,
+            "Market profile can fund capacity before another starter upgrade"
+        );
+    }
+    #[test]
+    fn seed_ark_alternatives_draw_or_colonize_without_double_counting() {
+        let mut agent = BuiltinAgent::new(Strategy::Economy, [8; 32]);
+        let mut view = strategic_view();
+        view["players"][0]["hand"] = json!([{"id":"seed","key":"seedArk"}]);
+        view["players"][0]["deckCount"] = json!(2);
+        view["market"] = json!([{"key":"seedArk"}]);
+        view["marketCosts"] = json!([{"biomass":4}]);
+        view["cardStats"]["seedArk"] = json!({"order":"colonize","colonyCost":1});
+        let baseline = capacity_value(&view, 0, "seedArk").unwrap();
+        let draw = json!({"type":"order_draw","key":"seedArk","card":"seed"});
+        let pass = json!({"type":"pass"});
+        assert_eq!(agent.select_action(&view, &[draw.clone(), pass.clone()]), 1);
+        view["cardStats"]["seedArk"]["fallbackDraw"] = json!(2);
+        assert_eq!(agent.select_action(&view, &[pass.clone(), draw.clone()]), 1);
+        assert_eq!(
+            agent.select_action(
+                &view,
+                &[
+                    draw.clone(),
+                    json!({"type":"colonize","key":"seedArk","card":"seed","coord":"1,0"})
+                ]
+            ),
+            1,
+            "A legal Colony scores before drawing"
+        );
+        let flexible = capacity_value(&view, 0, "seedArk").unwrap();
+        assert!(flexible > baseline);
+        view["cardStats"]["seedArk"] = json!({"order":"special","draw":2});
+        assert_eq!(
+            capacity_value(&view, 0, "seedArk").unwrap(),
+            flexible,
+            "Without a Colony opportunity, use the draw alternative's value"
+        );
+        view["cardStats"]["seedArk"] = json!({"order":"colonize","colonyCost":1,"fallbackDraw":0});
+        assert_eq!(
+            capacity_value(&view, 0, "seedArk").unwrap(),
+            baseline,
+            "Zero/absent fallback retains previous valuation"
+        );
+        view["cardStats"]["seedArk"]["fallbackDraw"] = json!(2);
+        view["players"][0]["deckCount"] = json!(0);
+        view["players"][0]["discard"] = json!([]);
+        assert_eq!(
+            agent.select_action(&view, &[draw, pass]),
+            1,
+            "Do not spend a card on an empty draw"
+        );
+    }
+
+    #[test]
+    fn buy_discount_planning_values_future_visible_purchases_without_inventing_savings() {
+        let mut agent = BuiltinAgent::new(Strategy::Market, [8; 32]);
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":4,"phase":"buy","victoryTarget":30,"players":[{"prestige":6,"resources":{"matter":4,"energy":4,"biomass":4,"data":4},"resourceLimits":{"matter":4,"energy":4,"biomass":4,"data":4},"hand":[{"id":"c","key":"construct","starter":true,"upgraded":true,"level":2}],"handCount":1,"deckCount":9,"deckContents":[{"key":"move","count":9}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"}},"fleets":{},"clusters":[],"market":[{"key":"procurementHub"},{"key":"surveyNetwork"}],"marketCosts":[{"biomass":1,"data":4},{"biomass":1,"data":2,"matter":0}],"cardStats":{"procurementHub":{"buyEffect":"hubDiscount"},"surveyNetwork":{"draw":2,"order":"special"}}});
+        let buy = json!({"type":"buy","source":"market","key":"procurementHub"});
+        let finish = json!({"type":"finish_buy"});
+        let baseline = capacity_value(&view, 0, "procurementHub").unwrap();
+        let other = capacity_value(&view, 0, "surveyNetwork").unwrap();
+        assert_eq!(
+            agent.select_action(&view, &[buy.clone(), finish.clone()]),
+            1
+        );
+        view["buyDiscountPlanning"] = json!(true);
+        assert!(capacity_value(&view, 0, "procurementHub").unwrap() > baseline);
+        assert_eq!(agent.select_action(&view, &[buy, finish]), 0);
+        assert_eq!(capacity_value(&view, 0, "surveyNetwork").unwrap(), other);
+        view["marketCosts"][1] = json!({"matter":0,"energy":0,"biomass":0,"data":0});
+        assert_eq!(
+            capacity_value(&view, 0, "procurementHub").unwrap(),
+            baseline,
+            "Free offers save nothing"
+        );
+        view["market"] = json!([{"key":"procurementHub"},{"key":"tradeSyndicate"}]);
+        view["marketCosts"][1] = json!({"energy":4,"data":1});
+        view["cardStats"]["tradeSyndicate"] = json!({"buyEffect":"discountEach"});
+        assert_eq!(
+            capacity_value(&view, 0, "procurementHub").unwrap(),
+            baseline,
+            "Coupons are not their own purchase plan"
+        );
+        view["market"][1]["key"] = json!("surveyNetwork");
+        view["marketCosts"][1] = json!({"biomass":1,"data":2});
+        view["cardStats"]["procurementHub"]["buyEffect"] = json!("unknown");
+        assert_eq!(
+            capacity_value(&view, 0, "procurementHub").unwrap(),
+            baseline
+        );
+        view["cardStats"]["procurementHub"]["buyEffect"] = json!("hubDiscount");
+        view["investmentPlanning"] = json!(false);
+        assert_eq!(
+            capacity_value(&view, 0, "procurementHub").unwrap(),
+            baseline,
+            "Historical views keep existing valuation"
+        );
+        view["investmentPlanning"] = json!(true);
+        view["players"][0]["prestige"] = json!(29);
+        let late = capacity_value(&view, 0, "procurementHub").unwrap();
+        view["buyDiscountPlanning"] = json!(false);
+        assert_eq!(
+            capacity_value(&view, 0, "procurementHub").unwrap(),
+            late,
+            "No future-use bonus in the last horizon"
+        );
+    }
+
+    #[test]
+    fn military_purchase_horizon_discounts_only_late_opt_in_investments() {
+        let mut view = json!({"seat":0,"victoryTarget":30,"players":[{"prestige":26,"resources":{},"resourceLimits":{"matter":10,"energy":10,"biomass":10,"data":10},"military":[]}],"fleets":{"0,0":{"0":{"fleet":1}}},"planets":{},"market":[{"key":"aegisLattice"}],"marketCosts":[{"matter":7,"energy":2}],"cardStats":{"aegisLattice":{"shield":8}}});
+        let baseline = capacity_value(&view, 0, "aegisLattice").unwrap();
+        view["militaryHorizon"] = json!(true);
+        assert_eq!(
+            capacity_value(&view, 0, "aegisLattice").unwrap(),
+            baseline - 15.0
+        );
+        view["players"][0]["prestige"] = json!(10);
+        let early = capacity_value(&view, 0, "aegisLattice").unwrap();
+        view["militaryHorizon"] = json!(false);
+        assert_eq!(capacity_value(&view, 0, "aegisLattice").unwrap(), early);
+        view["players"][0]["prestige"] = json!(30);
+        view["militaryHorizon"] = json!(true);
+        assert_eq!(
+            capacity_value(&view, 0, "aegisLattice").unwrap(),
+            baseline - 15.0,
+            "Already reaching the target does not make tactics into immediate points"
+        );
+    }
+    #[test]
+    fn single_fleet_forecast_uses_public_tactics_and_stays_gated() {
+        let mut view = json!({"seat":0,"players":[{"military":[{"key":"torpedoSpread"}]},{"military":[]}],"tacticStats":{"concentratedFire":{"attack":1,"shield":0},"defensiveScreen":{"attack":0,"shield":2},"torpedoSpread":{"attack":3,"shield":0},"aegisLattice":{"attack":0,"shield":8},"phaseLance":{"attack":2,"shield":0,"pierce":true}},"fleets":{"1,0":{"1":{"fleet":1}}},"planets":{}});
+        let moving = json!({"fleet":1});
+        assert!(!bot_safe_fight(&view, 0, &moving, "1,0"));
+        view["singleFleetForecast"] = json!(true);
+        assert!(bot_safe_fight(&view, 0, &moving, "1,0"));
+        view["players"][1]["military"] = json!([{"key":"aegisLattice"}]);
+        assert!(
+            !bot_safe_fight(&view, 0, &moving, "1,0"),
+            "Enemy public tactics change the forecast"
+        );
+        view["players"][1]["military"] = json!([]);
+        assert!(
+            !bot_safe_fight(&view, 0, &json!({"fleet":1,"explorer":1}), "1,0"),
+            "Unsupported mixed forces retain their old safety check"
+        );
+        let hand = fleet_tactic_hand(&view, 0, &json!([]));
+        let enemy = fleet_tactic_hand(&view, 1, &json!([]));
+        assert_eq!(
+            fleet_tactic_plan(&view, &hand, &enemy, 7, 7, 0).unwrap().0,
+            1
+        );
+        view["combat"] = json!({"side":"attacker","volley":1,"sides":{"attacker":{"playerId":0,"pieces":[{"type":"fleet","hull":7,"damage":0}],"hand":hand,"used":[]},"defender":{"playerId":1,"pieces":[{"type":"fleet","hull":7,"damage":0}],"used":[]}}});
+        let tactic = combat_fleet_tactic_plan(&view).unwrap();
+        let mut bot = BuiltinAgent::new(Strategy::Market, [9; 32]);
+        let legal = vec![
+            json!({"type":"combat_tactic","tactic":if tactic=="defensiveScreen"{"concentratedFire"}else{"defensiveScreen"}}),
+            json!({"type":"combat_tactic","tactic":tactic}),
+        ];
+        assert_eq!(bot.select_action(&view, &legal), 1);
+        view["combat"]["sides"]["defender"]["choice"] = json!("aegisLattice");
+        assert_eq!(
+            bot.select_action(&view, &legal),
+            1,
+            "An injected secret commitment must not influence the plan"
+        );
+        let used = fleet_tactic_hand(&view, 0, &json!(["torpedoSpread", "concentratedFire"]));
+        assert_eq!(used["torpedoSpread"], 0);
+        assert_eq!(used["concentratedFire"], 1);
+    }
+    #[test]
+    fn market_tactics_follow_public_combat_opportunities() {
+        let mut market = BuiltinAgent::new(Strategy::Market, [9; 32]);
+        let mut economy = BuiltinAgent::new(Strategy::Economy, [9; 32]);
+        let mut view = json!({"investmentPlanning":true,"seat":0,"round":6,"phase":"buy","victoryTarget":30,"players":[{"prestige":9,"resources":{"matter":8,"energy":4,"biomass":4,"data":4},"resourceLimits":{"matter":10,"energy":10,"biomass":10,"data":10},"hand":[{"id":"c","key":"construct","starter":true,"upgraded":true,"level":2}],"handCount":1,"deckCount":9,"deckContents":[{"key":"move","count":9}],"discard":[],"inPlay":[],"military":[]},{"prestige":3},{"prestige":3},{"prestige":3}],"planets":{"0,0":{"owner":0,"type":"matter","upgrade":"starbase"}},"fleets":{"0,0":{"0":{"fleet":1}},"9,0":{"1":{"fleet":1}}},"clusters":[],"market":[{"key":"aegisLattice"}],"marketCosts":[{"matter":7,"energy":2}],"cardStats":{"aegisLattice":{"shield":8}}});
+        let legal = vec![
+            json!({"type":"upgrade","card":"c","resource":"matter"}),
+            json!({"type":"buy","source":"market","key":"aegisLattice"}),
+        ];
+        assert_eq!(
+            economy.select_action(&view, &legal),
+            1,
+            "Standard profile ranking remains unchanged"
+        );
+        assert_eq!(
+            market.select_action(&view, &legal),
+            0,
+            "A remote army does not justify this military purchase yet"
+        );
+        view["marketOpportunityFilter"] = json!(false);
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "Disabling the research filter restores the ordinary purchase ranking"
+        );
+        view["marketOpportunityFilter"] = Value::Null;
+        view["players"][1]["hand"] = json!([{"key":"novaBarrage"}]);
+        assert_eq!(
+            market.select_action(&view, &legal),
+            0,
+            "Private enemy cards do not create a public opportunity"
+        );
+        view["fleets"] = json!({"0,0":{"0":{"fleet":1}},"3,0":{"1":{"fleet":1}}});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "Three weighted steps is within the forecast"
+        );
+        view["fleets"] = json!({"0,0":{"0":{"fleet":1}},"4,0":{"1":{"fleet":1}}});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            0,
+            "Four ordinary steps is outside it"
+        );
+        view["fleets"] = json!({"0,0":{"0":{"fleet":1}},"3,0":{"1":{"fleet":1}}});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "A nearby Fleet makes preparation useful"
+        );
+        view["fleets"] = json!({"0,0":{"0":{"fleet":1}}});
+        view["planets"]["3,0"] = json!({"owner":1,"type":"energy","upgrade":"starbase"});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "An armed Shipyard is also a combat opportunity"
+        );
+        view["fleets"] = json!({"-9,0":{"0":{"fleet":1}}});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            0,
+            "Two immobile Shipyards do not create a near-term battle"
+        );
+        view["fleets"] = json!({"-9,0":{"0":{"fleet":1}},"3,0":{"1":{"fleet":1}}});
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "A moving enemy can threaten the owned Shipyard"
+        );
+        view["planets"].as_object_mut().unwrap().remove("3,0");
+        view["fleets"] = json!({"-9,9":{"0":{"fleet":1}},"9,-10":{"1":{"fleet":1}}});
+        view["portalLinks"] = json!({"-9,10":"9,-10","9,-10":"-9,10"});
+        view["portalMovementCost"] = json!(2);
+        assert_eq!(
+            market.select_action(&view, &legal),
+            1,
+            "A nearby portal makes a physically distant enemy reachable"
+        );
     }
     #[test]
     fn construct_iii_draw_choice_and_equivalent_card_preference() {
@@ -2471,6 +4105,519 @@ mod tests {
     }
 
     #[test]
+    fn exchange_cards_choose_surplus_and_use_the_published_bank_rate() {
+        let mut agent = BuiltinAgent::new(Strategy::Market, [7; 32]);
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["players"][0]["resources"] = json!({"matter":1,"energy":3,"biomass":6,"data":0});
+        view["cardStats"]["exchangeProtocol"] = json!({"order":"special","bankRate":2});
+        let biomass = json!({"type":"special","key":"exchangeProtocol","resource":"biomass"});
+        let energy = json!({"type":"special","key":"exchangeProtocol","resource":"energy"});
+        assert_eq!(agent.select_action(&view, &[energy, biomass.clone()]), 1);
+        view["players"][0]["bankTradeRates"] = json!({"biomass":2});
+        assert!(
+            agent.score(&view, &biomass) < agent.score(&view, &json!({"type":"pass"})),
+            "Do not replay for an already improved give type"
+        );
+        assert_eq!(bank_rate(&view, 0, "energy"), 4.0);
+        assert_eq!(bank_rate(&view, 0, "biomass"), 2.0);
+        view["market"] = json!([{"key":"strategyCore"}]);
+        view["marketCosts"] = json!([{"energy":1,"data":5}]);
+        view["cardStats"]["strategyCore"] = json!({"order":"special","draw":3});
+        view["players"][0]["resources"]["biomass"] = json!(3);
+        view["planets"]["0,0"]["special"] = json!("relic");
+        view["fleets"] = json!({"0,0":{"0":{"explorer":1}}});
+        view["players"][0]["hand"] = json!([{"key":"probe","id":"probe"}]);
+        let trade = json!({"type":"bank_trade","giveType":"biomass","getType":"data"});
+        assert!(
+            agent.score(&view, &trade) > 0.0,
+            "Use a legal2:1trade below four resources"
+        );
+        view["players"][0]["bankTradeRates"] = json!({});
+        assert!(
+            agent.score(&view, &trade) < 0.0,
+            "Ordinary4:1rate stays unchanged"
+        );
+    }
+
+    #[test]
+    fn current_card_planning_requires_a_real_exchange_and_precedes_four_to_one() {
+        let mut v = strategic_view();
+        v["investmentPlanning"] = json!(true);
+        v["cardPurchasePlanning"] = json!(true);
+        v["players"][0]["resources"] = json!({"matter":2,"energy":2,"biomass":6,"data":0});
+        v["cardStats"]["exchangeProtocol"] = json!({"order":"special","bankRate":2});
+        let play = json!({"type":"special","key":"exchangeProtocol","resource":"biomass"});
+        let trade = json!({"type":"bank_trade","giveType":"biomass","getType":"data"});
+        let mut agent = BuiltinAgent::new(Strategy::Market, [7; 32]);
+        assert_eq!(
+            agent.select_action(&v, &[trade.clone(), play.clone()]),
+            1,
+            "Enable2:1before spending4"
+        );
+        v["players"][0]["resources"]["biomass"] = json!(1);
+        v["planets"]["1,0"] = json!({"owner":0,"type":"biomass","upgrade":"harvester"});
+        assert!(
+            agent.score(&v, &play) < 0.0,
+            "Future production cannot fund the trade now"
+        );
+        v["players"][0]["resources"] = json!({"matter":12,"energy":12,"biomass":12,"data":12});
+        assert!(
+            agent.score(&v, &play) < 0.0,
+            "No deficit means no reason to spend an order"
+        );
+        v["players"][0]["resources"] = json!({"matter":2,"energy":6,"biomass":6,"data":0});
+        v["players"][0]["bankTradeRates"] = json!({"energy":2});
+        assert!(
+            agent.score(&v, &play) < 0.0,
+            "Use an existing useful discount before another card"
+        );
+    }
+
+    #[test]
+    fn goal_trades_require_a_complete_useful_payment_and_keep_ready_scoring() {
+        let mut v = strategic_view();
+        v["goalDirectedTrading"] = json!(true);
+        v["cardPurchasePlanning"] = json!(true);
+        v["investmentPlanning"] = json!(true);
+        v["phase"] = json!("operations");
+        v["players"][0]["resourceLimits"] = json!({"matter":12,"energy":12,"biomass":12,"data":12});
+        v["players"][0]["resources"] = json!({"matter":2,"energy":2,"biomass":8,"data":0});
+        v["players"][0]["hand"] = json!([{"key":"exchangeProtocol","id":"exchange"}]);
+        v["cardStats"]["exchangeProtocol"] = json!({"bankRate":2});
+        let activate = json!({"type":"special","key":"exchangeProtocol","resource":"biomass"});
+        let trade = json!({"type":"bank_trade","giveType":"biomass","getType":"data"});
+        let mut agent = BuiltinAgent::new(Strategy::Market, [7; 32]);
+        v["tradeGoals"] = json!([]);
+        assert!(
+            agent.score(&v, &activate) < 0.0,
+            "Reserve shortage alone cannot spend an exchange order"
+        );
+        assert!(
+            agent.score(&v, &trade) < 0.0,
+            "Nor cause a speculative bank trade"
+        );
+        v["tradeGoals"] =
+            json!([{"kind":"excavate","cost":{"matter":1,"energy":1,"data":2},"priority":145}]);
+        assert_eq!(
+            agent.select_action(&v, &[trade.clone(), activate.clone()]),
+            1,
+            "Improve the rate before paying four"
+        );
+        let plan = goal_trade_plan(&v, 0);
+        assert_eq!(
+            plan["steps"].as_array().unwrap().len(),
+            2,
+            "Fund the full payment,not merely the first deficit"
+        );
+        v["players"][0]["resources"]["biomass"] = json!(2);
+        assert!(
+            goal_trade_plan(&v, 0).is_null(),
+            "Do not trade when the rest of the payment remains unfunded"
+        );
+        v["players"][0]["resources"]["biomass"] = json!(8);
+        v["players"][0]["resources"]["data"] = json!(2);
+        assert!(
+            agent.score(&v, &activate) < 0.0,
+            "The goal is already affordable"
+        );
+        v["players"][0]["resources"]["data"] = json!(0);
+        v["players"][0]["bankTradeRates"] = json!({"biomass":2});
+        assert!(
+            goal_trade_plan(&v, 0)["enable"].is_null(),
+            "Use an existing useful rate"
+        );
+        assert!(agent.score(&v, &trade) > 0.0);
+        v["tradeGoals"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!({"kind":"colonize","cost":{"biomass":2},"priority":150}));
+        assert!(
+            agent.score(&v, &trade) < 0.0,
+            "Take the ready higher-priority Colony instead of funding an alternative"
+        );
+        v["tradeGoals"] = json!([{"kind":"excavate","cost":{"data":13},"priority":145}]);
+        assert!(
+            goal_trade_plan(&v, 0).is_null(),
+            "Never fund a goal above current limits"
+        );
+        v["market"] = json!([{"key":"strategyCore"}]);
+        v["marketCosts"] = json!([{"energy":2,"data":1}]);
+        v["cardStats"]["strategyCore"] = json!({"order":"special","draw":3});
+        v["tradeGoals"] = json!([{"kind":"market","key":"strategyCore","cost":{"energy":2,"data":1},"priority":80}]);
+        assert!(
+            goal_trade_plan(&v, 0).is_object(),
+            "A worthwhile available purchase is a concrete goal"
+        );
+        v["excludedMarketCards"] = json!(["strategyCore"]);
+        assert!(
+            goal_trade_plan(&v, 0).is_null(),
+            "Research purchase bans also remove funding goals"
+        );
+    }
+
+    #[test]
+    fn current_buying_reads_free_builds_coupons_and_acquisition_delay() {
+        let mut v = strategic_view();
+        v["investmentPlanning"] = json!(true);
+        v["cardPurchasePlanning"] = json!(true);
+        v["cardStats"]["worldEngine"] =
+            json!({"order":"construct","draw":1,"buildDiscount":"free"});
+        let free = capacity_value(&v, 0, "worldEngine").unwrap();
+        v["cardStats"]["worldEngine"]["buildDiscount"] = Value::Null;
+        assert!(
+            free > capacity_value(&v, 0, "worldEngine").unwrap() + 10.0,
+            "Printed free builds have real future savings"
+        );
+        v["cardStats"]["signalRelay"] = json!({"order":"special","draw":2});
+        let soon = capacity_value(&v, 0, "signalRelay").unwrap();
+        v["players"][0]["deckCount"] = json!(30);
+        assert!(
+            soon > capacity_value(&v, 0, "signalRelay").unwrap(),
+            "A new card waits in discard"
+        );
+    }
+
+    #[test]
+    fn omitted_card_is_excluded_from_purchase_value_and_saving_targets() {
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["market"] = json!([{"key":"signalRelay"}]);
+        view["marketCosts"] = json!([{"energy":2,"data":1}]);
+        view["cardStats"]["signalRelay"] = json!({"order":"special","draw":2});
+        assert!(capacity_value(&view, 0, "signalRelay").is_some());
+        assert!(market_target_cost(&view, 0).is_some());
+        view["excludedMarketCards"] = json!(["signalRelay"]);
+        assert!(capacity_value(&view, 0, "signalRelay").is_none());
+        assert!(market_target_cost(&view, 0).is_none());
+        let agent = BuiltinAgent::new(Strategy::Market, [7; 32]);
+        assert!(
+            agent.score(
+                &view,
+                &json!({"type":"buy","source":"catalog","key":"signalRelay"})
+            ) < 0.0
+        );
+        assert!(
+            capacity_value(&view, 0, "exchangeProtocol").is_some(),
+            "Other designs retain their normal valuation"
+        );
+    }
+
+    #[test]
+    fn settler_discipline_replaces_units_but_rejects_paid_surplus() {
+        let mut agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["shipCosts"] = json!({"settler":{"matter":1,"energy":1,"biomass":1}});
+        view["fleets"] = json!({"0,0":{"0":{"settler":1,"fleet":1,"explorer":0}}});
+        let build = json!({"type":"build","kind":"settler","coord":"0,0"});
+        let pass = json!({"type":"pass"});
+        assert_eq!(agent.score(&view, &build), 5.0);
+        view["settlerInvestmentDiscipline"] = json!(true);
+        assert_eq!(agent.select_action(&view, &[build.clone(), pass]), 1);
+        let mut free = build.clone();
+        free["discountResource"] = json!("free");
+        assert_eq!(agent.score(&view, &free), 5.0);
+        free["discountResource"] = json!("each");
+        assert_eq!(agent.score(&view, &free), 5.0);
+        free["type"] = json!("second_build");
+        assert_eq!(
+            agent.score(&view, &free),
+            -1.0,
+            "Second build pays its cost"
+        );
+        free = build.clone();
+        free["discountResource"] = json!("matter");
+        assert_eq!(
+            agent.score(&view, &free),
+            -1.0,
+            "Partial discounts still cost resources"
+        );
+        view["fleets"]["0,0"]["0"]["settler"] = json!(0);
+        assert_eq!(agent.score(&view, &build), 86.0, "Replace consumed Settler");
+        view["fleets"]["0,0"]["0"]["settler"] = json!(1);
+        agent = BuiltinAgent::new(Strategy::Expansion, [17; 32]);
+        assert_eq!(agent.score(&view, &build), 86.0, "Expansion keeps two");
+        view["fleets"]["0,0"]["0"]["settler"] = json!(2);
+        assert_eq!(agent.score(&view, &build), -1.0);
+        view["shipCosts"] = json!(null);
+        assert_eq!(
+            agent.score(&view, &build),
+            5.0,
+            "Missing metadata preserves prior choice"
+        );
+        view["shipCosts"] = json!({"settler":{"matter":-1}});
+        assert_eq!(
+            agent.score(&view, &build),
+            5.0,
+            "Malformed metadata preserves prior choice"
+        );
+        view["investmentPlanning"] = json!(false);
+        assert_eq!(agent.score(&view, &build), 5.0);
+    }
+
+    #[test]
+    fn optional_construction_can_finish_instead_of_paying_for_rejected_builds() {
+        let mut agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["productionDiscipline"] = json!(true);
+        view["round"] = json!(18);
+        view["players"][0]["prestige"] = json!(40);
+        view["planets"]["1,0"] = json!({"type":"biomass","owner":0});
+        let finish = json!({"type":"finish_construct"});
+        let paid = json!({"type":"second_build","kind":"harvester","coord":"1,0"});
+        let original = agent.score(&view, &paid);
+        assert!(original < 0.0);
+        assert!(
+            agent.score(&view, &finish) < original,
+            "Existing pending choice still buys the rejected Harvester"
+        );
+        view["optionalConstructionPlanning"] = json!(true);
+        assert_eq!(
+            agent.select_action(&view, &[paid.clone(), finish.clone()]),
+            1
+        );
+        assert_eq!(
+            agent.score(&view, &paid),
+            original,
+            "Only the finish alternative changes"
+        );
+        let yard = json!({"type":"second_build","kind":"starbase","coord":"1,0"});
+        view["planets"]["0,0"]["upgrade"] = json!("starbase");
+        assert_eq!(agent.select_action(&view, &[yard, finish.clone()]), 1);
+        let free =
+            json!({"type":"build","kind":"harvester","coord":"1,0","discountResource":"free"});
+        assert!(agent.score(&view, &free) > agent.score(&view, &finish));
+        view["round"] = json!(2);
+        view["players"][0]["prestige"] = json!(3);
+        assert_eq!(
+            agent.select_action(&view, &[finish.clone(), paid]),
+            1,
+            "Profitable construction still wins"
+        );
+        view["investmentPlanning"] = json!(false);
+        assert_eq!(
+            agent.score(&view, &finish),
+            -20.0,
+            "Archived policy stays unchanged"
+        );
+    }
+
+    #[test]
+    fn harvester_headroom_waits_for_delayed_returns_but_keeps_useful_and_free_builds() {
+        let agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["productionDiscipline"] = json!(true);
+        view["harvesterCost"] = json!({"matter":1,"energy":1,"data":1});
+        view["harvesterYield"] = json!(2);
+        view["round"] = json!(15);
+        view["players"][0]["prestige"] = json!(32);
+        view["players"][0]["resources"]["biomass"] = json!(4);
+        view["players"][0]["resourceLimits"]["biomass"] = json!(4);
+        view["planets"]["1,0"] = json!({"type":"biomass","owner":0});
+        view["planets"]["2,0"] = json!({"type":"biomass","owner":0});
+        let paid = json!({"type":"build","kind":"harvester","coord":"1,0"});
+        let original = agent.score(&view, &paid);
+        assert!(original > 0.0);
+        view["harvesterHeadroomPlanning"] = json!(true);
+        assert!(agent.score(&view, &paid) < agent.score(&view, &json!({"type":"pass"})));
+        view["players"][0]["resources"]["biomass"] = json!(0);
+        assert_eq!(
+            agent.score(&view, &paid),
+            original,
+            "Room keeps the normal payback"
+        );
+        view["players"][0]["resources"]["biomass"] = json!(4);
+        view["players"][0]["prestige"] = json!(3);
+        assert!(
+            agent.score(&view, &paid) > 0.0,
+            "A longer race can justify full-stock investment"
+        );
+        view["players"][0]["prestige"] = json!(39);
+        let free =
+            json!({"type":"build","kind":"harvester","coord":"1,0","discountResource":"free"});
+        let each =
+            json!({"type":"build","kind":"harvester","coord":"1,0","discountResource":"each"});
+        assert!(agent.score(&view, &free) > 0.0);
+        assert!(agent.score(&view, &each) > 0.0);
+        view["harvesterCost"]["matter"] = json!(2);
+        assert!(
+            agent.score(&view, &each) < 0.0,
+            "Partial discount is still paid"
+        );
+        let second = json!({"type":"second_build","kind":"harvester","coord":"1,0","discountResource":"free"});
+        assert!(
+            agent.score(&view, &second) < 0.0,
+            "Second builds do not inherit the first discount"
+        );
+        view["players"][0]["prestige"] = json!(32);
+        view["harvesterCost"] = json!({});
+        assert_eq!(
+            agent.score(&view, &paid),
+            original,
+            "Empty cost metadata preserves old scores"
+        );
+        view.as_object_mut().unwrap().remove("harvesterCost");
+        assert_eq!(
+            agent.score(&view, &paid),
+            original,
+            "Missing metadata preserves old scores"
+        );
+        view["investmentPlanning"] = json!(false);
+        let archived = agent.score(&view, &paid);
+        view["harvesterHeadroomPlanning"] = json!(false);
+        assert_eq!(agent.score(&view, &paid), archived);
+
+        let mut room = strategic_view();
+        room["investmentPlanning"] = json!(true);
+        room["productionDiscipline"] = json!(true);
+        room["harvesterHeadroomPlanning"] = json!(true);
+        room["harvesterCost"] = json!({"matter":1,"energy":1,"data":1});
+        room["harvesterYield"] = json!(2);
+        room["round"] = json!(17);
+        room["players"][0]["prestige"] = json!(34);
+        room["players"][0]["resources"]["matter"] = json!(4);
+        room["players"][0]["resourceLimits"]["matter"] = json!(4);
+        room["planets"] = json!({"0,0":{"type":"matter","owner":null}});
+        assert!(
+            agent.score(
+                &room,
+                &json!({"type":"build","kind":"harvester","coord":"0,0"})
+            ) > 0.0,
+            "Construction payment frees room"
+        );
+        room["round"] = json!(1);
+        room["players"][0]["prestige"] = json!(3);
+        room["players"][0]["resources"]["data"] = json!(1);
+        room["planets"] = json!({"0,0":{"type":"data","owner":null}});
+        assert_eq!(
+            agent.score(
+                &room,
+                &json!({"type":"build","kind":"harvester","coord":"0,0"})
+            ),
+            53.0,
+            "Keep initial Data bootstrap"
+        );
+    }
+
+    #[test]
+    fn colony_execution_prefers_printed_terms_without_changing_purchase_values() {
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["colonyExecutionPlanning"] = json!(true);
+        view["planets"]["1,0"] = json!({"owner":null});
+        view["cardStats"] = json!({
+            "colonize":{"order":"colonize","colonyCost":2},
+            "seedArk":{"order":"colonize","colonyCost":1},
+            "colonyPods":{"order":"colonize","colonyCost":1,"keepSettler":true},
+            "genesisCharter":{"order":"colonize","colonyCost":0,"keepSettler":true,"colonyPrestige":2}
+        });
+        let agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let order = |key| json!({"type":"colonize","key":key,"coord":"1,0"});
+        assert!(agent.score(&view, &order("seedArk")) > agent.score(&view, &order("colonize")));
+        assert!(agent.score(&view, &order("colonyPods")) > agent.score(&view, &order("seedArk")));
+        assert!(
+            agent.score(&view, &order("genesisCharter")) > agent.score(&view, &order("colonyPods"))
+        );
+        let purchase = capacity_value(&view, 0, "seedArk");
+        view["colonyExecutionPlanning"] = json!(false);
+        assert_eq!(
+            purchase,
+            capacity_value(&view, 0, "seedArk"),
+            "Execution does not change valuation"
+        );
+        assert_eq!(agent.score(&view, &order("seedArk")), 160.0);
+        view["colonyExecutionPlanning"] = json!(true);
+        view["planets"]["1,0"]["owner"] = json!(1);
+        assert_eq!(
+            agent.score(&view, &order("seedArk")),
+            agent.score(&view, &order("colonize"))
+        );
+        view["investmentPlanning"] = json!(false);
+        assert_eq!(agent.score(&view, &order("genesisCharter")), 160.0);
+    }
+
+    #[test]
+    fn optional_fleet_discipline_keeps_defense_military_and_free_builds() {
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["fleetInvestmentDiscipline"] = json!(true);
+        view["fleets"] = json!({"-1,0":{"0":{"fleet":5}}});
+        let paid = json!({"type":"build","kind":"fleet","coord":"-1,0"});
+        let free = json!({"type":"build","kind":"fleet","coord":"-1,0","discountResource":"free"});
+        let discounted =
+            json!({"type":"build","kind":"fleet","coord":"-1,0","discountResource":"each"});
+        for strategy in [Strategy::Economy, Strategy::Expansion, Strategy::Military] {
+            let agent = BuiltinAgent::new(strategy, [17; 32]);
+            assert!(agent.score(&view, &paid) < agent.score(&view, &json!({"type":"pass"})));
+            assert!(
+                agent.score(&view, &discounted) < 0.0,
+                "Fleet each-discount still costs Matter"
+            );
+            assert!(agent.score(&view, &free) > 0.0);
+            view["fleetInvestmentDiscipline"] = json!(false);
+            assert_eq!(agent.score(&view, &paid), 8.0);
+            view["fleetInvestmentDiscipline"] = json!(true);
+            view["investmentPlanning"] = json!(false);
+            assert_eq!(agent.score(&view, &paid), 8.0);
+            view["investmentPlanning"] = json!(true);
+        }
+        let military = BuiltinAgent::new(Strategy::Military, [17; 32]);
+        view["fleets"] = json!({"-1,0":{"0":{"fleet":4}}});
+        assert_eq!(military.score(&view, &paid), 81.0);
+        let economy = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        view["fleets"] = json!({"8,0":{"1":{"fleet":1}}});
+        assert_eq!(
+            economy.score(&view, &paid),
+            80.0,
+            "Keep ordinary defensive coverage"
+        );
+        view["fleets"] = json!({"1,0":{"1":{"fleet":2}}});
+        assert!(
+            economy.score(&view, &paid) > 110.0,
+            "Keep urgent Colony defense"
+        );
+    }
+
+    #[test]
+    fn investment_trimming_preserves_named_orders() {
+        let agent = BuiltinAgent::new(Strategy::Economy, [17; 32]);
+        let mut view = strategic_view();
+        view["investmentPlanning"] = json!(true);
+        view["players"][0]["resources"] = json!({"matter":30,"energy":30,"biomass":30,"data":30});
+        view["players"][0]["deckContents"] = json!([
+            {"key":"construct","count":4}, {"key":"move","count":8},
+            {"key":"colonize","count":5}
+        ]);
+        for key in [
+            "worldEngine",
+            "prefabYards",
+            "stellarCrucible",
+            "horizonSail",
+            "evergreenArk",
+        ] {
+            view["players"][0]["hand"] = json!([{"id":"held","key":key,"upgraded":false}]);
+            let trash = json!({"type":"decommission","card":"held","resource":"matter"});
+            assert!(agent.score(&view, &trash) < 0.0, "Keep named order {key}");
+            view["investmentPlanning"] = json!(false);
+            assert!(
+                agent.score(&view, &trash) > 0.0,
+                "Historical trimming is preserved"
+            );
+            view["investmentPlanning"] = json!(true);
+        }
+        view["players"][0]["hand"] = json!([{"id":"held","key":"construct","starter":true}]);
+        assert!(
+            agent.score(
+                &view,
+                &json!({"type":"decommission","card":"held","resource":"matter"})
+            ) > 0.0
+        );
+    }
+
+    #[test]
     fn current_agents_bootstrap_data_before_explorers() {
         let agent = BuiltinAgent::new(Strategy::Military, [7; 32]);
         let view = json!({
@@ -2726,8 +4873,22 @@ mod tests {
         );
         assert!(game.scores().is_some(), "the 40-point match finishes");
         assert!(bought >= 4, "rivals buy new market cards ({bought})");
-        assert!(storage >= 4, "rivals buy Capacity Modules ({storage})");
-        assert!(modules >= 4, "rivals play Capacity Modules ({modules})");
+        assert!(storage > 0, "rivals buy Capacity Modules ({storage})");
+        assert!(
+            modules > 0 && modules <= storage,
+            "Purchased modules are played ({modules}/{storage})"
+        );
+        let observed = game.observe(0).unwrap();
+        let stored: usize = observed["players"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| p["storage"].as_array().map_or(0, Vec::len))
+            .sum();
+        assert_eq!(
+            stored, modules,
+            "Every played module remains in its permanent pile"
+        );
         assert!(played >= 2, "rivals play new cards ({played})");
     }
     /// A shared table resumes from its snapshot text exactly: every revision in

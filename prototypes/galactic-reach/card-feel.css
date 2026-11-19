@@ -45,7 +45,7 @@
 @media (prefers-reduced-motion: reduce) { .hex.cf-drop-target::before { animation: none; } }
 
 /* Market (report #8): the price is the card's top-left corner and the gain its top-right.
-   A padlock marks a price above that resource's limit; a dashed chip one you hold too
+   A padlock marks a price above that resource's limit; a faded chip one you hold too
    little of. */
 @media (min-width: 1024px) and (min-height: 600px) {
   :is(#market-row, #upgrade-market) .game-card { grid-template-areas: "cost gain" "name name" "type type" "head head" "effect effect" "note note"; }
@@ -57,7 +57,7 @@
 .game-card .resource-chip.locked { position: relative; background: repeating-linear-gradient(-45deg, #a8463a1f 0 3px, transparent 3px 6px), #f7e6dc; box-shadow: inset 0 0 0 1.5px #a8463a; }
 .game-card .resource-chip.locked strong { color: #8a2f25; }
 .chip-lock { position: absolute; top: -5px; right: -4px; width: 10px; height: 12px; color: #93362b; filter: drop-shadow(0 0 1px #fff) drop-shadow(0 1px 0 #fff); }
-.game-card .resource-chip.short { outline: 1.5px dashed #8b7b58; outline-offset: -1.5px; box-shadow: none; }
+.game-card .resource-chip.short { opacity: .55; box-shadow: none; }
 
 /* Reserves (report #10): stock as pips out of the limit; outlined pips are next round's
    production that still fits. Amber when full, red above the limit. */
@@ -133,6 +133,8 @@
 .pile-stats > button[data-empty="true"] .pile-card::after { display: none; }
 
 /* Use order aims the card like a drag: it stays raised and glowing, marked as in play, while the
-   hexes where its order can start light up (see syncAim). */
-#hand-row > .game-card.cf-aiming { --cf-lift: -14px; --cf-ring: 0 0 0 2.5px #f2d488, 0 0 18px #f2d488aa; }
+   hexes where its order can start light up (see syncAim). The reverse uses the same look: pointing
+   at (or focusing, or choosing) a hex raises the hand cards whose order can start there (app.js
+   syncPlaysHere). */
+#hand-row > .game-card:is(.cf-aiming, .cf-plays-here) {--cf-lift: -14px; --cf-ring: 0 0 0 2.5px #f2d488, 0 0 18px #f2d488aa; }
 .cf-aim-active .hex:not(.cf-drop-target)::before { filter: brightness(.55) saturate(.6); }

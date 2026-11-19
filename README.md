@@ -26,6 +26,7 @@ For two human players on one computer, use separate browser profiles or a privat
 - The current prototype/platform/experiment dependency graph and follow-up PR plan are tracked in the [playtest roadmap](docs/playtest-roadmap.md).
 - Optional local release deployment through Tailscale Funnel. See [local HTTPS hosting](docs/local-hosting.md).
 - Invite-only mode for a public host: Nido sign-in plus an administrator's invitation. See [invite-only hosting](docs/invite-only.md).
+- A dev-only PR mixer: administrators turn open PRs on and off and play `main` with exactly those changes, each mix with its own throwaway database. See [PR mixer](docs/pr-mixer.md).
 - Axum HTTP server with SQLite persistence, cookie sessions, membership checks, origin protection, and revision-checked commands.
 - Nido passkey sign-in with live Stellar testnet wallet verification; see [Nido setup](docs/nido-auth.md).
 - Atomic snapshots and private, hash-linked command records for future replay tooling. These records are not a ZKP or a trustless consensus system.
@@ -85,6 +86,6 @@ The platform keeps a second implementation of the game/AI contract, **Voidwright
 
 The repository includes a multi-stage Docker image and a Render Blueprint with automatic per-PR service previews. GitHub Actions builds and smoke-tests the actual deployment image. Preview instances have an access-code-protected test login and isolated, disposable game data; the main service keeps test login disabled. Galactic Reach work targets the user-designated stable lane, `codex/add-galactic-reach-prototype`; breaking rules experiments use separate pull requests and preview URLs.
 
-See [the playtest branching workflow](docs/playtest-workflow.md) for stable and experimental lanes. See [PR preview activation](docs/pr-previews.md) for the one-time Render/GitHub connection, first-PR bootstrap, access code, lifecycle, and storage limitations. The checked-in Blueprint is a disposable testing host, not durable production infrastructure. Study data and screenshots live in [galactic-reach-studies](https://github.com/CardBoardStudio/galactic-reach-studies); see [history slim](docs/history-slim.md) for why and for updating a clone made before the rewrite.
+See [the playtest branching workflow](docs/playtest-workflow.md) for stable and experimental lanes. See [PR preview activation](docs/pr-previews.md) for the one-time Render/GitHub connection, first-PR bootstrap, access code, lifecycle, and storage limitations. The checked-in Blueprint is a disposable testing host, not durable production infrastructure. Study data and screenshots have left the current source tree but remain in retained Git history; see [history slim](docs/history-slim.md) for pinned access and the separately approved archive/rewrite plan.
 
 The Alien Relics iteration starts with a Colony and six Move/Construct cards. All units commission at Shipyards. Settlers grant Colonize and Explorers grant Probe. Establish a Research Station at a relic to draw one of 12 alien cards into hand; previous Relic inventory and exchanges are removed. Permanent capacity purchases and playtest annotations remain.

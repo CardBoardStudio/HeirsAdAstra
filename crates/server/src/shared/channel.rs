@@ -9,8 +9,10 @@
 //! after a rules-changing merge deploys. A save-compatible merge keeps the
 //! revision, so its tables resume from their snapshots on the new engine and its
 //! browsers get the new interface at once. A kept revision is pruned once no
-//! unfinished shared table plays it and it has not been current for
-//! [`KEEP_FOR`] (time for solo games in browsers, which the server cannot see).
+//! unfinished shared or private (server-saved) table plays it and it has not been
+//! current for [`KEEP_FOR`] (time for guest games in browsers, which the server
+//! cannot see). A private table's dev revision is the `devRules` its save was
+//! dealt with; `solo_tables.rules_version` names only the released rules.
 use galactic_reach::{ADAPTER_SOURCE, APP_SOURCE, Sources};
 use rusqlite::{Connection, OptionalExtension, params};
 use std::collections::HashMap;
@@ -18,7 +20,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::store::Store;
 
-/// How long a superseded dev revision stays playable without a shared table.
+/// How long a superseded dev revision stays playable without a server table.
 pub const KEEP_FOR: u64 = 14 * 24 * 60 * 60;
 
 /// Engine sources kept for one dev revision.
@@ -107,9 +109,16 @@ impl Channel {
              ON CONFLICT(rules) DO UPDATE SET app=?2,adapter=?3,commit_id=?4,current_at=?5",
             params![self.rules, app, adapter, self.commit, now],
         )?;
+        // An unfinished private table names its dev revision only inside its save; a
+        // malformed save names none rather than failing startup.
         db.execute(
             "DELETE FROM gr_rule_builds WHERE rules<>?1 AND current_at<?2
-             AND rules NOT IN (SELECT rules FROM gr_shared_tables WHERE status<>'finished')",
+             AND rules NOT IN (SELECT rules FROM gr_shared_tables WHERE status<>'finished')
+             AND rules NOT IN (SELECT dealt FROM (
+                 SELECT CASE WHEN json_valid(state) THEN json_extract(state,'$.state.devRules') END AS dealt,
+                        CASE WHEN json_valid(state) THEN json_extract(state,'$.state.winner') END AS winner
+                 FROM solo_tables WHERE state IS NOT NULL)
+               WHERE dealt IS NOT NULL AND winner IS NULL)",
             params![self.rules, now.saturating_sub(KEEP_FOR)],
         )
     }

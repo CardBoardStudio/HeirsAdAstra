@@ -15,9 +15,11 @@
   }}</script>
   <link rel="stylesheet" href="/galactic-reach/zk/seat.css">
   <link rel="stylesheet" href="styles.css?v=construct-iii-38-43">
-  <link rel="stylesheet" href="card-feel.css?v=2">
+  <link rel="stylesheet" href="card-feel.css?v=3">
   <link rel="stylesheet" href="playtest-notes.css?v=1">
   <link rel="stylesheet" href="change-queue.css?v=1">
+  <link rel="stylesheet" href="guide.css?v=2">
+  <link rel="stylesheet" href="tabletop-controls.css">
 </head>
 <body>
   <a class="skip-link" href="#console">Skip to player controls</a>
@@ -32,6 +34,8 @@
       </div>
       <div class="header-actions">
         <a class="button button-ghost" href="/" style="text-decoration:none">Home</a>
+        <a class="button button-ghost" id="learn-to-play" href="?tutorial=1" style="text-decoration:none">Learn to play</a>
+        <button class="button button-ghost" id="guide-toggle" type="button" aria-pressed="true">Guidance: on</button>
         <button class="button button-ghost" id="undo-turn-button" type="button" disabled title="Available after you complete a turn">Undo turn</button>
         <button class="button button-ghost" id="rules-button" type="button">Rules</button>
         <button class="button button-ghost" id="background-toggle" type="button" aria-pressed="false">Star background</button>
@@ -79,7 +83,7 @@
         <div><span class="label">Round</span><strong id="round-value">1</strong></div>
         <div><span class="label">Phase</span><strong id="phase-value">Production</strong></div>
         <div><span class="label">Active</span><strong id="active-value">You</strong></div>
-        <div><span class="label">Goal</span><strong id="round-goal">40 Prestige</strong></div>
+        <div><span class="label">Goal</span><strong id="round-goal">30 Prestige</strong></div>
       </div>
             </div>
       <aside class="board-shared" aria-label="Shared table information">
@@ -89,7 +93,7 @@
           <ul class="board-resource-key">
             <li><span class="resource-swatch matter" aria-hidden="true"></span>Matter</li>
             <li><span class="resource-swatch energy" aria-hidden="true"></span>Energy</li>
-            <li><span class="resource-swatch biomass" aria-hidden="true"></span>Biomass</li>
+            <li><span class="resource-swatch biomass" aria-hidden="true"></span>Life</li>
             <li><span class="resource-swatch data" aria-hidden="true"></span>Data</li>
           </ul>
           <p>Worlds are public. Moons and unlocated relics stay hidden.</p><p class="territory-key"><span class="territory-swatch" aria-hidden="true"><i style="--territory:#55d9f4"></i><i style="--territory:#ff9f6e"></i><i style="--territory:#a58cff"></i><i style="--territory:#f2cf66"></i></span>A ring in a faction’s colour marks its planets; buildings wear their owner’s colour.</p><p class="portal-key"><span aria-hidden="true">⇄</span> Marked corner portals: 2 movement to cross.</p>
@@ -107,7 +111,7 @@
             <dt>Combat</dt><dd>2 per fight won with all enemy units destroyed. None if any escape or retreat.</dd>
             <dt>Cards</dt><dd>Permanent Prestige printed on Wonders, Ascendancy Codex, Genesis Charter and Victory Doctrine.</dd>
           </dl>
-          <p>Reach <strong id="victory-target-text">40 Prestige</strong>, set when this game was created. Victory is checked at round end.</p>
+          <p>Reach <strong id="victory-target-text">30 Prestige</strong>, set when this game was created. Victory is checked at round end.</p>
         </section>
         <section class="panel log-panel">
           <div class="panel-heading">
@@ -116,7 +120,6 @@
           <button type="button" class="log-toggle" id="log-toggle" aria-expanded="false" aria-controls="game-log"><span>Comms</span><small>Show all</small></button>
           <ol id="game-log" tabindex="0" aria-label="Comms feed" class="game-log" aria-live="polite"></ol>
         </section>
-        <section class="fleet-glance" id="fleet-glance" aria-label="Fleets at a glance"></section>
         </div>
       </aside>
             <nav class="phase-stepper" id="phase-stepper" aria-label="Round phases"><strong id="stepper-round">Round 1</strong><ol id="phase-stepper-steps"></ol></nav>
@@ -151,6 +154,8 @@
           <button id="deck-button" type="button" title="Inspect remaining cards without revealing draw order"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Deck</span> <strong id="deck-count">0</strong></button>
           <span>Hand <strong id="hand-pile-count">0</strong></span>
           <button id="in-play-button" type="button" title="Inspect used cards held outside discard until shared cleanup"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">In play</span> <strong id="in-play-count">0</strong></button>
+          <!-- Rules #military-deck: owned military cards, a pile of their own that is never drawn or discarded. -->
+          <button id="military-button" type="button" title="Inspect your military deck: the tactics you add to every battle"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Military</span> <strong id="military-count">0</strong></button>
           <button id="discard-button" type="button" title="Browse your discard pile"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Discard</span> <strong id="discard-count">0</strong></button>
         </div>
         <!-- Rules #storage-pile: played Capacity Modules, on the mat where the +4 token was (its
@@ -164,7 +169,7 @@
           <p id="resource-tools-help">Free during your Operations or Buy turn.</p>
           <form id="bank-trade-form" class="bank-trade-form">
             <div class="bank-resource-picker">
-              <fieldset><legend>Give 4</legend><div class="bank-resource-options" id="bank-give-options"></div></fieldset>
+              <fieldset><legend id="bank-give-rate">Give 4</legend><div class="bank-resource-options" id="bank-give-options"></div></fieldset>
               <span class="bank-resource-arrow" aria-hidden="true">→</span>
               <fieldset><legend>Receive 1</legend><div class="bank-resource-options" id="bank-get-options"></div></fieldset>
             </div>
@@ -181,7 +186,6 @@
         <div class="console-nav">
           <div class="console-tabs" role="tablist" aria-label="Player controls">
             <button class="console-tab active" id="market-tab" type="button" data-tab="market" role="tab" aria-selected="true" aria-controls="market-panel" tabindex="0">Market</button>
-            <button class="console-tab" id="fleet-tab" type="button" data-tab="fleet" role="tab" aria-selected="false" aria-controls="fleet-panel" tabindex="-1">Fleet</button>
             <button class="console-tab" id="relics-tab" type="button" data-tab="relics" role="tab" aria-selected="false" aria-controls="relics-panel" tabindex="-1">Relics</button>
           </div>
           <button class="console-tab trade-open" id="open-trade" type="button" aria-haspopup="dialog" aria-controls="trade-dialog">Trade</button>
@@ -219,12 +223,6 @@
             <p class="relic-payment">Excavation cost <span id="relic-cost"></span></p>
             <div class="relic-row" id="relic-row"></div>
           </div>
-          <div class="tab-panel" id="fleet-panel" data-panel="fleet" role="tabpanel" aria-labelledby="fleet-tab" tabindex="0" hidden>
-            <div class="section-intro"><div><h2>Fleet manifest</h2><p>Settlers move 1 and colonize. Fleets move 2. Explorers move 3 and excavate relics.</p></div></div>
-            <div class="fleet-summary" id="fleet-summary"></div>
-            <div class="military-deck-heading"><div><h3>Your military deck &amp; tactic hand</h3><p>Privately choose, then reveal together. Each battle you hold two Fire, two Screen and every military card you bought, each usable once.</p></div><strong id="military-deck-count">4 tactics each battle</strong></div>
-            <div class="military-card-grid" id="military-card-grid"></div>
-          </div>
         </div>
       </section>
     </section>
@@ -238,7 +236,7 @@
       <p>This replaces your current guest save.</p>
       <label for="new-game-target">Prestige target</label>
       <select id="new-game-target"></select>
-      <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 40.</p>
+      <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 30.</p>
       <p id="new-game-neighbor" class="new-game-neighbor"></p>
       <div class="dialog-actions"><button class="button button-ghost" value="cancel" type="submit">Cancel</button><button class="button button-primary" value="start" type="submit" id="new-game-start">Start new game</button></div>
     </form>
@@ -248,7 +246,7 @@
     <div class="dialog-heading"><div><div class="eyebrow">POINT BREAKDOWN</div><h2 id="prestige-title">Prestige</h2></div><button class="button button-ghost dialog-close" id="close-prestige" type="button" aria-label="Close point breakdown">Close</button></div>
     <p class="prestige-stats" id="prestige-stats"></p>
     <dl class="prestige-breakdown" id="prestige-breakdown"></dl>
-    <p class="muted">Each Colony scores 3, each excavated relic 2, and each decisive combat victory 1. Relic, combat and card points are permanent.</p>
+    <p class="muted">Each Colony scores 3, each excavated relic 2, and each decisive combat victory 2. Relic, combat and card points are permanent.</p>
     <p><a href="rulebook.html#victory" target="_blank" rel="noopener">Scoring rules ↗</a></p>
   </dialog>
 
@@ -258,8 +256,8 @@
     <div class="rules-grid">
       <section><h3>Your turn</h3><p>Convert level I starters for resources, then use one order, offer a trade, or pass. Passing immediately starts your Buy turn. Finish Buy, then the remaining factions continue Operations.</p></section>
       <section><h3>Your round</h3><p>Produce → Operations (pass → your Buy turn) → everyone finishes → cleanup → victory check → draw five → next round.</p></section>
-      <section><h3>Your deck</h3><p>Buy as many cards as you can afford during your Buy turn. Upgrade original starters to II for two of one resource, then III for three of one resource; III draws one card when used as an order. Only level I starters convert to resources. Trash eligible discarded cards, including starters, for three of one chosen resource type each. There is no one-card trash limit. Gained cards go to discard. Played and converted cards stay in play until shared cleanup. Buy a Capacity Module from the Upgrades tray (1 + the cards in your Storage pile, of each resource); play it during Operations to add 4 capacity points, and it stays in your permanent Storage pile. Successful Colonize, Excavate and Cargo Expansion are permanently trashed. Probe keeps its combined card. Stored resources carry forward.</p></section>
-      <section><h3>Your goal</h3><p>Reach the table’s Prestige target (40 unless chosen otherwise when the game was created) at the end of a round. Colonies, excavated relics, and decisive combat victories contribute. Click a point total to see its breakdown. The rulebook includes costs, scoring, and current card clarifications.</p></section>
+      <section><h3>Your deck</h3><p>Buy as many cards as you can afford during your Buy turn. Upgrade original starters to II for two of one resource, then III for three of one resource; III draws one card when used as an order. Only level I starters convert to resources. Trash eligible discarded cards, including starters, for three of one chosen resource type each. There is no one-card trash limit. Gained cards go to discard. Played and converted cards stay in play until shared cleanup. Buy a Capacity Module from the Upgrades tray (1 of each resource, every time); play it during Operations to add 4 capacity points, and it stays in your permanent Storage pile. Successful Colonize, Excavate and Cargo Expansion are permanently trashed. Probe keeps its combined card. Stored resources carry forward.</p></section>
+      <section><h3>Your goal</h3><p>Reach the table’s Prestige target (30 unless chosen otherwise when the game was created) at the end of a round. Colonies, excavated relics, and decisive combat victories contribute. Click a point total to see its breakdown. The rulebook includes costs, scoring, and current card clarifications.</p></section>
     </div>
   </dialog>
 
@@ -281,6 +279,12 @@
       <p id="storage-allocation-status" role="status" aria-live="polite"></p>
       <button type="submit" class="button button-primary" id="storage-allocation-confirm" disabled>Confirm allocation</button>
     </form>
+  </dialog>
+
+  <dialog id="exchange-resource-dialog" class="choice-dialog" aria-labelledby="exchange-resource-title" aria-describedby="exchange-resource-help">
+    <div class="dialog-heading"><h2 id="exchange-resource-title">Choose your exchange resource</h2><button type="button" class="button" id="exchange-resource-cancel">Cancel</button></div>
+    <p id="exchange-resource-help">Give two of your chosen resource for one other resource until your Buy turn ends. Choosing plays the card.</p>
+    <div id="exchange-resource-options" class="bank-resource-options"></div>
   </dialog>
 
   <dialog id="archive-purge-dialog" class="choice-dialog" aria-labelledby="archive-purge-title" aria-describedby="archive-purge-help">
@@ -358,6 +362,15 @@
     <div id="in-play-row" class="card-row"></div>
   </dialog>
 
+  <dialog id="military-dialog" class="pile-dialog military-dialog" aria-labelledby="military-dialog-title">
+    <div class="dialog-heading">
+      <div><div class="eyebrow">YOUR TACTICS</div><h2 id="military-dialog-title">Military deck <span id="military-dialog-count">0</span></h2><p id="military-dialog-help"></p></div>
+      <button class="button button-ghost dialog-close" id="close-military" type="button" aria-label="Close military deck">Close</button>
+    </div>
+    <div class="discard-scroll"><div class="card-row discard-row" id="military-row"></div>
+      <h3 class="military-basic-title">Basic tactics in every battle</h3><div class="military-card-grid" id="military-basic-row"></div></div>
+  </dialog>
+
   <dialog id="discard-dialog" class="pile-dialog" aria-labelledby="discard-title">
     <div class="dialog-heading">
       <div><div class="eyebrow">YOUR CARDS</div><h2 id="discard-title">Discard pile <span id="discard-dialog-count">0</span></h2><p>Most recently discarded cards appear first.</p></div>
@@ -366,14 +379,18 @@
     <div class="discard-scroll"><div class="card-row discard-row" id="discard-row"></div></div>
   </dialog>
 
-        <section class="panel inspector-panel sector-popover" id="sector-popover" popover="auto" role="dialog" aria-labelledby="inspect-title">
-          <div class="panel-heading">
-            <div><div class="eyebrow">SECTOR SCAN</div><h2 id="inspect-title">Select a hex</h2></div>
-            <span class="coordinate" id="inspect-coordinate">—</span><button class="button button-ghost dialog-close" id="close-sector-scan" type="button" aria-label="Close sector scan" popovertarget="sector-popover" popovertargetaction="hide">Close</button>
+        <!-- The Sector Scan is a guide bubble (guide.css .gr-bubble) laid beside the chosen hex, its arrow aimed at it. -->
+        <section class="inspector-panel sector-popover gr-bubble" id="sector-popover" popover="auto" role="dialog" aria-labelledby="inspect-title">
+          <div class="scan-body">
+            <div class="panel-heading">
+              <!-- The title line: resource, name, then a symbol per fact (owner, building, ships); wraps rather than truncates. -->
+              <div class="scan-title-line"><span id="inspect-kind" class="scan-kind"></span><h2 class="gr-coach-title" id="inspect-title">Select a hex</h2><span id="inspect-facts" class="scan-facts"></span></div>
+              <button class="scan-close" id="close-sector-scan" type="button" aria-label="Close" title="Close (Esc)" popovertarget="sector-popover" popovertargetaction="hide"><span aria-hidden="true">×</span></button>
+            </div>
+            <div id="inspect-detail" class="scan-notes muted">Choose a planet or space hex to inspect fleets, control, and possible actions.</div>
+            <div id="context-actions" class="context-actions"></div>
           </div>
-          <p id="inspect-detail" class="muted">Choose a planet or space hex to inspect fleets, control, and possible actions.</p>
-          <div id="inspect-facts" class="fact-list"></div>
-          <div id="context-actions" class="context-actions"></div>
+          <span class="gr-coach-arrow" aria-hidden="true"></span>
         </section>
 
   <dialog id="map-key-dialog" class="map-key-dialog" aria-labelledby="map-key-title">
@@ -381,7 +398,7 @@
         <div class="map-legend" id="resource-legend" role="group" aria-label="Map legend">
           <span><i class="resource-swatch matter"></i>Matter</span>
           <span><i class="resource-swatch energy"></i>Energy</span>
-          <span><i class="resource-swatch biomass"></i>Biomass</span>
+          <span><i class="resource-swatch biomass"></i>Life</span>
           <span><i class="resource-swatch data"></i>Data</span>
           <span>◈ Located relic</span><span>● Gray moon · no production</span><span>Fog hides unvisited worlds</span>
         </div>
@@ -390,7 +407,7 @@
           <span class="legend-heading">Card frames</span>
           <span><i class="frame-swatch" style="--swatch:var(--matter)"></i>Matter</span>
           <span><i class="frame-swatch" style="--swatch:var(--energy)"></i>Energy · movement</span>
-          <span><i class="frame-swatch" style="--swatch:var(--biomass)"></i>Biomass · expansion</span>
+          <span><i class="frame-swatch" style="--swatch:var(--biomass)"></i>Life · expansion</span>
           <span><i class="frame-swatch" style="--swatch:var(--data)"></i>Data · deckcraft &amp; relics</span>
           <span><i class="frame-swatch" style="--swatch:var(--gold)"></i>Capacity, Buy &amp; Prestige</span>
           <span><i class="frame-swatch" style="--swatch:var(--red)"></i>Military &amp; attack</span>
@@ -404,9 +421,12 @@
 
   <script src="channel.js"></script>
   <script src="table.js?v=construct-iii-38-43"></script>
+  <script src="tabletop-controls.js"></script>
   <script src="shared.js?v=construct-iii-38-43"></script>
   <script src="replay.js?v=construct-iii-38-43"></script>
   <script src="card-feel.js?v=2"></script>
+  <script src="tutorial.js?v=1"></script>
+  <script src="guide.js?v=2"></script>
   <script src="app.js?v=construct-iii-38-43"></script>
   <script type="module" src="/galactic-reach/zk/seat.js"></script>
   <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="38.43"></script>

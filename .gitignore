@@ -37,8 +37,8 @@ trusted-signers.local.json
 # Private local HTTPS host: credentials, persistent data, launchd logs
 .local/
 
-# Local study output and simulator archives; retained locally and published to
-# CardBoardStudio/galactic-reach-studies, never committed here (docs/history-slim.md).
+# Local study output and simulator archives; retain in persistent storage.
+# External archive publication is separate (docs/history-slim.md).
 /output/
 /card-evolution-runs/
 

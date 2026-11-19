@@ -13,6 +13,8 @@ cp crates/web/style.css dist/style.css
 cp prototypes/galactic-reach/index.html dist/galactic-reach/index.html
 cp prototypes/galactic-reach/styles.css dist/galactic-reach/styles.css
 cp prototypes/galactic-reach/card-feel.js prototypes/galactic-reach/card-feel.css dist/galactic-reach/
+# On-table guidance and the Learn to play walkthrough (index.html?tutorial=1).
+cp prototypes/galactic-reach/guide.js prototypes/galactic-reach/guide.css prototypes/galactic-reach/tutorial.js dist/galactic-reach/
 cp prototypes/galactic-reach/rulebook.html prototypes/galactic-reach/rulebook.css dist/galactic-reach/
 cp prototypes/galactic-reach/app.js dist/galactic-reach/app.js
 cp prototypes/galactic-reach/playtest-notes.js prototypes/galactic-reach/playtest-notes.css dist/galactic-reach/
@@ -22,6 +24,7 @@ cp prototypes/galactic-reach/cards.html dist/galactic-reach/cards.html
 # Card art (NGA open-access works, CC0) and its credits manifest; the card gallery lists them.
 rm -rf dist/galactic-reach/card-art && cp -R prototypes/galactic-reach/card-art dist/galactic-reach/card-art
 cp prototypes/galactic-reach/shared.js dist/galactic-reach/shared.js
+cp prototypes/galactic-reach/tabletop-controls.js prototypes/galactic-reach/tabletop-controls.css dist/galactic-reach/
 cp prototypes/galactic-reach/replay.js dist/galactic-reach/replay.js
 cp prototypes/lab/index.html dist/index.html
 cp prototypes/lab/index.html dist/lab/index.html

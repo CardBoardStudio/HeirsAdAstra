@@ -1,3 +1,5 @@
+> Current supply: 28 designs, two copies each. Cheap has only the three draw-two and three exchange designs (6/12); Medium includes single-resource-five cards (11/22); Expensive remains total price 8+ (11/22). The historical design study below predates these changes. See [canonical market rows](../../prototypes/galactic-reach/rulebook.html#market-tiers).
+
 # Tiered market
 
 Player rules: [rulebook `#market` and `#market-tiers`](../../prototypes/galactic-reach/rulebook.html#market-tiers). This note records the split, the empty-deck decision and the balance check.

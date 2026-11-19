@@ -22,7 +22,7 @@ pub fn is_admin(db: &Connection, id: &str) -> ApiResult<bool> {
     )
     .map_err(internal)
 }
-fn admin(app: &App, headers: &HeaderMap) -> ApiResult<User> {
+pub(crate) fn admin(app: &App, headers: &HeaderMap) -> ApiResult<User> {
     let u = user(app, headers)?;
     if u.development || !is_admin(&*app.store.0.lock().map_err(internal)?, &u.id)? {
         return Err(ApiError(

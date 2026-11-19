@@ -12,7 +12,7 @@
   const $$ = selector => [...document.querySelectorAll(selector)];
   const center = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   const shown = element => Boolean(element?.getClientRects().length);
-  const RESOURCE_LABELS = { matter: 'Matter', energy: 'Energy', biomass: 'Biomass', data: 'Data' };
+  const RESOURCE_LABELS = { matter: 'Matter', energy: 'Energy', biomass: 'Life', data: 'Data' };
   let api = null, previous = null, view = null, drag = null;
 
   // ---- Tilt and sheen: a card leans a few degrees toward the pointer. ----
@@ -148,7 +148,7 @@
     }
     // Market: your purchase flies to its pile, a rival's fades, the rest slide to their new
     // slots and the refill deals in.
-    const yours = after.discard > before.discard ? $('#discard-button') : after.military > before.military ? $('#fleet-tab') : null;
+    const yours = after.discard > before.discard ? $('#discard-button') : after.military > before.military ? $('#military-button') : null;
     for (const [id, card] of saved.market) {
       const now = market.get(id);
       if (!now) { ghost(card, yours && shown(yours) ? yours : null, { fade: !yours }); continue; }

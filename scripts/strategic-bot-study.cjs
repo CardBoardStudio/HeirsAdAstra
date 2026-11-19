@@ -3,6 +3,10 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),cryp
 const {execFileSync}=require('node:child_process');
 const {Worker,isMainThread,parentPort,workerData}=require('node:worker_threads');
 const {SimulationArchive,instrumentSource,hash,resultDirectory}=require('./lib/simulation-archive.cjs');
+const {account:accountResources,blank:blankLedger}=require('./audit-native-resource-ledger.cjs');
+const RESOURCE_ACCOUNTING='receipt-ledger-v2';
+// Snapshot the helper with the module that loaded it, not later between games.
+const LEDGER_SOURCE=fs.readFileSync(path.join(__dirname,'audit-native-resource-ledger.cjs'),'utf8');
 const RUNNER_SOURCE=fs.readFileSync(__filename,'utf8');
 const root=path.resolve(__dirname,'..'),profiles=['military','economy','expansion'];
 const baseDefault='d3e3ab6a672e330aa3a69eddd9c2d5b537ab76fa';
@@ -19,7 +23,7 @@ function factory(app,adapter) {
     const pay=payCost;payCost=(p,...args)=>{const b={...p.resources};const r=pay(p,...args);for(const k of RESOURCES)m[p.id].spent[k]+=b[k]-p.resources[k];return r;};
     const draw=drawCards;drawCards=(p,n)=>{const b=p.hand.length;const r=draw(p,n);m[p.id].draws+=p.hand.length-b;return r;};
     const upgrade=upgradeStarter;upgradeStarter=(id,card,r)=>{const p=state.players[id],b=p.resources[r],ok=upgrade(id,card,r);if(ok){m[id].spent[r]+=b-p.resources[r];m[id].upgrades++;}return ok;};
-    const trade=bankTrade;bankTrade=(id,give,get)=>{const ok=trade(id,give,get);if(ok){m[id].bankGiven[give]+=4;m[id].bankReceived[get]++;}return ok;};
+    const trade=bankTrade;bankTrade=(id,give,get)=>{const before=state.players[id].resources[give],ok=trade(id,give,get);if(ok){m[id].bankGiven[give]+=before-state.players[id].resources[give];m[id].bankReceived[get]++;}return ok;};
     const ship=buildShip;buildShip=(id,coord,type,...args)=>{const ok=ship(id,coord,type,...args);if(ok&&!args[1])m[id].ships[type]++;return ok;};
     const settle=colonizePlanet;colonizePlanet=(id,coord,opts={},dry=false)=>{const owner=state.planets[coord]?.owner,ok=settle(id,coord,opts,dry);if(ok&&!dry){m[id].colonizations++;if(owner!==null&&owner!==undefined)m[id].captures++;}return ok;};
   }
@@ -32,12 +36,13 @@ function factory(app,adapter) {
   vm.runInContext(adapter+'\n'+app,c);
   let e;const original=c.createGalacticAdapter;c.createGalacticAdapter=port=>{e=port;return original(port);};
   return options=>{
+    const flows=options.studyMetrics?.map(m=>m.resourceLedger??=blankLedger());
     const configuration=Object.fromEntries(Object.entries(options).filter(([key,value])=>!['random','simulationArchive','studyMetrics','reconstruction','resume','archiveSources','archiveMetadata'].includes(key)&&typeof value!=='function'));
     const recorder=options.simulationArchive||new SimulationArchive({directory:options.archiveDirectory,metadata:options.archiveMetadata||{kind:'browser-policy',victoryTarget:options.victoryTarget||40},sources:{'study-runner.cjs':RUNNER_SOURCE}});
     activeArchive=recorder;const engineHash=hash(app),adapterHash=hash(adapter);
-    recorder.addSources({'study-runner.cjs':RUNNER_SOURCE,...(options.archiveSources||{}),['engine-'+engineHash+'.js']:app,['adapter-'+adapterHash+'.js']:adapter});
+    recorder.addSources({'resource-ledger.cjs':LEDGER_SOURCE,'study-runner.cjs':RUNNER_SOURCE,...(options.archiveSources||{}),['engine-'+engineHash+'.js']:app,['adapter-'+adapterHash+'.js']:adapter});
     try{
-      const a=c.createGalacticReach({...options,headless:true,random:recorder.random(options.random||Math.random),simulationArchiveEvent:event=>recorder.event(event)});
+      const a=c.createGalacticReach({...options,headless:true,random:recorder.random(options.random||Math.random),simulationArchiveEvent:event=>{if(flows){accountResources(flows,event);options.studyMetrics.forEach((m,id)=>{const v=flows[id];m.resourceAccounting=RESOURCE_ACCOUNTING;for(const k of ['matter','energy','biomass','data'])m.spent[k]=v.paidCosts[k]+v.starterUpgrades[k]+v.trashing[k]+v.escape[k]+v.consortiumGiven[k];});}recorder.event(event);}});
       recorder.attach(()=>e.state,{engineHash,adapterHash,policy:options.archivePolicy||null,configuration:{...configuration,headless:true}},()=>({turnSerial:e.turnSerial,cardSerial:e.cardSerial}));
       for(const name of ['runAiOperation','runAiBuy','applyCombatAction']){const fn=e[name];e[name]=(...args)=>recorder.invoke({method:name,actor:e.state.pendingCombat?e.combatActor():e.state.activePlayer,args},()=>fn(...args));}
       const apply=a.applyAction;a.applyAction=(...args)=>recorder.invoke({method:'applyAction',actor:args[0],action:args[1]},()=>apply(...args));
@@ -89,7 +94,7 @@ function summarize(games) {
   }
   return result;
 }
-if(!isMainThread) {
+if(!isMainThread && require.main===module) {
   parentPort.on('message',task=>{try{parentPort.postMessage({game:simulate(task,workerData.sources)});}catch(e){parentPort.postMessage({error:e.stack,task});}});
 } else if(require.main===module) {
   const args=process.argv.slice(2),arg=(name,fallback)=>{const at=args.indexOf('--'+name);return at<0?fallback:args[at+1];};
@@ -118,4 +123,4 @@ if(!isMainThread) {
     });worker.on('error',e=>{console.error(e);process.exitCode=1;workers.forEach(w=>w.terminate());});worker.postMessage(tasks[next++]);
   });
 }
-module.exports={factory,simulate,summarize};
+module.exports={factory,simulate,summarize,RESOURCE_ACCOUNTING};

@@ -1,5 +1,44 @@
 // Private solo tables keep the existing browser rules and guest save intact.
 (() => {
+  // Each released or archived rules version and the page that plays it.
+  const VERSIONS={'galactic-reach/4.9':{format:4,path:'/galactic-reach/rules/4.9/'},'galactic-reach/5.10':{format:5,path:'/galactic-reach/rules/5.10/'},'galactic-reach/6.11':{format:6,path:'/galactic-reach/rules/6.11/'},'galactic-reach/7.12':{format:7,path:'/galactic-reach/rules/7.12/'},'galactic-reach/8.13':{format:8,path:'/galactic-reach/rules/8.13/'},'galactic-reach/9.14':{format:9,path:'/galactic-reach/rules/9.14/'},'galactic-reach/10.15':{format:10,path:'/galactic-reach/rules/10.15/'},'galactic-reach/11.16':{format:11,path:'/galactic-reach/rules/11.16/'},'galactic-reach/12.17':{format:12,path:'/galactic-reach/rules/12.17/'},'galactic-reach/13.18':{format:13,path:'/galactic-reach/rules/13.18/'},'galactic-reach/14.19':{format:14,path:'/galactic-reach/rules/14.19/'},'galactic-reach/15.20':{format:15,path:'/galactic-reach/rules/15.20/'},'galactic-reach/16.21':{format:16,path:'/galactic-reach/rules/16.21/'},'galactic-reach/17.22':{format:17,path:'/galactic-reach/rules/17.22/'},'galactic-reach/18.23':{format:18,path:'/galactic-reach/rules/18.23/'},'galactic-reach/19.24':{format:19,path:'/galactic-reach/rules/19.24/'},'galactic-reach/20.25':{format:20,path:'/galactic-reach/rules/20.25/'},'galactic-reach/21.26':{format:21,path:'/galactic-reach/rules/21.26/'},'galactic-reach/22.27':{format:22,path:'/galactic-reach/rules/22.27/'},'galactic-reach/23.28':{format:23,path:'/galactic-reach/rules/23.28/'},'galactic-reach/24.29':{format:24,path:'/galactic-reach/rules/24.29/'},'galactic-reach/25.30':{format:25,path:'/galactic-reach/rules/25.30/'},'galactic-reach/26.31':{format:26,path:'/galactic-reach/rules/26.31/'},'galactic-reach/27.32':{format:27,path:'/galactic-reach/rules/27.32/'},'galactic-reach/28.33':{format:28,path:'/galactic-reach/rules/28.33/'},'galactic-reach/29.34':{format:29,path:'/galactic-reach/rules/29.34/'},'galactic-reach/30.35':{format:30,path:'/galactic-reach/rules/30.35/'},'galactic-reach/31.36':{format:31,path:'/galactic-reach/rules/31.36/'},'galactic-reach/32.37':{format:32,path:'/galactic-reach/rules/32.37/'},'galactic-reach/33.38':{format:33,path:'/galactic-reach/rules/33.38/'},'galactic-reach/34.39':{format:34,path:'/galactic-reach/rules/34.39/'},'galactic-reach/35.40':{format:35,path:'/galactic-reach/rules/35.40/'},'galactic-reach/36.41':{format:36,path:'/galactic-reach/rules/36.41/'},'galactic-reach/37.42':{format:37,path:'/galactic-reach/rules/37.42/'},'galactic-reach/38.43':{format:38,path:'/galactic-reach/'}};
+  // The keys the page's engine reads its save from. An engine older than
+  // createGalacticReach.storageKeys (an archived release, or a dev revision kept from
+  // before it) derives them exactly this way: the save format, plus `-<revision>` on a
+  // dev page (app.js, docs/release.md#dev-channel).
+  function engineKeys(engine, channel, format) {
+    if (typeof engine?.storageKeys === 'function') return engine.storageKeys();
+    const suffix = channel?.channel === 'dev' ? `-${channel.rules.split('/').pop()}` : '';
+    return {save:`galactic-reach-save-v${format}${suffix}`,turnHistory:`galactic-reach-turn-history-v${format}${suffix}`,history:`galactic-reach-history-v${format}${suffix}`};
+  }
+  // Engine storage is in memory, seeded with the table's save, so the guest's own
+  // localStorage save is never read or replaced.
+  function seededStorage(keys, save) {
+    const memory = new Map();
+    if (save) {
+      memory.set(keys.save,JSON.stringify(save.state));
+      memory.set(keys.turnHistory,JSON.stringify(save.turnHistory || {pending:null,undo:null}));
+      if (save.gameHistory) memory.set(keys.history,JSON.stringify(save.gameHistory));
+    }
+    return {getItem:k=>memory.get(k) ?? null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
+  }
+  // Where a table opens: {path} to go to (null: stay on this page), its save format and its
+  // rules label. A save dealt on the dev channel names its revision (state.devRules) and
+  // plays only on that revision's engine: this page when it plays those rules, otherwise
+  // the kept engine the server names (dev_client). Nothing here changes the save.
+  function tablePage(table, channel) {
+    const dealt = table.save?.state?.devRules;
+    if (dealt) {
+      const label = dealt.split('/').pop();
+      if (dealt === channel?.rules) return {path:null,format:table.save.state.version,label};
+      if (table.dev_client) return {path:table.dev_client,format:table.save.state.version,label};
+      throw new Error(`This table was dealt on dev rules ${label}, which this host no longer keeps. Your server save is preserved.`);
+    }
+    const version = VERSIONS[table.rules_version];
+    if (!version) throw new Error(`Rules ${table.rules_version || 'unknown'} are not available on this host. Your table is preserved.`);
+    return {path:version.path,format:version.format,label:table.rules_version.split('/')[1]};
+  }
+  globalThis.galacticReachTable = {engineKeys,seededStorage,tablePage};
   const id = new URLSearchParams(location.search).get('table');
   if (id === null) return;
   globalThis.drawingBoardTableBoot = true;
@@ -81,12 +120,9 @@
       if (table.lobby === 'waiting' && !table.save) { location.replace(table.lobby_url); return; }
       // A waiting room that started with friends seated became a shared table.
       if (table.shared_url && !table.save) { location.replace(table.shared_url); return; }
-      const rules=table.rules_version;
-      const versions={'galactic-reach/4.9':{format:4,path:'/galactic-reach/rules/4.9/'},'galactic-reach/5.10':{format:5,path:'/galactic-reach/rules/5.10/'},'galactic-reach/6.11':{format:6,path:'/galactic-reach/rules/6.11/'},'galactic-reach/7.12':{format:7,path:'/galactic-reach/rules/7.12/'},'galactic-reach/8.13':{format:8,path:'/galactic-reach/rules/8.13/'},'galactic-reach/9.14':{format:9,path:'/galactic-reach/rules/9.14/'},'galactic-reach/10.15':{format:10,path:'/galactic-reach/rules/10.15/'},'galactic-reach/11.16':{format:11,path:'/galactic-reach/rules/11.16/'},'galactic-reach/12.17':{format:12,path:'/galactic-reach/rules/12.17/'},'galactic-reach/13.18':{format:13,path:'/galactic-reach/rules/13.18/'},'galactic-reach/14.19':{format:14,path:'/galactic-reach/rules/14.19/'},'galactic-reach/15.20':{format:15,path:'/galactic-reach/rules/15.20/'},'galactic-reach/16.21':{format:16,path:'/galactic-reach/rules/16.21/'},'galactic-reach/17.22':{format:17,path:'/galactic-reach/rules/17.22/'},'galactic-reach/18.23':{format:18,path:'/galactic-reach/rules/18.23/'},'galactic-reach/19.24':{format:19,path:'/galactic-reach/rules/19.24/'},'galactic-reach/20.25':{format:20,path:'/galactic-reach/rules/20.25/'},'galactic-reach/21.26':{format:21,path:'/galactic-reach/rules/21.26/'},'galactic-reach/22.27':{format:22,path:'/galactic-reach/rules/22.27/'},'galactic-reach/23.28':{format:23,path:'/galactic-reach/rules/23.28/'},'galactic-reach/24.29':{format:24,path:'/galactic-reach/rules/24.29/'},'galactic-reach/25.30':{format:25,path:'/galactic-reach/rules/25.30/'},'galactic-reach/26.31':{format:26,path:'/galactic-reach/rules/26.31/'},'galactic-reach/27.32':{format:27,path:'/galactic-reach/rules/27.32/'},'galactic-reach/28.33':{format:28,path:'/galactic-reach/rules/28.33/'},'galactic-reach/29.34':{format:29,path:'/galactic-reach/rules/29.34/'},'galactic-reach/30.35':{format:30,path:'/galactic-reach/rules/30.35/'},'galactic-reach/31.36':{format:31,path:'/galactic-reach/rules/31.36/'},'galactic-reach/32.37':{format:32,path:'/galactic-reach/rules/32.37/'},'galactic-reach/33.38':{format:33,path:'/galactic-reach/rules/33.38/'},'galactic-reach/34.39':{format:34,path:'/galactic-reach/rules/34.39/'},'galactic-reach/35.40':{format:35,path:'/galactic-reach/rules/35.40/'},'galactic-reach/36.41':{format:36,path:'/galactic-reach/rules/36.41/'},'galactic-reach/37.42':{format:37,path:'/galactic-reach/rules/37.42/'},'galactic-reach/38.43':{format:38,path:'/galactic-reach/'}};
-      const version=versions[rules];
-      if(!version) throw new Error(`Rules ${rules || 'unknown'} are not available on this host. Your table is preserved.`);
-      if(location.pathname!==version.path) {location.replace(`${version.path}?table=${id}`);return;}
-      bar.querySelector('#table-rules').textContent=`Rules ${rules.split('/')[1]} · pinned`;
+      const page=tablePage(table,globalThis.galacticReachChannel);
+      if(page.path && location.pathname!==page.path) {location.replace(`${page.path}?table=${id}`);return;}
+      bar.querySelector('#table-rules').textContent=`Rules ${page.label} · pinned`;
       revision = table.revision;
       cacheKey = `drawing-board-table:${table.owner_id}:${id}`;
       bar.querySelector('#saved-table-name').textContent = table.name;
@@ -99,14 +135,7 @@
         throw Object.assign(new Error('Another tab or device saved a newer version. Download your local copy or load the latest table.'),{status:409});
       }
       if (local && local.revision === revision) { save=local.save; pending=save; }
-      // Engine storage is in memory; never replace the guest's versioned localStorage keys.
-      const memory = new Map();
-      if (save) {
-        memory.set(`galactic-reach-save-v${version.format}`,JSON.stringify(save.state));
-        memory.set(`galactic-reach-turn-history-v${version.format}`,JSON.stringify(save.turnHistory || {pending:null,undo:null}));
-        if (save.gameHistory) memory.set(`galactic-reach-history-v${version.format}`,JSON.stringify(save.gameHistory));
-      }
-      const storage = {getItem:k=>memory.get(k) || null,setItem:(k,v)=>memory.set(k,v),removeItem:k=>memory.delete(k)};
+      const storage = seededStorage(engineKeys(globalThis.createGalacticReach,globalThis.galacticReachChannel,page.format),save);
       // A new game uses the table's waiting-room settings (rules #victory: Prestige target).
       const newGameSettings = table.settings?.victory_target ? {victoryTarget:table.settings.victory_target} : {};
       globalThis.createGalacticReach({storage,requireSave:!!save,newTable:leave,newGameSettings,paused:()=>conflict,onSave:value=>{

@@ -46,6 +46,16 @@ Everything else is refused, including the game pages, rulebooks, game APIs, and 
 
 **Shared-table links** (`/?game=galactic-reach#lobby/<table>/<invite>`) go through the same steps. A table link seats someone at a table; it does not admit them to the server. A visitor who signs in with only a table link is asked for an invitation. The landing page remembers the table in that browser and returns to it after they accept.
 
+## Admin dashboard
+
+**Members** in the sidebar (administrators only, `GET /api/admin/overview`) is a read-only view of what the server already stores:
+
+- **Totals:** member links created and still active, people accepted out of seats offered, accounts, administrators and accounts with an active session.
+- **Invitation links:** every link, including the one-time setup link, with its creator, created and expiry dates, uses accepted out of allowed, status (revoked, else used up, else expired, else active) and each account that claimed it with when.
+- **Accounts:** every person's display name, account id (shortened, with a copy button), how they joined (invitation link, administrator setup link, `grant-admin`, direct sign-in on an open host, or a temporary identity), when the account was created, active sessions, last seen, tables they own or sit at, administrator flag, and whether this host currently admits them.
+
+Search, filter and sort happen in the browser. Each list shows the newest 1,000 rows. **Last seen** is the last time the server rechecked one of the account's Nido sessions, at most once a minute while it is in use; the server records no sign-in time, so other sign-in methods show only their session count, and an expired session leaves no trace. The response never includes token or key hashes, recovery keys, Nido public keys or signatures. Creating and revoking links stays on **Invitations**; the dashboard adds no new actions.
+
 ## Making the first administrator
 
 Bootstrap from a shell on the host. Do it **before** the host is reachable from the internet.

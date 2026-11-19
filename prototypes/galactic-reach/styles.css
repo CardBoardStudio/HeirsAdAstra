@@ -381,10 +381,6 @@ button.game-card { color: var(--text); cursor: pointer; }
 .trade-ledger div { display: flex; justify-content: space-between; gap: 8px; padding: 8px 9px; border: 1px solid var(--line); background: var(--surface-2); font-size: 11px; }
 .trade-ledger span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .trade-ledger strong { color: var(--gold); white-space: nowrap; }
-.fleet-summary { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; }
-.fleet-faction { padding: 10px; border: 1px solid var(--line); border-top: 2px solid var(--player); }
-.fleet-faction strong { display: block; margin-bottom: 5px; color: var(--player); }
-.fleet-faction span { color: var(--muted); font-size: 12px; }
 .military-deck-heading { display: flex; justify-content: space-between; align-items: end; gap: 16px; margin: 18px 0 9px; padding-top: 14px; border-top: 1px solid var(--line); }
 .military-deck-heading h3 { margin: 0 0 3px; font-size: 14px; }
 .military-deck-heading p { margin: 0; color: var(--muted); font-size: 12px; }
@@ -470,7 +466,6 @@ button.choice-card, label.choice-card { position: relative; display: flex; min-h
   .hand-tools { width: 100%; justify-content: space-between; }
   .trade-form { grid-template-columns: repeat(2,1fr); }
   .trade-form .button { grid-column: 1 / -1; }
-  .fleet-summary { grid-template-columns: repeat(2,1fr); }
   .military-card-grid { grid-template-columns: repeat(2,1fr); }
   .trade-ledger { grid-template-columns: 1fr; }
   .choice-grid { grid-template-columns: 1fr; }
@@ -594,12 +589,6 @@ button.choice-card, label.choice-card { position: relative; display: flex; min-h
 .trade-terms { margin-top: 14px; font-size: 16px; }
 .offer-status { color: var(--cyan); font-size: 14px; }
 .trade-offer-actions .button { min-height: 44px; }
-.sector-popover { position: fixed; inset: auto; margin: 0; width: min(370px,calc(100vw - 24px)); max-height: calc(100dvh - 24px); overflow: auto; overscroll-behavior: contain; padding: 18px; border: 1px solid var(--cyan); border-radius: 10px; background: #101a2b; box-shadow: 0 16px 60px #000b; color: var(--text); }
-.sector-popover .panel-heading { gap: 12px; align-items: center; }
-.sector-popover .coordinate { margin-left: auto; }
-.sector-popover .icon-button { flex: none; width: 40px; height: 40px; }
-.sector-popover p, .sector-popover .fact { font-size: 15px; line-height: 1.5; }
-.sector-popover .context-actions .button { min-height: 44px; font-size: 15px; }
 @media (max-width:760px) {
   .map-key-dialog .symbol-legend { grid-template-columns: repeat(2,minmax(0,1fr)); padding: 12px; gap: 8px; }
   .map-key-dialog .symbol-legend-item { padding: 10px; }
@@ -867,13 +856,13 @@ button.score-value { display: grid; place-items: center; gap: 3px; min-width: 40
 .resource-box .resource-amount { order: 1; font: 22px Georgia,serif; color: var(--text); }
 .resource-box .resource-production { order: 2; font-size: 10px; text-align: center; }
 .resource-box .resource-name { order: 3; font-size: 9px; color: #c0cab9; text-transform: uppercase; }
-.pile-stats { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; margin-top: 18px; border: 0; background: none; overflow: visible; }
+.pile-stats { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 8px; margin-top: 18px; border: 0; background: none; overflow: visible; }
 .pile-stats > span { display: none; }
 .pile-card { display: none; }
 .pile-stats > button { display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; min-width: 0; min-height: 84px; padding: 8px 4px; border: 1px solid #94aaa47a; border-radius: 4px; background: repeating-linear-gradient(135deg,#7fa79b12 0 1px,transparent 1px 6px),#263c3a; color: var(--text); font-size: 9px; box-shadow: 2px 2px #192725,3px 3px #8b9f8e,4px 4px #172724; }
 .pile-stats > button::before { content: ''; width: 18px; height: 18px; background: var(--gold); clip-path: polygon(50% 0,65% 35%,100% 50%,65% 65%,50% 100%,35% 65%,0 50%,35% 35%); }
 .pile-stats > button strong { margin: 0; font-size: 13px; color: var(--text); }
-.pile-stats > button:nth-last-child(2) { background: #243732; border-style: dashed; box-shadow: none; }
+#in-play-button { background: #243732; border-style: dashed; box-shadow: none; }
 .pile-stats > button:last-child { background: repeating-linear-gradient(135deg,#ffffff04 0 1px,transparent 1px 6px),#3d4033; }
 .pile-stats button:hover, .pile-stats button:focus-visible { background-color: #39534a; color: var(--gold); outline: 2px solid var(--gold); outline-offset: 3px; }
 .storage-upgrade-control { margin-top: 19px; }
@@ -950,7 +939,7 @@ button.game-card { color: var(--ink); }
 .basic-market .button { border-style: dashed; color: var(--text); font-size: 12px; padding: 12px; }
 .decommission-list { margin-top: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 6px; font-size: 11px; }
 .decommission-list label, .decommission-list .button { font-size: 11px; }
-.fleet-faction, .military-card { border-radius: 6px; background: #203330; }
+.military-card { border-radius: 6px; background: #203330; }
 .military-card-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
 .discard-row, .relic-catalog-grid { gap: 16px; }
 .discard-row .game-card, .relic-catalog-grid .game-card { min-height: 270px; }
@@ -958,11 +947,8 @@ button.game-card { color: var(--ink); }
 .pile-dialog:has(.discard-row > :only-child) { width: min(420px,calc(100vw - 28px)); }
 .relic-row { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
 .relic-row .game-card { min-height: 310px; }
-dialog, .sector-popover, .relic-catalog-dialog { border-color: #a49c6f99; border-radius: 10px; color: var(--text); background: #1b2b2d; box-shadow: 0 25px 80px #0008,inset 0 0 0 4px #101d1d66; }
+dialog, .relic-catalog-dialog { border-color: #a49c6f99; border-radius: 10px; color: var(--text); background: #1b2b2d; box-shadow: 0 25px 80px #0008,inset 0 0 0 4px #101d1d66; }
 dialog a { color: var(--gold); }
-.sector-popover { border-color: #c6b77e; }
-.sector-popover .panel-heading h2 { font-size: 23px; }
-.sector-popover .fact { border-radius: 4px; background: #263c3a; }
 .combat-forces section { background: #243836; border-color: #7b8a7255; }
 .combat-options .button { min-height: 44px; }
 .table-save-bar, .replay-meta, .replay-controls { background: #1d302f; border-color: #78836a66; color: var(--text); }
@@ -1168,7 +1154,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 .hex:focus-visible { outline: none; background: var(--gold); }
 .hex:focus-visible::before { inset: 3px; filter: brightness(1.2); }
 .hex::before { background-image: linear-gradient(145deg,#ffffff06,transparent 55%,#0000000c); }
-/* Muted tabletop terrain; Matter is neutral gray, Biomass remains visibly green. */
+/* Muted tabletop terrain; Matter is neutral gray, Life remains visibly green. */
 .hex.matter { --hex-fill:#77828a; }
 .hex.energy { --hex-fill:#5d8798; }
 .hex.biomass { --hex-fill:#658d6b; }
@@ -1401,7 +1387,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
    needed to view or play (AGENTS.md). The window is one table surface. The board lies in the
    middle, as large as the height allows, with the race to the Prestige goal printed along its
    top edge. Around it: every faction's standings and the comms feed on the left, the turn
-   prompt, phases and supply (Market / Fleet / Relics; Trade opens a dialog) on the right, and
+   prompt, phases and supply (Market / Relics; Trade opens a dialog) on the right, and
    in front of you your player mat and hand. The page header folds into the menu button in the
    bottom-left corner. Wrapper sections are layout-transparent so their pieces sit in one grid. */
 @media (min-width: 600px) and (min-height: 600px) {
@@ -1546,15 +1532,13 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   #market-tab, #relics-tab { display: none; }
   #market-panel, #market-panel[hidden] { display: flex; flex-direction: column; min-height: 0; overflow: visible; }
   #relics-panel, #relics-panel[hidden] { grid-row: 6; align-self: end; display: flex; flex-direction: row; flex-wrap: wrap; align-items: center; min-height: 0; overflow: visible; }
-  #fleet-panel.active { grid-row: 5 / 7; z-index: 25; align-self: stretch; padding: 10px 12px; border: 1px solid #a49c6f99; border-radius: 10px; background: #1b2b2d; box-shadow: 0 18px 50px #000a; overflow: auto; }
-  #fleet-tab.active::after { content: '✕'; margin-left: 6px; font-size: 11px; }
   .tab-panel.active { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
   .section-intro { flex: none; flex-wrap: wrap; align-items: center; gap: 6px 8px; margin: 0 0 6px; }
   .section-intro > div:first-child { min-width: 0; flex: 1 1 100%; }
   .section-intro .eyebrow { display: none; }
   .section-intro h2 { display: inline; margin-right: 6px; font-size: 16px; }
   .section-intro p { display: inline; max-width: none; margin: 0; font-size: 12px; line-height: 1.4; }
-  #trade-panel .section-intro p, #fleet-panel .section-intro p { display: block; }
+  #trade-panel .section-intro p { display: block; }
   .section-intro .turn-notice { display: block; margin-top: 4px; padding: 3px 8px; font-size: 12px; }
   .section-intro .turn-notice[hidden] { display: none; }
   .hand-tools { flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-start; gap: 5px; max-width: none; }
@@ -1649,6 +1633,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .pile-stats > button[id] { grid-column: 1 / -1; grid-row: 8; z-index: 5; justify-self: start; align-self: stretch; width: var(--pile-w); padding-bottom: 4px; }
   #deck-button { margin-left: 52px !important; }
   #in-play-button { margin-left: calc(52px + var(--pile-w) + 9px) !important; }
+  #military-button { margin-left: calc(52px + 2 * var(--pile-w) + 18px) !important; }
   #discard-button { justify-self: end; margin-right: calc(var(--tools-w) + 12px) !important; }
   .pile-stats > button { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 3px; width: auto; height: auto; min-width: 0; min-height: 0; margin: 0; padding: 0 0 1px; border: 0; background: none; box-shadow: none; color: #c9b98a; }
   .pile-stats > button::before { display: none; }
@@ -1754,7 +1739,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   /* Market: card tops lying in the supply area, two or three to a row (starter upgrades first). The
      lower rows raise upward so a raised card stays on screen. */
   #market-panel.active { overflow: visible; }
-  #market-panel, #fleet-panel, #relics-panel { container-type: inline-size; }
+  #market-panel, #relics-panel { container-type: inline-size; }
   #market-panel { position: relative; }
   #market-panel .section-intro { margin-bottom: 5px; }
   #market-panel .section-intro:not(:has(p:not([hidden]):not(#market-help))) { height: 0; margin: 0; }
@@ -1797,8 +1782,8 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .upgrade-offer { border-style: dashed; }
   .basic-market:empty { display: none; }
 
-  /* Fleet and Relics are side panels too; Trade opens as a dialog. */
-  #fleet-panel.active, #relics-panel.active { overflow: hidden; }
+  /* Relics are a side panel too; Trade opens as a dialog. */
+  #relics-panel.active { overflow: hidden; }
   .trade-dialog { width: min(820px, calc(100vw - 24px)); }
   .trade-form { grid-template-columns: repeat(4, minmax(0,1fr)) auto; gap: 6px; }
   .trade-form label, .trade-form input, .trade-form select { font-size: 13px; }
@@ -1810,9 +1795,6 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .trade-offer p { margin: 2px 0; font-size: 12px; }
   .trade-terms { margin-top: 4px; font-size: 13px; }
   .trade-ledger { margin-top: 4px; grid-template-columns: repeat(3, minmax(0,1fr)); }
-  .fleet-summary { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 5px; }
-  .fleet-faction { padding: 4px 7px; }
-  .fleet-faction span { font-size: 11.5px; }
   .military-deck-heading { flex-direction: column; align-items: stretch; margin: 6px 0 4px; padding-top: 5px; gap: 2px; }
   .military-deck-heading h3 { margin: 0; font-size: 13px; }
   .military-deck-heading p { font-size: 11.5px; }
@@ -2142,7 +2124,6 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .board-map-region, .map-tools { grid-column: 1 / -1 !important; grid-row: 3 !important; }
   #market-panel, #market-panel[hidden] { grid-column: 1 / -1 !important; grid-row: 4 !important; height: 268px; }
   #relics-panel, #relics-panel[hidden] { grid-column: 1 / -1 !important; grid-row: 5 !important; }
-  #fleet-panel.active { grid-column: 1 / -1 !important; grid-row: 4 / 6 !important; }
   .log-panel { grid-column: 1 !important; grid-row: 6 !important; margin: 0 !important; }
   .resource-tools { grid-column: 2 !important; grid-row: 6 !important; align-self: stretch !important; height: auto !important; }
   .resource-grid { grid-column: 3 !important; grid-row: 6 !important; margin: 0 !important; align-self: stretch !important; height: auto !important; }
@@ -2151,7 +2132,7 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
   .table-menu-button { grid-row: 8 !important; }
   .pile-stats > button[id] { grid-column: 1 / -1 !important; grid-row: 8 !important; }
   #discard-button { grid-column: 1 / -1 !important; grid-row: 8 !important; justify-self: end !important; }
-  #hand-row { grid-column: 1 / -1 !important; grid-row: 8 !important; margin: 0 calc(var(--pile-w) + 14px) 0 calc(52px + 2 * var(--pile-w) + 23px) !important; }
+  #hand-row { grid-column: 1 / -1 !important; grid-row: 8 !important; margin: 0 calc(var(--pile-w) + 14px) 0 calc(52px + 3 * var(--pile-w) + 32px) !important; }
   @container (min-width: 600px) { #market-row { grid-template-columns: repeat(5, minmax(0, 1fr)) !important; } }
 }
 /* Portrait notices: in the map's empty top-left corner. */
@@ -2433,6 +2414,25 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* The fence when the stock has gone past it: ringed in red. */
 #resource-grid .mat-pips.now i.cap.full { box-shadow: 0 0 0 2px var(--red); }
 
+#resource-grid .mat-stock { display: contents; }
+#resource-grid .mat-stars { display: none !important; }
+body.background-stars #resource-grid .mat-classic { display: none !important; }
+body.background-stars #resource-grid .mat-stock.mat-stars { display: contents !important; }
+body.background-stars #resource-grid > .mat-head.mat-stars { display: flex !important; }
+/* The green table keeps its original mat. The star table uses combined circle rows. */
+body.background-stars #resource-grid > .resource-box.mat-rings { grid-template-areas: "icon now" !important; grid-template-rows: auto !important; padding-block: 3px !important; }
+body.background-stars #resource-grid .mat-rings .mat-pips.now { align-items: center; min-height: 25px; }
+body.background-stars #resource-grid .mat-rings .mat-pips.now i { position: relative; box-sizing: border-box; border: 0; background: #0b1618; box-shadow: inset 0 0 0 1px #71877b; }
+body.background-stars #resource-grid .mat-rings .mat-pips.now i.shut { background: #41554a; box-shadow: inset 0 0 0 1px #53675a; }
+body.background-stars #resource-grid .mat-rings .mat-pips.now i.producing { box-shadow: inset 0 0 0 3px var(--resource); }
+body.background-stars #resource-grid .mat-rings .mat-pips.now i.full::after { content: ""; position: absolute; inset: 20%; border-radius: 50%; background: linear-gradient(145deg, color-mix(in srgb, var(--resource) 55%, #fff), var(--resource) 55%, color-mix(in srgb, var(--resource) 50%, #000)); pointer-events: none; }
+@media (min-width: 600px) and (max-width: 1138px) {
+  body.background-stars #resource-grid .mat-rings .mat-pips.now i.producing { box-shadow: inset 0 0 0 2px var(--resource); }
+}
+body.background-stars #resource-grid > .ring-key .mat-key i { box-sizing: border-box; width: 14px; height: 14px; border-radius: 50%; }
+body.background-stars #resource-grid > .ring-key .production i { background: #0b1618; border: 3px solid #c9b98a; }
+body.background-stars #resource-grid > .ring-key .unavailable i { background: #41554a; border: 1px solid #53675a; }
+
 /* ==== The comms log on the table: a small card of the latest three entries, printed like the
    player mat; selecting it opens the whole log in place. Phones show the whole log in the Comms
    drawer. ==== */
@@ -2445,6 +2445,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .log-toggle:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; border-radius: 4px; }
   .log-panel:not(.open) { align-self: start !important; cursor: pointer; }
   .log-panel:not(.open) .game-log > :not(.log-recent) { display: none; }
+  .log-panel:not(.open) .game-log > .log-more { display: none; }
   .log-panel:not(.open) .game-log { overflow: hidden; -webkit-mask-image: none; mask-image: none; }
   .log-panel.open { z-index: 30 !important; }
   .log-panel.open .game-log .log-text { display: block; -webkit-line-clamp: none; line-clamp: none; overflow: visible; }
@@ -2466,7 +2467,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
   .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { grid-template-rows: minmax(0, 1fr) auto auto auto auto auto auto auto var(--front-h) !important; }
   .tab-panel { grid-row: 1 !important; }
-  #fleet-panel.active { grid-row: 1 / 3 !important; }
   #relics-panel, #relics-panel[hidden] { grid-row: 2 !important; }
   .phase-stepper { grid-row: 3 !important; align-self: end !important; margin-top: 6px !important; }
   .board-toolbar { grid-row: 4 !important; align-self: center !important; margin: 4px 170px 0 0 !important; }
@@ -2597,13 +2597,11 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #relics-panel, #relics-panel[hidden] { grid-row: 1 !important; align-self: start !important; margin-bottom: 4px; }
   .tab-panel { grid-row: 2 !important; }
   #relics-panel.tab-panel { grid-row: 1 !important; }
-  #fleet-panel.active { grid-row: 1 / 3 !important; }
 }
 /* Upright: the relics row above the market row. */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
   #relics-panel, #relics-panel[hidden] { grid-row: 4 !important; }
   #market-panel, #market-panel[hidden] { grid-row: 5 !important; }
-  #fleet-panel.active { grid-row: 4 / 6 !important; }
 }
 
 /* ==== Upgrades lie directly above your mat: the starter upgrades and Add 4 capacity as cards of
@@ -2684,30 +2682,15 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .console-nav { align-self: center !important; margin: 0 !important; }
 }
 
-/* ==== Landscape: the left column holds the Prestige track, the comms log and the fleets at a
-   glance at the top, and the map key at the bottom; the map fills the middle column; the round's
+/* ==== Landscape: the left column holds the Prestige track with the standings and the comms log
+   at the top, and the map key at the bottom; the map fills the middle column; the round's
    phases lie at the top of the supply, over the relics and the market. The Alien relics header
    row is gone (Preview all is in the menu; the Excavate cost in the map key). ==== */
-.fleet-glance { display: none; }
-@media (min-width: 600px) and (min-height: 600px) {
-  .fleet-glance-head { display: flex; justify-content: space-between; align-items: center; padding: 0; border: 0; background: none; color: #c9b98a; font: inherit; font-size: 9px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; cursor: pointer; }
-  .fleet-glance-head small { color: #9fb0a8; font-size: 9.5px; letter-spacing: 0; text-transform: none; }
-  .fleet-glance-head:focus-visible { outline: 2px solid var(--cyan); outline-offset: 1px; border-radius: 4px; }
-  .fleet-glance-row { display: grid; grid-template-columns: 30px repeat(3, 1fr); align-items: center; gap: 4px; }
-  .fleet-glance-row b { justify-self: start; padding: 0 5px; border-radius: 8px; background: var(--player); color: #10201c; font-size: 10px; font-weight: 800; }
-  .fleet-glance-row span { display: inline-flex; align-items: center; gap: 3px; }
-  .fleet-glance-row .board-glyph { width: 12px; height: 12px; fill: none; stroke: currentColor; stroke-width: 2; }
-}
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
   .board-map-region { grid-column: 2 !important; place-items: center !important; }
   .map-tools { grid-column: 2 !important; }
   .log-panel:not(.open) { align-self: start !important; }
   .map-legend-corner { grid-column: 1 !important; grid-row: 1 / 9 !important; justify-self: stretch; align-self: end !important; margin: 0 0 0 4px !important; }
-  .fleet-glance {
-    grid-column: 1; grid-row: 1 / 9; align-self: end; z-index: 4; display: grid; gap: 3px; margin: 0 0 calc(var(--legend-h, 262px) + 10px) 4px; padding: 6px 9px 7px;
-    border-radius: 6px; background: linear-gradient(170deg, #3d5047, #2b3a34); box-shadow: inset 0 0 0 2px #c2a76b55, 0 3px 0 #18221f, 0 12px 20px -6px #000b; color: #dfe6e0; font-size: 11px; font-weight: 600;
-  }
-  #fleet-tab { display: none !important; }
   #relics-panel > .section-intro:not(:has(#cancel-excavate:not([hidden]))), #relics-panel .relic-payment, #relic-row-help { display: none !important; }
   /* The round's phases on top of the supply. */
   .app-shell, .has-saved-table .app-shell, .has-replay .app-shell { grid-template-rows: auto auto minmax(0, 1fr) auto auto auto auto auto var(--front-h) !important; }
@@ -2715,7 +2698,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #relics-panel, #relics-panel[hidden], #relics-panel.tab-panel { grid-row: 2 !important; }
   .tab-panel { grid-row: 3 !important; }
   #relics-panel.tab-panel { grid-row: 2 !important; }
-  #fleet-panel.active { grid-row: 2 / 4 !important; }
   /* Notices lie over the map key at the bottom of the left column (it has no controls). */
   .toast { top: auto !important; bottom: calc((var(--front-h-fixed, 96px) + 22px) * var(--table-zoom, 1)) !important; left: calc(20px * var(--table-zoom, 1)) !important; }
 }
@@ -2723,9 +2705,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 /* ==== The supply column with no band: the round's phases and the turn prompt on top, the relics,
    the market (three rows of three), then the Upgrades area (Move II, Construct II, Add capacity /
    Move III, Construct III, Trash) right above your mat. The turn's buttons and Trade stack to the
-   right of the mat, above Discard. The Fleet button is gone: the fleets panel is on the left. ==== */
+   right of the mat, above Discard. Fleet counts are in the standings beside the Prestige track. ==== */
 @media (min-width: 600px) and (min-height: 600px) {
-  #fleet-tab, #open-trash { display: none !important; }
+  #open-trash { display: none !important; }
   #market-row > .game-card[hidden] { display: none !important; }
   /* Upgrade cards show their whole name, payment icons and a two-line effect. */
   .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2 !important; line-clamp: 2 !important; white-space: normal !important; overflow: hidden !important; font-size: 11px !important; line-height: 1.25 !important; }
@@ -2746,7 +2728,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #relics-panel, #relics-panel[hidden], #relics-panel.tab-panel { grid-row: 3 !important; }
   .tab-panel { grid-row: 4 !important; }
   #relics-panel.tab-panel { grid-row: 3 !important; }
-  #fleet-panel.active { grid-row: 3 / 5 !important; }
   .upgrade-group { grid-row: 6 !important; margin-top: 6px; }
   /* The turn's buttons and Trade: a column right of the mat, above Discard. */
   #resource-grid.resource-grid { justify-self: start !important; width: calc(100% - 252px) !important; margin-right: 0 !important; }
@@ -2755,16 +2736,13 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .console-nav { display: none !important; }
   #hand-panel .hand-tools #open-trade { align-self: stretch; }
 }
-/* Upright: the fleets panel joins the top rows, beside the Prestige track. */
-@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
-  .fleet-glance { display: grid !important; grid-column: 2 !important; grid-row: 1 !important; align-self: start; gap: 2px; padding: 5px 8px; border-radius: 6px; background: linear-gradient(170deg, #3d5047, #2b3a34); color: #dfe6e0; font-size: 11px; }
-}
 /* While you choose an Excavate reward, each relic's choose button lies over the foot of its card,
    so the relics row keeps its height and the market keeps its room. */
 @media (min-width: 600px) and (min-height: 600px) {
   .relic-row > div:has(> .button) { position: relative; height: var(--rtop-h, 56px) !important; }
   .relic-row > div:has(> .button) > .game-card { height: 100% !important; }
-  .relic-row > div > .button { position: absolute !important; left: 4px; right: 4px; bottom: 3px; z-index: 2; min-height: 0 !important; padding: 1px 6px !important; font-size: 11px !important; line-height: 1.2; }
+  /* A hovered relic rises to layer 30; its reward control must stay above it. */
+  .relic-row > div > .button { position: absolute !important; left: 4px; right: 4px; bottom: 3px; z-index: 31; min-height: 0 !important; padding: 1px 6px !important; font-size: 11px !important; line-height: 1.2; }
 }
 /* The Trash pile: a dark pile with light lettering. */
 .upgrade-group #upgrade-market > .trash-pile { background: linear-gradient(170deg, #4a302a, #2e1d19) !important; border-color: #a77b66 !important; color: #f4e3d6 !important; filter: none !important; }
@@ -2805,7 +2783,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 .symbol-vocab > span { display: flex; align-items: center; gap: 6px; }
 
 /* ==== The final table (landscape). Left column, top to bottom: the Prestige track, the round's
-   phases, the comms log, the fleets, the map key with prices. Middle: the map. Right: the supply as
+   phases, the comms log, the map key with prices. Middle: the map. Right: the supply as
    six rows of three cards of one size, sized to the column's height (see fitMarket): the relics,
    the market's three rows, then the Upgrades (3x2 cards). Bottom band: menu and piles, your hand,
    the turn prompt, a large mat, and the turn buttons stacked above Discard. ==== */
@@ -2816,7 +2794,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
     grid-template-rows: auto minmax(0, 1fr) 0 0 0 0 0 0 var(--band-h) !important;
   }
   /* Left column: each piece at its stacked place (see stackLeft). */
-  #prestige-track, .phase-stepper, .log-panel, #fleet-glance {
+  #prestige-track, .phase-stepper, .log-panel {
     grid-column: 1 !important; grid-row: 1 / 9 !important; align-self: start !important; justify-self: stretch !important; margin: var(--stack-top, 0px) 0 0 0 !important;
   }
   #prestige-track { width: calc(100% - 50px) !important; margin-left: 6px !important; margin-top: calc(var(--stack-top, 0px) + 4px) !important; }
@@ -2863,7 +2841,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #market-panel { pointer-events: none; }
   #market-panel :is(.game-card, .section-intro) { pointer-events: auto; }
   #relics-panel.tab-panel { grid-row: 1 !important; }
-  #fleet-panel.active { grid-column: 3 !important; grid-row: 1 / 9 !important; }
   .relic-row { grid-template-columns: repeat(3, var(--card-w, 1fr)) !important; gap: 6px !important; }
   #relics-panel { --rtop-h: var(--card-h, 120px); }
   .relic-row > div, .relic-row > div:not(:has(> .button)) { height: var(--card-h, 120px) !important; }
@@ -2876,7 +2853,7 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   /* Six rows of smaller cards: effect lines sit a little closer so long effects read whole. */
   .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-icons { line-height: 1.17; }
   /* Bottom band. */
-  #hand-row { grid-column: 1 / -1 !important; grid-row: 9 !important; margin: 0 calc(var(--mat-w) + var(--tools-w) + var(--side-w) + 46px) 0 calc(52px + 2 * var(--pile-w) + 23px) !important; }
+  #hand-row { grid-column: 1 / -1 !important; grid-row: 9 !important; margin: 0 calc(var(--mat-w) + var(--tools-w) + var(--side-w) + 46px) 0 calc(52px + 3 * var(--pile-w) + 32px) !important; }
   /* The turn's main button, small, right of the mat directly above Discard. Convert level I
      starters (only while you hold one) and Trade lie left of the mat, in their own column. */
   #hand-panel .hand-tools { position: relative; grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: start !important; width: var(--tools-w) !important; margin: 10px 0 0 0 !important; display: flex !important; flex-direction: column; gap: 3px; }
@@ -2892,8 +2869,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #resource-grid { font-size: 12.5px; }
   #resource-grid > .resource-box { grid-template-columns: 26px minmax(0, 1fr) !important; column-gap: 9px !important; }
   #resource-grid .resource-box > .resource-symbol { width: 25px !important; height: 25px !important; }
-  /* The fleets panel, compact. */
-  #fleet-glance { gap: 1px !important; padding: 4px 8px 5px !important; font-size: 10px !important; }
   /* Notices lie over the top of the map key (see stackLeft; the map keeps clear of it), at the
      table's scale so they stay inside it. */
   .toast { top: var(--notice-top, calc(360px * var(--table-zoom, 1))) !important; bottom: auto !important; left: calc(12px * var(--table-zoom, 1)) !important; width: calc(236px * var(--table-zoom, 1)) !important; box-sizing: border-box; padding: calc(8px * var(--table-zoom, 1)) calc(11px * var(--table-zoom, 1)) !important; font-size: calc(12px * var(--table-zoom, 1)) !important; line-height: 1.3 !important; }
@@ -2986,7 +2961,6 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   #map-legend-corner .resource-symbol { width: 9px !important; height: 9px !important; }
   #map-legend-corner .legend-piece { column-gap: 3px !important; font-size: 9.5px; }
   #map-legend-corner .legend-vocab { gap: 2px 6px !important; font-size: 9px !important; }
-  #fleet-glance { font-size: 9.5px !important; }
 }
 
 /* The table background is a private visual preference. */
@@ -3036,7 +3010,6 @@ body.background-stars .galaxy-board::before {
   /* A padlock (cost above your limit) tucks against the number's corner. */
   .market-cards #market-row .card-footer .chip-lock { top: -2px; right: -5px; width: 7px; height: 9px; }
   .market-cards #market-row .card-footer:has(.chip-lock) { padding-right: 6px !important; }
-  .market-cards #market-row .card-footer .resource-chip.short strong { text-decoration: underline dashed; text-underline-offset: 2px; }
   /* Upgrade cards: the price and the resources it may be paid with, in the same box. */
   .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) {
     grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "name cost" "effect cost" !important; grid-template-rows: auto minmax(0, 1fr) !important; align-content: start;
@@ -3106,10 +3079,8 @@ body.background-stars .galaxy-board::before {
   :root.table-wide #map-legend-corner .resource-symbol { width: 11px !important; height: 11px !important; }
   :root.table-wide #map-legend-corner .legend-vocab { grid-template-columns: repeat(2, auto) !important; gap: 3px 12px !important; font-size: 10.5px !important; }
 }
-/* A wide table also gives the fleets panel and the map key reading room. */
+/* A wide table also gives the map key reading room. */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
-  :root.table-wide #fleet-glance { gap: 4px !important; padding: 7px 10px 8px !important; font-size: 11.5px !important; }
-  :root.table-wide #fleet-glance .fleet-glance-row b { font-size: 11px; }
   :root.table-wide #map-legend-corner { row-gap: 7px !important; padding: 10px 12px !important; }
 }
 /* Upright, the rows above your hand are all controls, so the raised card opens wide and short
@@ -3128,9 +3099,103 @@ body.background-stars .galaxy-board::before {
 }
 /* On a table shrunk to fit a small window (or browser zoom), the raised card keeps reading size. */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
-  #hand-row { --raise-w: max(250px, calc(215px / var(--table-zoom, 1))); }
+  /* Never wider than the hand itself, so it stays clear of the piles on its left. */
+  #hand-row { --raise-w: min(var(--hand-w, 100000px), max(250px, calc(215px / var(--table-zoom, 1)))); }
   #hand-row > .game-card:is(:hover, :focus-within) .card-effect { font-size: max(12.5px, calc(10.5px / var(--table-zoom, 1))) !important; }
   #hand-row > .game-card:is(:hover, :focus-within) .card-headline { font-size: max(12.5px, calc(10.5px / var(--table-zoom, 1))) !important; }
   #hand-row > .game-card:is(:hover, :focus-within) .card-name { font-size: max(18px, calc(15px / var(--table-zoom, 1))) !important; }
   #hand-row > .game-card:is(:hover, :focus-within) .card-buttons .button { font-size: max(12px, calc(10.5px / var(--table-zoom, 1))) !important; }
+}
+
+/* Build costs: compare each piece across the same four resource columns. */
+@media (min-width: 600px) and (min-height: 600px) {
+  #map-legend-corner .legend-cost-table { grid-column: 1 / -1; width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+  .legend-cost-table th:first-child { width: 32%; text-align: left; }
+  .legend-cost-table :is(th, td) { padding: 4px 2px; border: 1px solid #c2a76b40; text-align: center; }
+  .legend-cost-table thead th { font-size: 9px; font-weight: 600; background: #ffffff08; }
+  #map-legend-corner .legend-cost-table .legend-res { flex-direction: column; gap: 3px; white-space: normal; }
+  .legend-cost-name { display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+  .legend-cost-name b { font-weight: 600; }
+  .legend-cost-table td { font-size: 12px; font-weight: 700; }
+}
+
+/* ==== Standings: the Prestige race and the public board counts in one table (rules
+   #shared-board). Each faction's row lies level with its lane; one row of icons heads the
+   columns. The faction name is the lane's marker, so the row header is for screen readers. ==== */
+.standings-stats { display: none; }
+.standings-head .board-glyph { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; }
+.standings-glyph { font-size: 1.05em; line-height: 1; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .app-shell { --stat-w: 16px; --stats-w: calc(9 * var(--stat-w)); }
+  .standings-stats { position: absolute; top: 0; left: calc(100% + 36px); display: flex; flex-direction: column; width: var(--stats-w); color: #dfe6e0; font-size: 9.5px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
+  .standings-row { display: grid; grid-template-columns: repeat(var(--stat-cols), var(--stat-w)); align-items: center; height: var(--lane-h); }
+  .standings-header { height: 11px; color: #c9b98a; }
+  .standings-faction { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .standings-head { display: grid; place-items: center; height: 10px; cursor: help; }
+  .standings-head > :is(svg, .vocab-icon) { width: 10px; height: 10px; }
+  .standings-head .vocab-icon { font-size: 10px; }
+  .standings-cell { text-align: center; }
+  .standings-cell.zero { color: #dfe6e055; }
+  /* Light column bands so a number reads with its icon. */
+  .standings-head:nth-child(odd), .standings-cell:nth-child(odd) { background: #ffffff08; }
+  .prestige-track::before { right: calc(-36px - var(--stats-w) - 6px) !important; }
+}
+/* Landscape: the race line gives up a little width so the standings clear the map's top corner. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  #prestige-track { width: calc(100% - 66px) !important; }
+}
+/* The faction names head the lanes: a name column, then the race, then the counts. The header
+   row (tick numbers and column icons) is --track-head tall. */
+.prestige-names { display: none; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .app-shell { --track-head: 10px; --name-w: 44px; }
+  .prestige-line { top: var(--track-head) !important; left: var(--name-w) !important; }
+  .standings-header { height: var(--track-head); }
+  .prestige-names { position: absolute; top: var(--track-head); left: 0; display: flex; flex-direction: column; width: var(--name-w); }
+  .prestige-lane-name { display: flex; align-items: center; gap: 3px; height: var(--lane-h); overflow: hidden; color: #dfe6e0; font-size: 9.5px; font-weight: 700; letter-spacing: .02em; line-height: 1; white-space: nowrap; }
+  .prestige-lane-name::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--player); }
+  .prestige-lane-name.acting { color: #fff; }
+  .prestige-lane-name.acting::after { content: '◀'; color: var(--gold); font-size: .85em; }
+  /* The name is at the lane's start, so the marker shows the score alone (the glow marks the acting faction). */
+  .prestige-marker .prestige-name { display: none; }
+}
+/* Phones: the Table drawer shows the track, then the standings as a table of their own. */
+@media (max-width: 599px), (max-height: 599px) {
+  body[data-drawer="table"] .standings-stats { display: grid; grid-template-columns: auto repeat(var(--stat-cols), minmax(0, 1fr)); gap: 4px 2px; margin-top: 14px; color: #dfe6e0; font-size: 12px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .standings-row { display: contents; }
+  .standings-head { display: grid; place-items: center; height: 16px; color: #c9b98a; }
+  .standings-head > :is(svg, .vocab-icon) { width: 15px; height: 15px; }
+  .standings-cell { text-align: center; }
+  .standings-cell.zero { color: #dfe6e066; }
+  .standings-faction b { display: inline-block; padding: 1px 6px; border-radius: 8px; background: var(--player); color: #10201c; font-size: 11px; }
+  .standings-header .standings-faction { min-width: 1px; }
+}
+/* The military deck pile: a red-backed stack beside In play; in a battle, the tactics still unused. */
+@media (min-width: 600px) and (min-height: 600px) {
+  #military-button .pile-card { background: radial-gradient(circle at 50% 50%, #e0a08a70 0 13%, #0000 14%), radial-gradient(circle at 50% 50%, #0000 0 24%, #e0a08a33 25% 27%, #0000 28%), repeating-linear-gradient(45deg, #4a2422 0 3px, #3a1b1a 3px 6px); box-shadow: inset 0 0 0 2px #200f0e, inset 0 0 0 3px #d98f7080, 0 0 0 1px #0b1517; }
+  #military-button[data-empty="true"] .pile-card { background: #0000001f; box-shadow: inset 0 0 0 1.5px #d9bd8050; }
+  #military-button.in-battle strong { box-shadow: 0 0 0 1.5px #e0735a; color: #ffb39f; }
+}
+.military-dialog .military-basic-title { margin: 16px 0 8px; font-size: 13px; }
+.military-dialog .military-card-grid { grid-template-columns: repeat(auto-fit, minmax(165px, 210px)); justify-content: center; }
+.military-dialog .spent { opacity: .55; }
+.military-used { display: block; color: #e0735a; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+/* A wide table gives the standings reading room: taller rows and larger icons and numbers. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  :root.table-wide .app-shell { --lane-h: 18px !important; --stat-w: 17px; --track-head: 15px; --name-w: 54px; }
+  :root.table-wide .prestige-lane-name { font-size: 11px; }
+  :root.table-wide .prestige-tick { top: -14px !important; }
+  :root.table-wide .prestige-tick > span { font-size: 10px !important; }
+  :root.table-wide .standings-head { height: 13px; }
+  :root.table-wide .standings-head > :is(svg, .vocab-icon) { width: 13px; height: 13px; }
+  :root.table-wide .standings-head .vocab-icon { font-size: 13px; }
+  :root.table-wide .standings-stats { font-size: 11px; }
+  :root.table-wide #prestige-track { height: calc(var(--lanes) * var(--lane-h) + 15px) !important; }
+}
+/* A wide table shows up to five comms lines on the closed card (a tight column drops back to the
+   latest only, see stackLeft). */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  :root.table-wide:not(.left-tight) .log-panel:not(.open) .game-log > .log-recent:is(:nth-child(4), :nth-child(5)) { display: list-item; }
+  /* It keeps that height while the log is short, so the column does not change as play goes on. */
+  :root.table-wide:not(.left-tight) .log-panel:not(.open) { min-height: 200px; }
 }

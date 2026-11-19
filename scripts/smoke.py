@@ -41,11 +41,15 @@ def login(name):
     return f"drawing_board_alien_v11_session={session.value}"
 
 
+# Docker publishes the port before the server inside listens, so an early poll can be accepted
+# and then reset (ConnectionResetError, a raw OSError urllib does not wrap). Any connection
+# error during startup means "not ready yet"; ConnectionError also covers refused, aborted and
+# broken-pipe sockets, and http.client.RemoteDisconnected (a ConnectionResetError).
 for attempt in range(60):
     try:
         if request("/api/health")[0] == 200:
             break
-    except (urllib.error.URLError, TimeoutError):
+    except (urllib.error.URLError, TimeoutError, ConnectionError):
         pass
     time.sleep(1)
 else:

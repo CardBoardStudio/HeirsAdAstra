@@ -1077,3 +1077,38 @@ main:focus {
   .workspace:has(.lobby-seats) main > p:last-child { margin: 10px 0 0; }
   .workspace:has(.lobby-seats) footer { padding-top: 8px; padding-bottom: 10px; }
 }
+/* Members dashboard (admin only). Desktop first; tables scroll sideways when narrow. */
+.muted { color: var(--muted); }
+.dash-panel { margin-bottom: 20px; }
+.dash-panel .panel-heading small { font-size: 11px; }
+.dash-tools { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 13px; margin: -6px 0 14px; }
+.dash-tools label { margin-top: 0; }
+.dash-table td { padding: 13px 10px; vertical-align: top; }
+.dash-table td:last-child { text-align: left; }
+.dash-table td small { color: var(--muted); }
+.dash-table th { white-space: nowrap; }
+.dash-who { display: grid; gap: 5px; min-width: 150px; overflow-wrap: anywhere; }
+.dash-id { display: flex; align-items: center; gap: 8px; }
+.dash-id code { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.dash-copy { border: 1px solid var(--line); background: #111c2c; color: var(--cyan); border-radius: 5px; font-size: 10px; padding: 3px 8px; min-height: 24px; }
+.dash-copy:hover { border-color: var(--cyan); }
+.dash-pill { display: inline-block; border: 1px solid var(--line); border-radius: 20px; padding: 3px 9px; font-size: 11px; white-space: nowrap; }
+.dash-pill.admin, .dash-pill.active { color: var(--green); border-color: #2f6b52; }
+.dash-pill.used-up { color: var(--cyan); border-color: #315762; }
+.dash-pill.expired { color: var(--gold); border-color: #69542c; }
+.dash-pill.revoked, .dash-warn { color: var(--red) !important; }
+.dash-pill.revoked { border-color: #7a3640; }
+.dash-uses { font-variant-numeric: tabular-nums; font-size: 14px; }
+.dash-meter { display: block; width: 72px; height: 3px; margin-top: 7px; border-radius: 2px; background: var(--line); }
+.dash-meter i { display: block; height: 100%; border-radius: 2px; background: var(--cyan); }
+.dash-claims { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.dash-claims li { overflow-wrap: anywhere; }
+.dash-claims small { display: inline !important; margin: 0 0 0 4px !important; }
+.dash-empty { color: var(--muted); text-align: center !important; padding: 26px 0 !important; }
+@media (max-width: 780px) { .dash-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .dash-tools > div:first-child { grid-column: 1 / -1; } .dash-table { min-width: 640px; } }
+
+/* Learn to play sits beside Create a table on the home page (docs/rules/tutorial.md). */
+.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.hero-actions .learn-to-play { border-color: var(--gold); color: var(--text); }
+.hero-actions .learn-to-play:hover { border-color: var(--cyan); }
+.learn-note { margin: 8px 0 0; font-size: 12px; color: #93a8bf; }
