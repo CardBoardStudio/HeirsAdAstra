@@ -212,6 +212,8 @@ const CASES = [
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'], buyVisible: true, extraSizes: i === 0 })),
   // Buy with an empty hand (everything converted or played): the market and Finish Buy must show.
+  { name: 'buy, held 2:1 exchange card', save: (() => { const s=buyState(chunks[0]); s.players[0].hand=[card('exchangeProtocol')]; return s; })(), focus: '[data-order-card]' },
+  { name: 'buy, 2:1 exchange resource dialog', save: (() => { const s=buyState(chunks[0]); s.players[0].hand=[card('clearingHouse')]; return s; })(), click: ['[data-order-card]'] },
   { name: 'buy, empty hand', save: (() => { const state = buyState(chunks[0]); state.players[0].hand = []; return state; })(), buyVisible: true, extraSizes: true, devices: true },
   // The real way there: convert the whole hand during Operations, and the table passes you to Buy.
   { name: 'buy, after converting the whole hand', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), click: ['#convert-all-button'], buyVisible: true, extraSizes: true },

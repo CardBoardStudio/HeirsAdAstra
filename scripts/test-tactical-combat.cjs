@@ -16,6 +16,16 @@ function choose(g,action){assert(g.e.applyCombatAction(g.e.combatActor(),action)
 function stays(g){while(g.s.pendingCombat?.stage==='escape')choose(g,{type:'combat_stay'});}
 function volley(g,a='concentratedFire',d='concentratedFire'){choose(g,{type:'combat_tactic',tactic:a});choose(g,{type:'combat_tactic',tactic:d});}
 function finish(g){let n=0;while(g.s.pendingCombat){assert(n++<20);choose(g,g.e.combatActions(g.e.combatActor())[0]);}}
+// Fleets shield Settlers on both sides, including against their lower remaining hull.
+{
+ const g=fixture({a:{fleet:1,settler:1},d:{fleet:1,settler:1}});g.start();stays(g);volley(g);
+ for(const pieces of [g.s.pendingCombat.attackerPieces,g.s.pendingCombat.defenderPieces]){
+  assert.equal(pieces.find(p=>p.type==='fleet').damage,5);assert.equal(pieces.find(p=>p.type==='settler').damage,0);
+ }
+ const saved=JSON.stringify(g.s),resumed=fixture();Object.assign(resumed.s,JSON.parse(saved));
+ volley(resumed);assert(!resumed.s.fleets['1,0']?.[0],'The attacking Fleet takes its last two hits before the Settler dies');
+ assert.equal(resumed.s.fleets['1,0'][1].settler,1,'Defending Settler survives three remaining hits with its four hull');
+}
 // No tactic randomness, fresh hand each battle, rejected commands and inspection pure.
 for(const attacker of [0,1]){
   const g=fixture({attacker,card:true});const rng=g.calls();g.start();const a=g.adapter();

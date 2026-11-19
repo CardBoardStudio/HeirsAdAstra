@@ -89,6 +89,7 @@ function createGalacticAdapter(e) {
       p.hand.forEach(card => {
         const effect = e.ALL_CARDS[card.key].buyEffect;
         if (effect) actions.push({ type: 'buy_effect', card: card.id });
+        if (e.canPlayExchange(seat,card.id)) for (const resource of e.RESOURCES) actions.push({type:'special',card:card.id,key:card.key,resource});
       });
       // Cards in hand, discard or in play when this Buy began may be trashed (#buy).
       e.trashEligibleCards(p).forEach(card => {
@@ -156,7 +157,7 @@ function createGalacticAdapter(e) {
           // Capacity Module: every split of its points.
           else if(def.effect?.allocate) for(const allocation of e.storageAllocations(def.effect.allocate)) actions.push({type:'special',...base,allocation});
           // Archive Purge: each choice of up to two level I starters in discard, in discard order.
-          else if(def.effect?.bankRate) for(const resource of e.RESOURCES)actions.push({type:'special',...base,resource});
+          else if(def.effect?.bankRate) { if(e.canPlayExchange(seat,card.id)) for(const resource of e.RESOURCES)actions.push({type:'special',...base,resource}); }
           else if(def.effect?.trashStarters) for(const trash of e.archivePurgeChoices(seat,def.effect.trashStarters)) actions.push({type:'special',...base,trash});
           else actions.push({ type: 'special', ...base });
         }
