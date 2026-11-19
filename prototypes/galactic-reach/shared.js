@@ -14,6 +14,20 @@
     bar.setAttribute('aria-label', 'Shared table');
     bar.innerHTML = '<a class="button button-ghost" href="/?game=galactic-reach#tables">← Your tables</a><strong id="saved-table-name">Opening shared table…</strong><span id="table-rules" class="rules-badge"></span><ol class="shared-seats" id="shared-seats" aria-label="Seats"></ol><span id="table-sync" role="status" aria-live="polite">Connecting…</span><span id="shared-undo-note" class="shared-undo-note" hidden></span>';
     shell.before(bar);
+    const boardButton = document.createElement('button');
+    boardButton.className = 'button button-ghost'; boardButton.textContent = 'Pair public board';
+    const boardLink = document.createElement('a'); boardLink.hidden = true; boardLink.target = '_blank'; boardLink.rel = 'noopener'; boardLink.textContent = 'Open public board';
+    const revokeBoard = document.createElement('button'); revokeBoard.className = 'button button-ghost'; revokeBoard.textContent = 'Revoke board links';
+    bar.append(boardButton, boardLink, revokeBoard);
+    boardButton.addEventListener('click', async () => {
+      try { const result = await api(`/api/tabletop/${id}/board-grant`, {}); boardLink.href = result.url; boardLink.hidden = false;
+        status.textContent = 'Open this link on the tablet, or copy it there. It pairs one public board.';
+      } catch (error) { status.textContent = error.message; }
+    });
+    revokeBoard.addEventListener('click', async () => {
+      try { await api(`/api/tabletop/${id}/board-revoke`, {}); boardLink.hidden = true; boardLink.removeAttribute('href'); status.textContent = 'Public board access revoked.'; }
+      catch (error) { status.textContent = error.message; }
+    });
     const status = bar.querySelector('#table-sync');
     const seatList = bar.querySelector('#shared-seats');
     const undoNote = bar.querySelector('#shared-undo-note');

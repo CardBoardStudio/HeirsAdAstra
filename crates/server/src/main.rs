@@ -14,6 +14,7 @@ mod platform_tests;
 mod shared;
 mod store;
 mod tables;
+mod tabletop;
 use axum::{
     Json, Router,
     extract::{Path, State},
@@ -182,6 +183,11 @@ async fn protect(State(app): State<App>, request: axum::extract::Request, next: 
     let gated = app.nido.access.invite_only && !access::is_public(path);
     let check = async {
         access::limit(&app, path, headers).map_err(IntoResponse::into_response)?;
+        // Delegated device routes validate their own narrowly scoped capability.
+        // Keep CSRF above this exception; do not issue a general account session.
+        if tabletop::delegated_path(path) {
+            return Ok(());
+        }
         if gated || (path.starts_with("/api/") && !path.starts_with("/api/auth/")) {
             nido::check_session(&app, headers)
                 .await
@@ -578,6 +584,14 @@ fn router(app: App) -> Router {
         .route("/api/tables/{id}/lobby/leave", post(lobby::leave))
         .route("/api/tables/{id}/lobby/settings", post(lobby::settings))
         .route("/api/tables/{id}/lobby/start", post(lobby::start))
+        .route("/tabletop/board.html", get(tabletop::board_page))
+        .route("/tabletop/board.js", get(tabletop::board_script))
+        .route("/tabletop/board.css", get(tabletop::board_style))
+        .route("/api/tabletop/{id}/board-grant", post(tabletop::issue_board))
+        .route("/api/tabletop/{id}/board-revoke", post(tabletop::revoke_board))
+        .route("/api/tabletop/{id}/redeem", post(tabletop::redeem))
+        .route("/api/tabletop/{id}/board", get(tabletop::board))
+        .route("/api/tabletop/{id}/stream", get(tabletop::stream))
         .route("/api/shared", get(shared::list))
         .route("/api/shared/{id}", get(shared::view))
         .route("/api/shared/{id}/act", post(shared::act))

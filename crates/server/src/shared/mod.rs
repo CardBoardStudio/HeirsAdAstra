@@ -577,6 +577,20 @@ impl Tables {
             "ai_error": ai_error,
         }))
     }
+    fn public_view(&mut self, id: &str) -> Result<Value, Refusal> {
+        let authority = self.authority.clone();
+        let channel = self.channel.clone();
+        let live = self.live(id)?;
+        let state = authority.public_view(&live.engine).map_err(broken)?;
+        if state.is_null() {
+            return Err(Refusal::Conflict(
+                "This older table has no public-board view. Start a fresh table.".into(),
+            ));
+        }
+        Ok(json!({"id":id,"role":"board","name":live.table.name,
+            "rules_version":live.table.rules,"client_path":channel.client_path(&live.table.rules),
+            "status":live.table.status,"seq":live.head,"state":state}))
+    }
     fn act(
         &mut self,
         id: &str,
@@ -921,6 +935,17 @@ impl Service {
     pub async fn view(self: &Arc<Self>, id: &str, account: &str) -> Result<Value, Refusal> {
         let (id, account) = (id.to_string(), account.to_string());
         self.call(move |t| t.view(&id, &account)).await
+    }
+    /// Caller must authenticate a table-scoped board credential before using this.
+    pub async fn public_view(self: &Arc<Self>, id: &str) -> Result<Value, Refusal> {
+        let id = id.to_string();
+        self.call(move |t| t.public_view(&id)).await
+    }
+    pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<(String, u64)> {
+        self.changes.subscribe()
+    }
+    pub fn shutdown_subscription(&self) -> tokio::sync::watch::Receiver<bool> {
+        self.closing.subscribe()
     }
     pub async fn act(
         self: &Arc<Self>,
