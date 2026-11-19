@@ -44,7 +44,7 @@ for(let n=0;n<32;n++){
 }
 {
  const g=game(),p=bot(g),center=g.s.clusters[4].center;funds(p);p.hand=[{id:'col',key:'colonize'},{id:'build',key:'construct'}];g.s.fleets={[center]:{1:{settler:1,explorer:0,fleet:0}}};
- g.e.runAiOperation();assert.equal(g.s.planets[center].owner,1);assert(g.s.planets[center].hasColony);assert(p.hand.some(c=>c.id==='build'));assert.equal(p.resources.biomass,28);record.fixtures++;
+ g.e.runAiOperation();assert.equal(g.s.planets[center].owner,1);assert(g.s.planets[center].hasColony);assert(p.hand.some(c=>c.id==='build'));assert.equal(p.resources.biomass,27);record.fixtures++;
 }
 {
  const g=game(),p=bot(g),world=g.s.clusters[4],site=g.e.relicCoordInCluster(world);world.revealedBy=[0,1,2,3];world.scannedBy=[1];funds(p);p.hand=[{id:'dig',key:'excavate'},{id:'build',key:'construct'}];g.s.fleets={[site]:{1:{explorer:1,settler:0,fleet:0}}};
