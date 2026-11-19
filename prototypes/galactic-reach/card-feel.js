@@ -12,7 +12,7 @@
   const $$ = selector => [...document.querySelectorAll(selector)];
   const center = rect => ({ x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 });
   const shown = element => Boolean(element?.getClientRects().length);
-  const RESOURCE_LABELS = { matter: 'Matter', energy: 'Energy', biomass: 'Biomass', data: 'Data' };
+  const RESOURCE_LABELS = { matter: 'Matter', energy: 'Energy', biomass: 'Life', data: 'Data' };
   let api = null, previous = null, view = null, drag = null;
 
   // ---- Tilt and sheen: a card leans a few degrees toward the pointer. ----

@@ -149,7 +149,7 @@ for (const stored of [0, 1, 8]) {
 {
   const g = game(), { s, e } = g;
   assert.equal(e.HARVESTER_YIELD, 2);
-  assert.deepEqual(JSON.parse(JSON.stringify(e.SHIP_STATS.settler.cost)), { matter: 1, energy: 1, biomass: 1 });
+  assert.deepEqual(JSON.parse(JSON.stringify(e.SHIP_STATS.settler.cost)), { matter: 1, biomass: 2 });
   assert.deepEqual(JSON.parse(JSON.stringify(e.STRUCTURES.harvester.cost)), { matter: 1, energy: 1, data: 1 });
   for (const p of s.players) assert.deepEqual({ biomass: p.resources.biomass, data: p.resources.data }, { biomass: 1, data: 1 }, 'Every faction starts with 1 Biomass and 1 Data');
   const hex = s.clusters[0].coords[1]; Object.assign(s.planets[hex], { owner: 0, upgrade: 'harvester', occupiedBy: null });

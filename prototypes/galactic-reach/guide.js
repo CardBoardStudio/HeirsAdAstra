@@ -9,18 +9,20 @@
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
   const shown = element => Boolean(element?.isConnected && element.getClientRects().length) && getComputedStyle(element).visibility !== 'hidden';
-  const RESOURCE_NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Biomass', data: 'Data' };
+  const RESOURCE_NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Life', data: 'Data' };
   const esc = text => String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   // Where each resource comes from, in the words of the rulebook's #resources and #trade.
   const SOURCES = {
     matter: 'Matter: convert a Construct card, or own Matter hexes.',
     energy: 'Energy: convert a Move card, or own Energy hexes.',
-    biomass: 'Biomass: own Biomass hexes, or trade 4 of another resource for 1 at the bank on your mat.',
+    biomass: 'Life: own Life hexes, or trade 4 of another resource for 1 at the bank on your mat.',
     data: 'Data: own Data hexes, or trade 4 of another resource for 1 at the bank on your mat.',
   };
   // Ordinary hex distance between two "q,r" keys.
   const hexDistance = (a, b) => { const [q1, r1] = a.split(',').map(Number), [q2, r2] = b.split(',').map(Number); return (Math.abs(q1 - q2) + Math.abs(r1 - r2) + Math.abs(q1 + r1 - q2 - r2)) / 2; };
   const costText = cost => Object.entries(cost || {}).filter(([, n]) => n > 0).map(([r, n]) => `${n} ${RESOURCE_NAMES[r]}`).join(', ');
+  const colonyLife = (card, capture = false) => port.colonyTerms?.(port.cards[card.key].tag, capture)?.biomass
+    ?? port.cards[card.key].colonyCost ?? (capture ? 1 : port.colonyCost ?? 2);
 
   function loadPrefs() {
     try {
@@ -116,7 +118,7 @@
       anchor: c => hex(c.myUnits.settler[0]), marks: c => { const g = nearestFreeWorld(c, c.myUnits.settler); return g ? [hex(g.center)] : []; },
       show: c => { const g = nearestFreeWorld(c, c.myUnits.settler); return { callouts: [{ el: hex(c.myUnits.settler[0]), label: 'Your Settler' }, ...(g ? [{ el: hex(g.center), label: `${g.name}’s center` }] : [])] }; } },
     { id: 'colonize-card', when: c => c.ops && Boolean(anyHand(c)), title: 'Colonize card', rule: 'orders',
-      text: () => 'Play it on a Settler standing on a world’s center: 2 Biomass, +3★.',
+      text: c => `Play it on a Settler standing on a world’s center: ${colonyLife(anyHand(c))} Life, +3★.`,
       anchor: c => handCard(anyHand(c).id) },
     { id: 'probe-card', when: c => c.ops && c.player.hand.some(card => card.key === 'probe'), title: 'Probe / Excavate card', rule: 'movement',
       text: () => 'From your Explorer, Probe finds the nearest hidden relic (◈).',
@@ -189,11 +191,12 @@
       }
       const colonize = card('colonize');
       if (colonize) {
-        const short = c.player.resources.biomass < 2;
-        const target = colonize.targets[0] && hex(colonize.targets[0]);
+        const coord = colonize.targets[0], capture = c.state.planets[coord]?.owner != null;
+        const price = colonyLife(colonize.card, capture), short = c.player.resources.biomass < price;
+        const target = coord && hex(coord), verb = capture ? 'Capture' : 'Found';
         return short
-          ? { title: 'Found a Colony', text: `Your Settler is on a world center. A Colony costs 2 Biomass; you have ${c.player.resources.biomass}. ${SOURCES.biomass}`, anchor: matRow('biomass'), show: { callouts: [{ el: matRow('biomass'), label: 'Need 2 Biomass', side: 'left' }] } }
-          : { title: 'Found a Colony', text: 'Drag this Colonize card onto your Settler and choose Found Colony (2 Biomass, +3★).', anchor: handCard(colonize.card.id), show: { ghost: target ? { from: handCard(colonize.card.id), to: target } : null, callouts: target ? [{ el: target, label: 'Your Settler' }] : [] } };
+          ? { title: `${verb} a Colony`, text: `Your Settler is on a world center. This Colony costs ${price} Life; you have ${c.player.resources.biomass}. ${SOURCES.biomass}`, anchor: matRow('biomass'), show: { callouts: [{ el: matRow('biomass'), label: `Need ${price} Life`, side: 'left' }] } }
+          : { title: `${verb} a Colony`, text: `Drag this Colonize card onto your Settler and choose ${verb} Colony (${price} Life, +3★).`, anchor: handCard(colonize.card.id), show: { ghost: target ? { from: handCard(colonize.card.id), to: target } : null, callouts: target ? [{ el: target, label: 'Your Settler' }] : [] } };
       }
       const excavate = c.playable.find(p => p.kind === 'excavate');
       if (excavate) { const at = hex(excavate.targets[0]); return { title: 'Excavate the relic', text: `Drag this Probe / Excavate card onto your Explorer and choose Excavate (${costText(port.excavationCost)}, +2★).`, anchor: handCard(excavate.card.id), show: { ghost: { from: handCard(excavate.card.id), to: at }, callouts: [{ el: at, label: 'Explorer on the ◈' }] } }; }

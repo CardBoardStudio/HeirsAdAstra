@@ -561,7 +561,7 @@ function excavationStorage({selected=true,affordable=false}={}) {
   const storage=createStorage(),state=boot(storage).saved(),coord=Object.keys(state.planets).find(k=>state.planets[k].special==='relic');
   state.clusters[state.planets[coord].cluster].revealedBy=[0,1,2,3];state.clusters[state.planets[coord].cluster].scannedBy=[0];state.selected=selected?coord:null;
   state.players[0].hand=[{key:'excavate',id:'tab-dig'},{key:'construct',id:'tab-matter',starter:true},{key:'move',id:'tab-energy',starter:true},{key:'construct',id:'tab-extra',starter:true}];
-  state.players[0].resources=affordable?{matter:1,energy:1,biomass:0,data:2}:{matter:0,energy:0,biomass:0,data:2};state.fleets[coord]={0:{explorer:1,fleet:1}};
+  state.players[0].resources=affordable?{matter:1,energy:1,biomass:0,data:3}:{matter:0,energy:0,biomass:0,data:3};state.fleets[coord]={0:{explorer:1,fleet:1}};
   writeSave(storage,state);return {storage,coord};
 }
 function assertTab(game,name){
@@ -759,7 +759,7 @@ test('Probe UI locates a relic privately and unlocated excavation never redirect
 test('Hand Excavate opens Relics with disabled choices, permits conversions, and cancels without spending',()=>{
   const {storage}=excavationStorage(),game=boot(storage),before=game.saved();
   game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='tab-dig').click();assertTab(game,'relics');assert.equal(game.saved().actionMode,'excavate');
-  assert(game.dom.lastQuery('[data-excavate-relic]').every(b=>b.disabled));assert.match(game.dom.element('relic-row-help').textContent,/Convert cards from your hand/);assert.match(game.dom.element('relic-cost').innerHTML,/Matter|matter/);
+  assert(game.dom.lastQuery('[data-excavate-relic]').every(b=>b.disabled));assert.match(game.dom.element('relic-row-help').textContent,/Convert cards from your hand/);assert.match(game.dom.element('relic-cost').innerHTML,/3 Data/);
   const resumed=boot(storage);assertTab(resumed,'relics');resumed.click('market-tab');
   for(const id of ['tab-matter','tab-energy','tab-extra']){resumed.dom.lastQuery('[data-resource-card]').find(b=>b.dataset.resourceCard===id).click();assertTab(resumed,'market');}
   assert.equal(resumed.saved().actionMode,'excavate');resumed.click('relics-tab');assert(resumed.dom.lastQuery('[data-excavate-relic]').every(b=>!b.disabled));
@@ -779,7 +779,7 @@ test('excavation UI chooses a visible reward and survives reload without its spe
   const coord=Object.keys(state.planets).find(k=>state.planets[k].special==='relic');
   state.clusters[state.planets[coord].cluster].revealedBy=[0,1,2,3];state.clusters[state.planets[coord].cluster].scannedBy=[0];
   state.selected=coord;state.players[0].hand=[{key:'excavate',id:'ui-dig'}];
-  state.players[0].resources={matter:1,energy:1,biomass:0,data:2};
+  state.players[0].resources={matter:0,energy:1,biomass:0,data:3};
   state.fleets[coord]={0:{explorer:1}};
   writeSave(storage,state);
   const game=boot(storage), chosen=state.relicRow[1], replacement=state.relicDeck.at(-1);
@@ -1119,7 +1119,7 @@ test('storage allocations cancel atomically, survive commitment and undo with th
 });
 
 
-function constructTwoSave(){const storage=createStorage(),state=boot(storage).saved(),coord=state.clusters[0].coords[1];Object.assign(state,{activePlayer:0,phase:'operations',turnStage:'prep',selected:coord});state.players[0].resources={matter:4,energy:3,biomass:3,data:2};state.players[0].hand=[{id:'two-builds',key:'construct',starter:true,upgraded:true},{id:'fund-more',key:'construct'}];writeSave(storage,state);return{storage,coord};}
+function constructTwoSave(){const storage=createStorage(),state=boot(storage).saved(),coord=state.clusters[0].coords[1];Object.assign(state,{activePlayer:0,phase:'operations',turnStage:'prep',selected:coord});state.players[0].resources={matter:4,energy:4,biomass:3,data:2};state.players[0].hand=[{id:'two-builds',key:'construct',starter:true,upgraded:true},{id:'fund-more',key:'construct'}];writeSave(storage,state);return{storage,coord};}
 function startFirstBuild(game){game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='two-builds').click();const button=game.dom.contextButton('Build Shipyard');assert(button&&!button.disabled);button.click();game.settle();}
 test('a rival resumes its optional second build after commissioning into an enemy rival',()=>{
  const storage=createStorage(),c=vm.createContext({});vm.runInContext(adapterSource+source,c);

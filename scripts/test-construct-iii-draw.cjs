@@ -65,7 +65,7 @@ for(const strategy of ['military','economy','expansion']){
 {
  const g=game(),p=g.s.players[1];g.s.activePlayer=1;p.strategy='military';p.hand=[iii('iii')];p.deck=[{id:'fresh',key:'signalRelay'}];
  const coord=g.s.clusters[1].coords[1];Object.assign(g.s.planets[coord],{owner:1,upgrade:'starbase'});
- p.resources={matter:2,energy:1,biomass:1,data:0};g.e.runAiOperation();
+ p.resources={matter:2,energy:2,biomass:2,data:0};g.e.runAiOperation();
  assert(Object.values(g.s.fleets).some(group=>group[1]?.settler||group[1]?.fleet),'Useful construction precedes draw-only');
  assert(p.inPlay.some(c=>c.id==='iii'));assert(p.hand.some(c=>c.id==='fresh'));assert(!g.s.log.some(s=>s.includes('without building')));
 }
