@@ -1243,6 +1243,25 @@ test('Shared exchange order sends its resource choice to the authoritative engin
  const sent=[],network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
  const game=boot(createStorage(),1729,undefined,{network});game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='shared-exchange').click();game.dom.lastQuery('[data-exchange-resource]').find(b=>b.dataset.exchangeResource==='energy').click();game.settle();assert.deepEqual(sent,[[{type:'special',card:'shared-exchange',resource:'energy'}]]);
 });
+test('Buy exchange stays in Buy, can cancel, trades at 2:1, and keeps the held card on reload',()=>{
+ const storage=createStorage(),state=boot(storage).saved();Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});state.players[0].passed=true;
+ state.players[0].hand=[{id:'buy-exchange',key:'clearingHouse'}];state.players[0].resources={matter:0,energy:4,biomass:0,data:0};writeSave(storage,state);
+ let game=boot(storage);const button=()=>game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='buy-exchange');assert(button(),'A held exchange has a Buy button');
+ button().click();assert(game.dom.element('exchange-resource-dialog').open);game.click('exchange-resource-cancel');assert(game.saved().players[0].hand.some(c=>c.id==='buy-exchange'));
+ game=boot(storage);button().click();game.dom.lastQuery('[data-exchange-resource]').find(b=>b.dataset.exchangeResource==='energy').click();game.settle();
+ assert.equal(game.saved().phase,'buy');assert.equal(game.saved().activePlayer,0);assert(game.saved().players[0].inPlay.some(c=>c.id==='buy-exchange'));
+ game.click('bank-give-energy').click('bank-get-data');assert.equal(game.dom.element('bank-give-rate').textContent,'Give 2');fire(game.dom.element('bank-trade-form'),'submit',{cancelable:true});game.settle();assert.equal(game.saved().players[0].resources.energy,2);assert.equal(game.saved().players[0].resources.data,1);
+ assert(game.dom.element('upgrade-market').innerHTML.includes('Pay 3 of one resource per card.'));assert(game.dom.element('upgrade-market').innerHTML.includes('aria-label="Trash pile: pay 3 of one resource per card'));
+});
+test('A held exchange prevents automatic Buy skipping even with no resources',()=>{
+ const storage=createStorage(),state=boot(storage).saved();Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});state.players[0].passed=true;state.players[0].hand=[{id:'empty-exchange',key:'barterNetwork'}];state.players[0].resources={matter:0,energy:0,biomass:0,data:0};writeSave(storage,state);
+ const game=boot(storage);assert.equal(game.saved().phase,'buy');assert(game.dom.lastQuery('[data-order-card]').some(b=>b.dataset.orderCard==='empty-exchange'));
+});
+test('Shared Buy exchange sends its resource choice without finishing Buy',()=>{
+ const state=boot(createStorage()).saved();Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});state.players[0].passed=true;state.players[0].hand=[{id:'shared-buy-exchange',key:'barterNetwork'}];
+ const sent=[],network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='shared-buy-exchange').click();game.dom.lastQuery('[data-exchange-resource]').find(b=>b.dataset.exchangeResource==='energy').click();game.settle();assert.deepEqual(sent,[[{type:'special',card:'shared-buy-exchange',resource:'energy'}]]);
+});
 test('Retained Seed Ark has no unadopted draw alternative',()=>{
  const storage=createStorage(),state=boot(storage).saved();state.players[0].hand=[{id:'retained-seed',key:'seedArk'}];writeSave(storage,state);const game=boot(storage);assert.equal(game.dom.lastQuery('[data-order-draw]').length,0);
 });

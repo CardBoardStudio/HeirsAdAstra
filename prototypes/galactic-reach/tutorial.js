@@ -360,7 +360,7 @@
         anchor: state => { const enemy = unitsAt(state, 'explorer', 1)[0]; return (myOps(state) ? hand('move')(state) : null) || hexAt(enemy); },
         done: (state, base) => Boolean(state.pendingCombat) || (me(state).combatVictories || 0) > base.wins },
       { id: 'tactics', title: 'Choose tactics', rule: 'combat-tactics', dialog: '#combat-dialog',
-        text: () => 'If asked, choose Stay and fight. Then pick a tactic: Fire adds 1 hit; Screen blocks 2.',
+        text: () => 'If asked, choose Stay and fight. Then pick a tactic: Fire adds 1 hit; Screen blocks 2. Fleets take hits before Settlers.',
         done: state => !state.pendingCombat },
       { id: 'report', title: 'Victory', rule: 'combat', dialog: '#message-dialog',
         start: state => ({ wins: me(state).combatVictories || 0 }),

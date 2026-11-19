@@ -246,6 +246,8 @@
       if (market) return { title: 'Buy cards', text: 'You can afford this card (gold outline). Choose it to buy it. It goes to your discard pile. Finish Buy when you are done.', anchor: firstShown(`[data-buy-market][data-card-id="${CSS.escape(market.id)}"]`) };
       if (port.canBuyCapacity()) return { title: 'Raise your limits', text: `A Capacity Module costs ${port.capacityCost()} of each resource. It lets you hold enough to buy bigger cards later. Or choose Finish Buy.`, anchor: firstShown('[data-capacity-offer]:not([disabled])') };
       if (c.upgrades.length && port.resources.some(r => c.player.resources[r] >= 3)) return { title: 'Upgrade a starter', text: 'Upgrade a Move or Construct card for a stronger order: pay 2 of your most plentiful resource. Or choose Finish Buy.', anchor: firstShown('#upgrade-market .game-card:not([disabled])') };
+      const exchange=c.player.hand.find(card=>port.cards[card.key].effect?.bankRate);
+      if(exchange) return {title:'Use a 2:1 exchange card',text:'You may play this held card during Buy. Choose the resource to give at 2:1, then trade on your mat and keep buying. The rate ends when you finish Buy.',anchor:handCard(exchange.id)};
       return { title: 'Finish Buy', text: 'Nothing here is affordable yet. Choose Finish Buy. Your resources carry over to the next round.', anchor: turnButton() };
     }
     if (!c.myTurn && s.winner === null && ['operations', 'buy'].includes(s.phase)) return { title: 'Rivals are acting', text: `${s.players[s.activePlayer].name} is taking its turn.`, anchor: firstShown(`[data-score-player="${s.activePlayer}"]`), quiet: true };

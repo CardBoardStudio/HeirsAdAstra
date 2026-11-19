@@ -5,6 +5,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 const root = path.join(__dirname, '..');
 require('./test-life-resource-costs.cjs');
+require('./test-buy-combat.cjs');
 function engine() {
   const context = vm.createContext({});
   vm.runInContext(fs.readFileSync(path.join(root,'prototypes/galactic-reach/adapter.js'),'utf8') + fs.readFileSync(path.join(root,'prototypes/galactic-reach/app.js'),'utf8'), context);
