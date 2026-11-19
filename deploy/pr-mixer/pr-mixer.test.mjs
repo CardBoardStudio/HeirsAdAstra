@@ -2,7 +2,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync, spawn } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
+import http from 'node:http';
 import { tmpdir } from 'node:os';
 import net from 'node:net';
 import { once } from 'node:events';
@@ -119,6 +120,115 @@ test('cookies: a mix sees only its own, renamed back; the dev session never pass
   assert.equal(lib.outboundCookie('drawing_board_alien_v11_session=T; HttpOnly; Path=/', key), `mx${key}_drawing_board_alien_v11_session=T; HttpOnly; Path=/`);
   assert.equal(lib.cookieValue(header, 'pr_mixer_mix'), key);
   assert.equal(lib.cookieValue(header, 'missing'), null);
+});
+
+test('table routing accepts only successful link issuance and exact bootstrap pages', () => {
+  const key = 'abcdef012345', table = '1'.repeat(32), now = 1000;
+  const state = { mixes: { [key]: { status: 'running' } } };
+  for (const [method, path, status] of [
+    ['GET', `/api/tabletop/${table}/host-phone`, 200],
+    ['POST', `/api/tabletop/${table}/host-phone`, 403],
+    ['POST', `/api/tabletop/${table}/host-phone`, 302],
+    ['POST', `/api/tabletop/${table}/approve`, 200],
+    ['POST', '/api/tabletop/invalid/host-phone', 200],
+    ['POST', `/api/tabletop/${table}/host-phone/extra`, 200],
+  ]) assert.equal(lib.recordTableRoute(state, method, path, status, key, now), false);
+  assert.equal(state.tableRoutes, undefined);
+  for (const endpoint of ['host-phone', 'phone-invite', 'board-grant', 'repair'])
+    assert.equal(lib.recordTableRoute(state, 'POST', `/api/tabletop/${table}/${endpoint}`, 200, key, now), true);
+  const route = (path, selected = null, method = 'GET') => lib.tabletopRoute(state, method, new URL(path, 'https://test.example'), selected, now);
+  for (const page of ['phone', 'board']) {
+    const path = `/tabletop/${page}.html?table=${table}`;
+    assert.deepEqual(route(path), { key });
+    assert.deepEqual(route(path, '000000000000'), { key }, 'wrong browser selection is corrected');
+    assert.equal(route(path, null, 'POST'), null);
+    assert.equal(route(path + `&table=${table}`), null);
+  }
+  for (const path of [`/tabletop/host.html?table=${table}`, `/api/tabletop/${table}/seat`, `/tabletop/phone.html?table=bad`, '/tabletop/phone.html'])
+    assert.equal(route(path), null);
+});
+
+test('table routing preserves ambiguity and prunes expired or deleted mixes as whole table groups', () => {
+  const a = 'abcdef012345', b = '000000000000', table = '1'.repeat(32), now = 1000;
+  const state = { mixes: { [a]: { status: 'running' }, [b]: { status: 'built' } } };
+  for (const key of [a, b]) lib.recordTableRoute(state, 'POST', `/api/tabletop/${table}/host-phone`, 200, key, now);
+  const url = new URL(`https://test.example/tabletop/phone.html?table=${table}`);
+  assert.deepEqual(lib.tabletopRoute(state, 'GET', url, null, now), { ambiguous: true });
+  assert.deepEqual(lib.tabletopRoute(state, 'GET', url, b, now), { key: b });
+  const afterExpiry = now + 30 * 24 * 60 * 60_000;
+  assert.equal(lib.tabletopRoute(state, 'GET', url, a, afterExpiry), null);
+  assert.deepEqual(lib.pruneTableRoutes(state.tableRoutes, state.mixes, afterExpiry), {});
+  delete state.mixes[b];
+  assert.deepEqual(lib.pruneTableRoutes(state.tableRoutes, state.mixes, now), { [table]: { [a]: afterExpiry } });
+  const many = Object.fromEntries(Array.from({ length: 4097 }, (_, i) => [i.toString(16).padStart(32, '0'), { [a]: now + i + 1, [b]: now + i + 2 }]));
+  const bounded = lib.pruneTableRoutes(many, { [a]: {}, [b]: {} }, now);
+  assert.equal(Object.keys(bounded).length, 4096);
+  assert.equal(bounded['0'.repeat(32)], undefined);
+  assert.equal(Object.keys(bounded['1'.padStart(32, '0')]).length, 2);
+});
+
+test('fresh phone links select their mix through the proxy and survive a mixer restart', async (t) => {
+  const root = mkdtempSync(`${tmpdir()}/pr-mixer-pairing-`);
+  const key = 'abcdef012345', table = '1'.repeat(32), other = '2'.repeat(32);
+  const received = [];
+  let status = 200, child;
+  const upstream = http.createServer((req, res) => {
+    received.push({ url: req.url, cookie: req.headers.cookie, identity: req.headers['tailscale-user-login'] });
+    req.resume();
+    res.writeHead(status, { 'content-type': 'application/json', 'set-cookie': 'seat=fixture; Path=/' });
+    res.end(JSON.stringify({ url: `/tabletop/phone.html?table=${table}#pair=TEST_SECRET` }));
+  }).listen(0, '127.0.0.1');
+  await once(upstream, 'listening');
+  const reservation = net.createServer().listen(0, '127.0.0.1');
+  await once(reservation, 'listening');
+  const port = reservation.address().port;
+  await new Promise(resolve => reservation.close(resolve));
+  const origin = `https://mixer.example.ts.net:${port}`, base = `http://127.0.0.1:${port}`;
+  // No Docker daemon or GitHub access: the fixture backend is already running.
+  writeFileSync(`${root}/docker`, '#!/bin/sh\n[ "$1 $2 $3" = "container inspect -f" ] || exit 1\necho true\n', { mode: 0o700 });
+  writeFileSync(`${root}/state.json`, JSON.stringify({ mixes: { [key]: { key, status: 'running', port: upstream.address().port } } }));
+  const stop = async () => { if (child?.exitCode === null) { const exited = once(child, 'exit'); child.kill('SIGTERM'); await exited; } };
+  const start = async () => {
+    child = spawn(process.execPath, [fileURLToPath(new URL('./pr-mixer.mjs', import.meta.url))], {
+      env: { PATH: `${root}:${process.env.PATH}`, HOME: root, MIXER_AUTH: 'tailnet', MIXER_ORIGIN: origin, MIXER_PORT: String(port), MIXER_DATA: root },
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    await once(child.stdout, 'data', { signal: AbortSignal.timeout(5000) });
+  };
+  t.after(async () => { await stop(); await new Promise(resolve => upstream.close(resolve)); rmSync(root, { recursive: true, force: true }); });
+  await start();
+  const identity = { 'tailscale-user-login': 'tester@example.com' };
+  const cookie = `pr_mixer_mix=${key}; mx${key}_seat=RIGHT; mx000000000000_seat=WRONG; dev_session=SECRET`;
+  const request = async (path, options = {}) => {
+    const r = await fetch(base + path, { redirect: 'manual', ...options, headers: { ...identity, ...options.headers } });
+    await r.text(); return r;
+  };
+  const phone = `/tabletop/phone.html?table=${table}`;
+  assert.equal((await request(phone)).headers.get('location'), '/__mixer/', 'legacy state starts without table routes');
+  const issued = await request(`/api/tabletop/${table}/host-phone`, { method: 'POST', headers: { cookie } });
+  assert.equal(issued.status, 200);
+  assert.equal(issued.headers.get('set-cookie'), `mx${key}_seat=fixture; Path=/`);
+  assert.deepEqual(received.at(-1), { url: `/api/tabletop/${table}/host-phone`, cookie: 'seat=RIGHT', identity: undefined });
+  const persisted = readFileSync(`${root}/state.json`, 'utf8');
+  assert(!persisted.includes('TEST_SECRET'));
+  assert(JSON.parse(persisted).tableRoutes[table][key] > Date.now());
+  status = 403;
+  await request(`/api/tabletop/${other}/phone-invite`, { method: 'POST', headers: { cookie } });
+  assert.equal((await request(`/tabletop/phone.html?table=${other}`)).headers.get('location'), '/__mixer/');
+  status = 200;
+  await stop(); await start();
+  for (const headers of [{}, { cookie: 'pr_mixer_mix=000000000000' }]) {
+    const r = await request(phone, { headers });
+    assert.equal(r.status, 302);
+    assert.equal(r.headers.get('location'), phone, 'redirect contains no fragment or pairing secret');
+    assert.equal(r.headers.get('set-cookie'), `pr_mixer_mix=${key}; Path=/; HttpOnly; SameSite=Lax; Secure`);
+    assert.equal(r.headers.get('cache-control'), 'no-store');
+  }
+  assert.equal((await request(phone, { headers: { cookie } })).status, 200);
+  assert.equal(received.at(-1).url, phone);
+  assert.equal((await request(`/api/tabletop/${table}/seat`)).headers.get('location'), '/__mixer/', 'table routing never bypasses API cookie selection');
+  const denied = await fetch(base + phone, { redirect: 'manual' });
+  assert.equal(denied.status, 403); await denied.text();
 });
 
 test('banner names every PR, escaped, before </body>', () => {

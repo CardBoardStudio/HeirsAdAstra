@@ -14,6 +14,21 @@ On `mai`, connect to Tailscale and open the mixer directly on `:3113/__mixer/`; 
 4. When a mix is built, **Open** it. Every page of the mix carries a purple banner at the bottom naming `main`'s commit and each included PR; **Mixer** in the banner returns here.
 5. To sign in inside a mix, use its **sign-in code** from the Mixes table. On the HTTPS host each mix uses preview sign-in ([PR previews](pr-previews.md#identity-and-isolation)): any pilot name plus the code gives a disposable **PREVIEW** identity, so two testers can share a table in the same mix. On a laptop's loopback origin the code is the mix's account enrollment code instead.
 
+Phone and public-board pairing links select their table's mix automatically,
+including on a phone that has never opened the mixer. After upgrading an older
+mixer, generate the pairing link again on the host before scanning it. Each
+device still needs access under the mixer's configured policy (Tailscale on
+`mai`); guest phones need no game account. Selecting a mix applies to all tabs
+in that browser, so use separate browser profiles to test different mixes at once.
+
+The mixer records only table IDs, mix keys and a 30-day routing expiry when a
+host successfully issues a pairing link. It persists at most 4,096 table routes;
+deleting a mix removes its routes. Pairing secrets remain in URL fragments and
+are checked by the game, with its existing expiry and host approval. Routing
+does not grant a seat. If the same table ID is found in multiple mixes, select
+the intended mix first; the mixer never guesses between them. Expired or missing
+routes need a fresh link or manual mix selection.
+
 If a PR does not merge cleanly, nothing is built and the page says why, per PR:
 
 - *conflicts with main itself*: the PR needs a rebase; it cannot be in any mix until then.

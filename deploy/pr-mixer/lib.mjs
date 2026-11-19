@@ -155,6 +155,40 @@ export function cookieValue(header, name) {
   return null;
 }
 
+// A new phone has no mix-selection cookie. Remember which mix issued its
+// table's pairing links, without reading or storing the secret link itself.
+const TABLE_ROUTE_LIFETIME = 30 * 24 * 60 * 60_000;
+export function pruneTableRoutes(routes, mixes, now = Date.now()) {
+  return Object.fromEntries(Object.entries(routes ?? {}).map(([table, keys]) => [table,
+    Object.fromEntries(Object.entries(keys).filter(([key, until]) => mixes[key] && until > now)),
+  ]).filter(([, keys]) => Object.keys(keys).length)
+    .sort((a, b) => Math.max(...Object.values(b[1])) - Math.max(...Object.values(a[1])))
+    .slice(0, 4096));
+}
+
+/** Only successful host-authorized link issuance establishes table ownership. */
+export function recordTableRoute(state, method, path, status, key, now = Date.now()) {
+  const match = path.match(/^\/api\/tabletop\/([0-9a-f]{32})\/(?:host-phone|phone-invite|board-grant|repair)$/);
+  if (method !== 'POST' || status < 200 || status >= 300 || !match || !state.mixes[key]) return false;
+  const routes = state.tableRoutes ?? {};
+  routes[match[1]] = { ...routes[match[1]], [key]: now + TABLE_ROUTE_LIFETIME };
+  state.tableRoutes = pruneTableRoutes(routes, state.mixes, now);
+  return true;
+}
+
+/** Route only bootstrap pages. Credentials and all API access stay mix-scoped. */
+export function tabletopRoute(state, method, url, selected, now = Date.now()) {
+  if (method !== 'GET' || !/^\/tabletop\/(?:phone|board)\.html$/.test(url.pathname)) return null;
+  const tables = url.searchParams.getAll('table');
+  if (tables.length !== 1 || !/^[0-9a-f]{32}$/.test(tables[0])) return null;
+  const keys = Object.entries(state.tableRoutes?.[tables[0]] ?? {})
+    .filter(([key, until]) => until > now && ['built', 'running'].includes(state.mixes[key]?.status))
+    .map(([key]) => key);
+  if (!keys.length) return null;
+  if (keys.includes(selected)) return { key: selected };
+  return keys.length === 1 ? { key: keys[0] } : { ambiguous: true };
+}
+
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 export { esc as escapeHtml };
 
