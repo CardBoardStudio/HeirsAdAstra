@@ -37,8 +37,9 @@ trusted-signers.local.json
 # Private local HTTPS host: credentials, persistent data, launchd logs
 .local/
 
-# Full local simulator archives; retained locally, not committed as source.
-/output/simulations/
+# Local study output and simulator archives; retain in persistent storage.
+# External archive publication is separate (docs/history-slim.md).
+/output/
 /card-evolution-runs/
 
 # The shared review-conventions validator, checked out by the Rules contract job.

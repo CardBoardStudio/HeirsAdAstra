@@ -72,3 +72,5 @@ const RULEBOOK = 'prototypes/galactic-reach/rulebook.html';
 })().catch(error => { console.error(error); process.exitCode = 1; });
 // Release tooling (docs/release.md) runs here too, so CI covers it without a workflow edit.
 require('./test-release.cjs');
+// The large-file guard (docs/history-slim.md) runs here too.
+require('./test-large-files.cjs');
