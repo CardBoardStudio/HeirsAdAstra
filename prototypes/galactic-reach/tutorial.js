@@ -15,7 +15,7 @@
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
   const RES = ['matter', 'energy', 'biomass', 'data'];
-  const NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Biomass', data: 'Data' };
+  const NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Life', data: 'Data' };
 
   function seeded(seed) { let v = seed >>> 0; return () => { v = (v * 1664525 + 1013904223) >>> 0; return v / 0x100000000; }; }
   function loadProgress() {
@@ -271,10 +271,10 @@
         anchor: state => (myOps(state) ? hand('move')(state) : null) || hexAt(targetWorld(state)?.center),
         done: state => { const w = targetWorld(state); return !w || unitsAt(state, 'settler').includes(w.center); } },
       { id: 'colonize', title: 'Found a Colony', rule: 'orders', aimAt: state => targetWorld(state)?.center,
-        ensure: s => { ensureOwned(s, 'colonize'); ensureHand(s, ['colonize']); ensureResources(s, { biomass: 2 }); return 'Supplied: a Colonize card and 2 Biomass.'; },
+        ensure: s => { ensureOwned(s, 'colonize'); ensureHand(s, ['colonize']); ensureResources(s, { biomass: 2 }); return 'Supplied: a Colonize card and 2 Life.'; },
         needsEnsure: state => myOps(state) && (!handHas(state, 'colonize') || me(state).resources.biomass < 2),
         start: state => ({ colonies: coloniesOf(state) }),
-        text: () => 'Drag the Colonize card onto your Settler and choose Found Colony: 2 Biomass, +3★.',
+        text: () => 'Drag the Colonize card onto your Settler and choose Found Colony: 2 Life, +3★.',
         show: state => ({ ghost: scanOpen() ? null : { from: hand('colonize')(state), to: hexAt(targetWorld(state)?.center) }, callouts: [{ el: scanButton(/Found Colony/)() || hexAt(targetWorld(state)?.center), label: scanOpen() ? 'This one' : 'Your Settler' }] }),
         anchor: state => scanButton(/Found Colony/)() || hand('colonize')(state), done: (state, base) => coloniesOf(state) > base.colonies },
     ] },
@@ -317,7 +317,7 @@
         show: () => ({ callouts: [{ el: $('[data-capacity-offer]'), label: 'Raises limits by 4' }, { el: matPart('matter', '.mat-pips.now i.cap'), label: 'Limit', side: 'left' }] }),
         anchor: () => $('[data-capacity-offer]'), done: (state, base) => modules(me(state)) > base.modules },
       { id: 'trash', buy: true, title: 'Trash a card', rule: 'buy',
-        ensure: s => { ensureResources(s, { biomass: 3 }); return 'Supplied: 3 Biomass.'; },
+        ensure: s => { ensureResources(s, { biomass: 3 }); return 'Supplied: 3 Life.'; },
         needsEnsure: state => myBuy(state) && !RES.some(r => me(state).resources[r] >= 3),
         start: state => ({ cards: allCards(me(state)).length }),
         dialogs: { '#trash-dialog': 'Pick the resource that pays 3, then the card to remove for good.' },
