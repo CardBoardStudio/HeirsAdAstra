@@ -9,18 +9,20 @@
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
   const shown = element => Boolean(element?.isConnected && element.getClientRects().length) && getComputedStyle(element).visibility !== 'hidden';
-  const RESOURCE_NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Biomass', data: 'Data' };
+  const RESOURCE_NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Life', data: 'Data' };
   const esc = text => String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   // Where each resource comes from, in the words of the rulebook's #resources and #trade.
   const SOURCES = {
     matter: 'Matter: convert a Construct card, or own Matter hexes.',
     energy: 'Energy: convert a Move card, or own Energy hexes.',
-    biomass: 'Biomass: own Biomass hexes, or trade 4 of another resource for 1 at the bank on your mat.',
+    biomass: 'Life: own Life hexes, or trade 4 of another resource for 1 at the bank on your mat.',
     data: 'Data: own Data hexes, or trade 4 of another resource for 1 at the bank on your mat.',
   };
   // Ordinary hex distance between two "q,r" keys.
   const hexDistance = (a, b) => { const [q1, r1] = a.split(',').map(Number), [q2, r2] = b.split(',').map(Number); return (Math.abs(q1 - q2) + Math.abs(r1 - r2) + Math.abs(q1 + r1 - q2 - r2)) / 2; };
   const costText = cost => Object.entries(cost || {}).filter(([, n]) => n > 0).map(([r, n]) => `${n} ${RESOURCE_NAMES[r]}`).join(', ');
+  const colonyLife = (card, capture = false) => port.colonyTerms?.(port.cards[card.key].tag, capture)?.biomass
+    ?? port.cards[card.key].colonyCost ?? (capture ? 1 : port.colonyCost ?? 2);
 
   function loadPrefs() {
     try {
@@ -116,7 +118,7 @@
       anchor: c => hex(c.myUnits.settler[0]), marks: c => { const g = nearestFreeWorld(c, c.myUnits.settler); return g ? [hex(g.center)] : []; },
       show: c => { const g = nearestFreeWorld(c, c.myUnits.settler); return { callouts: [{ el: hex(c.myUnits.settler[0]), label: 'Your Settler' }, ...(g ? [{ el: hex(g.center), label: `${g.name}’s center` }] : [])] }; } },
     { id: 'colonize-card', when: c => c.ops && Boolean(anyHand(c)), title: 'Colonize card', rule: 'orders',
-      text: () => 'Play it on a Settler standing on a world’s center: 2 Biomass, +3★.',
+      text: c => `Play it on a Settler standing on a world’s center: ${colonyLife(anyHand(c))} Life, +3★.`,
       anchor: c => handCard(anyHand(c).id) },
     { id: 'probe-card', when: c => c.ops && c.player.hand.some(card => card.key === 'probe'), title: 'Probe / Excavate card', rule: 'movement',
       text: () => 'From your Explorer, Probe finds the nearest hidden relic (◈).',
@@ -189,11 +191,12 @@
       }
       const colonize = card('colonize');
       if (colonize) {
-        const short = c.player.resources.biomass < 2;
-        const target = colonize.targets[0] && hex(colonize.targets[0]);
+        const coord = colonize.targets[0], capture = c.state.planets[coord]?.owner != null;
+        const price = colonyLife(colonize.card, capture), short = c.player.resources.biomass < price;
+        const target = coord && hex(coord), verb = capture ? 'Capture' : 'Found';
         return short
-          ? { title: 'Found a Colony', text: `Your Settler is on a world center. A Colony costs 2 Biomass; you have ${c.player.resources.biomass}. ${SOURCES.biomass}`, anchor: matRow('biomass'), show: { callouts: [{ el: matRow('biomass'), label: 'Need 2 Biomass', side: 'left' }] } }
-          : { title: 'Found a Colony', text: 'Drag this Colonize card onto your Settler and choose Found Colony (2 Biomass, +3★).', anchor: handCard(colonize.card.id), show: { ghost: target ? { from: handCard(colonize.card.id), to: target } : null, callouts: target ? [{ el: target, label: 'Your Settler' }] : [] } };
+          ? { title: `${verb} a Colony`, text: `Your Settler is on a world center. This Colony costs ${price} Life; you have ${c.player.resources.biomass}. ${SOURCES.biomass}`, anchor: matRow('biomass'), show: { callouts: [{ el: matRow('biomass'), label: `Need ${price} Life`, side: 'left' }] } }
+          : { title: `${verb} a Colony`, text: `Drag this Colonize card onto your Settler and choose ${verb} Colony (${price} Life, +3★).`, anchor: handCard(colonize.card.id), show: { ghost: target ? { from: handCard(colonize.card.id), to: target } : null, callouts: target ? [{ el: target, label: 'Your Settler' }] : [] } };
       }
       const excavate = c.playable.find(p => p.kind === 'excavate');
       if (excavate) { const at = hex(excavate.targets[0]); return { title: 'Excavate the relic', text: `Drag this Probe / Excavate card onto your Explorer and choose Excavate (${costText(port.excavationCost)}, +2★).`, anchor: handCard(excavate.card.id), show: { ghost: { from: handCard(excavate.card.id), to: at }, callouts: [{ el: at, label: 'Explorer on the ◈' }] } }; }
@@ -243,6 +246,8 @@
       if (market) return { title: 'Buy cards', text: 'You can afford this card (gold outline). Choose it to buy it. It goes to your discard pile. Finish Buy when you are done.', anchor: firstShown(`[data-buy-market][data-card-id="${CSS.escape(market.id)}"]`) };
       if (port.canBuyCapacity()) return { title: 'Raise your limits', text: `A Capacity Module costs ${port.capacityCost()} of each resource. It lets you hold enough to buy bigger cards later. Or choose Finish Buy.`, anchor: firstShown('[data-capacity-offer]:not([disabled])') };
       if (c.upgrades.length && port.resources.some(r => c.player.resources[r] >= 3)) return { title: 'Upgrade a starter', text: 'Upgrade a Move or Construct card for a stronger order: pay 2 of your most plentiful resource. Or choose Finish Buy.', anchor: firstShown('#upgrade-market .game-card:not([disabled])') };
+      const exchange=c.player.hand.find(card=>port.cards[card.key].effect?.bankRate);
+      if(exchange) return {title:'Use a 2:1 exchange card',text:'You may play this held card during Buy. Choose the resource to give at 2:1, then trade on your mat and keep buying. The rate ends when you finish Buy.',anchor:handCard(exchange.id)};
       return { title: 'Finish Buy', text: 'Nothing here is affordable yet. Choose Finish Buy. Your resources carry over to the next round.', anchor: turnButton() };
     }
     if (!c.myTurn && s.winner === null && ['operations', 'buy'].includes(s.phase)) return { title: 'Rivals are acting', text: `${s.players[s.activePlayer].name} is taking its turn.`, anchor: firstShown(`[data-score-player="${s.activePlayer}"]`), quiet: true };

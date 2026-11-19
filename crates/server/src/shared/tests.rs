@@ -211,7 +211,7 @@ async fn private_views_never_hold_another_seats_hand_or_deck_order() {
             .map(|deck| deck.as_array().unwrap().len())
             .sum::<usize>()
             + bo["state"]["market"].as_array().unwrap().len(),
-        62
+        56
     );
     // A seat's own deck is listed without its order.
     let deck: Vec<&str> = bo["state"]["players"][1]["deck"]

@@ -1,0 +1,8 @@
+const assert=require('node:assert/strict'),{completeBlocks,normalizeProtocol}=require('./analyze-orcd-card-ranking.cjs');
+const baselines=new Map([1,2].map(seed=>[seed,{winner:0,players:Array.from({length:4},()=>({points:10}))}])),omissions=new Map();
+for(const seed of [1,2])for(const rotation of [0,1,2,3])omissions.set('card/'+seed+'/'+rotation,{subjectSeat:(4-rotation)%4,winner:1,players:Array.from({length:4},()=>({points:8}))});
+let r=completeBlocks(['card'],[1,2],baselines,omissions)[0];assert.equal(r.blocks.length,2);assert(r.blocks.every(b=>b.points===2));
+omissions.delete('card/1/2');r=completeBlocks(['card'],[1,2],baselines,omissions)[0];assert.equal(r.blocks.length,1);assert.equal(r.blocks[0].seed,2);assert.deepEqual(r.missing,[{seed:1,rotations:[2]}]);assert.equal(r.blocks[0].points,2,'Missing results never become zero scores or losses');
+const parent={binaryHash:'mac',driverHash:'parent',target:30},task={protocol:{...parent,variant:'x'}},cohort={raceId:'r',parentProtocolHash:'p',nativeBinaryHash:'linux'},p={...task.protocol,binaryHash:'linux',driverHash:'runner',orcd:{raceId:'r',parentProtocolHash:'p',parentBinaryHash:'mac',parentDriverHash:'parent',platform:'linux',architecture:'x64',host:'node001'}};
+normalizeProtocol(p,task,cohort,parent,'runner');assert.throws(()=>normalizeProtocol({...p,target:40},task,cohort,parent,'runner'));assert.throws(()=>normalizeProtocol({...p,binaryHash:'unknown'},task,cohort,parent,'runner'));assert.throws(()=>normalizeProtocol({...p,orcd:{...p.orcd,host:'login006'}},task,cohort,parent,'runner'));
+console.log('ORCD ranking:whole-map missing-case handling,unchanged protocols,explicit platform provenance,and no invented outcomes passed.');

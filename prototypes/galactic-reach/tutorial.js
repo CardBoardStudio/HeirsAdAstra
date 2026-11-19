@@ -15,7 +15,8 @@
   const $ = selector => document.querySelector(selector);
   const $$ = selector => [...document.querySelectorAll(selector)];
   const RES = ['matter', 'energy', 'biomass', 'data'];
-  const NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Biomass', data: 'Data' };
+  const NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Life', data: 'Data' };
+  const costText = cost => RES.filter(r => cost[r]).map(r => `${cost[r]} ${NAMES[r]}`).join(', ');
 
   function seeded(seed) { let v = seed >>> 0; return () => { v = (v * 1664525 + 1013904223) >>> 0; return v / 0x100000000; }; }
   function loadProgress() {
@@ -180,8 +181,8 @@
     { id: 'units', title: 'Ships', steps: [
       { id: 'shipyard-aim', title: 'Build a Shipyard', rule: 'building', aimAt: state => shipyardSite(state), marks: state => [hexAt(shipyardSite(state))],
         prepare: s => { ensureHand(s, ['construct', 'construct', 'construct', 'move', 'move'], true); ensureResources(s, { matter: 3, energy: 3, biomass: 2, data: 3 }); return 'Supplied: resources for a Shipyard, a Settler and an Explorer.'; },
-        ensure: s => { if (yard(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, { matter: 2, energy: 1, biomass: 1, data: 1 }); return 'Supplied: the cards and resources for a Shipyard.'; },
-        needsEnsure: state => !yard(state) && (!handHas(state, 'construct') || RES.some(r => me(state).resources[r] < ({ matter: 2, energy: 1, biomass: 1, data: 1 })[r])),
+        ensure: s => { if (yard(s.state)) return false; ensureHand(s, ['construct']); ensureResources(s, s.STRUCTURES.starbase.cost); return 'Supplied: the cards and resources for a Shipyard.'; },
+        needsEnsure: (state, port) => !yard(state) && (!handHas(state, 'construct') || !port.canAfford(port.structures.starbase.cost)),
         text: () => 'Drag the marked Construct card onto the ringed hex: build a Shipyard, which builds ships.',
         show: state => ({ spotlight: [hand('construct')(state), hexAt(shipyardSite(state))], ghost: { from: hand('construct')(state), to: hexAt(shipyardSite(state)) }, callouts: [{ el: hexAt(shipyardSite(state)), label: 'Shipyard here' }] }),
         anchor: hand('construct'), done: state => Boolean(yard(state)) || (scanOpen() && Boolean(scanButton(/Shipyard/)())) },
@@ -193,8 +194,8 @@
         anchor: scanButton(/Shipyard/), done: state => Boolean(yard(state)) },
       { id: 'settler', title: 'Commission a Settler', rule: 'building',
         prepare: s => { if (yard(s.state)) return null; ensureShipyard(s); return 'Supplied: a Shipyard next to your Colony.'; },
-        ensure: s => { ensureHand(s, ['construct']); ensureResources(s, { matter: 1, energy: 1, biomass: 1 }); return 'Supplied: a Construct card and the price of a Settler.'; },
-        needsEnsure: state => myOps(state) && (!handHas(state, 'construct') || !(me(state).resources.matter >= 1 && me(state).resources.energy >= 1 && me(state).resources.biomass >= 1)),
+        ensure: s => { ensureHand(s, ['construct']); ensureResources(s, s.SHIP_STATS.settler.cost); return 'Supplied: a Construct card and the price of a Settler.'; },
+        needsEnsure: (state, port) => myOps(state) && (!handHas(state, 'construct') || !port.canAfford(port.ships.settler.cost)),
         text: () => 'Drag a Construct card onto your Shipyard and choose Settler. Settlers found Colonies.',
         show: state => ({ ghost: scanOpen() ? null : { from: hand('construct')(state), to: hexAt(yard(state)) }, callouts: [{ el: scanButton(/Settler/)() || hexAt(yard(state)), label: scanOpen() ? 'This one' : 'Your Shipyard' }] }),
         anchor: state => scanButton(/Settler/)() || hand('construct')(state), aimAt: state => yard(state), done: state => unitCount(state, 'settler') > 0 },
@@ -239,9 +240,9 @@
         anchor: (state, port) => (myOps(state) ? hand('move')(state) : null) || hexAt(knownRelic(state, port)),
         done: (state, base, port) => { const site = knownRelic(state, port); return !site || unitsAt(state, 'explorer').includes(site); } },
       { id: 'excavate', title: 'Excavate', rule: 'excavation', aimAt: state => unitsAt(state, 'explorer')[0],
-        ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); ensureResources(s, { matter: 1, energy: 1, data: 2 }); return 'Supplied: your Probe / Excavate card and the excavation cost (1 Matter, 1 Energy, 2 Data).'; },
-        needsEnsure: state => myOps(state) && !me(state).inPlay.some(c => c.key === 'probe') && (!handHas(state, 'probe') || !(me(state).resources.matter >= 1 && me(state).resources.energy >= 1 && me(state).resources.data >= 2)),
-        text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? 'Your Probe / Excavate card is in play until the round ends. Finish this round: Pass & buy, then Finish Buy.' : 'Drag Probe / Excavate onto your Explorer on the ◈ and choose Excavate (1 Matter, 1 Energy, 2 Data).',
+        ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); ensureResources(s, s.EXCAVATION_COST); return `Supplied: your Probe / Excavate card and the excavation cost (${costText(s.EXCAVATION_COST)}).`; },
+        needsEnsure: (state, port) => myOps(state) && !me(state).inPlay.some(c => c.key === 'probe') && (!handHas(state, 'probe') || !port.canAfford(port.excavationCost)),
+        text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? 'Your Probe / Excavate card is in play until the round ends. Finish this round: Pass & buy, then Finish Buy.' : `Drag Probe / Excavate onto your Explorer on the ◈ and choose Excavate (${costText(port.excavationCost)}).`,
         show: state => handHas(state, 'probe') ? { ghost: { from: hand('probe')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(unitsAt(state, 'explorer')[0]), label: 'Explorer on the ◈' }] } : { callouts: [{ el: $('#in-play-button'), label: 'Probe / Excavate: in play' }] },
         anchor: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? globalThis.galacticReachGuide.turnButton() : (scanButton(/Excavate/)() || hand('probe')(state)),
         done: state => me(state).relicsExcavated > 0 || state.actionMode === 'excavate' },
@@ -261,7 +262,7 @@
           const edge = world.coords.filter(c => c !== world.center).sort((a, b) => distance(a, home) - distance(b, home))[0];
           const from = unitsAt(s.state, 'settler')[0];
           if (from && from !== edge) relocate(s, 'settler', from, edge);
-          ensureOwned(s, 'colonize'); ensureHand(s, ['move', 'colonize']); ensureResources(s, { biomass: 2 });
+          ensureOwned(s, 'colonize'); ensureHand(s, ['move', 'colonize']); ensureResources(s, { biomass: s.COLONY_LIFE_COST });
           return `Fast-forward: your Settler reached ${world.name} (usually a few rounds).`;
         },
         ensure: s => { ensureHand(s, ['move']); return 'Supplied: a Move card.'; },
@@ -271,10 +272,10 @@
         anchor: state => (myOps(state) ? hand('move')(state) : null) || hexAt(targetWorld(state)?.center),
         done: state => { const w = targetWorld(state); return !w || unitsAt(state, 'settler').includes(w.center); } },
       { id: 'colonize', title: 'Found a Colony', rule: 'orders', aimAt: state => targetWorld(state)?.center,
-        ensure: s => { ensureOwned(s, 'colonize'); ensureHand(s, ['colonize']); ensureResources(s, { biomass: 2 }); return 'Supplied: a Colonize card and 2 Biomass.'; },
-        needsEnsure: state => myOps(state) && (!handHas(state, 'colonize') || me(state).resources.biomass < 2),
+        ensure: s => { ensureOwned(s, 'colonize'); ensureHand(s, ['colonize']); ensureResources(s, { biomass: s.COLONY_LIFE_COST }); return `Supplied: a Colonize card and ${s.COLONY_LIFE_COST} Life.`; },
+        needsEnsure: (state, port) => myOps(state) && (!handHas(state, 'colonize') || me(state).resources.biomass < port.colonyCost),
         start: state => ({ colonies: coloniesOf(state) }),
-        text: () => 'Drag the Colonize card onto your Settler and choose Found Colony: 2 Biomass, +3★.',
+        text: () => `Drag the Colonize card onto your Settler and choose Found Colony: ${port.colonyCost} Life, +3★.`,
         show: state => ({ ghost: scanOpen() ? null : { from: hand('colonize')(state), to: hexAt(targetWorld(state)?.center) }, callouts: [{ el: scanButton(/Found Colony/)() || hexAt(targetWorld(state)?.center), label: scanOpen() ? 'This one' : 'Your Settler' }] }),
         anchor: state => scanButton(/Found Colony/)() || hand('colonize')(state), done: (state, base) => coloniesOf(state) > base.colonies },
     ] },
@@ -317,7 +318,7 @@
         show: () => ({ callouts: [{ el: $('[data-capacity-offer]'), label: 'Raises limits by 4' }, { el: matPart('matter', '.mat-pips.now i.cap'), label: 'Limit', side: 'left' }] }),
         anchor: () => $('[data-capacity-offer]'), done: (state, base) => modules(me(state)) > base.modules },
       { id: 'trash', buy: true, title: 'Trash a card', rule: 'buy',
-        ensure: s => { ensureResources(s, { biomass: 3 }); return 'Supplied: 3 Biomass.'; },
+        ensure: s => { ensureResources(s, { biomass: 3 }); return 'Supplied: 3 Life.'; },
         needsEnsure: state => myBuy(state) && !RES.some(r => me(state).resources[r] >= 3),
         start: state => ({ cards: allCards(me(state)).length }),
         dialogs: { '#trash-dialog': 'Pick the resource that pays 3, then the card to remove for good.' },
@@ -359,7 +360,7 @@
         anchor: state => { const enemy = unitsAt(state, 'explorer', 1)[0]; return (myOps(state) ? hand('move')(state) : null) || hexAt(enemy); },
         done: (state, base) => Boolean(state.pendingCombat) || (me(state).combatVictories || 0) > base.wins },
       { id: 'tactics', title: 'Choose tactics', rule: 'combat-tactics', dialog: '#combat-dialog',
-        text: () => 'If asked, choose Stay and fight. Then pick a tactic: Fire adds 1 hit; Screen blocks 2.',
+        text: () => 'If asked, choose Stay and fight. Then pick a tactic: Fire adds 1 hit; Screen blocks 2. Fleets take hits before Settlers.',
         done: state => !state.pendingCombat },
       { id: 'report', title: 'Victory', rule: 'combat', dialog: '#message-dialog',
         start: state => ({ wins: me(state).combatVictories || 0 }),

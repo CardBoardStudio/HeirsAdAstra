@@ -3,7 +3,7 @@ const read=n=>fs.readFileSync(path.join(__dirname,'../prototypes/galactic-reach'
 const plain=x=>JSON.parse(JSON.stringify(x));
 function game(strategy='economy') {
   const c=vm.createContext({});
-  const source=read('app.js').replace('      clone, deckContents,','      runAiBuy, runAiOperation, bankPlanForCost, chooseAiBuild, chooseAiMove, aiBuyValue, aiCardUtility, aiColonyDefense, clone, deckContents,');
+  const source=read('app.js').replace('      clone, deckContents,','      runAiBuy, runAiOperation, bankPlanForCost, chooseAiBuild, chooseAiMove, aiTargetCard, aiBuyValue, aiCardUtility, aiColonyDefense, clone, deckContents,');
   vm.runInContext(read('adapter.js')+source,c);
   let e,seed=73;const f=c.createGalacticAdapter;c.createGalacticAdapter=x=>{e=x;return f(x);};
   const a=c.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});
@@ -15,7 +15,7 @@ function game(strategy='economy') {
   return {e,a,s,p,home,yard};
 }
 // All profiles can progress II -> III in every legal pile, with actual escalating upgrade prices.
-for(const strategy of ['military','economy','expansion']) {
+for(const strategy of ['military','economy','expansion','market']) {
   const g=game(strategy);g.s.phase='buy';
   g.p.hand=[{id:'hand',key:'move',starter:true,upgraded:true,level:2}];
   g.p.inPlay=[{id:'play',key:'construct',starter:true,upgraded:true,level:2}];
@@ -27,7 +27,8 @@ for(const strategy of ['military','economy','expansion']) {
 {
   const g=game();g.s.phase='buy';g.p.hand=[{id:'upgrade',key:'move',starter:true,upgraded:true,level:2}];
   const relic=Object.entries(g.s.planets).find(([,p])=>p.special==='relic');g.s.fleets={[relic[0]]:{1:{explorer:1}}};
-  g.p.resources={matter:1,energy:1,biomass:0,data:2};const before=plain(g.p.resources);
+  g.s.clusters[relic[1].cluster].scannedBy.push(1);
+  g.p.resources={matter:0,energy:1,biomass:0,data:3};const before=plain(g.p.resources);
   g.e.runAiBuy();assert.equal(g.p.hand[0].level,2);assert.deepEqual(plain(g.p.resources),before,'Keep the next excavation payment');
 }
 // A bank plan prefers a give-type that keeps the reserve, so preservesPayment need not reject an affordable card.
@@ -54,8 +55,8 @@ for(const strategy of ['military','economy','expansion']) {
   assert(g.e.aiColonyDefense(1).some(d=>d.coord==='8,-10'&&d.attackers===2),'Portal approach counts as a threat');
 }
 {
-  const g=game();g.p.hand=Array.from({length:6},(_,i)=>({id:'m'+i,key:'move',starter:true}));
-  assert(g.e.aiBuyValue(1,'signalRelay')>g.e.aiBuyValue(1,'worldEngine'),'Useful draw beats an expensive extra build in this deck');
+  const g=game();g.p.hand=Array.from({length:6},(_,i)=>({id:'starter'+i,key:i<3?'move':'construct',starter:true}));
+  const freeBuild=g.e.aiBuyValue(1,'worldEngine'),discount=g.e.ALL_CARDS.worldEngine.buildDiscount;g.e.ALL_CARDS.worldEngine.buildDiscount=null;assert(g.e.aiBuyValue(1,'worldEngine')<freeBuild,'Removing the printed free build lowers its value');g.e.ALL_CARDS.worldEngine.buildDiscount=discount;
   assert(g.e.aiBuyValue(1,'seedArk')<g.e.aiBuyValue(1,'signalRelay'),'No Settler means little value in another Colonize card');
   const before=g.e.aiBuyValue(1,'signalRelay');g.p.discard.push({id:'owned',key:'signalRelay'});assert(g.e.aiBuyValue(1,'signalRelay')<before);
 }
@@ -85,4 +86,57 @@ for(const strategy of ['military','economy','expansion']) {
   assert.deepEqual(plain(g.a.observe(1).cardStats),plain(stats),'Printed card metadata is independent of private ownership');
   assert(!JSON.stringify(stats).includes('private-hand-identifier'));
 }
-console.log('Strategic rivals: III in every pile/profile, scoring reserves, Colony/portal defense, guards, useful cards/rewards, order-only III draws and information privacy passed.');
+// A useful Harvester remains an investment after the old minimum income is met.
+{
+  const g=game('military');g.s.round=5;
+  for(const type of ['matter','energy','biomass','data']){
+    const site=Object.entries(g.s.planets).find(([coord,p])=>coord!==g.home&&coord!==g.yard&&p.type===type&&p.owner===null);
+    Object.assign(site[1],{owner:1,upgrade:'harvester'});
+  }
+  g.s.fleets={[g.yard]:{1:{fleet:5,settler:1,explorer:1}}};
+  g.p.hand=[{id:'investment-build',key:'construct',starter:true,upgraded:true,level:3}];
+  assert.equal(g.e.chooseAiBuild(1)?.kind,'harvester','Production can grow beyond the opening minimum');
+  g.s.round=20;g.p.cardPrestige=36;
+  assert.notEqual(g.e.chooseAiBuild(1)?.kind,'harvester','Do not invest when the race is about to end');
+}
+// A market-focused rival buys a useful affordable card before upgrades exhaust its budget.
+{
+  const g=game('market');g.s.phase='buy';
+  g.p.resources={matter:2,energy:3,biomass:0,data:1};
+  g.p.resourceLimits={matter:4,energy:4,biomass:4,data:4};
+  g.p.inPlay=[{id:'build-engine',key:'construct',starter:true,upgraded:true,level:2}];
+  g.p.hand=[{id:'move-engine',key:'move',starter:true,upgraded:true,level:2}];
+  g.s.market=[{id:'useful-draw',key:'signalRelay'}];
+  g.e.runAiBuy();
+  assert(g.p.discard.some(c=>c.id==='useful-draw'),'Purchase competes with starter upgrades');
+  assert.equal(g.p.cardsPurchased,1);
+}
+// A costly distant target must not hide a useful near-term card from capacity planning.
+{
+  const g=game();g.p.resources={matter:0,energy:2,biomass:0,data:1};
+  g.p.resourceLimits={matter:4,energy:4,biomass:4,data:4};
+  g.s.market=[{id:'far',key:'ascendancyCodex'},{id:'near',key:'signalRelay'}];
+  assert.equal(g.e.aiTargetCard(1).id,'near');
+}
+console.log('Strategic rivals: upgrades, scoring reserves, defense, useful cards/rewards, production investment, market-first budgeting, reachable targets and privacy passed.');
+
+{
+ const g=game();g.p.resources={matter:2,energy:2,biomass:8,data:0};g.p.hand=[{id:'bank',key:'exchangeProtocol'}];
+ assert.equal(g.e.aiExchangeResource(1),null,'A reserve deficit without a concrete goal is insufficient');
+ g.p.hand.push({id:'probe-order',key:'probe'});g.s.fleets={[g.home]:{1:{explorer:1}}};
+ Object.assign(g.s.planets[g.home],{special:'relic',relicClaimed:false});g.s.clusters[g.s.planets[g.home].cluster].scannedBy=[1];
+ const before=JSON.stringify(g.a.snapshotState());const goal=g.e.aiGoalTradePlan(1);
+ assert.equal(JSON.stringify(g.a.snapshotState()),before,'Planning must not mutate state or RNG');
+ assert.equal(goal.goal.kind,'excavate');assert.equal(goal.steps.length,3,'Plan the entire three-Data excavation payment');
+ assert.equal(g.e.aiExchangeResource(1),'biomass','A held surplus funds a ready scoring action');
+ g.s.clusters[g.s.planets[g.home].cluster].scannedBy=[];
+ assert(!g.a.observe(1).tradeGoals.some(x=>x.kind==='excavate'),'Unknown relics must not create a private planning signal');
+ g.s.clusters[g.s.planets[g.home].cluster].scannedBy=[1];
+ g.p.resources.biomass=2;assert.equal(g.e.aiGoalTradePlan(1),null,'A partial payment is not a funded scoring plan');
+ g.p.resources.biomass=8;
+
+ g.p.resources.biomass=1;assert.equal(g.e.aiExchangeResource(1),null,'Next round production is not current stock');
+ g.p.resources={matter:50,energy:50,biomass:50,data:50};assert.equal(g.e.aiExchangeResource(1),null,'No spending deficit means no wasted exchange order');
+ g.p.resources={matter:2,energy:2,biomass:8,data:0};g.p.bankExchangeResources=['biomass'];assert.equal(g.e.aiExchangeResource(1),null,'Use the already active discount first');
+ g.p.resources.energy=8;const plan=g.e.bankPlanForCost(g.p,{data:1});assert.equal(plan[0].giveType,'biomass','Prefer2:1to an available4:1giver');
+}

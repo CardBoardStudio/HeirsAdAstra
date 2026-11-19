@@ -65,7 +65,7 @@
       <div>
         <div class="eyebrow" id="gallery-version">GALACTIC REACH · 38.43 CONSTRUCT III PLAYTEST</div>
         <h1>Card gallery</h1>
-        <p class="lede">Every market card in this playtest: 22 normal-deck designs and 9 military designs. Use the printed id when leaving feedback. Market cards cannot convert to resources. Three draw-two cards fit your starting limits of 4. Other market cards need raised limits. Each design's art is credited under <a href="#card-art-credits">Card art credits</a>.</p>
+        <p class="lede">Every market card in this playtest: 19 normal-deck designs and 9 military designs. Use the printed id when leaving feedback. Market cards cannot convert to resources. The three draw-two and three 2:1 exchange designs fit your starting limits of 4. Other market cards need raised limits. Each design's art is credited under <a href="#card-art-credits">Card art credits</a>.</p>
       </div>
       <nav class="links" aria-label="Galactic Reach">
         <a class="button button-ghost" href="./" style="text-decoration:none">← Back to the game</a>
@@ -104,7 +104,7 @@
     document.querySelector('#site-footer-version').textContent = `Galactic Reach ${version} · playtest`;
     const $ = selector => document.querySelector(selector);
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const cards = [...Object.entries(catalog.ADVANCED_CARDS), ...Object.entries(catalog.MARKET_MILITARY)].map(([key, def]) => ({ key, ...def }));
+    const cards = Object.entries(catalog.MARKET_CARDS || { ...catalog.ADVANCED_CARDS, ...catalog.MARKET_MILITARY }).map(([key, def]) => ({ key, ...def }));
     const price = card => catalog.RESOURCES.reduce((n, r) => n + (card.cost[r] || 0), 0);
     const chips = gain => catalog.RESOURCES.filter(r => gain?.[r]).map(r => `<span class="chip ${r}">${gain[r]} ${catalog.RESOURCE_NAMES[r]}</span>`).join('') || '<span class="muted">None</span>';
     const storeKey = 'galactic-reach-card-feedback-31-36';
