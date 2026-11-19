@@ -20,7 +20,7 @@ function fixture() {
   g.coord=Object.keys(g.s.planets).find(k=>g.s.planets[k].special==='relic');
   g.s.clusters[g.s.planets[g.coord].cluster].scannedBy=[0]; // Excavation fixture begins after Probe.
   g.p.hand=[{key:'excavate',id:'dig'}];
-  g.p.resources={matter:1,energy:1,biomass:0,data:2};
+  g.p.resources={matter:0,energy:1,biomass:0,data:3};
   g.s.fleets[g.coord]={0:{explorer:1}};
   return g;
 }
@@ -78,7 +78,7 @@ for (const bad of ['missingExplorer','missingCost','wrongSeat','buy','alreadyCla
   const g=game(), sites=Object.keys(g.s.planets).filter(k=>g.s.planets[k].special==='relic'), rewards=new Set();
   for(let n=0;n<sites.length;n++) {
     const coord=sites[n];g.s.clusters[g.s.planets[coord].cluster].scannedBy=[0];g.s.phase='operations';g.s.activePlayer=0;
-    g.p.hand=[{key:'excavate',id:`dig-${n}`}];g.p.resources={matter:1,energy:1,biomass:0,data:2};
+    g.p.hand=[{key:'excavate',id:`dig-${n}`}];g.p.resources={matter:0,energy:1,biomass:0,data:3};
     g.s.fleets[coord]={0:{explorer:1}};
     const choice=g.s.relicRow[Math.min(n%3,g.s.relicRow.length-1)];rewards.add(choice.key);
     const a=g.freshAdapter(), action=a.legalActions(0).find(a=>a.type==='excavate'&&a.coord===coord&&a.relic===choice.id);

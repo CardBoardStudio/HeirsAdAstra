@@ -172,7 +172,9 @@ function createDom(timers) {
   return { document, element, tabs, panels, toasts:()=>created.filter(e=>e.className==='toast').map(e=>e.textContent), contextButton:label=>created.filter(e=>e.tagName==='BUTTON'&&(e.textContent===label||e.getAttribute?.('aria-label')===label||e.innerHTML===label||e.innerHTML.startsWith(`<span>${label}</span>`))).at(-1), hex:key=>created.find(e=>e.dataset.coord===key), lastQuery: selector => queried.get(selector) || [] };
 }
 
-function boot(storage, seed = 20261013, location = {hostname:'localhost',search:''}, engineOptions = {}) {
+// The console warnings of the most recent boot (loadGame logs why it rejected a save).
+let bootWarnings = [];
+function boot(storage, seed = 20261013, location = {hostname:'localhost',search:''}, engineOptions = {}, globals = {}) {
   const timers = createTimers();
   const dom = createDom(timers);
   const errors = [];
@@ -191,8 +193,10 @@ function boot(storage, seed = 20261013, location = {hostname:'localhost',search:
     setTimeout: timers.setTimeout,
     clearTimeout: timers.clearTimeout,
     confirm: () => true,
-    console: { log() {}, warn() {}, error: (...args) => errors.push(args) }
+    console: { log() {}, warn: (...args) => bootWarnings.push(args.join(' ')), error: (...args) => errors.push(args) },
+    ...globals
   });
+  bootWarnings = [];
   vm.runInContext(`${adapterSource}\n${source}`, context, { filename: sourcePath });
   const client=context.createGalacticReach(engineOptions);
   const game = {
@@ -243,6 +247,103 @@ function test(name, body) {
  }
  tests.push({ name, body });
 }
+
+// Private (server-saved) tables on the dev channel: table.js seeds the save into the engine's
+// in-memory storage and picks the page whose engine dealt it (docs/release.md#dev-channel).
+const tableSource = fs.readFileSync(path.resolve(__dirname, '../prototypes/galactic-reach/table.js'), 'utf8');
+const RELEASED_RULES = () => `galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`;
+const devChannel = n => ({channel:'dev',rules:`${RELEASED_RULES()}+dev.${n}`,commit:`c${n}`,label:`dev · ${formatVersion}.${CURRENT_RULES_REVISION}+dev.${n} · c${n}`});
+// table.js's own functions, as the page defines them.
+function tablePageCode() {
+  const context = vm.createContext({location:{search:'',pathname:'/galactic-reach/'},URLSearchParams});
+  vm.runInContext(tableSource, context);
+  return context.galacticReachTable;
+}
+// The engine factory a page with this channel loads; `kept` strips storageKeys, as in a
+// dev revision kept from before the engine exposed its keys.
+function pageEngine(channel, {kept=false}={}) {
+  const app = kept ? source.replace(/\ncreateGalacticReach\.storageKeys = [^\n]+/, '') : source;
+  if (kept) assert.notEqual(app, source, 'the kept stand-in drops storageKeys');
+  const context = vm.createContext({galacticReachChannel:channel,setTimeout,clearTimeout});
+  vm.runInContext(`${adapterSource}\n${app}`, context);
+  return {create:context.createGalacticReach,app};
+}
+// Deals a fresh private table on a page with this channel and returns what onSave sent the server.
+function dealPrivateTable(channel) {
+  const saves = [];
+  boot(createStorage(), 20261118, undefined, {storage:createStorage(),onSave:value=>saves.push(JSON.parse(JSON.stringify(value)))}, {galacticReachChannel:channel});
+  assert(saves.length, 'dealing a table saves it');
+  return saves.at(-1);
+}
+// Reopens a server save exactly as table.js does on a page with this channel.
+function reopenPrivateTable(save, channel, {kept=false}={}) {
+  const table = tablePageCode(), engine = pageEngine(channel, {kept});
+  const page = table.tablePage({rules_version:RELEASED_RULES(),save,dev_client:null}, channel);
+  const storage = table.seededStorage(table.engineKeys(engine.create, channel, page.format), save);
+  const saved = () => JSON.parse(storage.getItem(table.engineKeys(engine.create, channel, page.format).save));
+  const savedSource = source;
+  source = engine.app;
+  try { boot(storage, 20261118, undefined, {storage,requireSave:true}, {galacticReachChannel:channel}); }
+  finally { source = savedSource; }
+  return {page, saved};
+}
+
+test('A private dev table reopens from the keys table.js seeds', () => {
+  const channel = devChannel(6), save = dealPrivateTable(channel);
+  assert.equal(save.state.devRules, channel.rules);
+  const reopened = reopenPrivateTable(save, channel);
+  assert.equal(reopened.page.path, null, 'a table dealt on this page stays on it');
+  assert.deepEqual(bootWarnings, []);
+  assert.equal(reopened.saved().round, save.state.round);
+  assert.deepEqual(reopened.saved().homeOrder, save.state.homeOrder, 'the same game resumed');
+  // The unsuffixed keys table.js seeded before are not where a dev engine looks.
+  const storage = createStorage({[SAVE_KEY]:JSON.stringify(save.state)});
+  assert.throws(() => boot(storage, 1, undefined, {storage,requireSave:true}, {galacticReachChannel:channel}), /could not be loaded. Your server save has been preserved/);
+  assert.match(bootWarnings.join('\n'), /did not load the save at galactic-reach-save-v\d+-\d+\.\d+\+dev\.6: no save under this key/);
+  assert.equal(storage.getItem(SAVE_KEY), JSON.stringify(save.state), 'a failed load writes nothing');
+});
+
+test('table.js derives the same keys as the engine it seeds', () => {
+  const {engineKeys} = tablePageCode();
+  for (const channel of [devChannel(3), {channel:'stable',rules:RELEASED_RULES()}, {channel:'archived',rules:'galactic-reach/37.42'}, undefined]) {
+    const exposed = engineKeys(pageEngine(channel).create, channel, formatVersion);
+    assert.equal(typeof pageEngine(channel).create.storageKeys, 'function');
+    assert.deepEqual({...engineKeys(pageEngine(channel, {kept:true}).create, channel, formatVersion)}, {...exposed}, `fallback keys for ${channel?.channel}`);
+  }
+  assert.equal(engineKeys(pageEngine(devChannel(3)).create, devChannel(3), formatVersion).save, `galactic-reach-save-v${formatVersion}-${formatVersion}.${CURRENT_RULES_REVISION}+dev.3`);
+});
+
+test('A private table dealt on an earlier dev revision opens on its kept engine', () => {
+  const dealtOn = devChannel(5), current = devChannel(6), save = dealPrivateTable(dealtOn);
+  const {tablePage} = tablePageCode();
+  const keptPath = `/galactic-reach/dev/${formatVersion}.${CURRENT_RULES_REVISION}+dev.5/`;
+  const table = {rules_version:RELEASED_RULES(),save,dev_rules:dealtOn.rules,dev_client:keptPath};
+  assert.equal(tablePage(table, current).path, keptPath, 'the current page sends it to the kept engine');
+  assert.equal(tablePage(table, dealtOn).path, null, 'the kept page keeps it (no redirect loop)');
+  // The current engine still refuses it, and says why.
+  const storage = createStorage();
+  const {seededStorage, engineKeys} = tablePageCode();
+  const seeded = seededStorage(engineKeys(pageEngine(current).create, current, formatVersion), save);
+  assert.throws(() => boot(storage, 1, undefined, {storage:seeded,requireSave:true}, {galacticReachChannel:current}), /could not be loaded/);
+  assert.match(bootWarnings.join('\n'), /dealt with dev rules .*\+dev\.5, not .*\+dev\.6/);
+  // The kept engine predates storageKeys; table.js's derived keys still reach it.
+  const reopened = reopenPrivateTable(save, dealtOn, {kept:true});
+  assert.equal(reopened.saved().devRules, dealtOn.rules, 'the save keeps its dealt rules');
+  assert.equal(reopened.saved().round, save.state.round);
+});
+
+test('A dev table whose engine is no longer kept says its save is preserved', () => {
+  const {tablePage} = tablePageCode(), save = dealPrivateTable(devChannel(2));
+  assert.throws(() => tablePage({rules_version:RELEASED_RULES(),save,dev_rules:save.state.devRules,dev_client:null}, devChannel(6)),
+    /dealt on dev rules \d+\.\d+\+dev\.2, which this host no longer keeps. Your server save is preserved./);
+});
+
+test('Released and archived private tables keep their pages', () => {
+  const {tablePage} = tablePageCode();
+  assert.deepEqual({...tablePage({rules_version:RELEASED_RULES(),save:null}, devChannel(6))}, {path:'/galactic-reach/',format:formatVersion,label:`${formatVersion}.${CURRENT_RULES_REVISION}`});
+  assert.equal(tablePage({rules_version:'galactic-reach/37.42',save:{state:{version:37}}}, {channel:'stable',rules:RELEASED_RULES()}).path, '/galactic-reach/rules/37.42/');
+  assert.throws(() => tablePage({rules_version:'galactic-reach/1.1',save:null}, undefined), /not available on this host/);
+});
 
 // Plays the fresh game's first round: the human leads Operations and Buy in round 1.
 function playFirstRound() {
@@ -531,7 +632,7 @@ test('Capacity Module pile buys a card into discard during Buy and survives relo
   assert.equal(after.phase, 'buy');
   assert.deepEqual(after.planets, before.planets);
   assert(!game.dialog('storage-allocation').open, 'Buying opens no allocation');
-  assert(game.dom.lastQuery('[data-capacity-offer]')[0].disabled, 'The second module costs 2 of each');
+  assert(game.dom.lastQuery('[data-capacity-offer]')[0].disabled, 'The next module still costs 1 of each, but the first purchase spent the remaining resources');
   const reloaded = boot(storage);
   assert.equal(reloaded.saved().players[0].storagePurchases, 1);
   assert.equal(reloaded.saved().capacitySupply, before.capacitySupply - 1);
@@ -565,7 +666,7 @@ function excavationStorage({selected=true,affordable=false}={}) {
   const storage=createStorage(),state=boot(storage).saved(),coord=Object.keys(state.planets).find(k=>state.planets[k].special==='relic');
   state.clusters[state.planets[coord].cluster].revealedBy=[0,1,2,3];state.clusters[state.planets[coord].cluster].scannedBy=[0];state.selected=selected?coord:null;
   state.players[0].hand=[{key:'excavate',id:'tab-dig'},{key:'construct',id:'tab-matter',starter:true},{key:'move',id:'tab-energy',starter:true},{key:'construct',id:'tab-extra',starter:true}];
-  state.players[0].resources=affordable?{matter:1,energy:1,biomass:0,data:2}:{matter:0,energy:0,biomass:0,data:2};state.fleets[coord]={0:{explorer:1,fleet:1}};
+  state.players[0].resources=affordable?{matter:1,energy:1,biomass:0,data:3}:{matter:0,energy:0,biomass:0,data:3};state.fleets[coord]={0:{explorer:1,fleet:1}};
   writeSave(storage,state);return {storage,coord};
 }
 function assertTab(game,name){
@@ -763,7 +864,7 @@ test('Probe UI locates a relic privately and unlocated excavation never redirect
 test('Hand Excavate opens Relics with disabled choices, permits conversions, and cancels without spending',()=>{
   const {storage}=excavationStorage(),game=boot(storage),before=game.saved();
   game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='tab-dig').click();assertTab(game,'relics');assert.equal(game.saved().actionMode,'excavate');
-  assert(game.dom.lastQuery('[data-excavate-relic]').every(b=>b.disabled));assert.match(game.dom.element('relic-row-help').textContent,/Convert cards from your hand/);assert.match(game.dom.element('relic-cost').innerHTML,/Matter|matter/);
+  assert(game.dom.lastQuery('[data-excavate-relic]').every(b=>b.disabled));assert.match(game.dom.element('relic-row-help').textContent,/Convert cards from your hand/);assert.match(game.dom.element('relic-cost').innerHTML,/3 Data/);
   const resumed=boot(storage);assertTab(resumed,'relics');resumed.click('market-tab');
   for(const id of ['tab-matter','tab-energy','tab-extra']){resumed.dom.lastQuery('[data-resource-card]').find(b=>b.dataset.resourceCard===id).click();assertTab(resumed,'market');}
   assert.equal(resumed.saved().actionMode,'excavate');resumed.click('relics-tab');assert(resumed.dom.lastQuery('[data-excavate-relic]').every(b=>!b.disabled));
@@ -783,7 +884,7 @@ test('excavation UI chooses a visible reward and survives reload without its spe
   const coord=Object.keys(state.planets).find(k=>state.planets[k].special==='relic');
   state.clusters[state.planets[coord].cluster].revealedBy=[0,1,2,3];state.clusters[state.planets[coord].cluster].scannedBy=[0];
   state.selected=coord;state.players[0].hand=[{key:'excavate',id:'ui-dig'}];
-  state.players[0].resources={matter:1,energy:1,biomass:0,data:2};
+  state.players[0].resources={matter:0,energy:1,biomass:0,data:3};
   state.fleets[coord]={0:{explorer:1}};
   writeSave(storage,state);
   const game=boot(storage), chosen=state.relicRow[1], replacement=state.relicDeck.at(-1);
@@ -932,7 +1033,7 @@ test('export downloads a private read-only report without using RNG or changing 
  assert.equal(report.rulesVersion,`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`);
  assert(report.coverage.complete);assert(report.save.gameHistory.initialState);
  assert.deepEqual(report.save.state,game.saved());assert.equal(report.factions.length,4);
- assert.equal(report.factions[1].botProfile.strategy,'military');assert.equal(report.factions[0].points.total,3);
+ assert.equal(report.factions[1].botProfile.strategy,game.saved().players[1].strategy);assert.deepEqual(report.factions.slice(1).map(f=>f.botProfile.strategy).sort(),['economy','expansion','military']);assert.equal(report.factions[0].points.total,3);
  assert(report.logText.includes('Controlled planets produced'));assert(report.logText.includes('+1 Matter'));
  // Rules #setup: the private opening hand is dealt at setup, so the report's initial position holds it.
  assert.equal(report.save.gameHistory.initialState.players[0].hand.length,5);assert.equal(report.save.gameHistory.initialState.players[0].deck.length,1);
@@ -978,20 +1079,25 @@ test('New game asks for the Prestige target; Cancel keeps the current game', () 
  assert.equal(boot(storage).saved().victoryTarget,40,'The chosen target is saved with the game');
 });
 
-// 34.39 #setup: solo rivals are dealt to seats at random; New game names your neighbor (seat 1).
-test('New game shows the neighbor it deals; rivals keep their profiles in any seat', () => {
+// Rules #solo-seating: preview and log follow physical home assignment, which survives reload.
+test('New solo games randomize all four starting positions and name the actual neighbor', () => {
  const storage=createStorage(),game=boot(storage),profiles={'Ember Directorate':'military','Violet Assembly':'economy','Helios Compact':'expansion'};
- const check=s=>{assert.deepEqual(s.players.slice(1).map(p=>p.name).sort(),Object.keys(profiles).sort());s.players.slice(1).forEach(p=>assert.equal(p.strategy,profiles[p.name]));};
- check(game.saved());assert(game.saved().log.some(e=>String(e.text||e).includes(`Your neighbor this game is ${game.saved().players[1].name}`)));
- const seen=new Set();
- for(let n=0;n<12;n++){
+ const check=s=>{assert.deepEqual(s.players.slice(1).map(p=>p.name).sort(),Object.keys(profiles).sort());s.players.slice(1).forEach(p=>assert.equal(p.strategy,profiles[p.name]));assert.equal(s.firstPlayer,0);};
+ const neighbor=s=>s.players[s.homeOrder.indexOf(s.homeOrder[0]^1)];
+ check(game.saved());assert(game.saved().log.some(e=>String(e.text||e).includes(`Your neighbor this game is ${neighbor(game.saved()).name}`)));
+ const homes=new Set(),rivals=new Set();
+ for(let n=0;n<24;n++){
+  const before=game.saved();game.click('new-game-button');game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();game.settle();assert.deepEqual(game.saved(),before,'Cancel keeps the current map');
   game.click('new-game-button');const shown=game.dom.element('new-game-neighbor').innerHTML;
   game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
-  const s=game.saved();check(s);assert(shown.includes(`Your neighbor: ${s.players[1].name} (`),'The dialog names the rival dealt to seat 1');
-  assert.equal(s.players[1].color,{'Ember Directorate':'#ff9f6e','Violet Assembly':'#a58cff','Helios Compact':'#f2cf66'}[s.players[1].name],'A faction keeps its colour');
-  seen.add(s.players[1].name);
+  const s=game.saved(),near=neighbor(s);check(s);assert(shown.includes(`Your neighbor: ${near.name} (`),'The preview names the actual physical neighbor');
+  assert.equal(near.color,{'Ember Directorate':'#ff9f6e','Violet Assembly':'#a58cff','Helios Compact':'#f2cf66'}[near.name]);
+  homes.add(s.clusters[0].center);rivals.add(near.name);
  }
- assert(seen.size>=2,'The neighbor varies between games');
+ assert.equal(homes.size,4,'Real browser startup reaches every home position');assert.equal(rivals.size,3,'Every rival can be the neighbor');
+ const saved=game.saved(),reloaded=boot(storage);assert.deepEqual(reloaded.saved().homeOrder,saved.homeOrder);assert.deepEqual(reloaded.saved().clusters,saved.clusters,'Reload does not reroll positions');
+ const named=boot(createStorage(),20261013,undefined,{names:['Pilot','Rival A','Rival B','Rival C']});assert.equal(new Set(named.saved().homeOrder).size,4,'Custom solo names still receive randomized homes');
+ named.click('new-game-button');const customPreview=named.dom.element('new-game-neighbor').innerHTML;named.dialog('new-game').returnValue='start';named.dialog('new-game').close();named.settle();assert(customPreview.includes(`Your neighbor: ${neighbor(named.saved()).name} (`),'Custom names also match the actual neighbor');
 });
 
 test('Undo retains the audit and records which events it reverses, including across reload', () => {
@@ -1110,7 +1216,7 @@ test('storage allocations cancel atomically, survive commitment and undo with th
  playModule(game);game.settle();game.dom.element('storage-points-data').value='4';fire(game.dom.element('storage-points-data'),'input');game=boot(storage);assert.deepEqual(game.saved(),before,'Reloading a draft plays nothing');
  playModule(game);game.settle();for(const r of ['matter','energy','biomass','data'])game.dom.element('storage-points-'+r).value='1';fire(game.dom.element('storage-points-data'),'input');
  fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();assert.deepEqual(game.saved().players[0].resourceLimits,{matter:5,energy:5,biomass:5,data:5});
- const owned=p=>[...p.hand,...p.deck,...p.discard,...p.inPlay];assert(!owned(game.saved().players[0]).some(c=>c.id==='module'),'The played module leaves the deck cycle');assert.deepEqual(game.saved().players[0].storage.map(c=>c.id),['module'],'It is stored');assert.equal(game.dom.element('storage-pile-count').textContent,1,'The Storage pile count shows beside the mat');
+ const owned=p=>[...p.hand,...p.deck,...p.discard,...p.inPlay];assert(!owned(game.saved().players[0]).some(c=>c.id==='module'),'The played module leaves the deck cycle');assert.deepEqual(game.saved().players[0].storage.map(c=>c.id),['module'],'It is stored');assert.equal(game.dom.element('storage-pile-count').textContent,1,'The Storage pile count shows beside the mat');assert.match(game.dom.element('storage-pile').title,/next Capacity Module costs 1 of each resource/,'Stored modules do not raise the displayed price');
  const cleanup=boot(storage);assert.deepEqual(cleanup.saved().players[0].storage.map(c=>c.id),['module'],'The Storage pile survives reload');
  game.click('export-game-report');const report=game.downloads.at(-1);assert.deepEqual(report.save.state.players[0].resourceLimits,game.saved().players[0].resourceLimits);
  assert(report.save.gameHistory.events.some(e=>e.changes.some(c=>c.path.join('.')==='players.0.resourceLimits.data')));
@@ -1118,7 +1224,7 @@ test('storage allocations cancel atomically, survive commitment and undo with th
 });
 
 
-function constructTwoSave(){const storage=createStorage(),state=boot(storage).saved(),coord=state.clusters[0].coords[1];Object.assign(state,{activePlayer:0,phase:'operations',turnStage:'prep',selected:coord});state.players[0].resources={matter:4,energy:3,biomass:3,data:2};state.players[0].hand=[{id:'two-builds',key:'construct',starter:true,upgraded:true},{id:'fund-more',key:'construct'}];writeSave(storage,state);return{storage,coord};}
+function constructTwoSave(){const storage=createStorage(),state=boot(storage).saved(),coord=state.clusters[0].coords[1];Object.assign(state,{activePlayer:0,phase:'operations',turnStage:'prep',selected:coord});state.players[0].resources={matter:4,energy:4,biomass:3,data:2};state.players[0].hand=[{id:'two-builds',key:'construct',starter:true,upgraded:true},{id:'fund-more',key:'construct'}];writeSave(storage,state);return{storage,coord};}
 function startFirstBuild(game){game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='two-builds').click();const button=game.dom.contextButton('Build Shipyard');assert(button&&!button.disabled);button.click();game.settle();}
 test('a rival resumes its optional second build after commissioning into an enemy rival',()=>{
  const storage=createStorage(),c=vm.createContext({});vm.runInContext(adapterSource+source,c);
@@ -1241,6 +1347,25 @@ test('Shared exchange order sends its resource choice to the authoritative engin
  const state=boot(createStorage()).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});state.players[0].hand=[{id:'shared-exchange',key:'barterNetwork'}];
  const sent=[],network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
  const game=boot(createStorage(),1729,undefined,{network});game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='shared-exchange').click();game.dom.lastQuery('[data-exchange-resource]').find(b=>b.dataset.exchangeResource==='energy').click();game.settle();assert.deepEqual(sent,[[{type:'special',card:'shared-exchange',resource:'energy'}]]);
+});
+test('Buy exchange stays in Buy, can cancel, trades at 2:1, and keeps the held card on reload',()=>{
+ const storage=createStorage(),state=boot(storage).saved();Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});state.players[0].passed=true;
+ state.players[0].hand=[{id:'buy-exchange',key:'clearingHouse'}];state.players[0].resources={matter:0,energy:4,biomass:0,data:0};writeSave(storage,state);
+ let game=boot(storage);const button=()=>game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='buy-exchange');assert(button(),'A held exchange has a Buy button');
+ button().click();assert(game.dom.element('exchange-resource-dialog').open);game.click('exchange-resource-cancel');assert(game.saved().players[0].hand.some(c=>c.id==='buy-exchange'));
+ game=boot(storage);button().click();game.dom.lastQuery('[data-exchange-resource]').find(b=>b.dataset.exchangeResource==='energy').click();game.settle();
+ assert.equal(game.saved().phase,'buy');assert.equal(game.saved().activePlayer,0);assert(game.saved().players[0].inPlay.some(c=>c.id==='buy-exchange'));
+ game.click('bank-give-energy').click('bank-get-data');assert.equal(game.dom.element('bank-give-rate').textContent,'Give 2');fire(game.dom.element('bank-trade-form'),'submit',{cancelable:true});game.settle();assert.equal(game.saved().players[0].resources.energy,2);assert.equal(game.saved().players[0].resources.data,1);
+ assert(game.dom.element('upgrade-market').innerHTML.includes('Pay 3 of one resource per card.'));assert(game.dom.element('upgrade-market').innerHTML.includes('aria-label="Trash pile: pay 3 of one resource per card'));
+});
+test('A held exchange prevents automatic Buy skipping even with no resources',()=>{
+ const storage=createStorage(),state=boot(storage).saved();Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});state.players[0].passed=true;state.players[0].hand=[{id:'empty-exchange',key:'barterNetwork'}];state.players[0].resources={matter:0,energy:0,biomass:0,data:0};writeSave(storage,state);
+ const game=boot(storage);assert.equal(game.saved().phase,'buy');assert(game.dom.lastQuery('[data-order-card]').some(b=>b.dataset.orderCard==='empty-exchange'));
+});
+test('Shared Buy exchange sends its resource choice without finishing Buy',()=>{
+ const state=boot(createStorage()).saved();Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});state.players[0].passed=true;state.players[0].hand=[{id:'shared-buy-exchange',key:'barterNetwork'}];
+ const sent=[],network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='shared-buy-exchange').click();game.dom.lastQuery('[data-exchange-resource]').find(b=>b.dataset.exchangeResource==='energy').click();game.settle();assert.deepEqual(sent,[[{type:'special',card:'shared-buy-exchange',resource:'energy'}]]);
 });
 test('Retained Seed Ark has no unadopted draw alternative',()=>{
  const storage=createStorage(),state=boot(storage).saved();state.players[0].hand=[{id:'retained-seed',key:'seedArk'}];writeSave(storage,state);const game=boot(storage);assert.equal(game.dom.lastQuery('[data-order-draw]').length,0);

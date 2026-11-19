@@ -27,7 +27,8 @@ for(const strategy of ['military','economy','expansion','market']) {
 {
   const g=game();g.s.phase='buy';g.p.hand=[{id:'upgrade',key:'move',starter:true,upgraded:true,level:2}];
   const relic=Object.entries(g.s.planets).find(([,p])=>p.special==='relic');g.s.fleets={[relic[0]]:{1:{explorer:1}}};
-  g.p.resources={matter:1,energy:1,biomass:0,data:2};const before=plain(g.p.resources);
+  g.s.clusters[relic[1].cluster].scannedBy.push(1);
+  g.p.resources={matter:0,energy:1,biomass:0,data:3};const before=plain(g.p.resources);
   g.e.runAiBuy();assert.equal(g.p.hand[0].level,2);assert.deepEqual(plain(g.p.resources),before,'Keep the next excavation payment');
 }
 // A bank plan prefers a give-type that keeps the reserve, so preservesPayment need not reject an affordable card.
@@ -126,7 +127,7 @@ console.log('Strategic rivals: upgrades, scoring reserves, defense, useful cards
  Object.assign(g.s.planets[g.home],{special:'relic',relicClaimed:false});g.s.clusters[g.s.planets[g.home].cluster].scannedBy=[1];
  const before=JSON.stringify(g.a.snapshotState());const goal=g.e.aiGoalTradePlan(1);
  assert.equal(JSON.stringify(g.a.snapshotState()),before,'Planning must not mutate state or RNG');
- assert.equal(goal.goal.kind,'excavate');assert.equal(goal.steps.length,2,'Plan the entire two-Data payment');
+ assert.equal(goal.goal.kind,'excavate');assert.equal(goal.steps.length,3,'Plan the entire three-Data excavation payment');
  assert.equal(g.e.aiExchangeResource(1),'biomass','A held surplus funds a ready scoring action');
  g.s.clusters[g.s.planets[g.home].cluster].scannedBy=[];
  assert(!g.a.observe(1).tradeGoals.some(x=>x.kind==='excavate'),'Unknown relics must not create a private planning signal');

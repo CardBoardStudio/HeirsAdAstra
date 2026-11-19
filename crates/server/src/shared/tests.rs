@@ -211,7 +211,7 @@ async fn private_views_never_hold_another_seats_hand_or_deck_order() {
             .map(|deck| deck.as_array().unwrap().len())
             .sum::<usize>()
             + bo["state"]["market"].as_array().unwrap().len(),
-        68
+        56
     );
     // A seat's own deck is listed without its order.
     let deck: Vec<&str> = bo["state"]["players"][1]["deck"]
@@ -1711,6 +1711,138 @@ async fn a_dev_table_keeps_its_build_when_a_rules_change_deploys() {
         status,
         StatusCode::NOT_FOUND,
         "released revisions are not dev builds"
+    );
+}
+
+/// A private (server-saved) table dealt on a dev revision keeps that revision's
+/// engine through a rules-changing deploy and the [`KEEP_FOR`] prune while it is
+/// unfinished, and the table API names the page that runs it. Its save is never
+/// changed: the dealt revision is read from `state.devRules`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_private_dev_table_keeps_its_engine_until_it_finishes() {
+    use super::channel::{Channel, KEEP_FOR};
+    let mut a = app(true);
+    let store = a.store.clone();
+    let dev = |n: u32| format!("{}+dev.{n}", galactic_reach::RULES);
+    let label = |n: u32| dev(n).rsplit('/').next().unwrap().to_string();
+    let deploy = |rules: String, now: u64| {
+        let channel = Channel::dev(store.clone(), rules, format!("c{now}"));
+        channel
+            .keep_current_as(
+                galactic_reach::APP_SOURCE,
+                galactic_reach::ADAPTER_SOURCE,
+                now,
+            )
+            .unwrap();
+        channel
+    };
+    let host = account(&a, "Ada").await;
+    let mut tables = vec![];
+    for name in ["Open", "Finished", "Stable", "Broken"] {
+        let created = call(
+            &a,
+            "POST",
+            "/api/tables",
+            &host,
+            json!({"game":"galactic-reach","name":name}),
+        )
+        .await
+        .2;
+        tables.push(created["id"].as_str().unwrap().to_string());
+    }
+    let saves = [
+        json!({"state":{"devRules":dev(1),"winner":null}}).to_string(),
+        json!({"state":{"devRules":dev(0),"winner":2}}).to_string(),
+        json!({"state":{"winner":null}}).to_string(),
+        "not json".to_string(),
+    ];
+    {
+        let db = store.0.lock().unwrap();
+        for (id, save) in tables.iter().zip(&saves) {
+            db.execute(
+                "UPDATE solo_tables SET state=?,revision=1 WHERE id=?",
+                [save, id],
+            )
+            .unwrap();
+        }
+    }
+    let stored = || -> Vec<Option<String>> {
+        let db = store.0.lock().unwrap();
+        tables
+            .iter()
+            .map(|id| {
+                db.query_row("SELECT state FROM solo_tables WHERE id=?", [id], |r| {
+                    r.get(0)
+                })
+                .unwrap()
+            })
+            .collect()
+    };
+    let before = stored();
+
+    // dev.0 dealt the finished table; dev.1 dealt the open one.
+    deploy(dev(0), 1);
+    deploy(dev(1), 2);
+    // A rules-changing deploy (dev.2) long after both stopped being current.
+    let b = deploy(dev(2), 2 * KEEP_FOR);
+    assert!(
+        b.kept(&dev(1)).is_some(),
+        "an unfinished private table keeps its dealt engine past KEEP_FOR"
+    );
+    assert!(
+        b.kept(&dev(0)).is_none(),
+        "a finished private table does not keep its engine"
+    );
+
+    // The table API names the page that runs the dealt engine.
+    a.shared = Service::start_on(
+        Arc::new(SqliteTableLog(store.clone())),
+        Arc::new(TrustedAuthority),
+        Duration::ZERO,
+        Arc::new(b),
+    );
+    let get = |id: &str| {
+        let (a, host, path) = (a.clone(), host.clone(), format!("/api/tables/{id}"));
+        async move { call(&a, "GET", &path, &host, json!({})).await.2 }
+    };
+    let open = get(&tables[0]).await;
+    assert_eq!(open["rules_version"], galactic_reach::RULES);
+    assert_eq!(open["dev_rules"], dev(1));
+    assert_eq!(
+        open["dev_client"],
+        format!("/galactic-reach/dev/{}/", label(1))
+    );
+    let finished = get(&tables[1]).await;
+    assert_eq!(finished["dev_rules"], dev(0));
+    assert_eq!(
+        finished["dev_client"],
+        Value::Null,
+        "its engine is gone, and table.js says so"
+    );
+    let stable = get(&tables[2]).await;
+    assert_eq!(stable["dev_rules"], Value::Null);
+    assert_eq!(stable["dev_client"], Value::Null);
+
+    // Once the table finishes, its engine goes at the next prune.
+    {
+        let db = store.0.lock().unwrap();
+        db.execute(
+            "UPDATE solo_tables SET state=? WHERE id=?",
+            [
+                json!({"state":{"devRules":dev(1),"winner":0}}).to_string(),
+                tables[0].clone(),
+            ],
+        )
+        .unwrap();
+    }
+    let later = deploy(dev(2), 2 * KEEP_FOR + 1);
+    assert!(later.kept(&dev(1)).is_none());
+    assert!(later.kept(&dev(2)).is_some(), "the current revision stays");
+    let after = stored();
+    assert_eq!(
+        after[1..],
+        before[1..],
+        "loading and pruning never rewrite a save"
     );
 }
 

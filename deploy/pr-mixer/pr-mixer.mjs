@@ -28,6 +28,7 @@ async function load() {
     // A build interrupted by a restart never finished.
     if (m.status === 'queued' || m.status === 'building') Object.assign(m, { status: 'failed', error: 'interrupted by a mixer restart; apply again' });
   }
+  state.tableRoutes = lib.pruneTableRoutes(state.tableRoutes, state.mixes);
 }
 let saving = Promise.resolve();
 function save() {
@@ -292,6 +293,7 @@ async function remove(mix) {
   await docker(['image', 'rm', '-f', image], [0, 1]);
   await rm(`${cfg.data}/builds/${mix.key}`, { recursive: true, force: true });
   delete state.mixes[mix.key];
+  state.tableRoutes = lib.pruneTableRoutes(state.tableRoutes, state.mixes);
   save();
 }
 
@@ -306,14 +308,19 @@ async function gc() {
 }
 
 // --- Access ------------------------------------------------------------------------
-// Admins only, and the mixer keeps no accounts of its own. `dev-site`: the
+// The mixer keeps no accounts of its own. `dev-site`: the
 // sign-in server's session cookie (sent here too: cookies are per host, not per
 // port) must belong to one of its administrators who signed in with Nido
 // (lib.isAdmin). `local`: laptop only (lib.config refuses it on https).
+// `tailnet`: any user who can reach this service through Tailscale Serve.
 const adminCache = new Map();
 async function whoIsAdmin(req) {
   for (const mode of cfg.auth) {
     if (mode === 'local') return 'local';
+    if (mode === 'tailnet') {
+      const identity = lib.tailnetIdentity(req.headers);
+      if (identity) return identity;
+    }
     if (mode === 'dev-site') {
       const session = lib.cookieValue(req.headers.cookie, cfg.devCookie);
       if (!session) continue;
@@ -356,7 +363,8 @@ async function handle(req, res) {
   const admin = await whoIsAdmin(req);
   if (!admin) {
     const signIn = cfg.auth.includes('dev-site') ? `<p>Sign in with Nido as an administrator at <a href="${lib.escapeHtml(cfg.devSitePublic)}">${lib.escapeHtml(cfg.devSitePublic)}</a> (same host name, so the session reaches this page), then reload.</p>` : '';
-    return send(res, 403, `<!doctype html><meta charset="utf-8"><title>PR mixer</title><h1>PR mixer: administrators only</h1>${signIn}`, 'text/html; charset=utf-8');
+    const tailnet = cfg.auth.includes('tailnet') ? '<p>Connect a device signed in to Tailscale and open this mixer through its private HTTPS address. No Nido administrator account is needed.</p>' : '';
+    return send(res, 403, `<!doctype html><meta charset="utf-8"><title>PR mixer</title><h1>PR mixer: access required</h1>${signIn}${tailnet}`, 'text/html; charset=utf-8');
   }
   const p = url.pathname;
   if (p === '/__mixer' || p === '/__mixer/') return send(res, 200, ui, 'text/html; charset=utf-8');
@@ -377,7 +385,16 @@ async function handle(req, res) {
     res.writeHead(302, { location: '/__mixer/', 'set-cookie': `${MIX_COOKIE}=; Path=/; Max-Age=0`, 'cache-control': 'no-store' });
     return res.end();
   }
-  const mix = state.mixes[lib.cookieValue(req.headers.cookie, MIX_COOKIE)];
+  const selected = lib.cookieValue(req.headers.cookie, MIX_COOKIE);
+  const route = lib.tabletopRoute(state, req.method, url, selected);
+  if (route?.ambiguous) return send(res, 409, '<!doctype html><meta charset="utf-8"><p>This table exists in more than one mix. Open the intended mix on this device, then scan the pairing link again.</p><p><a href="/__mixer/">Choose a mix</a></p>', 'text/html; charset=utf-8');
+  if (route && route.key !== selected) {
+    // No fragment in Location: browsers preserve the QR's secret fragment.
+    // It never reaches this server; the game redeems it after this redirect.
+    res.writeHead(302, { location: url.pathname + url.search, 'set-cookie': `${MIX_COOKIE}=${route.key}; Path=/; HttpOnly; SameSite=Lax${cfg.https ? '; Secure' : ''}`, 'cache-control': 'no-store' });
+    return res.end();
+  }
+  const mix = state.mixes[selected];
   if (!mix || !['built', 'running'].includes(mix.status)) {
     res.writeHead(302, { location: '/__mixer/', 'cache-control': 'no-store' });
     return res.end();
@@ -399,7 +416,8 @@ function proxy(req, res, mix) {
   const cookies = lib.inboundCookies(req.headers.cookie, mix.key);
   if (cookies) headers.cookie = cookies;
   headers['accept-encoding'] = 'identity'; // the banner is injected into plain HTML
-  const up = http.request({ host: '127.0.0.1', port: mix.port, method: req.method, path: req.url, headers }, (upRes) => {
+  const up = http.request({ host: '127.0.0.1', port: mix.port, method: req.method, path: req.url, headers }, async (upRes) => {
+    if (lib.recordTableRoute(state, req.method, new URL(req.url, cfg.origin).pathname, upRes.statusCode, mix.key)) await save();
     const out = { ...upRes.headers };
     if (out['set-cookie']) out['set-cookie'] = out['set-cookie'].map((c) => lib.outboundCookie(c, mix.key));
     // Every mix shares this origin and its URLs: never let the browser reuse

@@ -4,6 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const root = path.join(__dirname, '..');
+require('./test-life-resource-costs.cjs');
+require('./test-buy-combat.cjs');
+require('./test-destroyed-shipyards.cjs');
 function engine() {
   const context = vm.createContext({});
   vm.runInContext(fs.readFileSync(path.join(root,'prototypes/galactic-reach/adapter.js'),'utf8') + fs.readFileSync(path.join(root,'prototypes/galactic-reach/app.js'),'utf8'), context);
@@ -74,7 +77,7 @@ for(const upgraded of [false,true]){
 }
 for(const finish of ['build','skip']){
   const f=orderFixture('colonize'),s=f.port.state,p=s.players[0],world=s.clusters[4];
-  world.revealedBy=[0,1,2,3];s.fleets[world.center]={0:{settler:1}};p.resources={matter:1,energy:1,biomass:2,data:1}; // 32.37: a Harvester costs Matter, Energy, Data.
+  world.revealedBy=[0,1,2,3];s.fleets[world.center]={0:{settler:1}};p.resources={matter:1,energy:1,biomass:3,data:1}; // 32.37: a Harvester costs Matter, Energy, Data.
   const order=f.adapter.legalActions(0).find(a=>a.type==='colonize'&&a.coord===world.center);assert(order);f.adapter.applyAction(0,order);
   assert.equal(s.activePlayer,0);assert.equal(s.pendingColonyBuild.colony,world.center);assert.equal(p.hand.length,0);assert.equal(p.resources.biomass,0);
   const options=f.adapter.legalActions(0);assert(!options.some(a=>['pass','trade_offer','build'].includes(a.type)));
@@ -115,3 +118,5 @@ require('./test-public-card-metadata.cjs');
 require('./test-inward-worlds.cjs');
 
 require('./test-exchange-market.cjs');
+
+require('./test-random-solo-homes.cjs');
