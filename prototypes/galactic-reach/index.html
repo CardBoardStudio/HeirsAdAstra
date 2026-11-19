@@ -382,11 +382,11 @@
         <section class="inspector-panel sector-popover gr-bubble" id="sector-popover" popover="auto" role="dialog" aria-labelledby="inspect-title">
           <div class="scan-body">
             <div class="panel-heading">
-              <div><div class="gr-coach-eyebrow">Sector scan · <span class="coordinate" id="inspect-coordinate">—</span></div><h2 class="gr-coach-title" id="inspect-title">Select a hex</h2></div>
-              <button class="button button-ghost dialog-close" id="close-sector-scan" type="button" aria-label="Close sector scan" popovertarget="sector-popover" popovertargetaction="hide">Close</button>
+              <!-- The title line: resource, name, then a symbol per fact (owner, building, ships); wraps rather than truncates. -->
+              <div class="scan-title-line"><span id="inspect-kind" class="scan-kind"></span><h2 class="gr-coach-title" id="inspect-title">Select a hex</h2><span id="inspect-facts" class="scan-facts"></span></div>
+              <button class="scan-close" id="close-sector-scan" type="button" aria-label="Close" title="Close (Esc)" popovertarget="sector-popover" popovertargetaction="hide"><span aria-hidden="true">×</span></button>
             </div>
-            <p id="inspect-detail" class="muted">Choose a planet or space hex to inspect fleets, control, and possible actions.</p>
-            <div id="inspect-facts" class="fact-list"></div>
+            <div id="inspect-detail" class="scan-notes muted">Choose a planet or space hex to inspect fleets, control, and possible actions.</div>
             <div id="context-actions" class="context-actions"></div>
           </div>
           <span class="gr-coach-arrow" aria-hidden="true"></span>

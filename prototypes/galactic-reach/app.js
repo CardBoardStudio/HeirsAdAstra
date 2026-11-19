@@ -928,6 +928,15 @@ function createGalacticReach(options = {}) {
     return chosen;
   }
 
+  // A Move order is named by what it moves: Explorers travel apart from the rest, and the other
+  // group is named for the Settlers and Fleets actually in it.
+  function moveOrderLabel(units) {
+    if (units?.explorer && !units.settler && !units.fleet) return 'Move Explorers';
+    if (units?.settler && !units.fleet) return 'Move Settlers';
+    if (units?.fleet && !units.settler) return 'Move Fleets';
+    return 'Move Settlers & Fleets';
+  }
+
   function formatFleet(fleet) {
     if (!fleet || !fleetCount(fleet)) return 'No ships';
     const parts = [];
@@ -3852,6 +3861,28 @@ function createGalacticReach(options = {}) {
     return state.players[playerId]?.color||PLAYER_COLORS[playerId];
   }
 
+  // The Sector Scan names what a hex holds with the map's own glyphs and owner colours, one
+  // symbol per fact that matters; each carries its words as a tooltip and accessible name.
+  const PORTAL_GLYPH = '<svg class="board-glyph" viewBox="0 0 100 116" aria-hidden="true" focusable="false"><polygon points="50,3 97,30 97,86 50,113 3,86 3,30" stroke-width="10"></polygon></svg>';
+  function scanSymbol(label, html, className, owner = null) {
+    const color = owner === null ? '' : ` style="--scan-owner:${playerColor(owner)}"`;
+    return `<span class="scan-symbol ${className}" role="img" aria-label="${esc(label)}" title="${esc(label)}"${color}>${html}</span>`;
+  }
+  function scanFleetSymbols(key) {
+    return Object.entries(state.fleets[key] || {}).filter(([,fleet]) => fleetCount(fleet)).map(([owner,fleet]) => {
+      const ships = Object.keys(SHIP_STATS).filter(type => fleet[type] > 0).map(type => `<span class="scan-ship">${BOARD_ICONS[type]}${fleet[type] > 1 ? `<b>${fleet[type]}</b>` : ''}</span>`).join('');
+      return scanSymbol(`${state.players[owner].name}: ${formatFleet(fleet)}`, ships, 'scan-fleet', Number(owner));
+    }).join('');
+  }
+  // Facts for a charted planet: its owner, then its building, or else that a Colony may be founded here.
+  function scanPlanetSymbols(key, planet) {
+    const parts = [];
+    if (planet.owner !== null) parts.push(scanSymbol(`Owner: ${state.players[planet.owner].name}`, '<i></i>', 'scan-owner', planet.owner));
+    if (hasBuilding(planet)) parts.push(scanSymbol(buildingLabel(planet), buildingSymbols(planet), 'scan-building', planet.owner));
+    else if (isColonySite(key)) parts.push(scanSymbol('Colony site: a Settler can found a Colony here', VOCAB_ICONS.colonize, 'scan-site'));
+    return parts.join('');
+  }
+
   // A planet's territory belongs to whoever holds its center: the Colony on a
   // world, or the building on a moon. Neutral planets have no territory.
   function territoryOwner(cluster) {
@@ -4131,7 +4162,7 @@ function createGalacticReach(options = {}) {
         for (const group of ['ships','explorer']) {
           const moving = fleetGroup(fleet,group);
           if (fleetCount(moving) && reachableFrom(coord,ME,movementRange(moving,card),avoidsHostile(def.tag),moving).length)
-            add('move',group === 'ships' ? 'Move ships' : 'Move Explorers',group);
+            add('move',moveOrderLabel(moving),group);
         }
       }
       const canRecoverHere = relicSignal && !planet.relicClaimed && fleet?.explorer > 0;
@@ -4214,39 +4245,32 @@ function createGalacticReach(options = {}) {
 
   function renderInspector() {
     const key = state.selected;
-    const title = $('#inspect-title'); const coordinate = $('#inspect-coordinate'); const detail = $('#inspect-detail'); const facts = $('#inspect-facts'); const actions = $('#context-actions');
-    actions.innerHTML='';
+    const title = $('#inspect-title'); const scanKind = $('#inspect-kind'); const detail = $('#inspect-detail'); const facts = $('#inspect-facts'); const actions = $('#context-actions');
+    actions.innerHTML=''; scanKind.innerHTML=''; detail.textContent=''; facts.innerHTML='';
     const discount=!replayMode&&state.actionMode==='construct'&&!state.pendingConstruct?state.actionOptions.discountResource??null:null;
     const buildButton=(label,kind)=>actionButton(label,()=>contextBuild(kind,key),constructAt(ME,key,kind,discount,true),constructionCost(ME,key,kind,discount));
-    if (!key) { title.textContent='Select a hex'; coordinate.textContent='—'; detail.textContent='Choose a planet or space hex to inspect fleets, control, and possible actions.'; facts.innerHTML=''; return; }
+    if (!key) { title.textContent='Select a hex'; detail.textContent='Choose a planet or space hex to inspect fleets, control, and possible actions.'; return; }
     renderContextOrders(actions,key);
     const actualPlanet = state.planets[key];
     const planet = actualPlanet && (knownToViewer(state.clusters[actualPlanet.cluster]) || relicKnownToViewer(actualPlanet)) ? actualPlanet : null;
-    const fleets = state.fleets[key]||{};
-    const exit=portalExit(key),portalFact=exit?`<div class="fact portal-fact"><span>Corner portal</span><strong>Aligned exit ${esc(exit)} · 2 movement</strong></div>`:'';
-    const fleetFacts=Object.entries(fleets).filter(([,f])=>fleetCount(f)).map(([owner,f])=>`<div class="fact"><span>${esc(state.players[owner].name)}</span><strong>${formatFleet(f)}</strong></div>`).join('');
-    coordinate.textContent=key;
-    if (planet) {
-      const cluster = state.clusters[planet.cluster];
-      if (!knownToViewer(cluster)) {
-        const relicSignal = relicKnownToViewer(planet);
-        title.textContent = relicSignal ? 'Alien relic signal' : 'Uncharted space';
-        detail.textContent = relicSignal ? 'A relic signal was located here. The surrounding terrain remains unknown.' : 'End a move here with any ship to survey this space.';
-        facts.innerHTML = relicSignal ? `<div class="fact"><span>Signal</span><strong>Located privately</strong></div><div class="fact"><span>Relic</span><strong>Available</strong></div>` : '<div class="fact"><span>Status</span><strong>Unknown</strong></div>';
-
-        facts.innerHTML+=fleetFacts+portalFact;
-        return;
-      }
-      title.textContent=planet.name;
-      const owner = planet.owner===null?'Unclaimed':esc(state.players[planet.owner].name);
-      detail.innerHTML=`${planet.type==='moon'?'Gray moon · no production':resourceDot(planet.type,'resource-dot-large')+' planet'} · ${owner}`;
-      const fleetIncome = (planet.type==='moon'?[]:fleetControllersAt(key)).map(playerId => `${esc(state.players[playerId].name)} +${resourceDots({ [planet.type]: 1 })}`).join(' · ');
-      facts.innerHTML=`<div class="fact"><span>World hex</span><strong>${planet.type==='moon'?'Moon':isColonySite(key)?'Center · Colony site':'Outer'}</strong></div><div class="fact"><span>Owner production</span><strong>${planet.type==='moon'?'None':planet.owner===null?'Unclaimed':resourceDots({ [planet.type]: ownerProductionAmount(planet) })}</strong></div><div class="fact"><span>Fleet production</span><strong>${fleetIncome||'No combat fleet'}</strong></div><div class="fact"><span>Building</span><strong>${buildingLabel(planet)}</strong></div>${relicKnownToViewer(planet)?`<div class="fact"><span>Relic site</span><strong>Available</strong></div>`:''}${Object.entries(fleets).filter(([,f])=>fleetCount(f)).map(([owner,f])=>`<div class="fact"><span>${esc(state.players[owner].name)}</span><strong>${formatFleet(f)}</strong></div>`).join('')}`;
-    } else {
-      title.textContent='Empty Space'; detail.textContent='Fleets may move, fight, and retreat here.';
-      facts.innerHTML=Object.entries(fleets).filter(([,f])=>fleetCount(f)).map(([owner,f])=>`<div class="fact"><span>${esc(state.players[owner].name)}</span><strong>${formatFleet(f)}</strong></div>`).join('')||'<div class="fact"><span>Status</span><strong>Vacant</strong></div>';
+    const exit=portalExit(key),portalFact=exit?scanSymbol(`Corner portal: aligned exit ${exit}, crossing costs 2 movement`,PORTAL_GLYPH,'scan-portal'):'';
+    const relicFact=planet&&relicKnownToViewer(planet)?scanSymbol(knownToViewer(state.clusters[planet.cluster])?'Relic site: available':'Relic site: located privately, available','◈','scan-relic'):'';
+    if (planet && !knownToViewer(state.clusters[planet.cluster])) {
+      title.textContent = 'Alien relic signal';
+      detail.textContent = 'The surrounding terrain remains unknown.';
+      facts.innerHTML = relicFact+scanFleetSymbols(key)+portalFact;
+      return;
     }
-    facts.innerHTML+=portalFact;
+    if (planet) {
+      title.textContent=planet.name;
+      const kindLabel=planet.type==='moon'?'Gray moon: no production':`${RESOURCE_NAMES[planet.type]} world`;
+      scanKind.innerHTML=`<span class="scan-kind-symbol" role="img" aria-label="${kindLabel}" title="${kindLabel}">${planet.type==='moon'?'<b class="scan-moon" aria-hidden="true">●</b>':resourceDot(planet.type,'resource-dot-large')}</span>`;
+      facts.innerHTML=scanPlanetSymbols(key,planet)+relicFact;
+    } else {
+      // Uncharted terrain reads as space too, so the scan never reveals a hidden moon.
+      title.textContent='Empty Space';
+    }
+    facts.innerHTML+=scanFleetSymbols(key)+portalFact;
     if (replayMode) {
       // Recorded decisions replace the live action buttons.
       const pending = state.pendingColonyBuild;
@@ -4254,7 +4278,7 @@ function createGalacticReach(options = {}) {
       if (pending && state.reachable.includes(key)) notes.push(['Colonize II', `${esc(state.players[pending.playerId].name)} may build here at full cost`]);
       if (state.replayDecision?.coords?.includes(key)) notes.push(['This decision', esc(state.replayDecision.text)]);
       if (state.lastCombat?.coord === key) notes.push(['Last combat', esc(state.lastCombat.outcome)]);
-      facts.insertAdjacentHTML('beforeend', notes.map(([label,text])=>`<div class="fact"><span>${label}</span><strong>${text}</strong></div>`).join(''));
+      detail.insertAdjacentHTML('beforeend', notes.map(([label,text])=>`<div class="fact"><span>${label}</span><strong>${text}</strong></div>`).join(''));
       return;
     }
     if(state.pendingConstruct?.playerId===ME) actions.appendChild(actionButton('Finish after one build',()=>finishConstruct(ME)));
@@ -4778,7 +4802,7 @@ function createGalacticReach(options = {}) {
       case 'increase_storage': return { text: `Buy 4 capacity points · ${RESOURCES.filter(r=>action.allocation?.[r]).map(r=>`+${action.allocation[r]} ${RESOURCE_NAMES[r]}`).join(', ')}` };
       case 'discard_resources': return { text: `Discard ${amount(action.amount,action.resource)} to free storage` };
       case 'resource': return { text: `Convert to resources · ${cardName('Card')} → ${gains(action.gain)}` };
-      case 'move': return { text: `${order} · ${action.moveGroup === 'explorer' ? 'Move Explorers' : 'Move Ships'} from ${place(action.source)} to ${place(action.destination)}`, coords: [action.source, action.destination], source: action.source };
+      case 'move': return { text: `${order} · ${action.units ? moveOrderLabel(action.units) : action.moveGroup === 'explorer' ? 'Move Explorers' : 'Move Settlers & Fleets'} from ${place(action.source)} to ${place(action.destination)}`, coords: [action.source, action.destination], source: action.source };
       case 'build': {
         const planet = before.planets[action.coord];
         const label = STRUCTURES[action.kind] ? `Build ${STRUCTURES[action.kind].name}`
