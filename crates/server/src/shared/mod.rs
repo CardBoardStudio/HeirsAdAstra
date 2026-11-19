@@ -15,7 +15,9 @@ use crate::*;
 use authority::HiddenInfoAuthority;
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
 use channel::{Channel, Engine};
-use galactic_reach::{BrowserProfile, BuiltinAgent, GalacticReach, SHARED_STEP, Strategy};
+#[cfg(test)]
+use galactic_reach::Strategy;
+use galactic_reach::{BrowserProfile, GalacticReach, SHARED_STEP};
 use game_core::{GameAdapter, PlayerAgent};
 use log::{Event, NewEvent, Seat, Table, TableLog};
 use rusqlite::Connection;
@@ -401,6 +403,7 @@ fn fold(
 /// The current rival for a seat's stored policy. A table keeps the policy it was
 /// dealt with, but its moves are in the log, so a newer version of the same
 /// profile (`gr-economy/25` to `/26`) takes over its future decisions.
+#[cfg(test)]
 fn rival(policy: &str) -> Option<Strategy> {
     Strategy::parse(policy).or_else(|| {
         [
@@ -726,17 +729,13 @@ impl Tables {
                     seed[31] ^= seat as u8;
                 }
                 // The exact policy the table was dealt with (archived agents
-                // included), else the current version of the same profile.
-                let agent = galactic_reach::agent(&policy, seed)
-                    .or_else(|_| {
-                        rival(&policy)
-                            .map(|s| {
-                                Box::new(BuiltinAgent::new(s, seed))
-                                    as Box<dyn PlayerAgent<GalacticReach>>
-                            })
-                            .ok_or_else(|| format!("Unknown AI policy {policy}."))
-                    })
-                    .map_err(broken)?;
+                // included); never substitute a current policy for an unknown recorded ID.
+                let agent = if BrowserProfile::parse(&policy).is_some() {
+                    galactic_reach::agent(&policy, seed)
+                } else {
+                    galactic_reach::historical_agent(&policy, seed)
+                }
+                .map_err(broken)?;
                 slot.insert(agent)
             }
         };

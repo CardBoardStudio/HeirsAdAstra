@@ -548,13 +548,25 @@ impl GameAdapter for GalacticReach {
 
 // Historical policies stay available only for previously dealt tables and replays.
 mod archived_rust;
-pub use archived_rust::{BuiltinAgent, Strategy};
+#[cfg(feature = "archived-rust-bots")]
+pub use archived_rust::BuiltinAgent;
+pub use archived_rust::Strategy;
 mod browser_policy;
 pub use browser_policy::{BrowserAgent, BrowserProfile};
-/// Resolve an explicitly recorded policy. New games must select BrowserProfile.
-pub fn agent(version: &str, seed: [u8; 32]) -> Result<Box<dyn PlayerAgent<GalacticReach>>, String> {
+/// Create a current browser-policy agent. Retired native IDs are refused.
+pub fn agent(
+    version: &str,
+    _seed: [u8; 32],
+) -> Result<Box<dyn PlayerAgent<GalacticReach>>, String> {
     if let Some(profile) = BrowserProfile::parse(version) {
         return Ok(Box::new(BrowserAgent(profile)));
     }
+    Err("Rust bots are archived; new games require a browser policy.".into())
+}
+/// Resolve an old recorded policy only when restoring a table or historical replay.
+pub fn historical_agent(
+    version: &str,
+    seed: [u8; 32],
+) -> Result<Box<dyn PlayerAgent<GalacticReach>>, String> {
     archived_rust::agent(version, seed)
 }

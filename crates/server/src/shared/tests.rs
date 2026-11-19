@@ -347,8 +347,8 @@ async fn heavy_two_accounts_play_a_shared_game_to_the_end_over_http() {
 
     let cookies = [host.clone(), friend.clone()];
     let mut agents = [
-        BuiltinAgent::new(Strategy::Economy, [1; 32]),
-        BuiltinAgent::new(Strategy::Expansion, [2; 32]),
+        historical_fixture(Strategy::Economy, [1; 32]),
+        historical_fixture(Strategy::Expansion, [2; 32]),
     ];
     let mut human_moves = 0;
     let (mut undid, mut refused_after_reveal) = (false, false);
@@ -1729,7 +1729,7 @@ async fn a_dev_table_keeps_its_build_when_a_rules_change_deploys() {
 fn reference_rivals_open_a_match_legally_and_reproducibly() {
     let play = || {
         let mut game = GalacticReach::new([8; 32]).unwrap();
-        let mut agents: Vec<BuiltinAgent> = [
+        let mut agents: Vec<Box<dyn PlayerAgent<GalacticReach>>> = [
             Strategy::Military,
             Strategy::Economy,
             Strategy::Expansion,
@@ -1737,7 +1737,7 @@ fn reference_rivals_open_a_match_legally_and_reproducibly() {
         ]
         .into_iter()
         .enumerate()
-        .map(|(i, s)| BuiltinAgent::new(s, [i as u8; 32]))
+        .map(|(i, s)| historical_fixture(s, [i as u8; 32]))
         .collect();
         let mut trace = vec![];
         for _ in 0..300 {
@@ -1773,8 +1773,8 @@ fn shared_tables_resume_exactly_on_current_rules() {
     })
     .unwrap();
     assert_eq!(game.rules_version(), rules);
-    let mut agents: Vec<BuiltinAgent> = (0..4)
-        .map(|i| BuiltinAgent::new(Strategy::Economy, [i; 32]))
+    let mut agents: Vec<Box<dyn PlayerAgent<GalacticReach>>> = (0..4)
+        .map(|i| historical_fixture(Strategy::Economy, [i; 32]))
         .collect();
     let mut step = |g: &mut GalacticReach| {
         let seat = g.active_seat().unwrap();
@@ -1862,4 +1862,9 @@ async fn new_browser_rivals_are_logged_and_refold_exactly() {
     assert!(moved, "Every new rival must use the browser decision path");
     assert!(service.view("browser-policy", "a").await.unwrap()["ai_error"].is_null());
     service.refolded("browser-policy", 0).await;
+}
+
+// Frozen legacy drivers for archived-table and human-command compatibility fixtures.
+fn historical_fixture(strategy: Strategy, seed: [u8; 32]) -> Box<dyn PlayerAgent<GalacticReach>> {
+    galactic_reach::historical_agent(strategy.version(), seed).unwrap()
 }

@@ -11,7 +11,13 @@ pub(super) fn simulate(
     let mut agents: Vec<_> = policies
         .iter()
         .zip(agent_seeds)
-        .map(|(policy, seed)| galactic_reach::agent(policy, *seed))
+        .map(|(policy, seed)| {
+            if galactic_reach::BrowserProfile::parse(policy).is_some() {
+                galactic_reach::agent(policy, *seed)
+            } else {
+                galactic_reach::historical_agent(policy, *seed)
+            }
+        })
         .collect::<Result<_, _>>()?;
     game.set_browser_profiles(std::array::from_fn(|seat| {
         policies

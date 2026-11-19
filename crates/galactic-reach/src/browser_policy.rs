@@ -63,7 +63,11 @@ mod tests {
         assert_ne!(g.snapshot().unwrap(), before);
         assert!(BrowserProfile::parse("gr-economy/29").is_none());
         assert!(
-            agent("gr-economy/29", [7; 32]).is_ok(),
+            agent("gr-economy/29", [7; 32]).is_err(),
+            "New agent creation must reject retired policies"
+        );
+        assert!(
+            historical_agent("gr-economy/29", [7; 32]).is_ok(),
             "Historical replay dispatch remains available"
         );
     }
