@@ -444,6 +444,17 @@ test('battle table keeps damaged units separate and counts identical healthy shi
   assert.match(html,/Defensive Screen: 1 available, 1 used/);
 });
 
+test('Max UI battle table shows every ship individually without changing combat',()=>{
+  const storage=combatStorage(1,'committed'),state=JSON.parse(storage.getItem(SAVE_KEY)),piece=state.pendingCombat.attackerPieces[0];
+  state.pendingCombat.attackerPieces=Array.from({length:5},(_,i)=>({...piece,damage:i===0?2:0}));state.fleets['9,-10'][1].fleet=5;writeSave(storage,state);
+  const game=boot(storage),before=game.saved();game.dom.document.body.classList.contains=name=>name==='background-stars';
+  game.dom.lastQuery('[data-combat-inspect]')[0].click();
+  const html=game.dom.element('combat-forces').innerHTML;
+  assert.equal((html.match(/<figure class="combat-unit/g)||[]).length,6,'Five enemy Fleets and one own Fleet are separate pieces');
+  assert.doesNotMatch(html,/×5|5 × Fleet/);assert.match(html,/Fleet: 3 attack, 5\/7 hull/);assert.equal((html.match(/Fleet: 3 attack, 7\/7 hull/g)||[]).length,5);
+  assert.deepEqual(game.saved(),before,'The view never changes pieces, commitments or damage');
+});
+
 test('a shared battle at seat two selects locally and sends one explicit commit',()=>{
   const state=JSON.parse(combatStorage(0,'tactic').getItem(SAVE_KEY)),sent=[];
   state.activePlayer=2;state.pendingCombat.attackerId=2;
@@ -1281,6 +1292,44 @@ test('30.35 archive: Trade Consortium commits into play on its first exchange ac
  const storage=consortiumSave(),game=boot(storage);game.dom.element('consortium-give').value='matter';game.dom.element('consortium-get').value='energy';fire(game.dom.element('consortium-form'),'submit');game.settle();assert.equal(game.saved().players[0].hand.length,0);assert.equal(game.saved().players[0].inPlay.filter(c=>c.id==='choice-card').length,1);const reload=boot(storage);assert(reload.dialog('consortium').open);reload.click('consortium-finish');assert.equal(reload.saved().players[0].inPlay.filter(c=>c.id==='choice-card').length,1);
 }));
 
+
+function cardChooserSave(kind='oracle',key='signalRelay') {
+ const storage=createStorage(),state=boot(storage).saved(),p=state.players[0];
+ Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ p.hand=[{id:'chooser',key:{oracle:'oracleOfTheUnmade',keepers:'keepersArchive',echoes:'firstDawnEchoes'}[kind]},{id:'keep-moving',key:'move',starter:true}];
+ p.resources={matter:4,energy:4,biomass:4,data:4};p.resourceLimits={matter:4,energy:4,biomass:4,data:4};
+ if(kind==='oracle'){state.marketDecks={expensive:[],medium:[],cheap:[{id:'oracle-copy',key}]};if(key==='phaseLance'){state.marketDecks.expensive=state.marketDecks.cheap;state.marketDecks.cheap=[];for(const r of ['matter','energy','biomass','data'])p.resources[r]=p.resourceLimits[r]=20;}}
+ if(kind==='keepers'){state.market=[{id:'keeper-copy',key:'worldEngine'}];for(const r of ['matter','energy','biomass','data'])p.resources[r]=p.resourceLimits[r]=20;}
+ if(kind==='echoes')p.inPlay=[{id:'return-one',key:'construct',starter:true,upgraded:true,level:3},{id:'return-two',key:'foldedWarehouse'},{id:'return-three',key:'move',starter:true}];
+ writeSave(storage,state);return storage;
+}
+function maxCardChooser(storage){const game=boot(storage);game.dom.document.body.classList.contains=name=>name==='background-stars';game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();game.settle();assert(game.dialog('relic-card').open);return game;}
+test('Max UI Oracle shows every design, guards unavailable cards and purchases the selected real copy',()=>{
+ const storage=cardChooserSave(),state=JSON.parse(storage.getItem(SAVE_KEY));
+ // Leave the face-up row full, so restoring the fixture does not consume its hidden offer.
+ state.marketDecks.cheap.push({id:'spare-one',key:'barterNetwork'},{id:'spare-two',key:'clearingHouse'},{id:'spare-three',key:'exchangeProtocol'});writeSave(storage,state);
+ const game=maxCardChooser(storage),before=game.saved(),cards=game.dom.lastQuery('[data-relic-card]');
+ assert.equal(cards.length,27);assert(cards.some(b=>b.disabled));const unavailable=cards.find(b=>b.dataset.relicCard==='worldEngine');assert(unavailable.disabled);unavailable.click();assert.deepEqual(game.saved(),before);
+ const offer=cards.find(b=>b.dataset.relicCard==='signalRelay');assert(!offer.disabled);offer.click();assert.deepEqual(game.saved(),before,'Selecting spends nothing');game.click('relic-card-confirm');
+ assert(game.saved().players[0].hand.some(c=>c.id==='oracle-copy'));assert(!game.saved().marketDecks.cheap.some(c=>c.id==='oracle-copy'));assert.equal(game.saved().players[0].resources.energy,2);assert.equal(game.saved().players[0].resources.data,3);
+});
+test('Max UI Echoes selects individual used cards, keeps the two-card limit and cancels freely',()=>{
+ const storage=cardChooserSave('echoes'),state=JSON.parse(storage.getItem(SAVE_KEY));
+ state.players[0].inPlay.reverse();writeSave(storage,state);
+ const game=maxCardChooser(storage),before=game.saved();
+ const cards=game.dom.lastQuery('[data-relic-card]');assert.equal(cards.length,3);cards.forEach(b=>b.click());assert.match(game.dom.element('relic-card-status').textContent,/2 of 2/);assert.deepEqual(game.saved(),before);
+ game.pressEscape('relic-card');assert.deepEqual(game.saved(),before);
+ game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();const again=game.dom.lastQuery('[data-relic-card]');again.find(b=>b.dataset.relicCard==='return-two').click();again.find(b=>b.dataset.relicCard==='return-one').click();game.click('relic-card-confirm');
+ const p=game.saved().players[0];assert(p.hand.some(c=>c.id==='return-one'&&c.level===3));assert(p.hand.some(c=>c.id==='return-two'));assert(p.inPlay.some(c=>c.id==='return-three'));assert(p.inPlay.some(c=>c.id==='chooser'));
+});
+test('Shared Max UI Oracle renders the public catalog with redacted decks and sends only a legal purchase',()=>{
+ const context=vm.createContext({});vm.runInContext(adapterSource+source,context);let engine;const factory=context.createGalacticAdapter;context.createGalacticAdapter=e=>{engine=e;return factory(e);};const authority=context.createGalacticReach({headless:true});
+ const state=JSON.parse(cardChooserSave('oracle','phaseLance').getItem(SAVE_KEY));Object.assign(engine.state,state);
+ const sent=[],view={seq:1,state:authority.privateState(0),hints:authority.hints(0)};
+ assert(view.state.marketDecks.expensive.every(c=>c.hidden&&!c.key));const network={seat:0,rules:authority.rulesVersion,initial:view,busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});game.dom.document.body.classList.contains=name=>name==='background-stars';game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();
+ const cards=game.dom.lastQuery('[data-relic-card]');assert.equal(cards.length,27);cards.find(b=>b.dataset.relicCard==='phaseLance').click();assert.deepEqual(sent,[]);game.click('relic-card-confirm');assert.equal(sent.length,1);assert.equal(sent[0].length,1);assert.equal(sent[0][0].purchase,'oracle-copy');authority.applyAction(0,sent[0][0]);assert(engine.state.players[0].military.some(c=>c.id==='oracle-copy'));
+});
 
 function reservoirSave(pending=false) {
  const storage=createStorage(),state=boot(storage).saved(),p=state.players[0];

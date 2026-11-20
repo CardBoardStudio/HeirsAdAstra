@@ -463,6 +463,17 @@
     <div class="dialog-actions"><button class="button button-primary" id="relic-choice-confirm" type="button">Play relic</button><button class="button" id="relic-choice-cancel" type="button">Cancel</button></div>
   </dialog>
 
+  <dialog id="relic-card-dialog" class="market-choice-dialog" aria-labelledby="relic-card-title" aria-describedby="relic-card-help">
+    <div class="max-bank-heading"><div><div class="eyebrow">CHOOSE YOUR CARDS</div><h2 id="relic-card-title"></h2></div><button class="button button-ghost" id="relic-card-close" type="button">Cancel</button></div>
+    <p id="relic-card-help"></p>
+    <div id="relic-card-options" class="market-choice-content"></div>
+    <div class="card-choice-footer">
+      <p id="relic-card-status" role="status" aria-live="polite"></p>
+      <label id="relic-card-payment-label" hidden>Discounted payment<select id="relic-card-payment"></select></label>
+      <button class="button button-primary" id="relic-card-confirm" type="button" disabled>Choose a card</button>
+    </div>
+  </dialog>
+
   <script src="channel.js"></script>
   <script src="table.js?v=construct-iii-38-43"></script>
   <script src="tabletop-controls.js"></script>
