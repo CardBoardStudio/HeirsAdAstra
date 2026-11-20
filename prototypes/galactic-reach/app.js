@@ -5522,7 +5522,8 @@ function createGalacticReach(options = {}) {
     // Trade's handle lies on the table's left edge in the gap between the comms card and the map key,
     // ending above the key where notices appear (in a tight column it may overlap the comms card).
     const stackBottom = landscape ? last?.getBoundingClientRect?.() : null, handleH = $('#open-trade')?.getBoundingClientRect?.().height || 0;
-    if (key?.height && stackBottom?.height) root.style.setProperty('--trade-top', `${Math.round(Math.min((stackBottom.bottom + key.top) / 2, key.top - 4 * zoom - handleH / 2))}px`);
+    if (bankButtons?.height) root.style.setProperty('--trade-top', `${Math.round(bankButtons.bottom + 16 * zoom + handleH / 2)}px`);
+    else if (key?.height && stackBottom?.height) root.style.setProperty('--trade-top', `${Math.round(Math.min((stackBottom.bottom + key.top) / 2, key.top - 4 * zoom - handleH / 2))}px`);
     else root.style.removeProperty('--trade-top');
     // When the stack and the map key cannot both fit above your piles and hand, tighten the column
     // once (the latest comms entry only) and stack again; a second step drops the icon list from

@@ -78,6 +78,8 @@ async function main() {
             const dots = [...col.querySelectorAll('.mat-stock.mat-stars i')], a=dots[0].getBoundingClientRect(), b=dots[1].getBoundingClientRect(), icon=col.querySelector(':scope > .resource-symbol').getBoundingClientRect();
             if (a.top <= b.top || icon.top <= a.bottom) problems.push('resource column does not count up from its bottom symbol');
             if (Math.abs(a.width - a.height) > 1) problems.push('resource pips are not circular');
+            const top=dots.at(-1).getBoundingClientRect(), zoom=Number(document.documentElement.style.getPropertyValue('--table-zoom'))||1;
+            if (!col.querySelector('.mat-lap') && top.top-box.top>24*zoom) problems.push('unused space above resource circles');
           }
           if (!phone && box.left < innerWidth * .7) problems.push('resource bank is not on the right');
         }
@@ -86,6 +88,12 @@ async function main() {
           if (Math.abs(map.left + map.width/2 - innerWidth/2)>2) problems.push('map is not horizontally centered');
           const track=document.querySelector('#prestige-track').getBoundingClientRect(), round=document.querySelector('.phase-stepper').getBoundingClientRect();
           if (round.top - track.bottom < 12) problems.push('Prestige track and round counter need more space');
+          const nav=document.querySelector('#max-bank-nav').getBoundingClientRect(), trade=document.querySelector('#open-trade').getBoundingClientRect();
+          if (trade.top<nav.bottom+6) problems.push('Trade overlaps the card bank buttons');
+          if (innerWidth>innerHeight) {
+            const tools=document.querySelector('.map-tools').getBoundingClientRect();
+            if (tools.top<innerHeight*.7) problems.push('map tools are not at the bottom right');
+          }
         }
       }
       return problems.concat(window.galacticReachRenderErrors || []);
