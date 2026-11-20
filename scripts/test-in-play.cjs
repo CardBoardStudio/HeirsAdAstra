@@ -2,7 +2,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('nod
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8');
 function game(prefix='prototypes/galactic-reach/'){
  const c=vm.createContext({});let e,seed=1729;
- let app=read(prefix+'app.js').replace('      clone, deckContents,',`      drawCards, useReaction, runAiOperation, runAiBuy, aiCards, ${prefix==='prototypes/galactic-reach/'?'aiArchivePurgeChoice, ':''}clone, deckContents,`);
+ let app=read(prefix+'app.js').replace('      clone, deckContents,',`      drawCards, useReaction, runAiOperation, runAiBuy, aiCards, ${['prototypes/galactic-reach/','crates/galactic-reach/rules/v37-'].includes(prefix)?'aiArchivePurgeChoice, ':''}clone, deckContents,`);
  vm.runInContext(read(prefix+'adapter.js')+app,c);const factory=c.createGalacticAdapter;c.createGalacticAdapter=x=>{e=x;return factory(x);};
  c.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});
  const s=e.state,p=s.players[0];Object.assign(s,{phase:'operations',activePlayer:0});Object.assign(p,{hand:[],deck:[],discard:[],resources:{matter:20,energy:20,biomass:20,data:20},storageUpgrades:20,resourceLimits:{matter:1000,energy:1000,biomass:1000,data:1000}});
@@ -11,8 +11,8 @@ function game(prefix='prototypes/galactic-reach/'){
 const card=(key,id=key)=>({key,id});const all=p=>[...p.hand,...p.deck,...p.discard,...(p.inPlay||[])];
 function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalActions(0).find(x=>x.type===type&&(!id||x.card===id)&&extra(x));assert(x,`Missing ${type} for ${id}`);a.applyAction(0,x);}
 {
- const g=game(),{e,p,s}=g;const echo=Object.keys(e.ALL_CARDS).find(k=>e.ALL_CARDS[k].tag==='alienEchoes');
- p.hand=[{...card('move','converted'),starter:true},card('construct','built'),card(echo,'draw-order')];p.deck=[card('move','draw-one')];p.discard=[card('construct','draw-two'),card('move','draw-three')];
+ const g=game(),{e,p,s}=g; // Draw four with only three available cards must not redraw cards In play.
+ p.hand=[{...card('move','converted'),starter:true},card('construct','built'),card('commandNexus','draw-order')];p.deck=[card('move','draw-one')];p.discard=[card('construct','draw-two'),card('move','draw-three')];
  action(g,'resource','converted');action(g,'build','built',a=>a.kind==='harvester');
  assert.deepEqual(Array.from(p.inPlay,c=>c.id),['converted','built']);
  s.activePlayer=0;action(g,'special','draw-order');
@@ -36,8 +36,8 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
  assert(!all(p).some(c=>c.id==='trashed'));assert(p.inPlay.some(c=>c.id==='protected'));assert(p.inPlay.some(c=>c.id==='broker'));assert(p.hand.some(c=>c.id==='drawn'));
 }
 {
- // 34.39 Archive Purge (N17): choose up to two level I starters in discard to trash, never cards in play or upgraded starters.
- const g=game(),{p}=g;p.hand=[card('archivePurge','purge')];p.inPlay=[{key:'move',id:'protected',starter:true}];
+ // Retired Archive Purge (N17): preserve its discard-only trash timing in the frozen engine.
+ const g=game('crates/galactic-reach/rules/v37-'),{p}=g;p.hand=[card('archivePurge','purge')];p.inPlay=[{key:'move',id:'protected',starter:true}];
  p.discard=[{key:'construct',id:'trash-1',starter:true},{key:'move',id:'kept',starter:true,upgraded:true},{key:'move',id:'trash-2',starter:true},{key:'construct',id:'third',starter:true}];
  const choices=g.adapter().legalActions(0).filter(x=>x.type==='special'&&x.card==='purge').map(x=>Array.from(x.trash));
  assert.equal(choices.length,7,'None, one of three, or two of three (discard order)');
@@ -51,14 +51,14 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
 }
 {
  // Without a choice the order is refused and the card stays in hand; trashing none still draws.
- const g=game(),{e,p}=g;p.hand=[card('archivePurge','purge')];p.deck=[card('move','next')];p.discard=[{key:'move',id:'m',starter:true}];
+ const g=game('crates/galactic-reach/rules/v37-'),{e,p}=g;p.hand=[card('archivePurge','purge')];p.deck=[card('move','next')];p.discard=[{key:'move',id:'m',starter:true}];
  assert.equal(e.resolveHumanSpecial(p.hand[0],e.ALL_CARDS.archivePurge,0,null),false);assert(p.hand.some(c=>c.id==='purge'));
  assert.equal(e.resolveHumanSpecial(p.hand[0],e.ALL_CARDS.archivePurge,0,['m','m']),false,'No duplicates');
  action(g,'special','purge',x=>x.trash.length===0);assert(p.discard.some(c=>c.id==='m'));assert(p.hand.some(c=>c.id==='next'));
 }
 {
  // Browser rivals trash only surplus starters: they keep 3 Move-order and 2 Construct-order cards.
- const g=game(),{e,p}=g,choose=()=>Array.from(e.aiArchivePurgeChoice(0,2));
+ const g=game('crates/galactic-reach/rules/v37-'),{e,p}=g,choose=()=>Array.from(e.aiArchivePurgeChoice(0,2));
  p.hand=[];p.deck=[];p.inPlay=[];p.discard=[{key:'move',id:'m1',starter:true},{key:'construct',id:'c1',starter:true},{key:'move',id:'m2',starter:true},{key:'construct',id:'c2',starter:true}];
  assert.deepEqual(choose(),[],'Two of each: nothing to spare');
  p.deck=[{key:'move',id:'m3',starter:true},{key:'move',id:'m4',starter:true},{key:'construct',id:'c3',starter:true}];
@@ -67,7 +67,7 @@ function action(g,type,id,extra=()=>true){const a=g.adapter();const x=a.legalAct
  assert.deepEqual(choose(),['m1','c1'],'At most two');
 }
 {
- const g=game(),{p,e}=g;p.hand=[card('aegisOfSilentArchitects','reaction')];assert(e.useReaction(0,'prevent'));assert.equal(p.hand.length,0);assert(p.inPlay.some(c=>c.id==='reaction'));e.drawCards(p,3);assert.equal(p.hand.length,0);assert.equal(e.useReaction(0,'prevent'),null,'A used reaction cannot trigger again');
+ const g=game('crates/galactic-reach/rules/v37-'),{p,e}=g;p.hand=[card('aegisOfSilentArchitects','reaction')];assert(e.useReaction(0,'prevent'));assert.equal(p.hand.length,0);assert(p.inPlay.some(c=>c.id==='reaction'));e.drawCards(p,3);assert.equal(p.hand.length,0);assert.equal(e.useReaction(0,'prevent'),null,'A used reaction cannot trigger again');
 }
 {
  const g=game(),{p,s}=g;p.hand=[{...card('move','converted'),starter:true},card('procurementHub','buy-card'),card('construct','unplayed')];
