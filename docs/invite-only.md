@@ -29,7 +29,7 @@ Without membership, a visitor can reach only:
 
 | Path | Why |
 | --- | --- |
-| `/`, `/index.html`, `/lab/lab.css`, `/lab/lab.js`, `/lab/replay.js` | The landing page, which shows the sign-in and claim steps |
+| `/`, `/index.html`, `/lab/lab.css`, `/lab/lab.js`, `/lab/replay.js`, `/lab/heirs-emblem.svg`, `/lab/heirs-emblem-mark.svg` | The landing page, which shows the sign-in and claim steps, and its emblem and favicon |
 | `/api/health` | Health checks |
 | `/api/session` | Tells the landing page whether this browser is signed in and admitted |
 | `/api/auth/nido`, `/api/auth/nido/callback` | The Nido sign-in flow |

@@ -32,6 +32,8 @@ const PUBLIC: &[&str] = &[
     "/lab/lab.css",
     "/lab/lab.js",
     "/lab/replay.js",
+    "/lab/heirs-emblem.svg",
+    "/lab/heirs-emblem-mark.svg",
     "/api/health",
     "/api/session",
     "/api/auth/nido",

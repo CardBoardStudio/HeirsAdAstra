@@ -29,6 +29,8 @@ cp prototypes/galactic-reach/replay.js dist/galactic-reach/replay.js
 cp prototypes/lab/index.html dist/index.html
 cp prototypes/lab/index.html dist/lab/index.html
 cp prototypes/lab/lab.css prototypes/lab/lab.js prototypes/lab/replay.js dist/lab/
+# The emblem: full artwork and the small-size version used by the header and favicon.
+cp prototypes/lab/heirs-emblem.svg prototypes/lab/heirs-emblem-mark.svg dist/lab/
 
 # Preserve the complete v4 through v10 browsers alongside v11; tables never upgrade implicitly.
 mkdir -p dist/galactic-reach/rules/4.9
