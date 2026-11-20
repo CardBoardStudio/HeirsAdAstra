@@ -518,7 +518,7 @@ async function runCase(browser, origin, testCase, viewport) {
     await browser.navigate(`${origin}/?game=galactic-reach#lobby/${TABLE_ID}`);
   } else {
     await browser.navigate(`${origin}/galactic-reach/rulebook.html`);
-    await browser.evaluate(`localStorage.clear(); ${testCase.table ? '' : `localStorage.setItem(${JSON.stringify(SAVE_KEY)}, ${JSON.stringify(JSON.stringify(testCase.save))});`} true`);
+    await browser.evaluate(`localStorage.clear(); ${process.env.CHECK_BACKGROUND === 'stars' ? "localStorage.setItem('galactic-reach-background','stars');" : ''} ${testCase.table ? '' : `localStorage.setItem(${JSON.stringify(SAVE_KEY)}, ${JSON.stringify(JSON.stringify(testCase.save))});`} true`);
     tableSave = testCase.table ? { state: clone(testCase.save), turnHistory: { pending: null, undo: null } } : null;
     sharedTable = testCase.shared || null;
     await browser.navigate(`${origin}/galactic-reach/${testCase.table ? `?table=${TABLE_ID}` : testCase.shared ? `?shared=${TABLE_ID}` : ''}`);
@@ -778,4 +778,4 @@ async function main() {
   if (failures) process.exit(1);
 }
 if (require.main === module) main().catch(error => { console.error(error); process.exit(1); });
-module.exports = { findChrome, launch };
+module.exports = { findChrome, launch, freshEngine, operationsState, buyState, withFleet };

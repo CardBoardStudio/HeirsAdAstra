@@ -2074,6 +2074,7 @@ function createGalacticReach(options = {}) {
     if (headless || replayMode || state.pendingCombat || state.phase!=='operations' || state.activePlayer!==ME || state.actionMode!=='excavate'
       || !site || site.special!=='relic' || site.relicClaimed || !relicKnown(state.clusters[site.cluster],ME) || !getFleet(state.selected,ME)?.explorer) return false;
     switchTab('relics');
+    globalThis.galacticReachMaxUI?.requestRelics?.();
     const scan=$('#sector-popover');
     if (scan.matches(':popover-open')) scan.hidePopover();
     $('#console').scrollIntoView?.({block:'nearest'});
@@ -5339,7 +5340,9 @@ function createGalacticReach(options = {}) {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
     const root = document.documentElement, shell = document.querySelector('.app-shell');
     if (!tableLayout() || !shell) { ['--table-zoom','--table-w','--table-h'].forEach(name => root.style.removeProperty(name)); root.classList.remove('table-wide'); return; }
-    const width = window.innerWidth, height = Math.max(1, window.innerHeight - Math.max(0, shell.getBoundingClientRect().top));
+    // Restoring the green supply after Max’s UI can briefly widen an iPad’s overflow
+    // viewport. Fit to the layout viewport, which keeps the actual device dimensions.
+    const width = root.clientWidth || window.innerWidth, height = Math.max(1, (root.clientHeight || window.innerHeight) - Math.max(0, shell.getBoundingClientRect().top));
     const [tableW, tableH] = tableSize(width, height);
     // Wide tables have room for supply cards in real card proportions; squarer ones keep wider
     // cards so the map stays big.
@@ -5395,9 +5398,9 @@ function createGalacticReach(options = {}) {
     // The bottom band's pieces too: the map reaches down between your hand, piles, buttons and mat.
     const band = [...document.querySelectorAll('#hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].map(e => rect(e));
     // The race line and its goal stick out past the track's box on the right (the counts sit before them).
-    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
+    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('#max-bank-nav')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
     const clear = (width, top) => {
-      const left = box.right - width;
+      const left = document.body.classList.contains('background-stars') ? box.left + (box.width - width) / 2 : box.right - width;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
     };
     // The map lies against the supply. A map shorter than its space may also slide up or down
@@ -5486,7 +5489,8 @@ function createGalacticReach(options = {}) {
     const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches;
     const zoom = Number(document.documentElement?.style?.getPropertyValue('--table-zoom')) || 1;
     let top = 0;
-    for (const sel of LEFT_STACK) {
+    const stack = [...LEFT_STACK, ...(document.body.classList.contains('background-stars') ? ['#max-bank-nav'] : [])];
+    for (const sel of stack) {
       const el = $(sel);
       if (!el?.style || !el.getBoundingClientRect || !el.matches) continue;
       if (!landscape) { el.style.removeProperty('--stack-top'); continue; }
@@ -5496,7 +5500,7 @@ function createGalacticReach(options = {}) {
       if (el.matches('.log-panel') && !el.matches('.open')) el.dataset.closedH = String(h);
       if (h) top += h + 8;
     }
-    const root = document.documentElement, legend = $('#map-legend-corner'), last = $(LEFT_STACK.at(-1));
+    const root = document.documentElement, legend = $('#map-legend-corner'), last = $(stack.at(-1));
     // The map key lies in the middle of the column's free height (between the stack and your piles
     // and hand), so the column has no long bare stretch.
     const end = last?.getBoundingClientRect?.(), track = $('#prestige-track')?.getBoundingClientRect?.(), keyBox = legend?.getBoundingClientRect?.();

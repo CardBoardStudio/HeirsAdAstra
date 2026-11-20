@@ -3334,3 +3334,165 @@ body.background-stars .galaxy-board::before {
   .card-table-battle .combat-history { max-height: 24dvh; }
 }
 @media (pointer: coarse) { .combat-tactic { min-height: 66px; } }
+
+/* Max's UI: a private presentation choice; the green table retains its layout. */
+.max-bank-nav { display: none; }
+body.background-stars {
+  --text: #e6edf8; --muted: #a5b4cc; --line: #34445e; --line-bright: #6e8bb4;
+  --surface: #141e30; --surface-2: #1c2a40;
+}
+body.background-stars > .starfield { opacity: .48; }
+body.background-stars :is(.log-panel, #map-legend-corner, #resource-grid, .phase-stepper, .topbar, .trade-panel, .phone-card-sheet) {
+  background: linear-gradient(145deg, #1b2940f5, #111c2df5) !important;
+  border: 1px solid #7994bd40 !important;
+  box-shadow: 0 10px 28px #0004 !important;
+  border-radius: 14px !important;
+  color: var(--text);
+}
+body.background-stars :is(.phase-stepper li, #resource-grid .mat-head, .log-toggle, .standings-header, .standings-head, #map-legend-corner .legend-heading) { color: #b9cceb !important; }
+body.background-stars :is(.phase-stepper li.active, .phase-stepper li.current) { background: #324c71 !important; color: #eff6ff !important; }
+body.background-stars .button:not(.button-primary):not(.button-danger), body.background-stars .table-menu-button {
+  border-color: #6f8fba70 !important; background: #1b2a40 !important; color: #e6edf8 !important;
+  box-shadow: 0 3px 8px #0003 !important;
+}
+body.background-stars .button-primary, body.background-stars .button-danger {
+  background: #adcfff !important; border-color: #bcd8ff !important; color: #0b1b30 !important; box-shadow: 0 3px 12px #0004 !important;
+}
+body.background-stars :is(button, a):focus-visible { outline: 3px solid #9dc7ff !important; outline-offset: 3px; }
+body.background-stars #resource-grid .mat-rings .mat-pips.now i { background: #0d1626; box-shadow: inset 0 0 0 1px #607899; }
+body.background-stars #resource-grid .mat-rings .mat-pips.now i.shut { background: #263249; box-shadow: inset 0 0 0 1px #3a4962; }
+body.background-stars #resource-grid .mat-rings .mat-pips.now i.producing { box-shadow: inset 0 0 0 2px var(--resource); }
+body.background-stars #resource-grid > .ring-key .production i { background: #0d1626; border-color: #abc6ed; }
+body.background-stars #resource-grid > .ring-key .unavailable i { background: #263249; border-color: #3a4962; }
+body.background-stars .trade-handle { background: #192b44; border-color: #6682a9; color: #d4e6ff; }
+body.background-stars #hand-row > .game-card:not(.order-selected) { --cf-ring: none; }
+body.background-stars #hand-row > .game-card.order-selected { --cf-ring: 0 0 0 2px #a8cfff, 0 0 20px #a8cfff40; }
+body.background-stars .max-bank-nav { display: flex; flex-direction: column; gap: 9px; min-width: 0; z-index: 12; }
+.max-bank-label { font: 700 10px/1.3 ui-sans-serif, system-ui, sans-serif; letter-spacing: .16em; color: #a5b4cc; margin: 0 0 3px 4px; }
+.max-bank-nav button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 10px 16px; text-align: left; border: 1px solid #718eb552; border-radius: 12px; background: linear-gradient(115deg, #253954f5, #17263cf5); color: #e3eeff; font: 600 15px/1.3 ui-sans-serif, system-ui, sans-serif; box-shadow: 0 5px 16px #0003; cursor: pointer; }
+.max-bank-nav button span:first-child { width: 20px; font-size: 20px; color: #adcfff; }
+.max-bank-nav button span:last-child { margin-left: auto; color: #9aafce; font-size: 16px; }
+.max-bank-nav button:hover { background: #30496b; border-color: #a1c2f1; }
+@media (min-width: 600px) and (min-height: 600px) {
+  body.background-stars .max-bank-nav { grid-column: 1 !important; grid-row: 1 / 9 !important; align-self: start; margin: calc(var(--stack-top, 0px) + 14px) 0 0 4px; width: 206px; }
+  body.background-stars .app-shell { padding: 16px !important; gap: 14px !important; }
+  body.background-stars #map-legend-corner { display: none !important; }
+  body.background-stars .log-panel:not(.open) { min-height: 0 !important; }
+  body.background-stars .log-panel:not(.open) .game-log > .log-recent:nth-child(n+3) { display: none !important; }
+  body.background-stars #resource-grid.resource-grid { padding: 12px 16px !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  body.background-stars .app-shell, body.background-stars .app-shell.app-shell:has(#hand-row > :nth-child(7)) {
+    --left-w: 250px; --band-h: 200px;
+    grid-template-columns: var(--left-w) minmax(0, 1fr) 0 !important;
+    grid-template-rows: 0 minmax(0, 1fr) 0 0 0 0 0 0 var(--band-h) !important;
+  }
+  body.background-stars .board-map-region { padding-right: 24px !important; }
+  body.background-stars .map-tools { align-self: start !important; margin: 4px 12px 0 0 !important; }
+  body.background-stars #hand-row { margin-left: calc(44px + 3 * var(--pile-w) + 32px) !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  body.background-stars .app-shell { grid-template-rows: minmax(0, 1fr) 0 0 0 0 0 0 0 var(--front-h) !important; }
+  body.background-stars .max-bank-nav { position: absolute; top: 190px; left: 16px; margin: 0; width: 170px; }
+}
+@media (max-width: 599px), (max-height: 599px) {
+  body.background-stars .max-bank-nav { position: fixed; top: 90px; left: 8px; width: 96px; gap: 6px; }
+  body.background-stars .max-bank-label { display: none; }
+  .max-bank-nav button { min-height: 44px; padding: 8px; gap: 5px; font-size: 13px; }
+  .max-bank-nav button span:first-child { width: 15px; font-size: 16px; }
+  .max-bank-nav button span:last-child { display: none; }
+  body.background-stars .phone-drawers, body.background-stars #hand-panel .hand-tools { background: #111e32f5 !important; border-color: #54739b66 !important; }
+  body.background-stars[data-drawer] :is(.console, .resource-panel, .board-shared) { background-color: #142237 !important; }
+}
+
+/* The same live card banks open in a native, keyboard-accessible dialog. */
+#max-bank-dialog { width: min(1080px, calc(100vw - 40px)); max-width: none; height: min(830px, calc(100dvh - 40px)); max-height: none; padding: 22px; border: 1px solid #7598c366; border-radius: 22px; background: #111c2e; color: #e6edf8; box-shadow: 0 30px 110px #000a; overflow: hidden; }
+#max-bank-dialog[open] { display: flex; flex-direction: column; gap: 12px; }
+#max-bank-dialog::backdrop { background: #030813a8; backdrop-filter: blur(6px); }
+.max-bank-heading { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.max-bank-heading h2 { margin-top: 5px; font-size: 27px; letter-spacing: -.03em; }
+.max-bank-heading .eyebrow { color: #9cbbdf; font-size: 10px; }
+.max-bank-tabs { display: flex; gap: 6px; border-bottom: 1px solid #344562; padding-bottom: 12px; }
+.max-bank-tabs button { min-width: 100px; min-height: 38px; padding: 6px 18px; background: transparent; border: 1px solid transparent; border-radius: 9px; color: #b8c9e1; cursor: pointer; font-weight: 650; }
+.max-bank-tabs button[aria-pressed="true"] { background: #2e476b; border-color: #6589ba70; color: #f2f7ff; }
+#max-bank-help { color: #afc1dc; margin: 0; font-size: 13px; line-height: 1.4; }
+#max-bank-content { flex: 1; min-height: 0; display: grid; }
+#max-bank-dialog #max-bank-content > :is(#market-panel, #relics-panel, #upgrade-group) { display: none !important; }
+#max-bank-dialog[data-bank="market"] #max-bank-content > #market-panel,
+#max-bank-dialog[data-bank="relics"] #max-bank-content > #relics-panel,
+#max-bank-dialog[data-bank="basics"] #max-bank-content > #upgrade-group { display: flex !important; flex-direction: column; grid-area: auto !important; align-self: stretch !important; justify-self: stretch !important; width: 100%; min-height: 0; height: 100%; padding: 0 !important; margin: 0 !important; background: none; border: 0; pointer-events: auto; }
+#max-bank-dialog #max-bank-content :is(.section-intro, #basic-market, .relic-payment, #relic-row-help, #open-trash) { display: none !important; }
+#max-bank-dialog .market-cards { display: contents !important; }
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) { display: grid !important; flex: 1; min-height: 0; width: 100%; grid-template-columns: repeat(3, minmax(0, 1fr)) !important; grid-template-rows: repeat(3, minmax(0, 1fr)) !important; grid-auto-rows: auto !important; gap: 12px !important; padding: 0 !important; border: 0 !important; background: none !important; }
+#max-bank-dialog #upgrade-market { grid-template-rows: repeat(2, minmax(0, 1fr)) !important; }
+#max-bank-dialog .relic-row { grid-template-rows: minmax(0, 1fr) !important; align-items: stretch; }
+#max-bank-dialog .relic-row > div { display: flex; flex-direction: column; min-height: 0; height: 100% !important; gap: 12px; }
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .game-card { position: relative !important; inset: auto !important; grid-column: auto !important; grid-row: auto !important; display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; grid-template-rows: auto minmax(0, 1fr) !important; grid-template-areas: "name cost" "head cost" !important; gap: 8px 10px !important; align-content: start; align-items: start; width: 100% !important; min-width: 0 !important; min-height: 0 !important; max-height: none !important; height: 100% !important; margin: 0 !important; padding: 14px !important; border-radius: 12px !important; overflow: hidden !important; transform: none !important; --cf-ring: none; box-shadow: 0 4px 14px #0004, inset 0 3px 0 var(--card-accent) !important; }
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-name { grid-area: name !important; display: block !important; white-space: normal !important; font-size: 16px !important; line-height: 1.15 !important; font-weight: 700; padding: 0 !important; overflow: visible !important; }
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) :is(.card-type, .card-art, .card-lore, .card-headline, .card-limit-note, .card-gain, .card-effect) { display: none !important; }
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-icons { grid-area: head !important; display: block !important; font-size: 14px !important; line-height: 1.4 !important; white-space: normal !important; max-height: none !important; overflow: visible !important; mask-image: none !important; }
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-footer { grid-area: cost !important; position: static !important; display: flex !important; flex-direction: column; align-items: flex-end; gap: 3px; padding: 0 !important; margin: 0 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }
+#max-bank-dialog .card-footer .resource-dots { flex-direction: column; align-items: flex-end; gap: 4px; }
+#max-bank-dialog .card-footer small { display: none; }
+#max-bank-dialog .card-footer .resource-chip { min-height: 22px !important; padding: 0 3px !important; }
+#max-bank-dialog .game-card:not(:disabled):hover { outline: 2px solid #aecfff; outline-offset: -2px; }
+#max-bank-dialog #upgrade-market::before { display: none !important; }
+#max-bank-dialog #upgrade-market .game-card, #max-bank-dialog .relic-row .game-card { grid-template-areas: "name cost" "head head" !important; }
+#max-bank-dialog #upgrade-market .card-effect, #max-bank-dialog .relic-row .card-effect { grid-area: head !important; display: block !important; white-space: normal !important; font-size: 15px !important; line-height: 1.45 !important; -webkit-line-clamp: unset !important; }
+#max-bank-dialog #upgrade-market .card-icons, #max-bank-dialog .relic-row .card-icons { display: none !important; }
+#max-bank-dialog .relic-row > div > .button { position: static !important; flex: none; min-height: 44px !important; width: 100%; font-size: 14px !important; }
+#max-bank-dialog #relics-panel .section-intro:has(#cancel-excavate:not([hidden])) { display: flex !important; flex: none; }
+#max-bank-dialog #relics-panel .section-intro h2 { display: none; }
+.max-bank-footer { display: flex; justify-content: space-between; align-items: center; flex: none; gap: 12px; min-height: 32px; color: #afc1dc; font-size: 12px; }
+#max-bank-finish { min-width: 120px; min-height: 40px; }
+@media (max-width: 850px), (max-height: 800px) {
+  #max-bank-dialog { padding: 14px; gap: 8px !important; }
+  #max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) { gap: 8px !important; }
+  #max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .game-card { padding: 9px !important; gap: 5px !important; }
+  #max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-name { font-size: 13px !important; }
+  #max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-icons { font-size: 12px !important; line-height: 1.25 !important; }
+}
+@media (max-width: 599px), (max-height: 599px) {
+  #max-bank-dialog { width: calc(100vw - 16px); height: calc(100dvh - 16px); padding: 14px; border-radius: 16px; }
+  #max-bank-content { overflow-y: auto; overscroll-behavior: contain; }
+  #max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; grid-template-rows: none !important; grid-auto-rows: minmax(230px, auto) !important; }
+  #max-bank-dialog #max-bank-content :is(#market-panel, #relics-panel, #upgrade-group) { height: auto !important; }
+  #max-bank-dialog .relic-row > div { min-height: 260px; }
+  #max-bank-help { font-size: 12px; }
+  .max-bank-heading h2 { font-size: 22px; }
+  .max-bank-tabs button { min-width: 0; flex: 1; min-height: 44px; padding-inline: 10px; }
+}
+
+body.background-stars .prestige-track::before { background: linear-gradient(145deg, #1b2940f5, #111c2df5) !important; box-shadow: inset 0 0 0 1px #7994bd50, 0 8px 24px #0004 !important; border-radius: 12px; }
+body.background-stars .phase-stepper ol { background: #1a2a41 !important; box-shadow: none !important; border-radius: 8px; }
+body.background-stars .phase-stepper li { border-color: #6885aa55; }
+body.background-stars .phase-stepper li.current::before { background: #afcfff !important; box-shadow: 0 0 7px #afcfff66; }
+body.background-stars.my-turn #hand-row > .game-card { outline-color: #95bff6; filter: drop-shadow(0 0 5px #95bff650); box-shadow: 0 0 0 1px #aacfff99, 0 0 10px #8ebafa33 !important; }
+body.background-stars :is(.gr-coach, .gr-bubble) { --coach-paper: #19283e; --coach-ink: #e3edfa; --coach-muted: #b0c2dd; --coach-edge: #6e92bf; box-shadow: 0 10px 32px #0008; }
+body.background-stars :is(.gr-coach-eyebrow, .gr-coach-rule) { color: #b0cfff; }
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  body.background-stars .board-map-region { grid-column: 2 / 4 !important; place-items: center !important; padding: 0 !important; }
+}
+/* Keep the complete printed effect readable in a bank, including to screen readers. */
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .game-card { grid-template-areas: "name cost" "head cost" "art art" !important; grid-template-rows: auto auto minmax(0, 1fr) !important; }
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-effect { display: block !important; grid-area: head !important; white-space: normal !important; font-size: 14px !important; line-height: 1.35 !important; -webkit-line-clamp: unset !important; max-height: none !important; overflow: visible !important; }
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-icons { display: none !important; }
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-art.has-picture { display: block !important; grid-area: art !important; position: relative; inset: auto; height: 100% !important; min-height: 0; margin: 0; overflow: hidden; border-radius: 6px; }
+#max-bank-dialog .card-art .card-picture { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+#max-bank-dialog #upgrade-market .game-card, #max-bank-dialog .relic-row .game-card { grid-template-areas: "name cost" "head head" "art art" !important; }
+@media (max-width: 850px), (max-height: 800px) {
+  #max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-effect { font-size: 12px !important; line-height: 1.25 !important; }
+}
+
+#max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-effect { mask-image: none !important; -webkit-mask-image: none !important; line-clamp: unset !important; align-self: start !important; }
+/* Phones keep the three banks above their drawers; guidance leaves those controls clear. */
+@media (max-width: 599px), (max-height: 599px) {
+  body.background-stars { --sheet-h: min(52dvh, calc(100dvh - 190px)); }
+  body.background-stars .max-bank-nav { flex-direction: row; top: 56px; left: 8px; right: 8px; width: min(330px, calc(100vw - 16px)); z-index: 56; }
+  body.background-stars .max-bank-nav button { flex: 1; width: auto; }
+  body.background-stars .gr-coach:not(.in-dialog) { top: 110px !important; }
+}
+
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  body.background-stars .toast { top: calc(88px * var(--table-zoom, 1)) !important; bottom: auto !important; left: auto !important; right: calc(16px * var(--table-zoom, 1)) !important; width: calc(220px * var(--table-zoom, 1)) !important; background: #1a2a43; border-color: #7394be; }
+}
