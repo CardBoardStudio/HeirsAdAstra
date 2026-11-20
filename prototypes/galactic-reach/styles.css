@@ -3496,3 +3496,111 @@ body.background-stars :is(.gr-coach-eyebrow, .gr-coach-rule) { color: #b0cfff; }
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
   body.background-stars .toast { top: calc(88px * var(--table-zoom, 1)) !important; bottom: auto !important; left: auto !important; right: calc(16px * var(--table-zoom, 1)) !important; width: calc(220px * var(--table-zoom, 1)) !important; background: #1a2a43; border-color: #7394be; }
 }
+
+/* Max's resource bank: one upright column per resource, counted from the bottom. */
+body.background-stars #resource-grid.resource-grid {
+  display: grid !important; grid-template-columns: 28px repeat(4, minmax(0, 1fr)) !important;
+  grid-template-rows: minmax(0, 1fr) !important; align-content: stretch !important; align-items: stretch;
+  gap: 8px !important; width: 280px !important; max-width: 100%; height: 520px !important;
+  padding: 18px 12px 14px !important;
+}
+body.background-stars #resource-grid.resource-grid > .ring-key {
+  grid-column: 1 !important; grid-row: 1 !important; display: flex !important; flex-direction: column;
+  align-items: center; justify-content: space-evenly; gap: 16px !important; border-right: 1px solid #728bb63b;
+  padding-right: 8px; font-size: 9px !important;
+}
+body.background-stars #resource-grid.resource-grid > .ring-key .mat-key {
+  writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; flex: none; gap: 7px;
+}
+body.background-stars #resource-grid.resource-grid > .resource-box.mat-rings {
+  grid-column: auto !important; grid-row: 1 !important; grid-template-columns: minmax(0, 1fr) !important;
+  grid-template-rows: minmax(0, 1fr) 28px !important; grid-template-areas: "now" "icon" !important;
+  justify-items: center; align-items: stretch !important; gap: 12px 0 !important; padding: 0 !important;
+}
+body.background-stars #resource-grid.resource-grid .resource-box > .resource-symbol {
+  align-self: end; justify-self: center; width: 28px !important; height: 28px !important;
+}
+body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now {
+  display: flex !important; flex-direction: column-reverse; align-items: center; justify-content: flex-start;
+  width: 100%; height: 100%; min-height: 0; gap: 3px !important; padding: 0;
+}
+body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now i {
+  flex: 1 1 0; width: min(20px, 100%); max-height: 20px; min-height: 0; aspect-ratio: 1;
+}
+body.background-stars #resource-grid.resource-grid .mat-lap {
+  top: 0; right: 0; max-width: 100%; white-space: normal; font-size: 9px; line-height: 1.2;
+}
+@media (min-width: 600px) and (min-height: 600px) {
+  body.background-stars .app-shell, body.background-stars .app-shell.app-shell:has(#hand-row > :nth-child(7)) {
+    --max-rail-w: 260px; --left-w: var(--max-rail-w); --mat-w: 0px !important;
+    grid-template-columns: var(--max-rail-w) minmax(0, 1fr) var(--max-rail-w) !important;
+    grid-template-rows: 0 minmax(0, 1fr) 0 0 0 0 0 0 var(--band-h, 200px) !important;
+  }
+  body.background-stars .board-map-region {
+    grid-column: 2 !important; grid-row: 1 / 9 !important; place-items: center !important;
+    align-self: stretch !important; padding: 0 !important; margin: 32px 0 0 !important;
+  }
+  body.background-stars #resource-grid.resource-grid {
+    grid-column: 3 !important; grid-row: 1 / 9 !important; justify-self: stretch !important; align-self: center !important;
+    width: 100% !important; height: min(650px, calc(100% - 56px)) !important; margin: 24px 0 0 !important;
+  }
+  body.background-stars .app-shell #hand-row {
+    grid-column: 2 !important; grid-row: 9 !important; width: 100%; margin: 0 !important;
+  }
+  body.background-stars .map-tools { grid-column: 3 !important; justify-self: end !important; align-self: start !important; margin: 0 !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  body.background-stars .app-shell { --max-rail-w: 205px; --band-h: 190px; }
+  body.background-stars .max-bank-nav { width: 170px; top: 224px; }
+  body.background-stars #resource-grid.resource-grid { padding-inline: 8px !important; gap: 5px !important; }
+}
+/* Keep every pip circular as the bank gets shorter in a small window. */
+body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now { container-type: size; }
+body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now i {
+  --upright-pip: min(20px, calc((100cqh - 60px) / 21));
+  flex: none; width: var(--upright-pip); height: var(--upright-pip);
+}
+@media (min-width: 600px) and (min-height: 600px) {
+  body.background-stars .app-shell #hand-row { justify-content: center !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) {
+  body.background-stars :is(#prestige-track, .phase-stepper, .log-panel, .max-bank-nav) {
+    position: relative !important; top: auto !important; left: auto !important;
+    grid-column: 1 !important; grid-row: 1 / 9 !important; align-self: start !important;
+    margin: var(--stack-top, 0px) 0 0 !important;
+  }
+  body.background-stars #prestige-track { width: calc(100% - 66px) !important; margin: calc(var(--stack-top, 0px) + 4px) 0 0 6px !important; }
+  body.background-stars .max-bank-nav { margin-top: calc(var(--stack-top, 0px) + 14px) !important; margin-left: 4px !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  body.background-stars .phase-stepper { font-size: 10px; }
+  body.background-stars .phase-stepper ol { flex-wrap: wrap; row-gap: 4px !important; }
+  body.background-stars .phase-stepper li { font-size: 9px !important; }
+  body.background-stars #hand-panel .hand-tools {
+    grid-column: 3 !important; grid-row: 9 !important; align-self: start !important; justify-self: end !important;
+    width: 100% !important; margin-top: 6px !important;
+  }
+}
+@media (min-width: 600px) and (min-height: 600px) {
+  body.background-stars .board-map-region > .galaxy-board { align-self: start !important; margin-top: var(--map-top, 0px) !important; }
+  body.background-stars .map-tools { grid-row: 1 / 9 !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  body.background-stars #hand-panel .hand-tools { display: flex !important; flex-direction: column; align-items: stretch; gap: 5px; }
+  body.background-stars #hand-panel .hand-tools .button { width: 100%; min-width: 0; min-height: 32px; white-space: normal; }
+}
+@media (min-width: 600px) and (min-height: 600px) {
+  body.background-stars .toast {
+    top: var(--max-notice-top, 55vh) !important; bottom: auto !important;
+    left: calc(16px * var(--table-zoom, 1)) !important; right: auto !important;
+    width: min(calc(220px * var(--table-zoom, 1)), 20vw) !important;
+  }
+}
+@media (min-width: 600px) and (min-height: 600px) {
+  body.background-stars .board-stage:not(.map-zoomed) .galaxy-board { width: var(--map-w, min(100cqw, 100cqh * 1.0543)) !important; min-width: 0; }
+}
+@media (min-width: 600px) and (min-height: 600px) {
+  body.background-stars .toast { left: calc(40px * var(--table-zoom, 1)) !important; width: min(calc(210px * var(--table-zoom, 1)), calc(20vw - 16px)) !important; }
+  body.background-stars.my-turn #hand-row > .game-card { animation-name: max-hand-breathe; }
+}
+@keyframes max-hand-breathe { 50% { scale: 1.025; outline-color: #b4d4ff; filter: drop-shadow(0 0 10px #95bff670); } }

@@ -5379,7 +5379,7 @@ function createGalacticReach(options = {}) {
   function fitMap() {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
     const root = document.documentElement, region = $('.board-map-region'), board = $('#galaxy-board');
-    const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches && !$('.board-stage.map-zoomed');
+    const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || document.body.classList.contains('background-stars')) && !$('.board-stage.map-zoomed');
     if (!landscape || !region?.getBoundingClientRect || !board) { ['--map-w', '--map-top'].forEach(name => root.style.removeProperty(name)); return; }
     const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1;
     const box = region.getBoundingClientRect(), b = board.getBoundingClientRect();
@@ -5486,7 +5486,7 @@ function createGalacticReach(options = {}) {
   const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel'];
   function stackLeft(depth = 0) {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function' || !document.documentElement?.style) return;
-    const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches;
+    const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || document.body.classList.contains('background-stars'));
     const zoom = Number(document.documentElement?.style?.getPropertyValue('--table-zoom')) || 1;
     let top = 0;
     const stack = [...LEFT_STACK, ...(document.body.classList.contains('background-stars') ? ['#max-bank-nav'] : [])];
@@ -5498,9 +5498,12 @@ function createGalacticReach(options = {}) {
       // An open comms log lies over the pieces below it; they keep their places.
       const h = el.matches('.log-panel.open') ? (Number(el.dataset.closedH) || 0) : el.getBoundingClientRect().height / zoom;
       if (el.matches('.log-panel') && !el.matches('.open')) el.dataset.closedH = String(h);
-      if (h) top += h + 8;
+      if (h) top += h + (document.body.classList.contains('background-stars') ? (sel === '#prestige-track' ? 36 : 16) : 8);
     }
     const root = document.documentElement, legend = $('#map-legend-corner'), last = $(stack.at(-1));
+    const bankButtons = document.body.classList.contains('background-stars') && landscape ? $('#max-bank-nav')?.getBoundingClientRect?.() : null;
+    if (bankButtons?.height) root.style.setProperty('--max-notice-top', `${Math.round(bankButtons.bottom + 24 * zoom)}px`);
+    else root.style.removeProperty('--max-notice-top');
     // The map key lies in the middle of the column's free height (between the stack and your piles
     // and hand), so the column has no long bare stretch.
     const end = last?.getBoundingClientRect?.(), track = $('#prestige-track')?.getBoundingClientRect?.(), keyBox = legend?.getBoundingClientRect?.();

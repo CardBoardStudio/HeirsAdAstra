@@ -31,7 +31,11 @@ async function main() {
     await evaluate(`localStorage.clear(); localStorage.setItem(${source(KEY)}, ${source(JSON.stringify(state))}); localStorage.setItem('galactic-reach-background', ${source(stars ? 'stars' : 'green')}); true`);
     browser.errors.length = 0;
     await browser.navigate(origin + '/galactic-reach/');
-    await evaluate('document.fonts.ready.then(() => new Promise(r => setTimeout(r, 450)))');
+    await evaluate(`document.fonts.ready.then(() => new Promise(done => {
+      let last='', calm=0, frames=0;
+      const tick=()=>{const now=['#galaxy-board','#resource-grid','#prestige-track','.phase-stepper'].map(s=>{const r=document.querySelector(s).getBoundingClientRect();return [r.x,r.y,r.width,r.height].map(v=>Math.round(v*10)).join();}).join('|');calm=now===last?calm+1:0;last=now;if(calm>=8||++frames>=150)done();else requestAnimationFrame(tick);};
+      requestAnimationFrame(tick);
+    }))`);
   }
   async function click(selector) {
     const point = await evaluate(`(() => { const e = document.querySelector(${source(selector)}); if (!e?.checkVisibility() || e.disabled) return null; const r = e.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()`);
@@ -65,6 +69,25 @@ async function main() {
         if (d.open && e.matches('.game-card, .card-effect') && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2)) problems.push('card clips: ' + e.textContent.slice(0,35));
       }
       if (d.open && !phone) { const c=document.querySelector('#max-bank-content'); if (c.scrollHeight > c.clientHeight+2) problems.push('bank scrolls'); }
+      if (!d.open) {
+        const bank = document.querySelector('#resource-grid'), box = bank.getBoundingClientRect();
+        if (bank.checkVisibility()) {
+          const key = bank.querySelector('.ring-key'), first = bank.querySelector('.resource-box');
+          if (getComputedStyle(key.querySelector('.mat-key')).writingMode !== 'vertical-rl' || key.getBoundingClientRect().right > first.getBoundingClientRect().left + 1) problems.push('bank key is not vertical on the left');
+          for (const col of bank.querySelectorAll('.resource-box')) {
+            const dots = [...col.querySelectorAll('.mat-stock.mat-stars i')], a=dots[0].getBoundingClientRect(), b=dots[1].getBoundingClientRect(), icon=col.querySelector(':scope > .resource-symbol').getBoundingClientRect();
+            if (a.top <= b.top || icon.top <= a.bottom) problems.push('resource column does not count up from its bottom symbol');
+            if (Math.abs(a.width - a.height) > 1) problems.push('resource pips are not circular');
+          }
+          if (!phone && box.left < innerWidth * .7) problems.push('resource bank is not on the right');
+        }
+        if (!phone) {
+          const map=document.querySelector('#galaxy-board').getBoundingClientRect();
+          if (Math.abs(map.left + map.width/2 - innerWidth/2)>2) problems.push('map is not horizontally centered');
+          const track=document.querySelector('#prestige-track').getBoundingClientRect(), round=document.querySelector('.phase-stepper').getBoundingClientRect();
+          if (round.top - track.bottom < 12) problems.push('Prestige track and round counter need more space');
+        }
+      }
       return problems.concat(window.galacticReachRenderErrors || []);
     })()`);
     assert.deepEqual(issues, []);
