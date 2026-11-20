@@ -587,3 +587,27 @@ async fn optional_board_waits_without_taking_a_seat_and_keeps_player_cookies() {
     assert_eq!(view(&app, &id, &guest).await.0, StatusCode::OK);
     assert_eq!(view(&app, &id, &other_device).await.0, StatusCode::OK);
 }
+
+#[tokio::test]
+async fn waiting_display_alone_cannot_start_the_table_as_solo() {
+    let (app, host, id) = setup().await;
+    assert_eq!(
+        scoped(&app, &id, "board-grant", &host, json!({})).await.0,
+        StatusCode::OK
+    );
+    let result = call(
+        &app,
+        "POST",
+        &format!("/api/tables/{id}/lobby/start"),
+        &host,
+        json!({}),
+    )
+    .await;
+    assert_eq!(result.0, StatusCode::BAD_REQUEST);
+    assert!(
+        result.2["error"]
+            .as_str()
+            .unwrap()
+            .contains("two to four people")
+    );
+}

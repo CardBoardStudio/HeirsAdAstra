@@ -134,7 +134,20 @@ pub async fn issue_board(
 ) -> ApiResult<Json<Value>> {
     host(&app, &headers, &id)?;
     // Refuse before minting a link if the pinned engine has no public projection.
-    public_view(&app, &id).await?;
+    let view = public_view(&app, &id).await?;
+    if view["status"] == "waiting" {
+        // The older waiting-room Start action must keep the same two-human
+        // requirement when the organizer paired a display before any players.
+        app.store
+            .0
+            .lock()
+            .map_err(internal)?
+            .execute(
+                "INSERT OR IGNORE INTO tabletop_rooms(table_id) VALUES(?)",
+                [&id],
+            )
+            .map_err(internal)?;
+    }
     let secret = grant(&app, &id, "board", None)?;
     let url = format!(
         "{}/tabletop/board.html?table={id}#pair={secret}",
