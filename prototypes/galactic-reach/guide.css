@@ -48,6 +48,19 @@
 @keyframes gr-coach-bounce { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
 @keyframes gr-coach-pulse { 50% { outline-color: #6ff3ff66; outline-offset: 2px; } }
 @media (prefers-reduced-motion: reduce) { .gr-coach-target { animation: none; } }
+/* A tutorial card step invites inspection of just one card; ordinary turn cues stay unchanged. */
+body.tutorial-mode.gr-card-guidance #hand-row > .game-card:not(.gr-coach-target) {
+  outline: none !important; filter: none; animation: none; scale: 1;
+  box-shadow: 0 2px 0 #948269, 0 4px 10px #0006 !important;
+}
+body.tutorial-mode.gr-card-guidance #hand-row > .gr-coach-target {
+  filter: drop-shadow(0 0 9px #6ff3ff80); animation: gr-card-invite 1.6s ease-in-out infinite;
+  transform-origin: 50% 100%; z-index: 30;
+}
+@keyframes gr-card-invite { 0%, 100% { scale: 1.04; } 50% { scale: 1.12; } }
+@media (prefers-reduced-motion: reduce) {
+  body.tutorial-mode.gr-card-guidance #hand-row > .gr-coach-target { animation: none; scale: 1.08; }
+}
 .gr-coach-goal { outline: 2px dashed #6ff3ff !important; outline-offset: -3px; z-index: 3; }
 .gr-coach-pointer { position: fixed; z-index: 61; inset: auto; margin: 0; padding: 0; border: 0; background: none; overflow: visible; pointer-events: none;
   width: 28px; height: 30px; color: #6ff3ff; filter: drop-shadow(0 2px 3px #000c); animation: gr-pointer-bob 1.3s ease-in-out infinite; }

@@ -17,7 +17,7 @@ const read = () => page.eval(() => {
   const step = tutorial.steps[progress.step];
   const dialog = [...document.querySelectorAll('dialog[open]')].find(d => d.matches(':modal'));
   return {
-    step: progress.step, total: tutorial.steps.length, id: step?.id || 'finished', info: Boolean(step?.info), title: coach?.querySelector('.gr-coach-title')?.textContent || '',
+    step: progress.step, total: tutorial.steps.length, id: step?.id || 'finished', info: Boolean(step?.info), cueOnly: Boolean(target?.classList.contains('gr-coach-card-cue') && coach?.hidden), title: coach?.querySelector('.gr-coach-title')?.textContent || '',
     text: coach?.querySelector('.gr-coach-text')?.textContent || '', dialog: dialog?.id || null,
     scan: Boolean(document.querySelector('#sector-popover')?.matches(':popover-open')),
     target: target ? { tag: target.tagName, id: target.id, card: target.closest('#hand-row') ? target.dataset.cardId : null, coord: target.dataset.coord || null,
@@ -31,6 +31,8 @@ const q = value => JSON.stringify(value);
 
 const CLOSE = { 'prestige-dialog': '#close-prestige', 'deck-dialog': '#close-deck', 'trash-dialog': '#close-trash', 'upgrade-dialog': '#close-upgrade', 'message-dialog': '#message-continue' };
 async function act(s) {
+  // Inspect a cued card with real pointer input before using the newly revealed note.
+  if (s.cueOnly && s.target?.card) return page.click(`#hand-row .game-card[data-card-id=${q(s.target.card)}]`);
   // A reading step goes on with the note's own Next button.
   if (s.info && !s.dialog) return page.click('#gr-coach [data-coach="next"]');
   // A window the coach asks you to close first (it says "Close this window").
@@ -39,6 +41,8 @@ async function act(s) {
   if (s.dialog === 'prestige-dialog') return page.click('#close-prestige');
   if (s.dialog === 'deck-dialog') return page.click('#close-deck');
   if (s.dialog === 'combat-dialog') {
+    const tactic = await page.eval(() => document.querySelector('#combat-dialog [data-combat-tactic="concentratedFire"]:not([disabled])[aria-pressed="false"]') && !document.querySelector('#combat-dialog [data-combat-action]:not([disabled])'));
+    if (tactic) return page.click('#combat-dialog [data-combat-tactic="concentratedFire"]');
     const choice = await page.eval(() => { const b = [...document.querySelectorAll('#combat-dialog [data-combat-action]:not([disabled])')].find(x => /Concentrated Fire|Stay and fight/i.test(x.textContent)) || document.querySelector('#combat-dialog [data-combat-action]'); document.querySelectorAll('[data-e2e]').forEach(e => e.removeAttribute('data-e2e')); if (b) b.dataset.e2e = 'go'; return b?.textContent.trim() || null; });
     if (choice) return page.click('#combat-dialog [data-e2e="go"]');
     return;
@@ -93,13 +97,24 @@ await page.open(url);
 await page.eval(() => { for (const key of Object.keys(localStorage)) if (key.startsWith('galactic-reach-tutorial-')) localStorage.removeItem(key); });
 await page.open(url);
 await sleep(1500);
+const opening = await page.eval(() => ({
+  step: galacticReachTutorial.steps[galacticReachTutorial.progress().step]?.id,
+  cue: document.querySelector('#hand-row .gr-coach-card-cue')?.dataset.order,
+  count: document.querySelectorAll('#hand-row .gr-coach-target').length,
+  hidden: document.querySelector('#gr-coach')?.hidden,
+  otherAnimations: [...document.querySelectorAll('#hand-row .game-card:not(.gr-coach-target)')].map(c => getComputedStyle(c).animationName),
+}));
+if (opening.step !== 'first-construct' || opening.cue !== 'construct' || opening.count !== 1 || !opening.hidden || opening.otherAnimations.some(a => a !== 'none')) throw new Error(`Opening cue regression: ${q(opening)}`);
+log('PASS opening: only Construct is cued; instructions wait for inspection');
 let last = -1, stuck = 0;
+let finished = false;
 for (let i = 0; i < 400; i++) {
   const s = await read();
-  if (s.id === 'finished') { log(`PASS tutorial finished: ${s.total} steps`); break; }
+  if (s.id === 'finished') { log(`PASS tutorial finished: ${s.total} steps`); finished = true; break; }
   if (s.step !== last) { log(`step ${s.step + 1}/${s.total} ${s.id}: ${s.title}`); last = s.step; stuck = 0; }
-  else if (++stuck > 12) { log(`FAIL stuck at ${s.id}: ${q(s)}`); break; }
+  else if (++stuck > 12) throw new Error(`Stuck at ${s.id}: ${q(s)}`);
   // This chrome-devtools-axi build reports "fn is not a function" after a click that landed.
   try { await act(s); } catch (error) { if (!/fn is not a function/.test(error.message)) log(`  (retry ${s.id}: ${error.message})`); }
   await sleep(700);
 }
+if (!finished) throw new Error('Tutorial did not finish within the interaction limit');
