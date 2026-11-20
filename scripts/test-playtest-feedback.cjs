@@ -7,7 +7,7 @@ function card(g,key,id=key,extra={}){const c={key,id,...extra};g.p.hand.push(c);
 function battle(g){let n=0;while(g.s.pendingCombat&&n++<15){const a=g.a(),seat=a.activeSeat(),acts=a.legalActions(seat);a.applyAction(seat,acts.find(a=>a.type==='combat_stay')||acts.find(a=>a.tactic==='concentratedFire')||acts[0]);}assert(!g.s.pendingCombat);}
 {
  const g=game();assert.equal(g.s.version,38);assert.equal(g.s.rulesRevision,43);assert.equal(Object.values(g.s.planets).filter(p=>p.special==='relic').length,13);assert(g.s.clusters[12].coords.some(k=>g.s.planets[k].special==='relic'));
- assert.equal(Object.keys(g.e.RELIC_CARDS).length,15);assert(!g.e.ALL_CARDS.voidglassAstrolabe);
+ assert.equal(Object.keys(g.e.RELIC_CARDS).length,16);assert(!g.e.ALL_CARDS.voidglassAstrolabe);
  for(const key of ['signalRelay','surveyNetwork','tacticalBriefing']){const d=g.e.ALL_CARDS[key];assert.equal(d.effect.draw,2);assert(Object.values(d.cost).every(n=>n<=4));}
  for(const d of Object.values(g.e.ALL_CARDS)){assert(!/reuse it each time/i.test(d.text));if(d.order==='special'&&d.effect)assert(d.effect.draw||d.effect.limits||d.effect.allocate||d.effect.prestige||d.effect.trashStarters||d.effect.bankRate===2,'No resource-only special orders');}
 }
@@ -66,13 +66,13 @@ for(const key of ['prefabYards']) {
 }
 // A named capacity bonus leaves the other limits finite and saveable.
 {
- const g=game(),before=plain(g.p.resourceLimits),c=card(g,'keepersArchive');
+ const g=game(),before=plain(g.p.resourceLimits),c=card(g,'foldedWarehouse');
  assert(g.e.resolveHumanSpecial(c,g.e.ALL_CARDS[c.key],0));
- assert.deepEqual(plain(g.p.resourceLimits),{...before,data:before.data+2});
+ assert.deepEqual(plain(g.p.resourceLimits),Object.fromEntries(g.e.RESOURCES.map(r=>[r,before[r]+1])));
  for(const value of Object.values(g.p.resourceLimits))assert(Number.isSafeInteger(value));
 }
 // All independently published browser engines and manuals remain byte-identical.
 {
  const crypto=require('node:crypto');for(const [file,hash] of Object.entries(JSON.parse(fs.readFileSync('scripts/workstation-integration-archive-hashes.json','utf8'))))assert.equal(crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex'),hash,file);
 }
-console.log('Playtest Feedback and integration: center site, 15 relics, combined card, closest signals, capacity, off-turn authority, III timing, moon Shipyards, spawn/stationary combat, market continuations, portal draw and immutable archives passed.');
+console.log('Playtest Feedback and integration: center site, 16 relics, combined card, closest signals, capacity, off-turn authority, III timing, moon Shipyards, spawn/stationary combat, market continuations, portal draw and immutable archives passed.');

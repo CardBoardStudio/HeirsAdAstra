@@ -3334,3 +3334,16 @@ body.background-stars .galaxy-board::before {
   .card-table-battle .combat-history { max-height: 24dvh; }
 }
 @media (pointer: coarse) { .combat-tactic { min-height: 66px; } }
+
+/* Relic choices keep the map untouched until a confirmed authoritative action. */
+.relic-choice-dialog { width: min(720px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); box-sizing: border-box; }
+.relic-choice-dialog[open] { display: grid; gap: 10px; }
+.relic-choice-dialog h2, .relic-choice-dialog p { margin: 0; }
+.relic-choice-dialog label { display: grid; gap: 5px; min-width: 0; }
+.relic-choice-dialog input, .relic-choice-dialog select { width: 100%; min-width: 0; box-sizing: border-box; font: inherit; background: var(--surface); color: var(--text); border: 1px solid var(--line-bright); border-radius: 5px; padding: 8px; }
+.relic-choice-dialog select { height: min(180px, 22dvh); }
+.relic-choice-dialog #relic-choice-detail { font-size: .9rem; line-height: 1.35; }
+.relic-choice-dialog #relic-choice-detail[hidden] { display: none; }
+.relic-choice-dialog option { padding: 7px 4px; }
+.relic-choice-dialog .dialog-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (pointer: coarse) { .relic-choice-dialog button, .relic-choice-dialog input { min-height: 44px; } }

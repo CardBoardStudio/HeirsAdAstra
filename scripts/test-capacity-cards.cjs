@@ -37,10 +37,10 @@ assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
 assert.equal(prices.reduce((n, p) => n + p, 0), 219, 'Price v1 reduces the eight selected designs by eleven resources total');
 assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
 
-// Setup: nine face-up cards (three per price tier) from 56 cards that mix both decks; target defaults to 30.
+// Setup: nine face-up cards (three per price tier) from 54 cards that mix both decks; target defaults to 30.
 {
   const g = game(), { s } = g, decks = Object.values(s.marketDecks).flat();
-  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 56); assert.equal(s.victoryTarget, 30);
+  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 54); assert.equal(s.victoryTarget, 30);
   delete s.victoryTarget; assert.equal(g.e.victoryTarget(),40,'Legacy targetless saves retain40');
   const supply = [...s.market, ...decks].map(c => c.key);
   for (const key of Object.keys(catalog.MARKET_CARDS)) assert.equal(supply.filter(k => k === key).length, 2, `${key} has two copies`);
@@ -197,6 +197,6 @@ for (const stored of [0, 1, 8]) {
   const st = sim.state();
   assert.notEqual(st.winner, null, 'Rivals finish a 40-point game');
   assert(sim.prestige(st.winner) >= st.victoryTarget); assert(st.round > 10, 'A 40-point game takes many rounds');
-  assert(st.players.some(p => p.cardsPurchased >= 3), 'Rivals buy market cards'); assert(st.players.every(p => (p.storagePurchases || 0) >= 1), 'Every rival buys a Capacity Module'); assert(st.players.every(p => (p.storageUpgrades || 0) >= 1), 'Every rival plays a Capacity Module');
+  assert(st.players.some(p => p.cardsPurchased >= 3), 'Rivals buy market cards'); assert(st.players.some(p => (p.storagePurchases || 0) >= 1), 'Rivals still buy Capacity Modules; relic capacity can replace that investment for others'); assert(st.players.some(p => (p.storageUpgrades || 0) >= 1), 'Rivals still play purchased Capacity Modules');
 }
 console.log('Capacity Cards: 34 retained stable ids including three draw-two cards within starting limits, nine-card tiered market, military deck purchases, Buy cards and Wonders, one-step orders, printed Construct discounts, Capacity Module purchase and play, rival capacity targeting and a full 40-point rival game passed.');

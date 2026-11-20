@@ -48,6 +48,7 @@ async function main() {
   const cards = () => evaluate('[...document.querySelectorAll(".gallery-card")].map(c=>({key:c.dataset.cardKey,code:c.dataset.cardCode,name:c.querySelector("h3").textContent,effect:c.querySelector(".effect .sr-only").textContent,formatted:c.querySelector(".effect-symbols").innerHTML,cost:c.querySelector(".gallery-cost .resource-dots")?.getAttribute("aria-label"),tier:c.closest("[data-market-tier]")?.dataset.marketTier||null,image:c.querySelector(".gallery-art img")?.getAttribute("src")}))');
   const note = async (code, text) => evaluate(`(()=>{const area=document.querySelector(${JSON.stringify('#note-' + code)});area.value=${JSON.stringify(text)};area.dispatchEvent(new Event('input',{bubbles:true}));})()`);
   try {
+    await browser.send('Page.addScriptToEvaluateOnNewDocument',{source:"if(location.protocol==='http:'&&!localStorage.getItem('galactic-reach-card-feedback-31-36'))localStorage.setItem('galactic-reach-card-feedback-31-36',JSON.stringify({R01:{vote:'like',note:'Retired relic history'},N17:{vote:'neutral',note:'Retired starter-trash history'}}));"});
     await browser.navigate(`${origin}/galactic-reach/cards.html`);
     await wait('document.querySelectorAll(".gallery-art img").length === ' + artCount + ' && document.querySelector("#store-status").textContent.includes("Saving is on")');
     assert(await evaluate('document.querySelector("#toggle-feedback").getAttribute("aria-expanded")==="false" && [...document.querySelectorAll(".gallery-feedback")].every(e=>e.hidden) && document.querySelector("#feedback-export").hidden'), 'A first visit starts compact');
@@ -67,7 +68,7 @@ async function main() {
       if (market[card.key]) assert.equal(card.cost, catalog.RESOURCES.filter(r => def.cost[r]).map(r => `${def.cost[r]} ${catalog.RESOURCE_NAMES[r]}`).join(', '));
       else assert.equal(card.cost, undefined, 'Relics have no market cost box');
     }
-    assert.equal(initial.find(c => c.key === 'phaseShearDrive').code, 'R01');
+    assert.equal(initial.find(c => c.key === 'firstDawnEchoes').code, 'R02');
     assert.equal(initial.find(c => c.key === 'keepersArchive').code, 'R15');
     assert(initial.filter(c => relics[c.key]).every(c => /^R\d{2}$/.test(c.code)));
 
@@ -77,30 +78,32 @@ async function main() {
     await click('#toggle-feedback');
     assert(await evaluate('document.querySelector("#toggle-feedback").getAttribute("aria-expanded")==="true" && [...document.querySelectorAll(".gallery-feedback")].every(e=>!e.hidden)'), 'Feedback can be shown for every visible card');
     assert(await evaluate('document.querySelector(".gallery-card").getBoundingClientRect().height') > compactHeight + 100, 'Hiding feedback removes the bottom section of each card');
-    await click('[data-card="R01"][data-vote="like"]');
+    await click('[data-card="R02"][data-vote="like"]');
     const relicNote = 'Relic feedback: keep <this> text & its timing.';
-    await note('R01', relicNote); await click('[data-save="R01"]');
-    await wait('document.querySelector("#state-R01").textContent === "Saved for the developer."');
-    assert.deepEqual(posted[0], { card: 'R01', vote: 'like', note: relicNote, game: 'card gallery' });
+    await note('R02', relicNote); await click('[data-save="R02"]');
+    await wait('document.querySelector("#state-R02").textContent === "Saved for the developer."');
+    assert.deepEqual(posted[0], { card: 'R02', vote: 'like', note: relicNote, game: 'card gallery' });
+    await note('R24','New Oracle feedback');await click('[data-save="R24"]');await wait('document.querySelector("#state-R24").textContent === "Saved for the developer."');assert.equal(posted[1].card,'R24');
     await filter('normal');
     await click('[data-card="N27"][data-vote="neutral"]'); await note('N27', 'Existing market feedback'); await click('[data-save="N27"]');
     await wait('document.querySelector("#state-N27").textContent === "Saved for the developer."');
-    assert.equal(posted[1].card, 'N27');
+    assert.equal(posted[2].card, 'N27');
     saving = false;
     await browser.navigate(`${origin}/galactic-reach/cards.html`);
     await wait('document.querySelectorAll(".gallery-art img").length === ' + artCount + ' && document.querySelector("#store-status").textContent.includes("browser only")');
     assert.equal(await evaluate('document.querySelector("#toggle-feedback").getAttribute("aria-expanded")'), 'true', 'The feedback display preference survives reload');
     await filter('relic');
-    assert.equal(await evaluate('document.querySelector("#note-R01").value'), relicNote, 'Reload retains relic feedback');
+    assert.equal(await evaluate('document.querySelector("#note-R02").value'), relicNote, 'Reload retains relic feedback');
     await note('R15', 'Browser-only relic note'); await click('[data-save="R15"]');
     assert.match(await evaluate('document.querySelector("#state-R15").textContent'), /Saved in this browser/);
-    assert.equal(posted.length, 2, 'Browser-only Save sends no network write');
+    assert.equal(posted.length, 3, 'Browser-only Save sends no network write');
     await click('#toggle-feedback');
     assert(await evaluate('document.querySelector("#note-R15").closest(".gallery-feedback").hidden'));
     await click('#toggle-feedback');
     assert.equal(await evaluate('document.querySelector("#note-R15").value'), 'Browser-only relic note', 'Hiding feedback never clears a note');
     const exported = await evaluate('document.querySelector("#feedback-text").value');
-    assert.match(exported, /R01 Phase-Shear Drive: like/); assert.match(exported, /R15 Keepers’ Archive: no vote/); assert.match(exported, /N27 Signal Relay: neutral/);
+    assert.match(exported,/R01 Phase-Shear Drive: like — Retired relic history/);assert.match(exported,/N17 Archive Purge: neutral — Retired starter-trash history/);assert.match(exported,/R24 Oracle of the Unmade: no vote — New Oracle feedback/);
+    assert.match(exported, /R02 Echoes of the First Dawn: like/); assert.match(exported, /R15 Keepers’ Archive: no vote/); assert.match(exported, /N27 Signal Relay: neutral/);
     await filter('all');
     await evaluate('document.querySelector("#sort-cards").value="price";document.querySelector("#sort-cards").dispatchEvent(new Event("change"))');
     const sorted = await cards();

@@ -9,7 +9,7 @@ for(const [kind,stats] of Object.entries(e.SHIP_STATS))assert.equal(JSON.stringi
 view.shipCosts.settler.matter=99;assert.equal(e.SHIP_STATS.settler.cost.matter,1);assert.equal(a.observe(1).shipCosts.settler.matter,1,'Ship costs are public clones, not mutable engine definitions');
 let checked=0;
 for(const [key,card] of Object.entries(e.ALL_CARDS)){
- const stats=view.cardStats[key];
+ const stats=view.cardStats[key];assert.equal(stats.relicAbility,card.relicAbility||null);assert.equal(stats.battleRelic,!!card.battleRelic);
  for(const field of ['range','assault','colonyPrestige','fallbackDraw'])assert.equal(stats[field],card[field]||0,key+': '+field);
  for(const field of ['pathfinder','secondBuild','keepSettler'])assert.equal(stats[field],!!card[field],key+': '+field);
  assert.equal(stats.colonyCost,card.colonyCost??null,key+': preserve free versus unspecified cost');

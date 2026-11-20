@@ -1,0 +1,70 @@
+// Actual browser controls for the new relic actions; no production APIs are written.
+const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),http=require('node:http'),assert=require('node:assert/strict');
+const {launch,findChrome}=require('./check-viewport-fit.cjs');
+const root=path.resolve(__dirname,'..'),dir=path.join(root,'prototypes/galactic-reach'),app=fs.readFileSync(path.join(dir,'app.js'),'utf8'),adapter=fs.readFileSync(path.join(dir,'adapter.js'),'utf8');
+const plain=x=>JSON.parse(JSON.stringify(x));let serial=0;const card=key=>({key,id:`ui-relic-${serial++}`});
+function game(){const c=vm.createContext({});vm.runInContext(adapter+app,c);let e,n=4;const create=c.createGalacticAdapter;c.createGalacticAdapter=p=>{e=p;return create(p);};c.createGalacticReach({headless:true,random:()=>((n=(Math.imul(n,1664525)+1013904223)>>>0)/2**32)});const s=e.state;s.phase='operations';s.activePlayer=0;s.turnStage='prep';s.pendingCombat=null;s.fleets={};for(const p of s.players){p.hand=[];p.deck=[];p.discard=[];p.inPlay=[];p.passed=false;}return {e,s,p:s.players[0]};}
+function fixture(kind){const g=game(),{s,p,e}=g;
+ if(kind==='echoes'){p.hand=[card('firstDawnEchoes')];p.inPlay=[{...card('construct'),starter:true,upgraded:true,level:3},card('foldedWarehouse')];}
+ if(kind==='keepers'){p.hand=[card('keepersArchive')];p.resources={matter:10,energy:10,biomass:10,data:10};p.resourceLimits={matter:20,energy:20,biomass:20,data:20};s.market=[card('worldEngine')];}
+ if(kind==='reservoir'){p.hand=[card('prismaticReservoir')];p.resourceLimits={matter:4,energy:4,biomass:4,data:8};p.resources={matter:0,energy:0,biomass:0,data:5};}
+ if(kind==='tactics'||kind==='reinforce'){
+  const at=s.clusters[4].center,source=s.clusters[0].center;Object.assign(s.planets[at],{owner:null,hasColony:false,upgrade:null});
+  if(kind==='tactics'){
+   p.hand=[card('warSongOfHollowStars'),card('theSilentHour')];s.fleets[at]={0:{fleet:3,explorer:0,settler:0},1:{fleet:3,explorer:0,settler:0}};
+   e.executeMove(0,at,at,{units:{fleet:3,explorer:0,settler:0},moveGroup:'ships'});
+   for(const seat of [0,1])e.applyCombatAction(seat,{type:'combat_stay'});
+   for(const seat of [0,1])e.applyCombatAction(seat,{type:'combat_tactic',tactic:'defensiveScreen'});
+  }else{
+   p.hand=[card('horizonSail')];const near=Object.keys(s.planets).find(c=>c!==at&&Math.max(...c.split(',').map(Number).map(Math.abs))<2);
+   s.activePlayer=1;s.fleets[at]={0:{fleet:1,explorer:0,settler:0},1:{fleet:3,explorer:0,settler:0}};s.fleets[near]={0:{fleet:2,explorer:0,settler:0}};
+   e.executeMove(1,at,at,{units:{fleet:3,explorer:0,settler:0},moveGroup:'ships'});
+   assert.equal(e.combatActor(),0);assert.equal(s.pendingCombat.stage,'opening');
+  }
+ }
+ return plain(s);
+}
+const types={'.js':'text/javascript','.css':'text/css','.html':'text/html','.json':'application/json','.webp':'image/webp','.svg':'image/svg+xml'};
+const server=http.createServer((req,res)=>{
+ const u=new URL(req.url,'http://localhost');
+ if(u.pathname.endsWith('/channel.js')){res.setHeader('content-type','text/javascript');res.end('globalThis.galacticReachChannel=null;');return;}
+ if(u.pathname.endsWith('/zk/seat.js')){res.setHeader('content-type','text/javascript');res.end('export {};');return;}
+ let relative=u.pathname.replace(/^\/galactic-reach\/?/,'');if(!relative)relative='index.html';
+ const file=path.resolve(dir,relative);if(!file.startsWith(dir+path.sep)||!fs.existsSync(file)||!fs.statSync(file).isFile()){res.writeHead(404);res.end();return;}
+ res.setHeader('content-type',types[path.extname(file)]||'application/octet-stream');
+ if(relative==='index.html'){
+  let html=fs.readFileSync(file,'utf8').replace('<script src="channel.js">','<script>globalThis.drawingBoardTableBoot=true;</script><script src="channel.js">');
+  html=html.replace('<script type="module" src="/galactic-reach/zk/seat.js">','<script>createGalacticReach({paused:()=>true});</script><script type="module" src="/galactic-reach/zk/seat.js">');res.end(html);
+ }else fs.createReadStream(file).pipe(res);
+});
+async function main(){const chrome=findChrome();assert(chrome,'Chrome is required');await new Promise(r=>server.listen(0,'127.0.0.1',r));const origin=`http://127.0.0.1:${server.address().port}`,b=await launch(chrome);
+ const evaluate=x=>b.evaluate(x),wait=x=>evaluate(`new Promise((resolve,reject)=>{const start=Date.now();const poll=()=>{if(${x})resolve(true);else if(Date.now()-start>6000)reject(new Error('Relic UI did not settle'));else setTimeout(poll,30);};poll();})`);
+ const saved=()=>evaluate('JSON.parse(localStorage.getItem("galactic-reach-save-v38"))');
+ const click=selector=>evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)throw new Error('Missing control '+${JSON.stringify(selector)});e.click();})()`);
+ const select=(selector,text)=>evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)}),o=[...e.options].find(o=>o.textContent.includes(${JSON.stringify(text)}));if(!o)throw new Error('Missing choice '+${JSON.stringify(text)});e.value=o.value;e.dispatchEvent(new Event('change',{bubbles:true}));})()`);
+ const fit=async()=>{const r=await evaluate('(()=>{const d=[...document.querySelectorAll("dialog[open]")].at(-1),r=d.getBoundingClientRect();return {left:r.left,right:r.right,top:r.top,bottom:r.bottom,width:innerWidth,height:innerHeight,scroll:d.scrollHeight,client:d.clientHeight,scrollWidth:d.scrollWidth,clientWidth:d.clientWidth,id:d.id,overflow:getComputedStyle(d).overflowY};})()');assert(r.left>=-1&&r.top>=-1&&r.right<=r.width+1&&r.bottom<=r.height+1,JSON.stringify(r));assert(r.scrollWidth<=r.clientWidth+2,'No horizontal dialog overflow');if(r.width>=600||r.id==='relic-action-dialog')assert(r.scroll<=r.client+2,'The relic dialog fits without page/dialog scrolling: '+JSON.stringify(r));else if(r.scroll>r.client+2)assert(['auto','scroll'].includes(r.overflow),'Phone battle content remains scrollable');};
+ const load=async kind=>{await b.navigate(origin+'/galactic-reach/rulebook.html');await evaluate(`localStorage.clear();localStorage.setItem('galactic-reach-save-v38',${JSON.stringify(JSON.stringify(fixture(kind)))});`);await b.navigate(origin+'/galactic-reach/');await wait('document.querySelector(".hex") && !document.querySelector("#setup-dialog")?.open');await evaluate('document.fonts.ready');};
+ const shot=async name=>{if(!process.env.SHOTS)return;fs.mkdirSync(process.env.SHOTS,{recursive:true});const r=await b.send('Page.captureScreenshot',{format:'png'});fs.writeFileSync(path.join(process.env.SHOTS,name+'.png'),Buffer.from(r.data,'base64'));};
+ try{
+  await b.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+  for(const [width,height,touch] of [[1280,720,false],[1440,900,false],[1024,768,true],[768,1024,true],[390,844,true],[320,700,true]]){
+   await b.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:touch});await b.send('Emulation.setTouchEmulationEnabled',{enabled:touch,maxTouchPoints:1});
+   await load('echoes');await click('[data-order-card]');await wait('document.querySelector("#relic-action-dialog").open');await fit();
+   await select('#relic-choice-options','Construct III + Folded Warehouse');await shot(`echoes-${width}x${height}`);
+   if(touch){const p=await evaluate('(()=>{const r=document.querySelector("#relic-choice-confirm").getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()');await b.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[p]});await b.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
+   else{await evaluate('document.querySelector("#relic-choice-confirm").focus()');await b.send('Input.dispatchKeyEvent',{type:'keyDown',key:'Enter',code:'Enter',windowsVirtualKeyCode:13,text:'\r',unmodifiedText:'\r'});await b.send('Input.dispatchKeyEvent',{type:'keyUp',key:'Enter',code:'Enter',windowsVirtualKeyCode:13});}
+   await wait('!document.querySelector("#relic-action-dialog").open');let s=await saved();assert.equal(s.players[0].hand.length,2);assert(s.players[0].inPlay.some(c=>c.key==='firstDawnEchoes'));
+   await load('keepers');await click('[data-order-card]');await select('#relic-choice-options','World Engine · pay 4 Matter');await fit();assert((await evaluate('document.querySelector("#relic-choice-detail").textContent')).includes("Build or commission once at no resource cost"), await evaluate('JSON.stringify({value:document.querySelector("#relic-choice-options").value,text:document.querySelector("#relic-choice-detail").textContent,hidden:document.querySelector("#relic-choice-detail").hidden})'));await shot(`keepers-${width}x${height}`);await click('#relic-choice-cancel');s=await saved();assert.equal(s.players[0].resources.matter,10);assert(s.players[0].hand.some(c=>c.key==='keepersArchive'));
+   await click('[data-order-card]');await select('#relic-choice-options','World Engine · pay 4 Matter');await click('#relic-choice-confirm');s=await saved();assert.equal(s.players[0].resources.matter,6);assert(s.players[0].discard.some(c=>c.key==='worldEngine'));
+   await load('reservoir');await click('[data-order-card]');await click('#relic-choice-confirm');await wait('document.querySelector("#relic-choice-help").textContent.includes("Capacity draft")');
+   await select('#relic-choice-options','Move 3 capacity: Data → Matter');await click('#relic-choice-confirm');await fit();s=await saved();assert.equal(s.pendingRelic.limits.matter,7);assert.equal(s.players[0].resourceLimits.matter,4);
+   await b.navigate(origin+'/galactic-reach/');await wait('document.querySelector("#relic-action-dialog").open');await fit();await select('#relic-choice-options','Confirm capacity redistribution');await click('#relic-choice-confirm');s=await saved();assert.equal(s.players[0].resourceLimits.matter,7);assert.equal(s.players[0].resourceLimits.data,5);
+   await load('tactics');await wait('document.querySelector("#combat-dialog").open');await fit();await evaluate('[...document.querySelectorAll("#combat-options button")].find(e=>e.textContent==="Play a battle relic").click()');await select('#relic-choice-options','War-Song');await click('#relic-choice-confirm');s=await saved();assert.equal(s.pendingCombat.hands.attacker.defensiveScreen,2);
+   await evaluate('[...document.querySelectorAll("#combat-options button")].find(e=>e.textContent==="Play a battle relic").click()');await select('#relic-choice-options','The Silent Hour');await click('#relic-choice-confirm');s=await saved();assert(s.pendingCombat.silent.attacker);await shot(`battle-relics-${width}x${height}`);
+   await load('reinforce');await wait('document.querySelector("#battle-relic-option")');await fit();await select('#battle-relic-option','2 Fleets');if(touch){const point=await evaluate('(()=>{const e=document.querySelector("#battle-relic-confirm");e.scrollIntoView({block:"center"});const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()');await b.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});await b.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}else await click('#battle-relic-confirm');s=await saved();assert.equal(s.pendingCombat.defenderPieces.filter(p=>p.type==='fleet').length,3);assert.equal(s.pendingCombat.stage,'escape');
+   console.log(`ok - relic choices, native ${touch?'touch':'keyboard'}, capacity draft/reload, battle plays and defense ${width}×${height}`);
+  }
+  assert.deepEqual(b.errors,[],'No runtime exceptions');
+ }finally{b.close();server.close();}
+}
+main().catch(e=>{console.error(e);server.close();process.exitCode=1;});

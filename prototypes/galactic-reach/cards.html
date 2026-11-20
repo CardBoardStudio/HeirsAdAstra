@@ -132,8 +132,9 @@
     };
     const market = Object.entries(catalog.MARKET_CARDS || { ...catalog.ADVANCED_CARDS, ...catalog.MARKET_MILITARY }).map(([key, def]) => ({ key, ...def }));
     const relics = Object.entries(catalog.RELIC_CARDS).map(([key, def]) => {
-      if (!relicIds[key]) throw new Error(`Missing gallery feedback id for relic ${key}`);
-      return { key, ...def, code: relicIds[key], relic: true };
+      const code=def.code||relicIds[key];
+      if (!code) throw new Error(`Missing gallery feedback id for relic ${key}`);
+      return { key, ...def, code, relic: true };
     });
     const cards = [...market, ...relics];
     const family = card => card.relic ? 'relic' : card.military ? 'military' : 'normal';
@@ -179,7 +180,7 @@
           ${card.relic ? '' : `<div class="gallery-cost">${catalog.resourceDots ? catalog.resourceDots(card.cost) : chips(card.cost)}</div>`}
           <p class="effect" title="${esc(card.text)}"><span class="effect-symbols" aria-hidden="true">${catalog.iconText ? catalog.iconText(card.text) : esc(card.text)}</span><span class="sr-only">${esc(card.text)}</span></p>
           </div>
-          ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.BOARD_ICONS?.starbase || ''}</figure>`}
+          ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.BOARD_ICONS?.[card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase'] || ''}</figure>`}
           ${card.relic ? '<p class="needs">Excavation reward · no market price</p>' : needs(card) ? `<p class="needs">Needs ${esc(needs(card))}</p>` : ''}
           <div class="gallery-feedback" ${feedbackVisible ? '' : 'hidden'}>
           <div class="vote" role="group" aria-label="Your verdict on ${esc(card.name)}">
@@ -230,10 +231,10 @@
       }
       renderExport();
     }
+    const retiredFeedbackNames={N17:'Archive Purge',R01:'Phase-Shear Drive',R04:'Obelisk of Annihilation',R05:'Aegis of the Silent Architects',R09:'Memory Prism',R10:'Archive of Tides',R11:'Stellar Crucible',R12:'Evergreen Ark',R14:'Cinder Drive'};
     function renderExport() {
-      const lines = cards.filter(c => saved[c.code]?.vote || saved[c.code]?.note?.trim())
-        .sort((a, b) => a.code.localeCompare(b.code))
-        .map(c => `${c.code} ${c.name}: ${saved[c.code].vote || 'no vote'}${saved[c.code].note?.trim() ? ` — ${saved[c.code].note.trim()}` : ''}`);
+      const lines = Object.entries(saved).filter(([,entry])=>entry?.vote||entry?.note?.trim()).sort(([a],[b])=>a.localeCompare(b))
+        .map(([code,entry])=>`${code} ${cards.find(c=>c.code===code)?.name||retiredFeedbackNames[code]||'Retired card'}: ${entry.vote||'no vote'}${entry.note?.trim()?` — ${entry.note.trim()}`:''}`);
       $('#feedback-text').value = lines.length ? `Galactic Reach ${catalog.rulesVersion} card feedback\n${lines.join('\n')}` : '';
     }
     $('#deck-filter').insertAdjacentHTML('beforeend', [['all', `All ${cards.length}`], ['normal', 'Normal deck'], ['military', 'Military deck'], ['relic', 'Alien relics']]
@@ -257,6 +258,7 @@
     function renderCredits() {
       const names = Object.fromEntries([catalog.BASIC_CARDS, catalog.BASIC_TACTICS, catalog.ADVANCED_CARDS, catalog.MARKET_MILITARY, catalog.RELIC_CARDS]
         .flatMap(set => Object.entries(set)).map(([key, def]) => [key, `${def.code ? `${def.code} · ` : ''}${def.name}`]));
+      for(const [key,code] of Object.entries(relicIds))if(!names[key]&&retiredFeedbackNames[code])names[key]=`${code} · ${retiredFeedbackNames[code]}`;
       const families = {};
       for (const [key, work] of Object.entries(art)) (families[work.family] ||= []).push([key, work]);
       $('#credit-groups').innerHTML = Object.entries(families).map(([family, works]) => `<h3>${esc(family)}</h3><ul class="credit-list">${works.map(([key, work]) => `<li>

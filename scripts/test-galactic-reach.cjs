@@ -128,3 +128,5 @@ require("./test-maxbot.cjs");
 
 require("./test-maxbot-study.cjs");
 require("./test-captured-harvesters.cjs");
+
+require('./test-relic-deck.cjs');
