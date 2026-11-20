@@ -412,7 +412,7 @@
       bank.home = document.createComment('Card bank home');
       bank.node.before(bank.home);
     }
-    let enabled = false, selected = 'market', wasBuying = false, wasExcavating = false, wasChoosing = false, relicsRequested = false, opener = null;
+    let enabled = false, selected = 'market', wasBuying = false, wasExcavating = false, wasChoosing = false, relicsRequested = false, opener = null, fitFrame = 0;
     const active = () => document.body.classList.contains('background-stars');
     const buying = () => !$('#finish-buy-button').hidden;
     const excavating = () => !$('#cancel-excavate').hidden;
@@ -472,6 +472,10 @@
       }
       labelMarketRows();
       if (!enabled) return;
+      // The engine's first fit precedes the updated hand and bank layout. Refit
+      // after those settle so a transient width cannot leave an iPad off-center.
+      cancelAnimationFrame(fitFrame);
+      fitFrame = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
       const buy = buying(), choosing = excavating();
       const dig = choosing && (relicsRequested || !!$('#relic-row [data-excavate-relic]:not(:disabled)'));
       $('#max-bank-finish').hidden = !buy;
