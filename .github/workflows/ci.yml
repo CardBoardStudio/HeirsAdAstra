@@ -37,6 +37,17 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: ./scripts/build-web.sh
       - run: node scripts/check-rulebook.cjs dist/galactic-reach
+      - name: Table setup and independent device roles
+        run: |
+          cargo build --locked -p server
+          DEV_AUTH=1 BIND_ADDR=127.0.0.1:3324 APP_ORIGIN=http://127.0.0.1:3324 DATABASE_PATH=/tmp/tabletop-roles.sqlite target/debug/server > /tmp/tabletop-roles.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 50); do
+            curl -fsS http://127.0.0.1:3324/api/health >/dev/null && break
+            sleep 1
+          done
+          TABLETOP_ORIGIN=http://127.0.0.1:3324 node scripts/check-tabletop-roles.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: drawing-board-web

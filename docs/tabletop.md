@@ -1,4 +1,4 @@
-# Shared board and private phones
+# Tables, personal players and optional public displays
 
 The [prototype epic](https://github.com/CardBoardStudio/drawing_board/issues/121)
 adds an online browser experience for an Android tablet and iPhone Safari. The
@@ -14,14 +14,27 @@ board receives counts, not hand/deck contents, and combat uses the nonparticipan
 projection. Finishing a game does not expand board access. Raw table events and
 full replay reports are not board APIs.
 
-The host of an existing shared table chooses **Pair public board**, then opens or
-copies the one-use link onto the tablet. **Revoke board links** invalidates all
+The organizer uses **Table setup** to manage the room independently of any
+playing screen. **Play here** opens the organizer’s existing seat on this device;
+**Pair my other device** delegates that same seat. Guest players can use phones,
+desktops or personal tablets. Their complete game already adapts to the viewport;
+further layout controls are tracked in #155.
+
+**Show public board here** opens a public display, or **Pair another board** shares
+a QR/link with a separate screen, before or after Start. Waiting displays contain
+only the table name and waiting status. No display connection is required to start
+or continue. The server remains the authority when all screens close.
+
+The host of an existing shared table may also choose **Pair public board**, then
+open or copy the one-use link onto another screen. **Revoke board links** invalidates all
 board links and sessions for that table. Older pinned engines without the public
 projection explain that a fresh table is needed; they are not upgraded.
 
 A 256-bit random link token travels in the fragment, is removed from browser
 history before redemption, and is exchanged once for a separate HttpOnly,
-SameSite=Strict cookie. HTTPS adds Secure. The cookie is scoped to that table's
+SameSite=Strict cookie. Public displays use a separate board cookie so opening a
+board does not overwrite a private player session in another tab. Existing board
+cookies remain readable until expiry or revocation. HTTPS adds Secure. The cookie is scoped to that table's
 API path; storage contains only SHA-256 verifiers. Links expire after 24 hours;
 device sessions expire after 30 days. Host revocation applies to both.
 
@@ -37,6 +50,10 @@ network or visibility changes. No credential is placed in a request URL.
 - `node scripts/test-shared-tables.cjs`: hidden-card, relic, combat and public DTO checks.
 - `cargo test -p server tabletop`: role/table scope, expiration, revocation,
   invite-only boundaries and restored public views.
+- `TABLETOP_ORIGIN=http://127.0.0.1:PORT node scripts/check-tabletop-roles.cjs`:
+  real create/setup flow, guest approval, a waiting display, personal tablet/phone,
+  independent cookies, display revocation followed by play, reload and anonymous
+  rules. Runs in CI against an isolated DEV_AUTH server. `SHOTS=path` saves captures.
 - `node scripts/check-tabletop-ui.cjs`: Chromium desktop, tablet orientations and
   phone sizing, keyboard sector inspection and public cards. `SHOTS=path` saves
   screenshots. Browser emulation does not certify physical Android or iOS.
@@ -45,8 +62,12 @@ Player-facing rules live only in the [canonical rulebook](../prototypes/galactic
 
 ## Guest phone pairing
 
-In an account-owned waiting room, **Pair phones / public tablet** opens the host
-setup page. The host's phone uses the host's existing player seat. Guests scan a
+New shared tables open **Table setup** directly. An existing account-owned
+waiting room also links there. The organizer still owns a player seat, independent
+of which device shows the public board; this does not add a nonplaying organizer
+seat. **Play here** requires the signed-in owner and issues or reuses a scoped
+player session without revoking a paired device. Explicit replacement still
+revokes old player grants. Other host operations keep the account membership gate. Guests scan a
 room QR or follow its link, choose a local name and request approval. Match the
 six-character pairing code before approving. QR encoding uses the local
 [`qrcode` SVG renderer](https://docs.rs/qrcode/0.14.1/qrcode/render/svg/); no
