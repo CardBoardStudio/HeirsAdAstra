@@ -2262,6 +2262,92 @@ function createGalacticReach(options = {}) {
   }
 
   let relicChoiceCard=null,relicChoiceBattle=false,relicChoiceChosen=false,reservoirCommitting=false;
+  let relicCardPick=null,relicCardReturns=[],relicCardPayment=null;
+  function relicCardMode(cardId) {
+    if(replayMode||!document.body.classList.contains('background-stars')||state.phase!=='operations'||state.activePlayer!==ME||!canManageResources(ME))return null;
+    const card=state.players[ME].hand.find(c=>c.id===cardId),ability=card&&ALL_CARDS[card.key].relicAbility;
+    return ['oracle','keepers','echoes'].includes(ability)?ability:null;
+  }
+  function closeRelicCards() {
+    const dialog=$('#relic-card-dialog');
+    if(dialog?.open){dialog.dataset.card='';dialog.close();}
+  }
+  function relicCardAction(mode,actions) {
+    if(mode==='echoes') {
+      const ids=state.players[ME].inPlay.map(c=>c.id).filter(id=>relicCardReturns.includes(id)).sort();
+      return actions.find(a=>a.cards&&a.cards.length===ids.length&&a.cards.every((id,i)=>id===ids[i]));
+    }
+    return actions.find((a,i)=>a.key===relicCardPick&&(mode==='oracle'||i===relicCardPayment));
+  }
+  function updateRelicCardSelection() {
+    const mode=relicCardMode(relicChoiceCard),actions=availableRelicChoices();
+    if(!mode)return;
+    const payment=$('#relic-card-payment'),paymentLabel=$('#relic-card-payment-label');
+    paymentLabel.hidden=mode!=='keepers'||!relicCardPick;
+    if(!paymentLabel.hidden) {
+      const plans=actions.map((a,i)=>({a,i})).filter(({a})=>a.key===relicCardPick);
+      if(!plans.some(({i})=>i===relicCardPayment))relicCardPayment=plans[0]?.i??null;
+      payment.innerHTML=plans.map(({a,i})=>`<option value="${i}">${esc(relicActionLabel(a).replace(/^.*? · pay /,'Pay '))}</option>`).join('');
+      payment.value=String(relicCardPayment);
+    }
+    const action=relicCardAction(mode,actions);
+    $('#relic-card-dialog').querySelectorAll('[data-relic-card]').forEach(button=>{
+      const chosen=mode==='echoes'?relicCardReturns.includes(button.dataset.relicCard):button.dataset.relicCard===relicCardPick;
+      button.setAttribute('aria-pressed',String(chosen));
+      button.classList.toggle('card-choice-selected',chosen);
+      if(mode==='echoes')button.disabled=!chosen&&relicCardReturns.length>=2;
+      if(chosen&&mode==='keepers'&&action){
+        const cost=purchaseCost(state.players[ME],action.key);
+        button.querySelector('.card-footer').innerHTML=`<small>Buy</small>${marketCostDots(state.players[ME],Object.fromEntries(RESOURCES.map(r=>[r,(cost[r]||0)-action.discount[r]])))}`;
+      }
+    });
+    $('#relic-card-confirm').disabled=!action;
+    $('#relic-card-confirm').textContent=mode==='echoes'?`Return ${relicCardReturns.length} card${relicCardReturns.length===1?'':'s'}`:action?`Buy ${ALL_CARDS[action.key].name}`:'Choose a card';
+    $('#relic-card-status').textContent=mode==='echoes'?`${relicCardReturns.length} of 2 selected`:'Select a card, then confirm its purchase.';
+  }
+  function renderRelicCards(mode,actions) {
+    const dialog=$('#relic-card-dialog'),player=state.players[ME],card=player.hand.find(c=>c.id===relicChoiceCard);
+    const oldPositions=new Map([...dialog.querySelectorAll('.card-choice-row')].map(row=>[row.dataset.row,row.scrollLeft]));
+    dialog.dataset.card=relicChoiceCard;dialog.dataset.mode=mode;
+    $('#relic-card-title').textContent=ALL_CARDS[card.key].name;
+    $('#relic-card-help').textContent=mode==='oracle'?'Browse all market designs. Buy one available deck copy at normal cost; normal cards enter your hand.':mode==='keepers'?'Choose a face-up market card, then choose how to reduce its price by two.':'Select up to two other cards In play to return to your hand.';
+    const offers=mode==='oracle'?Object.keys(MARKET_CARDS).map(key=>({key})):mode==='keepers'?[...new Map(state.market.map(c=>[c.key,c])).values()]:player.inPlay.filter(c=>c.id!==relicChoiceCard);
+    const tiers=mode==='echoes'?[{id:'in-play',name:'In play'}]:MARKET_TIERS;
+    $('#relic-card-options').innerHTML=tiers.map(tier=>{
+      const cards=offers.filter(c=>mode==='echoes'||marketTier(c.key)===tier.id);
+      const markup=cards.map(c=>{
+        let cost=mode==='echoes'?null:purchaseCost(player,c.key);
+        const legal=actions.filter(a=>mode==='echoes'?a.cards?.includes(c.id):a.key===c.key);
+        if(mode==='keepers') {
+          const discounts=legal.length?legal.map(a=>a.discount):storageAllocations(Math.min(2,RESOURCES.reduce((n,r)=>n+(cost[r]||0),0))).filter(d=>RESOURCES.every(r=>d[r]<=(cost[r]||0)));
+          const discount=discounts[0];if(discount)cost=Object.fromEntries(RESOURCES.map(r=>[r,(cost[r]||0)-discount[r]]));
+        }
+        const enabled=mode==='echoes'||legal.length>0,reason=cost?marketBlockReason(player,cost,true):{};
+        const why=enabled?'':reason.card||'No copy remains in the eligible market supply.';
+        return marketCardMarkup(c,tier,cost,enabled,why,`data-relic-card="${esc(mode==='echoes'?c.id:c.key)}" aria-pressed="false"`);
+      }).join('')||'<p class="card-choice-empty">No cards here.</p>';
+      const name=tier.id==='medium'?'Moderate':tier.name,id=`relic-cards-${tier.id}`;
+      return `<section class="card-choice-tier" aria-label="${name} cards"><span class="card-choice-tier-label">${name}</span><button type="button" class="button card-choice-page" data-card-page="-1" data-card-row="${tier.id}" aria-label="Previous ${name} cards" aria-controls="${id}">‹</button><div class="card-choice-row" data-row="${tier.id}" id="${id}" tabindex="0" role="group" aria-label="${name}: ${cards.length} cards">${markup}</div><button type="button" class="button card-choice-page" data-card-page="1" data-card-row="${tier.id}" aria-label="Next ${name} cards" aria-controls="${id}">›</button></section>`;
+    }).join('');
+    $$('[data-relic-card]').forEach(button=>button.addEventListener('click',()=>{
+      if(mode==='echoes') {
+        const id=button.dataset.relicCard;
+        relicCardReturns=relicCardReturns.includes(id)?relicCardReturns.filter(v=>v!==id):relicCardReturns.length<2?[...relicCardReturns,id]:relicCardReturns;
+      } else {relicCardPick=button.dataset.relicCard;relicCardPayment=null;}
+      updateRelicCardSelection();
+    }));
+    const rows=[...dialog.querySelectorAll('.card-choice-row')];
+    const syncPages=()=>dialog.querySelectorAll('[data-card-page]').forEach(button=>{
+      const row=rows.find(r=>r.dataset.row===button.dataset.cardRow);
+      button.disabled=Number(button.dataset.cardPage)<0?row.scrollLeft<=1:row.scrollLeft+row.clientWidth>=row.scrollWidth-1;
+    });
+    dialog.querySelectorAll('[data-card-page]').forEach(button=>button.addEventListener('click',()=>{
+      const row=rows.find(r=>r.dataset.row===button.dataset.cardRow);
+      row.scrollBy({left:Number(button.dataset.cardPage)*(row.clientWidth+12),behavior:'smooth'});
+    }));
+    rows.forEach(row=>{row.scrollLeft=oldPositions.get(row.dataset.row)||0;row.addEventListener('scroll',syncPages);});
+    updateRelicCardSelection();if(!dialog.open)dialog.showModal();if(typeof requestAnimationFrame==='function')requestAnimationFrame(syncPages);
+  }
   function availableRelicChoices() {
     if(relicChoiceBattle)return combatActions(ME).filter(a=>a.type==='combat_relic');
     const actions=network?(serverHints.relics||[]):state.pendingRelic?relicDraftActions(ME):relicOperations(ME);
@@ -2269,16 +2355,20 @@ function createGalacticReach(options = {}) {
   }
   function openRelicChoice(cardId=null,battle=false) {
     relicChoiceCard=cardId;relicChoiceBattle=battle;relicChoiceChosen=false;
+    relicCardPick=null;relicCardReturns=[];relicCardPayment=null;
     const input=$('#relic-choice-filter');if(input)input.value='';
-    if(!availableRelicChoices().length){relicChoiceCard=null;relicChoiceBattle=false;toast('No eligible choice for this relic right now.');return;}
+    if(!availableRelicChoices().length&&!relicCardMode(cardId)){relicChoiceCard=null;relicChoiceBattle=false;toast('No eligible choice for this relic right now.');return;}
     renderRelicChoice();
   }
   function renderRelicChoice() {
     if(headless||replayMode)return;
     const dialog=$('#relic-action-dialog');if(!dialog)return;
     if(state.pendingRelic?.playerId===ME){relicChoiceCard=state.pendingRelic.card;relicChoiceBattle=false;}
-    if(!relicChoiceBattle&&!relicChoiceCard){if(dialog.open)dialog.close();return;}
+    if(!relicChoiceBattle&&!relicChoiceCard){if(dialog.open)dialog.close();closeRelicCards();return;}
     const actions=availableRelicChoices();
+    const cardMode=!relicChoiceBattle&&relicCardMode(relicChoiceCard);
+    if(cardMode){if(dialog.open)dialog.close();renderRelicCards(cardMode,actions);return;}
+    closeRelicCards();
     if(!actions.length){relicChoiceCard=null;relicChoiceBattle=false;if(dialog.open)dialog.close();if(storageAllocationDraft?.redistribute)$('#storage-allocation-dialog').close();return;}
     const card=state.players[ME].hand.find(c=>c.id===relicChoiceCard),def=card&&ALL_CARDS[card.key];
     if(!relicChoiceBattle&&def?.relicAbility==='reservoir'&&document.body.classList.contains('background-stars')) {
@@ -2313,7 +2403,7 @@ function createGalacticReach(options = {}) {
   }
   function cancelRelicChoice() {
     const draft=state.pendingRelic?.playerId===ME;
-    relicChoiceCard=null;relicChoiceBattle=false;$('#relic-action-dialog').close();
+    relicChoiceCard=null;relicChoiceBattle=false;$('#relic-action-dialog').close();closeRelicCards();
     if(draft)applyRelicAction(ME,{type:'relic_cancel'});
   }
 
@@ -5053,6 +5143,15 @@ function createGalacticReach(options = {}) {
     $('#hand-help').textContent=state.pendingConstruct?.playerId===ME?`${pendingBuildName()}: choose a second full-cost build, convert cards if needed, or finish after one.`:state.pendingColonyBuild&&state.activePlayer===ME?'Colonize II: choose an adjacent hex for one building at full cost, convert cards if needed, or finish without building.':prep?'Use an order directly on a card, or convert cards for resources.':state.turnStage==='action'&&state.actionMode?`${state.actionOptions.cardName||'Order'} selected. You may still convert cards, cancel it, trade, or pass.`:state.turnStage==='action'?'Convert cards as needed, play one order card, make a Trade action, or pass.':'Keep Buy cards for your Buy turn and reactions for later attacks. Used cards stay in play; remaining hands and cards in play are discarded at shared round cleanup, then everyone draws five.';
   }
 
+  // The Market and card-selection prompts share the same printed card and cost marks.
+  function marketCardMarkup(card,tier,cost,enabled,why,attributes='') {
+    const def=ALL_CARDS[card.key],player=state.players[ME],disabled=!enabled;
+    const level=card.starter&&starterLevel(card)>1?` ${starterLevel(card)===3?'III':'II'}`:'';
+    const text=def.text+(level?` ${level.trim()}: ${upgradedOrderText(card)}${starterLevel(card)===3&&card.key!=='construct'?' Draw one card when using the order.':''}`:'');
+    const note=cost?marketBlockReason(player,cost,true).note:'';
+    return `<button type="button" class="game-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}" style="--card-accent:${def.accent}" ${attributes} ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${esc(tier.name)}: ${esc(def.code||'')} ${esc(def.name+level)}${def.military?', military deck':''}${disabled?`. Unavailable: ${esc(why)}`:''}"><span class="card-type">${def.code?def.code+' · ':''}${def.military?'Military deck':def.kind}</span><span class="card-name">${def.name}${level}</span>${def.resource?`<span class="card-gain" title="Converts for">${eachResourceGain(def.resource)?`<span class="gain-each">${eachResourceGain(def.resource)} each</span>`:resourceDots(def.resource)}</span>`:''}${cardIllustration(def)}<span class="card-effect">${resourceText(text)}</span><span class="card-icons" aria-hidden="true">${iconText(text)}</span><span class="card-footer"><small>${cost?'Buy':'In play'}</small>${cost?marketCostDots(player,cost):''}</span>${note?`<span class="card-limit-note">${esc(note)}</span>`:''}</button>`;
+  }
+
   function renderMarket() {
     const humanBuy=!replayMode&&state.phase==='buy'&&state.activePlayer===ME;
     const me0=state.players[ME];
@@ -5065,12 +5164,11 @@ function createGalacticReach(options = {}) {
     });
     $('#market-row').innerHTML=replayMode?'<p class="muted">Replays record purchases in the game log, not the market row.</p>':slots.map(({card,index,tier})=>{
       if(!card)return `<div class="game-card unavailable market-empty" data-market-tier="${tier.id}" role="note" aria-label="${tier.name} deck empty: this slot stays empty"><span class="card-type">${tier.name}</span><span class="card-name">Deck empty</span></div>`;
-      const def=ALL_CARDS[card.key],cost=purchaseCost(me0,card.key);
+      const cost=purchaseCost(me0,card.key);
       const disabled=!humanBuy||!canAfford(me0,cost);
       const reason=marketBlockReason(me0,cost,humanBuy);
-      const note=reason.note?`<span class="card-limit-note">${reason.note}</span>`:'';
       const why=disabled?[reason.turn,reason.card].filter(Boolean).join(' ')||'You cannot buy this card now.':'';
-      return `<button class="game-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}" style="--card-accent:${def.accent}" data-buy-market="${index}" data-market-tier="${tier.id}" data-card-id="${card.id}" ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${tier.name} market: ${esc(def.code)} ${esc(def.name)}${def.military?', military deck':''}${disabled?`. Unavailable: ${esc(why)}`:''}"><span class="card-type">${def.code} · ${def.military?'Military deck':def.kind}</span><span class="card-name">${def.name}</span>${def.resource?`<span class="card-gain" title="Converts for">${eachResourceGain(def.resource)?`<span class="gain-each">${eachResourceGain(def.resource)} each</span>`:resourceDots(def.resource)}</span>`:''}${cardIllustration(def)}<span class="card-effect">${resourceText(def.text)}</span><span class="card-icons" aria-hidden="true">${iconText(def.text)}</span><span class="card-footer"><small>Buy</small>${marketCostDots(me0,cost)}</span>${note}</button>`;
+      return marketCardMarkup(card,{...tier,name:tier.name+' market'},cost,!disabled,why,`data-buy-market="${index}" data-market-tier="${tier.id}" data-card-id="${card.id}"`);
     }).join('');
     $$('[data-buy-market]').forEach(button=>button.addEventListener('click',()=>{if(buyCard(ME,'market',Number(button.dataset.buyMarket))){render();saveGame();}}));
     $('#finish-buy-button').hidden=!humanBuy;
@@ -5597,7 +5695,8 @@ function createGalacticReach(options = {}) {
       if (groups.has(key)) groups.get(key).count += 1;
       else groups.set(key, { ...piece, count: 1 });
     }
-    return `<div class="combat-units">${[...groups.values()].map(piece => {
+    const shown=document.body.classList.contains('background-stars')?force.pieces.map(piece=>({...piece,count:1})):[...groups.values()];
+    return `<div class="combat-units">${shown.map(piece => {
       const name = SHIP_STATS[piece.type]?.name || 'Shipyard', hull = Math.max(0, piece.hull - piece.damage), destroyed = hull === 0;
       const label = `${piece.count > 1 ? `${piece.count} × ` : ''}${name}: ${destroyed ? 'destroyed' : `${piece.power} attack, ${hull}/${piece.hull} hull${piece.count > 1 ? ' each' : ''}`}`;
       return `<figure class="combat-unit${destroyed ? ' destroyed' : ''}" aria-label="${esc(label)}">${boardIcon(piece.type)}<figcaption><strong>${esc(name)}${piece.count > 1 ? ` ×${piece.count}` : ''}</strong><span>${destroyed ? 'Destroyed' : `<b>${piece.power}</b> attack · <b>${hull}/${piece.hull}</b> hull${piece.count > 1 ? ' each' : ''}`}</span></figcaption><span class="combat-hull" aria-hidden="true"><span style="width:${100 * hull / piece.hull}%"></span></span></figure>`;
@@ -5632,6 +5731,7 @@ function createGalacticReach(options = {}) {
     if (combatTableUi.key !== key) combatTableUi = { key, tactic: null, inspect: null, escape: 0 };
     if (combatTableUi.tactic && !actions.some(action => action.type==='combat_tactic' && action.tactic===combatTableUi.tactic)) combatTableUi.tactic=null;
     dialog.classList.add('card-table-battle');
+    dialog.classList.toggle('combat-many-ships',document.body.classList.contains('background-stars')&&Math.max(mine.pieces.length,enemy.pieces.length)>8);
     dialog.classList.toggle('combat-dense', Math.max(combatTableInventory(mine).length, combatTableInventory(enemy).length)>6);
     $('#combat-volley').hidden=false;
     $('#combat-volley').textContent=view.stage==='opening'?'Opening relics':view.stage==='aftermath'?'After battle':view.stage==='escape'?'Before combat':`Volley ${view.volley} of 3`;
@@ -6237,7 +6337,10 @@ function createGalacticReach(options = {}) {
     $('#sector-popover').addEventListener('toggle',()=>{ pointedOrderCard=null; syncPlaysHere(); });
     fitTable();
     window.addEventListener('resize',fitTable);
-    window.addEventListener('resize',()=>{if(state.pendingRelic||storageAllocationDraft?.redistribute)renderRelicChoice();});
+    window.addEventListener('resize',()=>{
+      if(state.pendingRelic||storageAllocationDraft?.redistribute||relicCardMode(relicChoiceCard))renderRelicChoice();
+      if(state.pendingCombat)renderCombat();
+    });
     window.addEventListener('resize',fitMarket);
     // A resized window starts the column untightened, so a window that grows gets it back.
     window.addEventListener('resize',() => { document.documentElement.classList.remove('left-tight', 'left-tighter'); stackLeft(); });
@@ -6375,6 +6478,16 @@ function createGalacticReach(options = {}) {
     $('#relic-choice-filter').addEventListener('input',renderRelicChoice);
     $('#relic-choice-options').addEventListener('change',()=>{relicChoiceChosen=true;renderRelicChoiceDetail();});
     $('#relic-choice-cancel').addEventListener('click',cancelRelicChoice);
+    $('#relic-card-close').addEventListener('click',cancelRelicChoice);
+    $('#relic-card-dialog').addEventListener('close',()=>{
+      if(relicChoiceCard===$('#relic-card-dialog').dataset.card){relicChoiceCard=null;relicChoiceBattle=false;}
+    });
+    $('#relic-card-payment').addEventListener('change',()=>{relicCardPayment=Number($('#relic-card-payment').value);updateRelicCardSelection();});
+    $('#relic-card-confirm').addEventListener('click',()=>{
+      const mode=relicCardMode(relicChoiceCard),action=mode&&relicCardAction(mode,availableRelicChoices());
+      if(!action)return;
+      relicChoiceCard=null;relicChoiceBattle=false;closeRelicCards();applyRelicAction(ME,action);
+    });
     $('#relic-action-dialog').addEventListener('cancel',event=>{event.preventDefault();cancelRelicChoice();});
     $('#relic-choice-confirm').addEventListener('click',()=>{const a=availableRelicChoices()[Number($('#relic-choice-options').value)];if(!a)return;const battle=relicChoiceBattle;relicChoiceCard=null;relicChoiceBattle=false;relicChoiceChosen=false;$('#relic-action-dialog').close();if(battle)applyCombatAction(ME,a);else applyRelicAction(ME,a);});
     const combatDialog=$('#combat-dialog');
