@@ -1240,7 +1240,7 @@ body.background-stars .board-stage.map-zoomed .max-resource-legend {
 .storage-allocation-option>span:not(.resource-symbol) { flex:1; font-weight:650; }
 .storage-allocation-option small { display:block; margin-top:5px; color:var(--muted); font-weight:400; font-size:12px; }
 .storage-allocation-option input { width:64px; min-height:42px; padding:8px; }
-@media (max-width:359px) {
+@media (max-width:599px) {
   body.background-stars .storage-allocation-grid { grid-template-columns:minmax(0,1fr); }
 }
 #storage-allocation-status { color:var(--gold); }
