@@ -1,3 +1,5 @@
+// Historical Rust policy compatibility fixture only. New studies use browser-bot-study.cjs.
+process.env.GR_ALLOW_ARCHIVED_RUST_BOTS='1';
 // Branch every public defender reply while choosing attackers through the real Rust bridge.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const {bridge}=require('./native-investment-study.cjs');

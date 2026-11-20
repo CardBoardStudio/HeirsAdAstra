@@ -20,7 +20,7 @@ impl GameKind {
     fn pool(self) -> &'static str {
         match self {
             Self::Voidwright => "voidwright/2:duel:20-rounds:policies-v1",
-            Self::GalacticReach => "galactic-reach/38.43:four-player:placement:policies-v29",
+            Self::GalacticReach => "galactic-reach/38.43:four-player:placement:browser-v1",
         }
     }
     fn seats(self) -> usize {
@@ -32,7 +32,7 @@ impl GameKind {
                 strategy(version)?;
             }
             Self::GalacticReach => {
-                galactic_reach::Strategy::parse(version)
+                galactic_reach::BrowserProfile::parse(version)
                     .ok_or_else(|| bad("Choose a Galactic Reach policy."))?;
             }
         }
@@ -101,10 +101,10 @@ pub async fn catalog() -> Json<serde_json::Value> {
         {"game":"voidwright","id":"explorer","version":"explorer/1","name":"Explorer","description":"Experiments with random purchases and sometimes passes."},
         {"game":"voidwright","id":"merchant","version":"merchant/1","name":"Merchant","description":"Builds a resource economy, then buys scoring colonies."},
         {"game":"voidwright","id":"kepler","version":"kepler/1","name":"Kepler","description":"Balances resource growth with a small action engine."}
-        ,{"game":"galactic-reach","id":"gr-military","version":"gr-military/29","name":"Vanguard","description":"Builds warships and shipyards, then moves toward rival colonies."}
-        ,{"game":"galactic-reach","id":"gr-economy","version":"gr-economy/29","name":"Architect","description":"Prioritizes production, storage, and industry."}
-        ,{"game":"galactic-reach","id":"gr-expansion","version":"gr-expansion/29","name":"Pathfinder","description":"Builds Settlers and seeks new colony sites."}
-        ,{"game":"galactic-reach","id":"gr-wanderer","version":"gr-wanderer/29","name":"Wanderer","description":"Samples useful legal actions with seeded randomness."}
+        ,{"game":"galactic-reach","id":"gr-military","version":"gr-browser-military/1","name":"Vanguard","description":"Builds warships and shipyards, then moves toward rival colonies."}
+        ,{"game":"galactic-reach","id":"gr-economy","version":"gr-browser-economy/1","name":"Architect","description":"Prioritizes production, storage, and industry."}
+        ,{"game":"galactic-reach","id":"gr-expansion","version":"gr-browser-expansion/1","name":"Pathfinder","description":"Builds Settlers and seeks new colony sites."}
+        ,{"game":"galactic-reach","id":"gr-market","version":"gr-browser-market/1","name":"Market","description":"Prioritizes useful market cards with the browser policy."}
     ],"pool":GameKind::Voidwright.pool()}))
 }
 #[derive(Serialize)]
@@ -170,15 +170,20 @@ pub async fn create_bot(
 ) -> ApiResult<Json<serde_json::Value>> {
     let u = user(&app, &headers)?;
     let name = clean(&input.name, 32)?;
-    let version = format!(
-        "{}/{}",
-        input.strategy,
-        if input.game == GameKind::GalacticReach {
-            29
-        } else {
-            1
+    let version = if input.game == GameKind::GalacticReach {
+        use galactic_reach::BrowserProfile;
+        match input.strategy.as_str() {
+            "gr-military" => BrowserProfile::Military,
+            "gr-economy" => BrowserProfile::Economy,
+            "gr-market" => BrowserProfile::Market,
+            "gr-expansion" => BrowserProfile::Expansion,
+            _ => return Err(bad("Choose a current browser rival policy.")),
         }
-    );
+        .version()
+        .to_owned()
+    } else {
+        format!("{}/1", input.strategy)
+    };
     input.game.validate_policy(&version)?;
     let mut db = app.store.0.lock().map_err(internal)?;
     let tx = db.transaction().map_err(internal)?;
@@ -483,10 +488,10 @@ pub fn calibrate(
     }
     let game = GameKind::GalacticReach;
     let policies: Vec<String> = [
-        "gr-military/29",
-        "gr-economy/29",
-        "gr-expansion/29",
-        "gr-wanderer/29",
+        "gr-browser-military/1",
+        "gr-browser-economy/1",
+        "gr-browser-expansion/1",
+        "gr-browser-market/1",
     ]
     .into_iter()
     .map(String::from)
@@ -546,7 +551,7 @@ pub fn calibrate(
             "Military baseline",
             "Economy baseline",
             "Expansion baseline",
-            "Wanderer baseline",
+            "Market baseline",
         ]) {
             tx.execute("INSERT OR IGNORE INTO accounts(id,name,kind,owner_id,policy,created) VALUES(?,?,'ai',?,?,?)",params![id,name,owner,policy,now()]).map_err(internal)?;
             tx.execute(
@@ -563,6 +568,29 @@ pub fn calibrate(
 #[cfg(test)]
 mod calibration_tests {
     use super::*;
+    #[test]
+    fn new_arena_matches_reject_archived_rust_policies() {
+        for role in ["military", "economy", "market", "expansion", "wanderer"] {
+            assert!(
+                GameKind::GalacticReach
+                    .validate_policy(&format!("gr-{role}/29"))
+                    .is_err()
+            );
+        }
+        for profile in [
+            galactic_reach::BrowserProfile::Military,
+            galactic_reach::BrowserProfile::Economy,
+            galactic_reach::BrowserProfile::Market,
+            galactic_reach::BrowserProfile::Expansion,
+        ] {
+            assert!(
+                GameKind::GalacticReach
+                    .validate_policy(profile.version())
+                    .is_ok()
+            );
+        }
+        assert!(GameKind::GalacticReach.pool().contains("browser-v1"));
+    }
     #[test]
     fn incomplete_simulations_report_limits_instead_of_storage_failure() {
         for reason in [

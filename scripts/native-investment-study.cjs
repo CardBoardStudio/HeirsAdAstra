@@ -6,6 +6,7 @@ const {SimulationArchive,resultDirectory,hash}=require('./lib/simulation-archive
 const ROOT=path.resolve(__dirname,'..'),RUNNER=fs.readFileSync(__filename,'utf8'),RES=['matter','energy','biomass','data'];
 const blank=()=>Object.fromEntries(RES.map(r=>[r,0]));
 function bridge(binary){
+ if(globalThis.process.env.GR_ALLOW_ARCHIVED_RUST_BOTS!=='1')throw Error('Rust bots are archived. Use scripts/browser-bot-study.cjs for new studies. Only historical reproduction may set GR_ALLOW_ARCHIVED_RUST_BOTS=1.');
  const process=spawn(binary,[],{stdio:['pipe','pipe','pipe']});let pending=null,serial=0,closed=false,stderr='';
  const fail=error=>{closed=true;if(pending){clearTimeout(pending.timer);pending.reject(error);pending=null;}};
  process.stdin.on('error',fail);process.on('error',fail);process.on('exit',(code,signal)=>fail(Error(`Native bridge exited (${code}/${signal}): ${stderr}`)));process.stderr.on('data',s=>stderr=(stderr+s).slice(-8000));
@@ -18,7 +19,7 @@ function bridge(binary){
  },close(){process.kill();}};
 }
 async function play(task,sources,directory,binary){
- const recorder=new SimulationArchive({directory,metadata:task,rulebookSource:sources.rulebook,sources:{'native-study.cjs':RUNNER,'native-policy.rs':sources.rust,'native-bridge.rs':sources.bridge,'Cargo.lock':sources.lock}});
+ const recorder=new SimulationArchive({directory,metadata:task,rulebookSource:sources.rulebook,sources:{...(fs.existsSync(path.join(ROOT,'crates/galactic-reach/src/archived_rust.rs'))?{'archived-rust.rs':fs.readFileSync(path.join(ROOT,'crates/galactic-reach/src/archived_rust.rs'),'utf8')}:{}),'native-study.cjs':RUNNER,'native-policy.rs':sources.rust,'native-bridge.rs':sources.bridge,'Cargo.lock':sources.lock}});
  let seed=task.seed>>>0;const random=()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);
  const metrics=Array.from({length:4},()=>({gained:blank(),lost:blank(),spent:blank(),bankGiven:blank(),bankReceived:blank(),ships:{settler:0,explorer:0,fleet:0},draws:0,upgrades:0,colonizations:0,captures:0}));
  const market=Array.from({length:4},()=>({marketBuys:{},marketPlays:{},militaryTacticPlays:{},harvestersBuilt:0,firstHarvesterRound:null,firstMarketRound:null,buyTurns:0,affordableOffers:0,valuableOffers:0}));

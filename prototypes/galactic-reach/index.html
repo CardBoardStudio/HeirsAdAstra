@@ -257,6 +257,7 @@
       <label for="new-game-target">Prestige target</label>
       <select id="new-game-target"></select>
       <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 30.</p>
+      <label><input type="checkbox" id="new-game-maxbot"> Play against MaxBot instead of the Economy rival</label>
       <p id="new-game-neighbor" class="new-game-neighbor"></p>
       <div class="dialog-actions"><button class="button button-ghost" value="cancel" type="submit">Cancel</button><button class="button button-primary" value="start" type="submit" id="new-game-start">Start new game</button></div>
     </form>
@@ -443,8 +444,17 @@
   </dialog>
 
   <dialog id="relic-catalog-dialog" class="relic-catalog-dialog" aria-labelledby="relic-catalog-title">
-    <div class="dialog-heading"><div><div class="eyebrow">TECHNOLOGY FROM LOST CIVILIZATIONS</div><h2 id="relic-catalog-title">Alien relic deck</h2><p>23 unique cards, one of each. Use Excavate at a relic to choose one of the three face-up cards for your discard pile.</p></div><button class="button button-ghost" id="close-relic-catalog" type="button">Close relic preview</button></div>
+    <div class="dialog-heading"><div><div class="eyebrow">TECHNOLOGY FROM LOST CIVILIZATIONS</div><h2 id="relic-catalog-title">Alien relic deck</h2><p>16 unique cards, one of each. Use Excavate at a relic to choose one of the three face-up cards for your discard pile.</p></div><button class="button button-ghost" id="close-relic-catalog" type="button">Close relic preview</button></div>
     <div class="relic-catalog-grid" id="relic-catalog-grid"></div>
+  </dialog>
+
+  <dialog id="relic-action-dialog" class="choice-dialog relic-choice-dialog" aria-labelledby="relic-choice-title">
+    <h2 id="relic-choice-title">Choose a relic action</h2>
+    <p id="relic-choice-help"></p>
+    <label for="relic-choice-filter">Find a card or location<input type="search" id="relic-choice-filter" autocomplete="off"></label>
+    <label for="relic-choice-options">Available choices<select id="relic-choice-options" size="7"></select></label>
+    <p id="relic-choice-detail" aria-live="polite" hidden></p>
+    <div class="dialog-actions"><button class="button button-primary" id="relic-choice-confirm" type="button">Play relic</button><button class="button" id="relic-choice-cancel" type="button">Cancel</button></div>
   </dialog>
 
   <script src="channel.js"></script>

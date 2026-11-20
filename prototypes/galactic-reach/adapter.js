@@ -5,6 +5,7 @@ function createGalacticAdapter(e) {
   const activeSeat = () => {
     if (s().winner !== null) return null;
     if (s().pendingCombat) return e.combatActor();
+    if (s().pendingRelic) return s().pendingRelic.playerId;
     const pending = e.overflowPlayer();
     return pending >= 0 ? pending : s().activePlayer;
   };
@@ -20,7 +21,7 @@ function createGalacticAdapter(e) {
       // 34.39: printed Wonder Prestige, military card stats and the capture rule, published for the same reason.
       marketPrestige: offers.map(card => e.ALL_CARDS[card.key]?.gainPrestige || 0),
       // Printed effects are public; no deck order or private hand is included here.
-      cardStats: Object.fromEntries(Object.entries(e.ALL_CARDS).map(([key,c])=>[key,{order:c.order,kind:c.kind,tag:c.tag,military:!!c.military,draw:c.effect?.draw||c.orderDraw||(c.tag==='alienEchoes'?3:0),fallbackDraw:c.fallbackDraw||0,limits:c.effect?.limits,prestige:c.effect?.prestige||0,gainPrestige:c.gainPrestige||0,buildDiscount:c.buildDiscount||null,range:c.range||0,assault:c.assault||0,pathfinder:!!c.pathfinder,secondBuild:!!c.secondBuild,colonyCost:c.colonyCost??null,keepSettler:!!c.keepSettler,colonyPrestige:c.colonyPrestige||0,bankRate:c.effect?.bankRate||0,buyEffect:c.buyEffect||null,trashSelf:!!c.effect?.trashSelf,trashStarters:c.effect?.trashStarters||0,victoryPrestige:c.victoryPrestige||0,attack:c.attack||0,shield:c.shield||0,pierce:!!c.pierce}])),
+      cardStats: Object.fromEntries(Object.entries(e.ALL_CARDS).map(([key,c])=>[key,{order:c.order,kind:c.kind,tag:c.tag,relicAbility:c.relicAbility||null,battleRelic:!!c.battleRelic,military:!!c.military,draw:c.effect?.draw||c.orderDraw||(c.tag==='alienEchoes'?3:0),fallbackDraw:c.fallbackDraw||0,limits:c.effect?.limits,prestige:c.effect?.prestige||0,gainPrestige:c.gainPrestige||0,buildDiscount:c.buildDiscount||null,range:c.range||0,assault:c.assault||0,pathfinder:!!c.pathfinder,secondBuild:!!c.secondBuild,colonyCost:c.colonyCost??null,keepSettler:!!c.keepSettler,colonyPrestige:c.colonyPrestige||0,bankRate:c.effect?.bankRate||0,buyEffect:c.buyEffect||null,trashSelf:!!c.effect?.trashSelf,trashStarters:c.effect?.trashStarters||0,victoryPrestige:c.victoryPrestige||0,attack:c.attack||0,shield:c.shield||0,pierce:!!c.pierce}])),
       tacticStats: Object.fromEntries(Object.entries(e.MILITARY_CARDS).map(([key, c]) => [key, { attack: c.attack || 0, shield: c.shield || 0, pierce: !!c.pierce }])),
       combatVictoryPrestige: e.COMBAT_VICTORY_PRESTIGE, captureNeedsFleet: true, phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
@@ -54,6 +55,7 @@ function createGalacticAdapter(e) {
     }
     if (cached) return e.clone(cached);
     const state = s(), p = state.players[seat], actions = [];
+    if(state.pendingRelic){cached=e.relicDraftActions(seat);return e.clone(cached);}
     if (state.pendingCombat) {
       cached=e.combatActions(seat);return e.clone(cached);
     }
@@ -122,6 +124,7 @@ function createGalacticAdapter(e) {
         const gain = e.cardResources(card);
         if (e.canConvertCard(card)) actions.push({ type: 'resource', ...base, gain });
         if (state.pendingColonyBuild) return;
+        if(def.relicAbility){actions.push(...e.relicOperations(seat,card.id));return;}
         if(e.canConstructDraw(seat,card.id))actions.push({type:'construct_draw',...base});
         if (e.canOrderDraw(seat,card.id)) actions.push({type:'order_draw',...base});
         if (def.order === 'colonize') Object.keys(state.planets).forEach(coord => {
@@ -204,6 +207,8 @@ function createGalacticAdapter(e) {
     const state = s(), p = state.players[seat], card = p.hand.find(c => c.id === action.card);
     const def = card && e.ALL_CARDS[card.key];
     switch (action.type) {
+      case 'relic': case 'relic_shift': case 'relic_confirm': case 'relic_cancel': e.applyRelicAction(seat,action); return;
+      case 'combat_relic': case 'combat_continue': e.applyCombatAction(seat,action); return;
       case 'combat_escape': case 'combat_stay': case 'combat_tactic': e.applyCombatAction(seat,action); return;
       case 'consortium_gain': e.consortiumGain(seat,action.resource); return;
       case 'consortium_exchange': e.consortiumExchange(seat,action.giveType,action.getType); return;
@@ -258,6 +263,7 @@ function createGalacticAdapter(e) {
   function privateState(seat) {
     if (!Number.isInteger(seat) || seat < 0 || seat >= 4) return null;
     const state = e.clone(s()), stub = n => Array.from({length:n}, () => ({hidden:true}));
+    if(state.pendingRelic?.playerId!==seat)state.pendingRelic=null;
     const byKey = (a,b) => a.key < b.key ? -1 : a.key > b.key ? 1 : String(a.id) < String(b.id) ? -1 : 1;
     state.players.forEach((p, id) => {
       p.handCount = p.hand.length; p.deckCount = p.deck.length;
@@ -335,12 +341,26 @@ function createGalacticAdapter(e) {
   }
   // Legal choices a seat's browser cannot check from its private view alone.
   function hints(seat) {
-    return { probe: legalActions(seat).filter(a => a.type === 'probe').map(a => ({card: a.card, coord: a.coord})) };
+    const actions=legalActions(seat);
+    return { probe: actions.filter(a => a.type === 'probe').map(a => ({card: a.card, coord: a.coord})), relics:actions.filter(a=>a.type==='relic'||a.type.startsWith('relic_')) };
+  }
+  // Server-only entry point: a registered AI seat uses the unmodified browser policy.
+  // Invalidate cached native commands before and after direct browser mutations.
+  function browserStep(seat, profile) {
+    if (activeSeat() !== seat || !['military','economy','market','expansion'].includes(profile)) throw new Error('Invalid browser policy seat or profile');
+    cached = null;
+    s().players[seat].strategy = profile;
+    try {
+      if (s().pendingCombat) e.applyCombatAction(seat, e.chooseCombatAction(e.combatView(seat), e.combatActions(seat)));
+      else if (s().phase === 'operations') e.runAiOperation();
+      else if (s().phase === 'buy') e.runAiBuy();
+      else throw new Error('No browser policy action in this phase');
+    } finally { cached = null; }
   }
   function snapshot() {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/38.43', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, publicState, hints, undoMark, snapshotState };
+  return { browserStep, rulesVersion: 'galactic-reach/38.43', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, publicState, hints, undoMark, snapshotState };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;
