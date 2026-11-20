@@ -36,6 +36,7 @@
 
   const shownAt = {};
   let port = null, frame = 0, coach = null, targeted = [], lastKey = '', lastAnnounced = '', raisedOver = null, currentAnchor = null, currentAvoid = [];
+  let cueCard = null, cueKey = '', inspectedKey = '';
 
   // ---- Reading the table: what the player can do right now. ----
   function context() {
@@ -319,7 +320,7 @@
     return coach;
   }
 
-  function clearTargets() { targeted.forEach(element => element.classList.remove('gr-coach-target', 'gr-coach-goal')); targeted = []; }
+  function clearTargets() { targeted.forEach(element => element.classList.remove('gr-coach-target', 'gr-coach-goal', 'gr-coach-card-cue')); targeted = []; }
 
   // Where to aim at an element: a fanned hand card shows only a strip before the next card
   // covers it, so aim at the middle of that strip (the pointer and a note's tail agree).
@@ -697,7 +698,16 @@
       if (live.length) { const part = live[activeCallout % live.length]; tip = { ...tip, anchor: part.el, text: `${part.label}. ${tip.text}`, step: `${tip.step}:${activeCallout % live.length}`, show: { ...tip.show, noLabels: true } }; }
     }
     following = Boolean(tip?.followCallouts);
-    if (tip) { pendingShow = null; place(tip); setShow(pendingShow); settle(); } else hide();
+    cueCard = tip?.revealOnInspect && shown(tip.anchor) ? tip.anchor : null;
+    cueKey = cueCard ? JSON.stringify([tip.id, tip.step, cueCard.dataset.cardId]) : '';
+    document.body.classList.toggle('gr-card-guidance', Boolean(cueCard));
+    if (cueCard && inspectedKey !== cueKey) {
+      // Start with one real card, without a tooltip, spotlight, pointer or ghost drag.
+      // Inspection reveals the explanation; it stays available for the rest of this step.
+      hide();
+      cueCard.classList.add('gr-coach-target', 'gr-coach-card-cue');
+      targeted.push(cueCard);
+    } else if (tip) { pendingShow = null; place(tip); setShow(pendingShow); settle(); } else hide();
     syncMenu();
   }
 
@@ -744,6 +754,12 @@
     document.addEventListener('click', () => setTimeout(schedule, 0), true);
     document.addEventListener('keydown', () => setTimeout(schedule, 0), true);
     document.addEventListener('pointerup', () => setTimeout(schedule, 0), true);
+    for (const type of ['pointerover', 'focusin', 'pointerdown']) document.addEventListener(type, event => {
+      if (cueCard && cueCard.contains(event.target) && inspectedKey !== cueKey) {
+        inspectedKey = cueKey;
+        schedule();
+      }
+    }, true);
     for (const type of ['pointerover', 'pointerout', 'focusin']) document.addEventListener(type, event => {
       if (coach && !coach.hidden && event.target.closest?.('.game-card')) requestAnimationFrame(() => position(coach, currentAnchor && shown(currentAnchor) ? currentAnchor : null));
     }, true);
