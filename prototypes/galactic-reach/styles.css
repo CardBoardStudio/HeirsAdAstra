@@ -3346,4 +3346,9 @@ body.background-stars .galaxy-board::before {
 .relic-choice-dialog #relic-choice-detail[hidden] { display: none; }
 .relic-choice-dialog option { padding: 7px 4px; }
 .relic-choice-dialog .dialog-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+@media (max-width: 599px) {
+  .relic-choice-dialog { padding: 14px; }
+  .relic-choice-dialog[open] { gap: 8px; }
+  .relic-choice-dialog select { height: min(140px, 20dvh); }
+}
 @media (pointer: coarse) { .relic-choice-dialog button, .relic-choice-dialog input { min-height: 44px; } }
