@@ -2551,6 +2551,7 @@ function createGalacticReach(options = {}) {
     if (headless || replayMode || state.pendingCombat || state.phase!=='operations' || state.activePlayer!==ME || state.actionMode!=='excavate'
       || !site || site.special!=='relic' || site.relicClaimed || !relicKnown(state.clusters[site.cluster],ME) || !getFleet(state.selected,ME)?.explorer) return false;
     switchTab('relics');
+    globalThis.galacticReachMaxUI?.requestRelics?.();
     const scan=$('#sector-popover');
     if (scan.matches(':popover-open')) scan.hidePopover();
     $('#console').scrollIntoView?.({block:'nearest'});
@@ -5868,7 +5869,9 @@ function createGalacticReach(options = {}) {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
     const root = document.documentElement, shell = document.querySelector('.app-shell');
     if (!tableLayout() || !shell) { ['--table-zoom','--table-w','--table-h'].forEach(name => root.style.removeProperty(name)); root.classList.remove('table-wide'); return; }
-    const width = window.innerWidth, height = Math.max(1, window.innerHeight - Math.max(0, shell.getBoundingClientRect().top));
+    // Restoring the green supply after Max’s UI can briefly widen an iPad’s overflow
+    // viewport. Fit to the layout viewport, which keeps the actual device dimensions.
+    const width = root.clientWidth || window.innerWidth, height = Math.max(1, (root.clientHeight || window.innerHeight) - Math.max(0, shell.getBoundingClientRect().top));
     const [tableW, tableH] = tableSize(width, height);
     // Wide tables have room for supply cards in real card proportions; squarer ones keep wider
     // cards so the map stays big.
@@ -5905,7 +5908,7 @@ function createGalacticReach(options = {}) {
   function fitMap() {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
     const root = document.documentElement, region = $('.board-map-region'), board = $('#galaxy-board');
-    const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches && !$('.board-stage.map-zoomed');
+    const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || document.body.classList.contains('background-stars')) && !$('.board-stage.map-zoomed');
     if (!landscape || !region?.getBoundingClientRect || !board) { ['--map-w', '--map-top'].forEach(name => root.style.removeProperty(name)); return; }
     const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1;
     const box = region.getBoundingClientRect(), b = board.getBoundingClientRect();
@@ -5924,9 +5927,9 @@ function createGalacticReach(options = {}) {
     // The bottom band's pieces too: the map reaches down between your hand, piles, buttons and mat.
     const band = [...document.querySelectorAll('#hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].map(e => rect(e));
     // The race line and its goal stick out past the track's box on the right (the counts sit before them).
-    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
+    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('#max-bank-nav')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
     const clear = (width, top) => {
-      const left = box.right - width;
+      const left = document.body.classList.contains('background-stars') ? box.left + (box.width - width) / 2 : box.right - width;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
     };
     // The map lies against the supply. A map shorter than its space may also slide up or down
@@ -6012,10 +6015,11 @@ function createGalacticReach(options = {}) {
   const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel'];
   function stackLeft(depth = 0) {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function' || !document.documentElement?.style) return;
-    const landscape = tableLayout() && window.matchMedia?.('(orientation: landscape)').matches;
+    const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || document.body.classList.contains('background-stars'));
     const zoom = Number(document.documentElement?.style?.getPropertyValue('--table-zoom')) || 1;
     let top = 0;
-    for (const sel of LEFT_STACK) {
+    const stack = [...LEFT_STACK, ...(document.body.classList.contains('background-stars') ? ['#max-bank-nav'] : [])];
+    for (const sel of stack) {
       const el = $(sel);
       if (!el?.style || !el.getBoundingClientRect || !el.matches) continue;
       if (!landscape) { el.style.removeProperty('--stack-top'); continue; }
@@ -6023,9 +6027,12 @@ function createGalacticReach(options = {}) {
       // An open comms log lies over the pieces below it; they keep their places.
       const h = el.matches('.log-panel.open') ? (Number(el.dataset.closedH) || 0) : el.getBoundingClientRect().height / zoom;
       if (el.matches('.log-panel') && !el.matches('.open')) el.dataset.closedH = String(h);
-      if (h) top += h + 8;
+      if (h) top += h + (document.body.classList.contains('background-stars') ? (sel === '#prestige-track' ? 36 : 16) : 8);
     }
-    const root = document.documentElement, legend = $('#map-legend-corner'), last = $(LEFT_STACK.at(-1));
+    const root = document.documentElement, legend = $('#map-legend-corner'), last = $(stack.at(-1));
+    const bankButtons = document.body.classList.contains('background-stars') && landscape ? $('#max-bank-nav')?.getBoundingClientRect?.() : null;
+    if (bankButtons?.height) root.style.setProperty('--max-notice-top', `${Math.round(bankButtons.bottom + 24 * zoom)}px`);
+    else root.style.removeProperty('--max-notice-top');
     // The map key lies in the middle of the column's free height (between the stack and your piles
     // and hand), so the column has no long bare stretch.
     const end = last?.getBoundingClientRect?.(), track = $('#prestige-track')?.getBoundingClientRect?.(), keyBox = legend?.getBoundingClientRect?.();
@@ -6044,7 +6051,8 @@ function createGalacticReach(options = {}) {
     // Trade's handle lies on the table's left edge in the gap between the comms card and the map key,
     // ending above the key where notices appear (in a tight column it may overlap the comms card).
     const stackBottom = landscape ? last?.getBoundingClientRect?.() : null, handleH = $('#open-trade')?.getBoundingClientRect?.().height || 0;
-    if (key?.height && stackBottom?.height) root.style.setProperty('--trade-top', `${Math.round(Math.min((stackBottom.bottom + key.top) / 2, key.top - 4 * zoom - handleH / 2))}px`);
+    if (bankButtons?.height) root.style.setProperty('--trade-top', `${Math.round(bankButtons.bottom + 16 * zoom + handleH / 2)}px`);
+    else if (key?.height && stackBottom?.height) root.style.setProperty('--trade-top', `${Math.round(Math.min((stackBottom.bottom + key.top) / 2, key.top - 4 * zoom - handleH / 2))}px`);
     else root.style.removeProperty('--trade-top');
     // When the stack and the map key cannot both fit above your piles and hand, tighten the column
     // once (the latest comms entry only) and stack again; a second step drops the icon list from
@@ -6155,6 +6163,11 @@ function createGalacticReach(options = {}) {
     if (typeof ResizeObserver === 'function') {
       const refit = new ResizeObserver(() => { fitMarket(); stackLeft(); fitMap(); balanceSupply(); settleFit(); });
       ['.app-shell', '#market-panel', '#relics-panel', '.board-map-region'].forEach(sel => { const el = $(sel); if (el) refit.observe(el); });
+      // Max’s round labels may wrap as fonts settle; keep every item below them in place.
+      const refitMaxLeft = new ResizeObserver(() => {
+        if (document.body.classList.contains('background-stars')) { stackLeft(); fitMap(); settleFit(); }
+      });
+      ['#prestige-track', '.phase-stepper', '.log-panel', '#max-bank-nav'].forEach(sel => { const el = $(sel); if (el) refitMaxLeft.observe(el); });
       // Hex positions are measured as fractions of the board, and a hex's fixed-size parts shift
       // those fractions a little with scale. When a fit has resized the board (a frame later), fit
       // once more at the new size; a fit that keeps the size ends it, so this cannot loop.

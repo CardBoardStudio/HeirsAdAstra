@@ -43,6 +43,7 @@
   // ---- The hand fan: a gentle arc, the middle cards a few pixels higher. ----
   function fanHand() {
     const cards = $$('#hand-row > .game-card');
+    $('#hand-row')?.style.setProperty('--max-hand-count', String(Math.max(2, cards.length)));
     const mid = (cards.length - 1) / 2, step = cards.length > 6 ? 1.4 : 2.2;
     cards.forEach((card, index) => {
       const offset = index - mid;
@@ -167,6 +168,7 @@
       if (after.resources[resource] <= before.resources[resource] && after.resources[resource] >= after.limits[resource]) $(`.resource-box[data-resource="${resource}"]`)?.classList.add('cf-wasted');
   }
   function rendered(next) {
+    globalThis.galacticReachMaxUI?.rendered(next);
     fanHand();
     syncAim();
     const before = view, saved = previous;
@@ -378,6 +380,10 @@
     const render = () => {
       document.body.classList.toggle('background-stars', stars);
       button.setAttribute('aria-pressed', String(stars));
+      globalThis.galacticReachMaxUI?.sync();
+      window.dispatchEvent(new Event('resize'));
+      // Refit after the live supply has returned and its measurements have settled.
+      requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
     };
     render();
     button.addEventListener('click', () => {
@@ -387,5 +393,101 @@
     });
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, {once:true});
+  else init();
+})();
+
+// Max's UI reuses the live supply controls. No copies of cards, costs, or legal actions.
+(() => {
+  const init = () => {
+    const $ = selector => document.querySelector(selector);
+    const dialog = $('#max-bank-dialog');
+    if (!dialog) return; // Archived pages keep their own layout.
+    const banks = {
+      relics: { node: $('#relics-panel'), title: 'Relics', help: 'The three face-up rewards. Excavate at a located relic to claim one.' },
+      market: { node: $('#market-panel'), title: 'Market', help: 'Expensive · Medium · Cheap. Purchased cards enter their normal piles.' },
+      basics: { node: $('#upgrade-group'), title: 'Basics', help: 'Improve your starters, add a Capacity Module, or inspect the Trash pile.' }
+    };
+    const buttons = [...document.querySelectorAll('[data-card-bank]')];
+    for (const bank of Object.values(banks)) {
+      bank.home = document.createComment('Card bank home');
+      bank.node.before(bank.home);
+    }
+    let enabled = false, selected = 'market', wasBuying = false, wasExcavating = false, wasChoosing = false, relicsRequested = false, opener = null;
+    const active = () => document.body.classList.contains('background-stars');
+    const buying = () => !$('#finish-buy-button').hidden;
+    const excavating = () => !$('#cancel-excavate').hidden;
+    function close() { if (dialog.open) dialog.close(); }
+    function choose(name) {
+      if (!banks[name]) return;
+      selected = name;
+      dialog.dataset.bank = name;
+      $('#max-bank-title').textContent = banks[name].title;
+      $('#max-bank-help').textContent = banks[name].help;
+      for (const b of buttons) {
+        if (b.closest('.max-bank-tabs')) b.setAttribute('aria-pressed', String(b.dataset.cardBank === name));
+        else b.setAttribute('aria-expanded', String(dialog.open && b.dataset.cardBank === name));
+      }
+    }
+    function open(name, source) {
+      if (!enabled) return false;
+      if (!dialog.open) {
+        // Do not cover a mandatory choice (combat, overflow, or another inspector).
+        if (document.querySelector('dialog[open]')) return false;
+        opener = source || $(`#max-bank-nav [data-card-bank="${name}"]`);
+        dialog.showModal();
+      }
+      choose(name);
+      return true;
+    }
+    function sync() {
+      const next = active();
+      if (next !== enabled) {
+        enabled = next;
+        close();
+        for (const bank of Object.values(banks)) {
+          if (enabled) $('#max-bank-content').append(bank.node);
+          else bank.home.after(bank.node);
+        }
+        wasBuying = false; wasExcavating = false; wasChoosing = false; relicsRequested = false;
+      }
+      if (!enabled) return;
+      const buy = buying(), choosing = excavating();
+      const dig = choosing && (relicsRequested || !!$('#relic-row [data-excavate-relic]:not(:disabled)'));
+      $('#max-bank-finish').hidden = !buy;
+      $('#max-bank-status').textContent = buy ? 'Your Buy turn · choose cards or finish when ready.' : choosing ? $('#relic-row-help').textContent : 'Browse freely · the usual turn and resource costs apply.';
+      if (dig && (!wasExcavating || relicsRequested)) relicsRequested = !open('relics');
+      else if (buy && !wasBuying) open('market');
+      else if ((wasChoosing && !choosing && selected === 'relics') || (wasBuying && !buy)) close();
+      wasBuying = buy; wasExcavating = dig; wasChoosing = choosing;
+    }
+    for (const button of buttons) button.addEventListener('click', () => open(button.dataset.cardBank, button));
+    $('#max-bank-close').addEventListener('click', close);
+    $('#max-bank-finish').addEventListener('click', () => $('#finish-buy-button').click());
+    dialog.addEventListener('click', event => { if (event.target === dialog) {
+      const r = dialog.getBoundingClientRect();
+      if (event.clientX < r.left || event.clientX > r.right || event.clientY < r.top || event.clientY > r.bottom) close();
+    } });
+    dialog.addEventListener('close', () => {
+      buttons.filter(b => b.closest('#max-bank-nav')).forEach(b => b.setAttribute('aria-expanded', 'false'));
+      if (enabled && opener?.isConnected && opener.checkVisibility()) opener.focus({ preventScroll: true });
+    });
+    // The phone's existing Supply button opens these banks instead of a second supply drawer.
+    $('.phone-drawers [data-drawer="supply"]').addEventListener('click', event => {
+      if (!enabled) return;
+      event.stopImmediatePropagation(); open('market', event.currentTarget);
+    }, true);
+    // A mandatory dialog may close while an excavation/Buy transition is waiting behind it.
+    document.addEventListener('close', event => {
+      if (event.target === dialog || !enabled) return;
+      if (!dialog.open && !document.querySelector('dialog[open]')) {
+        if (excavating() && (relicsRequested || $('#relic-row [data-excavate-relic]:not(:disabled)'))) { relicsRequested = !open('relics'); }
+        else if (buying()) open('market');
+      }
+    }, true);
+    globalThis.galacticReachMaxUI = { sync, rendered: sync, requestRelics() { relicsRequested = true; } };
+    sync();
+    window.dispatchEvent(new Event('resize'));
+  };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();
 })();

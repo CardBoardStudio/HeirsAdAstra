@@ -38,7 +38,7 @@
         <button class="button button-ghost" id="guide-toggle" type="button" aria-pressed="true">Guidance: on</button>
         <button class="button button-ghost" id="undo-turn-button" type="button" disabled title="Available after you complete a turn">Undo turn</button>
         <button class="button button-ghost" id="rules-button" type="button">Rules</button>
-        <button class="button button-ghost" id="background-toggle" type="button" aria-pressed="false">Star background</button>
+        <button class="button button-ghost" id="background-toggle" type="button" aria-pressed="false">Max’s UI</button>
         <button class="button button-ghost" id="open-relic-catalog" type="button" aria-label="Preview all 23 alien relics">Alien relics</button>
         <a class="button button-ghost" id="card-gallery-link" href="cards.html" target="_blank" rel="noopener" style="text-decoration:none">Card gallery</a>
         <button class="button button-ghost" id="new-game-button" type="button">New game</button>
@@ -64,6 +64,12 @@
       <p>Start a new game for 38.43. Existing tables keep their archived rules. The adopted Balance Package rules are retained. <a href="rulebook.html#free-economy">Current rules</a> · <a href="rules/37.42/">Continue a 37.42 game</a> · <a href="rules/33.38/">Continue a 33.38 game</a>.</p>
     </details>
 
+    <nav class="max-bank-nav" id="max-bank-nav" aria-label="Card banks">
+      <span class="max-bank-label">CARD BANKS</span>
+      <button type="button" data-card-bank="relics" aria-haspopup="dialog" aria-controls="max-bank-dialog" aria-expanded="false"><span aria-hidden="true">◈</span>Relics<span aria-hidden="true">↗</span></button>
+      <button type="button" data-card-bank="market" aria-haspopup="dialog" aria-controls="max-bank-dialog" aria-expanded="false"><span aria-hidden="true">▤</span>Market<span aria-hidden="true">↗</span></button>
+      <button type="button" data-card-bank="basics" aria-haspopup="dialog" aria-controls="max-bank-dialog" aria-expanded="false"><span aria-hidden="true">⌘</span>Basics<span aria-hidden="true">↗</span></button>
+    </nav>
     <section class="game-layout">
       <div class="board-column" id="table-board" tabindex="-1">
         <div class="board-toolbar">
@@ -226,6 +232,21 @@
       </section>
     </section>
   </main>
+
+  <dialog id="max-bank-dialog" aria-labelledby="max-bank-title" aria-describedby="max-bank-help">
+    <header class="max-bank-heading">
+      <div><div class="eyebrow">THE SHARED SUPPLY</div><h2 id="max-bank-title">Market</h2></div>
+      <button class="button button-ghost" type="button" id="max-bank-close" autofocus aria-label="Close card bank">Close <span aria-hidden="true">×</span></button>
+    </header>
+    <nav class="max-bank-tabs" aria-label="Choose a card bank">
+      <button type="button" data-card-bank="relics" aria-pressed="false">Relics</button>
+      <button type="button" data-card-bank="market" aria-pressed="true">Market</button>
+      <button type="button" data-card-bank="basics" aria-pressed="false">Basics</button>
+    </nav>
+    <p id="max-bank-help"></p>
+    <div id="max-bank-content"></div>
+    <footer class="max-bank-footer"><span id="max-bank-status" role="status"></span><button class="button button-primary" id="max-bank-finish" type="button" hidden>Finish Buy</button></footer>
+  </dialog>
 
   <nav class="phone-drawers" aria-label="Table drawers"><button type="button" data-drawer="hand" aria-pressed="false">Hand</button><button type="button" data-drawer="supply" aria-pressed="false">Supply</button><button type="button" data-drawer="mat" aria-pressed="false">Mat</button><button type="button" data-drawer="comms" aria-pressed="false">Comms</button><button type="button" data-drawer="table" aria-pressed="false">Table</button></nav>
 
