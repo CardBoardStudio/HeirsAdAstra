@@ -88,12 +88,12 @@ This prints `https://<origin>/#invite/<token>`. Open it, sign in with Nido, and 
 
 ## Dev host
 
-The self-hosted [dev host](release.md#dev-host) (`deploy/dev-host/`) writes `ACCESS=invite-only` into a new `dev.env`. A host installed earlier needs one line added:
+The self-hosted [dev host](release.md#dev-host) (`deploy/dev-host/`) writes `ACCESS=invite-only` into a new `dev.env` (or `stable.env` for a [stable instance](release.md#stable-instance)). A host installed earlier needs one line added:
 
 ```sh
 # /opt/drawing-board-dev/dev.env
 ACCESS=invite-only
-APP_ORIGIN=https://<host>.<tailnet>.ts.net:<public port>
+APP_ORIGIN=https://<public origin of the tunnel or proxy>
 ```
 
 Docker reads `dev.env` only when the container is created, so the change takes effect on the next deploy. To apply it now, remove the container and redeploy the same commit: `docker rm -f drawing-board-dev && /opt/drawing-board-dev/bin/dev-host.sh update`. Check `curl -s http://127.0.0.1:3200/api/session` reports `"invite_only":true`, then make the first administrator as above. Only after that should the host be made public.

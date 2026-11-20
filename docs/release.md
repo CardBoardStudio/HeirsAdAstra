@@ -4,8 +4,8 @@ Two channels, two branches:
 
 | Channel | Branch | Host | What it plays |
 | --- | --- | --- | --- |
-| **Dev** | `main` | Self-hosted [dev host](#dev-host) (`deploy/dev-host/`), tailnet only | Every merged PR, live about a minute after the merge plus a build |
-| **Stable** | `stable` | Render `drawing-board` (<https://drawing-board-p0g3.onrender.com/>) | The last release |
+| **Dev** | `main` | Self-hosted [dev host](#dev-host) (`deploy/dev-host/`), behind an HTTPS tunnel or reverse proxy | Every merged PR, live about a minute after the merge plus a build |
+| **Stable** | `stable` | Render `drawing-board` (<https://drawing-board-p0g3.onrender.com/>), and optionally a self-hosted [stable instance](#stable-instance) | The last release |
 
 Change PRs merge into `main` and go live on dev. Several merges later, one release cut bumps the version once. Merging the standing **Release PR** (`main` → `stable`) is the release. Nothing commits to `stable` directly, so `stable` is always an earlier `main` commit.
 
@@ -118,20 +118,80 @@ Name a new test `heavy_…` when it plays a whole match or takes more than a few
 
 Any Linux machine with Docker, git and systemd can be the dev host. `deploy/dev-host/dev-host.sh` keeps everything under `/opt/drawing-board-dev` (`DEV_HOST_ROOT`): the checkout, a persistent `data/` directory for the dev SQLite database and kept engines, `dev.env` (the server's environment, mode 600), and `dev-host.conf` (`BRANCH`, `PORT`).
 
+The server listens only on `127.0.0.1:<PORT>`. Put an HTTPS tunnel or reverse proxy in front of that port (a Cloudflare Tunnel, Caddy, nginx or `tailscale serve`, for example) and give its public origin to `install` as `APP_ORIGIN`:
+
 ```sh
 git clone https://github.com/CardBoardStudio/drawing_board.git /tmp/drawing-board
-APP_ORIGIN=https://<host>.<tailnet>.ts.net:3200 NIDO_WALLET_HOST=test.nido.fyi \
-  /tmp/drawing-board/deploy/dev-host/dev-host.sh install
-sudo tailscale serve --bg --https=3200 http://127.0.0.1:3200   # tailnet only
+APP_ORIGIN=https://dev.example.com /tmp/drawing-board/deploy/dev-host/dev-host.sh install
+# then route https://dev.example.com to http://127.0.0.1:3200
 ```
 
-`install` creates the directories, writes `dev.env` with `ACCESS=invite-only` ([invite-only hosting](invite-only.md)), and enables the `drawing-board-dev-update.timer` systemd timer. Every minute the timer runs `dev-host.sh update`, which fetches `origin/<BRANCH>`. On a new commit it builds the repository's Dockerfile and only then replaces the `drawing-board-dev` container. The container is bound to `127.0.0.1:<PORT>`, mounts the same `data/` directory, and runs with `GALACTIC_REACH_CHANNEL=dev` and `GIT_COMMIT`. A failed build leaves the running server alone. The three newest images are kept for a manual rollback.
+`install` refuses an `APP_ORIGIN` that is missing or not `https://`. It creates the directories, writes `dev.env` with `ACCESS=invite-only` ([invite-only hosting](invite-only.md)) and `NIDO_WALLET_HOST=test.nido.fyi` (pass `ACCESS` or `NIDO_WALLET_HOST` to `install` to change either), and enables the `drawing-board-dev-update.timer` systemd timer. Every minute the timer runs `dev-host.sh update`, which fetches `origin/<BRANCH>`. On a new commit it builds the repository's Dockerfile and only then replaces the `drawing-board-dev` container. The container is bound to `127.0.0.1:<PORT>`, mounts the same `data/` directory, and runs with `GALACTIC_REACH_CHANNEL=dev` and `GIT_COMMIT`. A failed build leaves the running server alone. The three newest images are kept for a manual rollback.
 
-- Status: `/opt/drawing-board-dev/bin/dev-host.sh status`. Logs: `journalctl -u drawing-board-dev-update` and `docker logs drawing-board-dev`.
-- Accounts: the dev host admits only Nido accounts that hold an invitation. Make yourself administrator once with `docker exec drawing-board-dev drawing-board grant-admin <your Nido wallet address>`, then invite testers from **Invitations** ([invite-only hosting](invite-only.md)). A host installed before invite-only mode needs `ACCESS=invite-only` added to `dev.env`; its old `ACCOUNT_REGISTRATION_CODE` then has no effect.
-- Public access: do it only after the step above. Tailscale Funnel serves only ports 443, 8443 and 10000, so the public origin may differ from the tailnet one on port 3200. Set `APP_ORIGIN` in `dev.env` to the public origin exactly, because Nido sign-in messages name it.
-- Back up `data/` with SQLite-aware tooling; deleting it resets every dev table and account.
+- Status: `/opt/drawing-board-dev/bin/dev-host.sh status`. Logs: `journalctl -u drawing-board-dev-update` and `docker logs drawing-board-dev`. `dev-host.sh config` prints the names and paths an instance uses without changing anything.
+- Accounts: the dev host admits only Nido accounts that hold an invitation. Make yourself administrator once with `docker exec drawing-board-dev drawing-board grant-admin <your Nido wallet address>`, then invite testers from **Invitations** ([invite-only hosting](invite-only.md)). A host installed before invite-only mode needs `ACCESS=invite-only` added to `dev.env`; its old `ACCOUNT_REGISTRATION_CODE` then has no effect. Do this before the tunnel or proxy makes the host reachable.
+- Origin: `APP_ORIGIN` must be the public origin exactly, because Nido sign-in messages name it and the server refuses state-changing requests from any other origin. To change it, see [Changing the origin](#changing-the-origin).
+- Backups: `dev-host.sh archive` ([Archiving data](#archiving-data)). Deleting `data/` resets every dev table and account.
 - PR mixer: to try open PRs together before they merge, install the [PR mixer](pr-mixer.md) beside the dev host (`deploy/pr-mixer/pr-mixer.sh check`, then `install`, then `sudo tailscale serve --bg --https=3300 http://127.0.0.1:3300`). It is for the dev site's Nido-wallet administrators only, tailnet-only, and gives each mix its own throwaway database; it never touches `data/` or the `drawing-board-dev` container. Status: `deploy/pr-mixer/pr-mixer.sh status`; logs: `journalctl -u drawing-board-pr-mixer`.
+
+`install` copies the script to `<root>/bin/dev-host.sh`, and the timer runs that copy. A later version of the script reaches an installed host only when `install` runs again; rerunning it keeps the existing env file, `dev-host.conf`, checkout and `data/`.
+
+### Stable instance
+
+`DEV_HOST_INSTANCE` selects which copy the script manages. Unset, it is `dev`, with the names above. `DEV_HOST_INSTANCE=stable` runs a second copy, tracking `stable`, on the same machine:
+
+| | `dev` (default) | `stable` |
+| --- | --- | --- |
+| Branch | `main` | `stable` |
+| Root (`DEV_HOST_ROOT`) | `/opt/drawing-board-dev` | `/opt/drawing-board-stable` |
+| Port on `127.0.0.1` | 3200 | 3201 |
+| Image and container | `drawing-board-dev` | `drawing-board-stable` |
+| Env file | `dev.env` | `stable.env` |
+| systemd timer and service | `drawing-board-dev-update` | `drawing-board-stable-update` |
+| `GALACTIC_REACH_CHANNEL` | `dev` | not set |
+
+Each instance has its own root, so its checkout, `data/`, `dev-host.conf` and update lock are separate too. Installing, updating or archiving one never stops, rebuilds or rewrites the other. The generated service names its instance and root (`DEV_HOST_INSTANCE`, `DEV_HOST_ROOT`), so its timer always updates the right copy.
+
+The server reads `GALACTIC_REACH_CHANNEL` only to switch on the dev channel (`dev`); any other value, or none, deals the released rules (`crates/server/src/shared/channel.rs`). The stable instance leaves it unset, as Render does, so it plays exactly what the Render service plays.
+
+To install it, run the script from any checkout, such as the dev host's own:
+
+```sh
+DEV_HOST_INSTANCE=stable APP_ORIGIN=https://play.example.com \
+  /opt/drawing-board-dev/repo/deploy/dev-host/dev-host.sh install
+# then route https://play.example.com to http://127.0.0.1:3201
+docker exec drawing-board-stable drawing-board grant-admin <your Nido wallet address>
+```
+
+A new stable instance starts with an empty database: no accounts, invitations or tables. It defaults to `ACCESS=invite-only` and `NIDO_WALLET_HOST=test.nido.fyi`, like dev. Its commands take the same variable: `DEV_HOST_INSTANCE=stable /opt/drawing-board-stable/bin/dev-host.sh status`. An installed copy run without it refuses to act, rather than reaching the dev instance.
+
+One tunnel can serve both: route each hostname to its instance's port. The two timers are independent, so a release that moves `main` and `stable` together builds both images at once.
+
+**The Render service.** `render.yaml` still deploys `stable` to Render (`drawing-board`), and this script does not change it. A self-hosted stable instance is a second, independent deployment of the same branch, with its own origin, database, accounts and invitations; nothing is shared or synchronised between them. Render deploys a `stable` commit only after its CI checks pass (`autoDeployTrigger: checksPass`). The self-hosted instance deploys within a minute of the merge, without waiting for checks.
+
+### Changing the origin
+
+An instance serves one origin at a time. The server accepts state-changing requests only from `APP_ORIGIN`, and Nido sign-in messages name it, so the old origin stops working as soon as the new one takes effect. Changing it:
+
+- **signs everyone out.** Session cookies belong to the old origin.
+- **leaves browser-only play behind.** Guest games and anything else a browser saved locally stay under the old origin.
+- **keeps the server's data.** Accounts, invitations, shared tables and account-saved private tables stay in `data/`. Accounts are Nido wallets whose passkeys belong to the wallet host (`NIDO_WALLET_HOST`), not to `APP_ORIGIN`, so players sign in again at the new origin with the same wallet.
+
+Docker reads the env file only when it creates the container, so recreate it:
+
+```sh
+/opt/drawing-board-dev/repo/deploy/dev-host/dev-host.sh archive
+sed -i 's|^APP_ORIGIN=.*|APP_ORIGIN=https://dev.example.com|' /opt/drawing-board-dev/dev.env
+docker rm -f drawing-board-dev && /opt/drawing-board-dev/bin/dev-host.sh update
+```
+
+Then route the new hostname to the same port and retire the old one.
+
+### Archiving data
+
+`dev-host.sh archive` writes a consistent copy of the instance's `data/` to `<root>/archive/data-<UTC time>/`, for example `/opt/drawing-board-dev/archive/data-20261120T153000Z/`. It stops the container, copies, and starts it again, and the server is down for those seconds. The database runs in WAL mode, so a copy taken while the server writes could catch a half-finished write, and the runtime image has no `sqlite3` for an online backup. Once stopped, the server has closed the database and the files are consistent. The copy runs as root inside the instance's own image, so it keeps `data/`'s owner and mode (the image's `app` user, 700) and needs no `sudo`. It holds the update lock, so the timer cannot replace the container meanwhile; if an update is running, `archive` stops and asks you to retry. A stopped container stays stopped.
+
+`archive` never deletes anything, including earlier archives; remove old ones by hand. To restore one, stop the container, replace `data/` with the archived copy (`sudo cp -a`), and start it.
 
 ## Legacy preview identifiers
 
