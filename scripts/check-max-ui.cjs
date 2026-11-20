@@ -70,6 +70,11 @@ async function main() {
       }
       if (d.open && !phone) { const c=document.querySelector('#max-bank-content'); if (c.scrollHeight > c.clientHeight+2) problems.push('bank scrolls'); }
       if (!d.open) {
+        const terrainKey=document.querySelector('.max-resource-legend');
+        if (!terrainKey.checkVisibility()) problems.push('board resource legend is missing');
+        for (const resource of ['matter','energy','biomass','data']) {
+          if (getComputedStyle(terrainKey.querySelector('.'+resource)).backgroundColor!==getComputedStyle(document.querySelector('.hex.'+resource),'::before').backgroundColor) problems.push('resource legend does not match the board: '+resource);
+        }
         const bank = document.querySelector('#resource-grid'), box = bank.getBoundingClientRect();
         if (bank.checkVisibility()) {
           const key = bank.querySelector('.ring-key'), first = bank.querySelector('.resource-box');
@@ -89,7 +94,10 @@ async function main() {
           const track=document.querySelector('#prestige-track').getBoundingClientRect(), round=document.querySelector('.phase-stepper').getBoundingClientRect();
           if (round.top - track.bottom < 12) problems.push('Prestige track and round counter need more space');
           const nav=document.querySelector('#max-bank-nav').getBoundingClientRect(), trade=document.querySelector('#open-trade').getBoundingClientRect();
-          if (trade.top<nav.bottom+6) problems.push('Trade overlaps the card bank buttons');
+          const key=document.querySelector('#map-legend-corner'), keyBox=key.getBoundingClientRect(), comms=document.querySelector('.log-panel').getBoundingClientRect();
+          if (nav.left<innerWidth*.7 || nav.bottom>box.top-5) problems.push('card banks must sit above the resource tracker on the right');
+          if (!key.checkVisibility() || key.getAttribute('aria-hidden')==='true' || keyBox.top<comms.bottom+5) problems.push('building cost legend must be visible below Comms');
+          if (trade.top<keyBox.bottom+6) problems.push('Trade overlaps the building cost legend');
           if (innerWidth>innerHeight) {
             const tools=document.querySelector('.map-tools').getBoundingClientRect();
             if (tools.top<innerHeight*.7) problems.push('map tools are not at the bottom right');

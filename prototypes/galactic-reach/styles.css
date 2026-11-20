@@ -1159,11 +1159,40 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 .hex.energy { --hex-fill:#5d8798; }
 .hex.biomass { --hex-fill:#658d6b; }
 .hex.data { --hex-fill:#8d7d9d; }
-/* Deep jewel terrain belongs only to Max's UI; resource symbols keep their own colours. */
-body.background-stars .hex.matter { --hex-fill:#939da7; }
-body.background-stars .hex.energy { --hex-fill:#327aab; }
-body.background-stars .hex.biomass { --hex-fill:#448d68; }
-body.background-stars .hex.data { --hex-fill:#8e62a9; }
+/* Deep jewel terrain and its key share colours only in Max's UI. */
+body.background-stars {
+  --max-terrain-matter:#939da7; --max-terrain-energy:#327aab;
+  --max-terrain-biomass:#448d68; --max-terrain-data:#8e62a9;
+}
+body.background-stars .hex.matter { --hex-fill:var(--max-terrain-matter); }
+body.background-stars .hex.energy { --hex-fill:var(--max-terrain-energy); }
+body.background-stars .hex.biomass { --hex-fill:var(--max-terrain-biomass); }
+body.background-stars .hex.data { --hex-fill:var(--max-terrain-data); }
+.max-resource-legend { display:none; }
+body.background-stars .max-resource-legend {
+  position:absolute; top:calc(var(--map-top, 0px) + var(--map-w, 100cqw) * .9485 + 12px); left:50%; transform:translateX(-50%);
+  display:flex; align-items:center; justify-content:center; gap:20px; width:max-content; max-width:100%;
+  color:#e6edf8; font:400 13px/1.4 ui-sans-serif,system-ui,sans-serif; pointer-events:none;
+  font-size:max(13px, calc(11px / var(--table-zoom, 1)));
+}
+.max-resource-legend > span { display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
+.max-resource-legend .resource-swatch { flex:none; width:18px; height:21px; border-radius:0; clip-path:polygon(50% 0,100% 25%,100% 75%,50% 100%,0 75%,0 25%); }
+body.background-stars :is(.max-resource-legend, #resource-legend) .matter { background:var(--max-terrain-matter); }
+body.background-stars :is(.max-resource-legend, #resource-legend) .energy { background:var(--max-terrain-energy); }
+body.background-stars :is(.max-resource-legend, #resource-legend) .biomass { background:var(--max-terrain-biomass); }
+body.background-stars :is(.max-resource-legend, #resource-legend) .data { background:var(--max-terrain-data); }
+body.background-stars .board-stage.map-zoomed .max-resource-legend {
+  position:relative; top:auto; bottom:auto; left:auto; transform:none; margin:12px auto;
+}
+@media (max-width:599px), (max-height:599px) {
+  body.background-stars .max-resource-legend {
+    position:fixed; top:auto; bottom:calc(var(--safe-b, 0px) + var(--tabs-h) + var(--actions-h) + 8px); left:0; transform:none; width:100%; max-width:none;
+    gap:16px; margin:0; padding:7px 0; background:#060911ed; font-size:12px; z-index:2;
+  }
+  body.background-stars[data-drawer="hand"] .max-resource-legend {
+    bottom:calc(var(--safe-b, 0px) + var(--tabs-h) + var(--actions-h) + var(--peek-h) + 18px);
+  }
+}
 .hex:is(.matter,.energy,.biomass,.data) .hex-buildings { color:#fff9ec; }
 .hex:is(.matter,.energy,.biomass,.data) .hex-buildings .board-icon { filter:drop-shadow(0 1px 1px #07101a); }
 .game-card .resource-symbol, .game-card .inline-resource .resource-symbol { width:24px; height:24px; }
@@ -3382,6 +3411,7 @@ body.background-stars .max-bank-nav { display: flex; flex-direction: column; gap
   body.background-stars .max-bank-nav { grid-column: 1 !important; grid-row: 1 / 9 !important; align-self: start; margin: calc(var(--stack-top, 0px) + 14px) 0 0 4px; width: 206px; }
   body.background-stars .app-shell { padding: 16px !important; gap: 14px !important; }
   body.background-stars #map-legend-corner { display: none !important; }
+  body.background-stars.max-reference-rails #map-legend-corner { display: grid !important; }
   body.background-stars .log-panel:not(.open) { min-height: 0 !important; }
   body.background-stars .log-panel:not(.open) .game-log > .log-recent:nth-child(n+3) { display: none !important; }
   body.background-stars #resource-grid.resource-grid { padding: 12px 16px !important; }
@@ -3662,3 +3692,40 @@ body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now i {
 }
 
 body.background-stars #hand-row { --n: var(--max-hand-count, 5) !important; }
+
+/* Max's reference rails: costs below Comms, card banks above the lowered tracker. */
+.legend-resource-short { display:none; }
+@media (min-width:600px) and (min-height:600px) {
+  body.background-stars.max-reference-rails #max-bank-nav {
+    grid-column:3 !important; grid-row:1 / 9 !important;
+    align-self:start; justify-self:center; margin:0 !important;
+  }
+  body.background-stars.max-reference-rails .app-shell #map-legend-corner {
+    grid-column:1 !important; grid-row:1 / 9 !important; align-self:start !important;
+    grid-template-columns:minmax(0, 1fr) !important;
+    width:calc(100% - 4px) !important; max-width:none; min-width:0; box-sizing:border-box;
+    margin:var(--stack-top, 0px) 0 0 4px !important;
+    padding:8px !important; gap:6px 10px !important;
+  }
+  body.background-stars.max-reference-rails .app-shell #map-legend-corner .legend-vocab { grid-template-columns:repeat(3, auto) !important; gap:3px 6px !important; font-size:9.5px !important; }
+  body.background-stars.max-reference-rails #map-legend-corner .legend-cost-table th:first-child { width:36%; }
+  body.background-stars.max-reference-rails #map-legend-corner .legend-res.matter i { background:var(--max-terrain-matter); }
+  body.background-stars.max-reference-rails #map-legend-corner .legend-res.energy i { background:var(--max-terrain-energy); }
+  body.background-stars.max-reference-rails #map-legend-corner .legend-res.biomass i { background:var(--max-terrain-biomass); }
+  body.background-stars.max-reference-rails #map-legend-corner .legend-res.data i { background:var(--max-terrain-data); }
+  body.background-stars.max-reference-rails #resource-grid.resource-grid {
+    align-self:start !important;
+    /* The rail has 16px top/bottom padding and a 14px gap above the hand band.
+       Lower the previous tracker position by 24px, or clear the bank buttons. */
+    margin:max(var(--max-bank-stack-h, 210px), calc(var(--table-h) - var(--band-h, 200px) - 22px - 554px - var(--bank-caption-h) - max(16px, calc((var(--table-h) - var(--band-h, 200px) - 720px) / 2)))) 0 0 !important;
+  }
+}
+@media (min-width:600px) and (min-height:600px) and (orientation:portrait) {
+  body.background-stars.max-reference-rails #map-legend-corner .legend-cost-name b { font-size:10px; }
+  body.background-stars.max-reference-rails #map-legend-corner .legend-cost-table thead th { font-size:10px; padding-inline:1px; }
+  body.background-stars.max-reference-rails #map-legend-corner .legend-resource-name { display:none; }
+  body.background-stars.max-reference-rails #map-legend-corner .legend-resource-short { display:inline; }
+  body.background-stars.max-reference-rails .app-shell .map-tools {
+    grid-column:3 !important; grid-row:1 / 9 !important; align-self:end !important; justify-self:end !important; margin:0 0 8px !important;
+  }
+}
