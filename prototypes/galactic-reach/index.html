@@ -261,12 +261,12 @@
   </dialog>
 
   <dialog id="combat-dialog" class="choice-dialog combat-dialog" aria-labelledby="combat-title" aria-describedby="combat-status">
-    <div class="dialog-heading"><div><div class="eyebrow">TACTICAL COMBAT</div><h2 id="combat-title">Battle</h2><p id="combat-status" role="status" aria-live="polite"></p></div></div>
+    <div class="dialog-heading"><div><div class="eyebrow">TACTICAL COMBAT</div><h2 id="combat-title">Battle</h2><p id="combat-status" role="status" aria-live="polite"></p></div><span id="combat-volley" class="combat-volley" hidden></span></div>
     <div id="combat-forces" class="combat-forces"></div>
-    <p id="combat-help"></p>
+    <p id="combat-help" role="status" aria-live="polite"></p>
     <div id="combat-options" class="combat-options"></div>
     <div id="combat-history" class="combat-history"></div>
-    <p class="muted">Finish the battle before normal play resumes. Your choices are saved.</p>
+    <p class="muted combat-save-note">Finish the battle before normal play resumes. Your committed choices are saved.</p>
   </dialog>
 
   <dialog id="storage-allocation-dialog" class="storage-allocation-dialog" aria-labelledby="storage-allocation-title" aria-describedby="storage-allocation-help">

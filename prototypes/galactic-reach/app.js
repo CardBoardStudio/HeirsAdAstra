@@ -4978,24 +4978,87 @@ function createGalacticReach(options = {}) {
     else if (state.activePlayer!==ME && state.phase==='buy') scheduleAiTurn('buy',runAiBuy,650);
   }
 
+  // Presentation only (#combat-table). Derive both inventories from the public
+  // military deck and revealed tactics, never from an opponent's pending hand or choice.
+  let combatTableUi = { key: null, tactic: null, inspect: null, escape: 0 };
+  function combatTableInventory(force) {
+    const counts = { ...BASIC_TACTIC_HAND }, used = {};
+    for (const card of state.players[force.playerId].military || []) {
+      if (MILITARY_CARDS[card.key]) counts[card.key] = (counts[card.key] || 0) + 1;
+    }
+    for (const key of force.used) used[key] = (used[key] || 0) + 1;
+    return Object.entries(counts).map(([key, count]) => ({ key, count, used: used[key] || 0, left: Math.max(0, count - (used[key] || 0)) }));
+  }
+
+  function combatTableUnits(force) {
+    const groups = new Map();
+    for (const piece of force.pieces) {
+      const key = [piece.type, piece.hull, piece.damage, piece.power].join(':');
+      if (groups.has(key)) groups.get(key).count += 1;
+      else groups.set(key, { ...piece, count: 1 });
+    }
+    return `<div class="combat-units">${[...groups.values()].map(piece => {
+      const name = SHIP_STATS[piece.type]?.name || 'Shipyard', hull = Math.max(0, piece.hull - piece.damage), destroyed = hull === 0;
+      const label = `${piece.count > 1 ? `${piece.count} × ` : ''}${name}: ${destroyed ? 'destroyed' : `${piece.power} attack, ${hull}/${piece.hull} hull${piece.count > 1 ? ' each' : ''}`}`;
+      return `<figure class="combat-unit${destroyed ? ' destroyed' : ''}" aria-label="${esc(label)}">${boardIcon(piece.type)}<figcaption><strong>${esc(name)}${piece.count > 1 ? ` ×${piece.count}` : ''}</strong><span>${destroyed ? 'Destroyed' : `<b>${piece.power}</b> attack · <b>${hull}/${piece.hull}</b> hull${piece.count > 1 ? ' each' : ''}`}</span></figcaption><span class="combat-hull" aria-hidden="true"><span style="width:${100 * hull / piece.hull}%"></span></span></figure>`;
+    }).join('') || '<p class="muted">No units remain.</p>'}</div>`;
+  }
+
+  function combatTableCards(force, own, actions) {
+    const inventory = combatTableInventory(force), total = inventory.reduce((n, card) => n + card.count, 0);
+    return `<div class="combat-hand"><div class="combat-hand-heading"><h3>${own ? 'Your tactics' : 'Enemy tactics'}</h3><span>${force.remaining} of ${total} available</span></div><div class="combat-card-row">${inventory.map(card => {
+      const definition = MILITARY_CARDS[card.key], selected = own && (force.committed ? force.choice : combatTableUi.tactic) === card.key;
+      const legal = own && actions.some(action => action.type === 'combat_tactic' && action.tactic === card.key);
+      const stats = [definition.attack ? `+${definition.attack} hit${definition.attack === 1 ? '' : 's'}` : '', definition.shield ? `Block ${definition.shield}` : ''].filter(Boolean).join(' · ');
+      const extra = definition.pierce ? 'Pierces shields' : definition.victoryPrestige ? `Decisive win: +${definition.victoryPrestige} Prestige` : '';
+      const label = `${definition.name}: ${card.left} available, ${card.used} used. ${definition.text}`;
+      return `<button type="button" class="combat-tactic${!card.left ? ' spent' : ''}${selected ? ' selected' : ''}" style="--tactic-accent:${definition.shield && !definition.attack ? 'var(--cyan)' : 'var(--red)'}" ${own ? `data-combat-tactic="${card.key}" aria-pressed="${selected}" ${legal ? '' : 'disabled'}` : `data-combat-inspect="${card.key}"`} aria-label="${esc(label)}"><strong>${esc(definition.name)}</strong><span class="combat-tactic-stats">${esc(stats)}${extra ? ` · ${esc(extra)}` : ''}</span><span class="combat-tactic-count">${card.left} available${card.used ? ` · ${card.used} used` : ''}${selected ? ' · Selected' : ''}</span></button>`;
+    }).join('')}</div></div>`;
+  }
+
+  function combatTableSide(view, side, own, actions) {
+    const force = view.sides[side], player = state.players[force.playerId];
+    const units = `<div class="combat-fleet"><header><div class="combat-faction"><span class="combat-faction-dot" aria-hidden="true"></span><h3>${esc(player.name)}</h3></div><span class="combat-role">${own ? 'You' : 'Enemy'} · ${side === 'attacker' ? 'Attacking' : 'Defending'}</span><span class="combat-power"><b>${combatPower(force.pieces)}</b> base attack</span></header>${combatTableUnits(force)}</div>`;
+    const cards = combatTableCards(force, own, actions);
+    return `<section class="combat-side ${own ? 'combat-own' : 'combat-enemy'}" style="--combat-owner:${playerColor(force.playerId)}" aria-label="${own ? 'Your' : 'Enemy'} forces and tactics">${own ? units + cards : cards + units}</section>`;
+  }
+
   function renderCombat() {
     if (headless || replayMode) return;
     const dialog=$('#combat-dialog'),b=state.pendingCombat;
-    if (!b || (b.attackerId!==ME && b.defenderId!==ME)) {if(dialog.open)dialog.close();return;}
+    if (!b || (b.attackerId!==ME && b.defenderId!==ME)) {combatTableUi.key=null;if(dialog.open)dialog.close();return;}
     const view=combatView(ME),actor=combatActor(),actions=combatActions(ME),mine=view.sides[view.side],enemy=view.sides[view.side==='attacker'?'defender':'attacker'];
+    const key = [state.round, b.coord, b.origin, b.attackerId, b.defenderId, b.volley, b.stage].join(':');
+    if (combatTableUi.key !== key) combatTableUi = { key, tactic: null, inspect: null, escape: 0 };
+    if (combatTableUi.tactic && !actions.some(action => action.type==='combat_tactic' && action.tactic===combatTableUi.tactic)) combatTableUi.tactic=null;
+    dialog.classList.add('card-table-battle');
+    dialog.classList.toggle('combat-dense', Math.max(combatTableInventory(mine).length, combatTableInventory(enemy).length)>6);
+    $('#combat-volley').hidden=false;
+    $('#combat-volley').textContent=view.stage==='escape'?'Before combat':`Volley ${view.volley} of 3`;
     $('#combat-title').textContent=`Battle at ${nameForCoord(b.coord)}`;
-    $('#combat-status').textContent=view.stage==='escape' ? actor===0?'Before the first volley: escape with Explorers or stay.':'Waiting for the opponent’s escape decision.' : actor===0?`Volley ${view.volley}: secretly commit one available tactic.`:mine.committed?'Your tactic is committed. Waiting for the opponent; their choice stays hidden.':'Waiting for the opponent to commit. Their choice stays hidden.';
-    $('#combat-forces').innerHTML=['attacker','defender'].map(side=>{
-      const force=view.sides[side],units=aliveCombatPieces(force.pieces);
-      return `<section><h3>${esc(state.players[force.playerId].name)} · ${side}</h3><p>${units.map(p=>`${esc(SHIP_STATS[p.type]?.name || 'Shipyard')}: ${p.power} attack, ${p.hull-p.damage}/${p.hull} hull`).join('<br>') || 'No pieces remain'}</p><p>${force.remaining} tactics left · ${force.committed?'Committed':'Not committed'}</p><p>Used: ${force.used.map(key=>MILITARY_CARDS[key].name).join(', ') || 'None'}</p></section>`;
-    }).join('');
-    $('#combat-options').innerHTML=actions.map((action,index)=>{
-      const label=action.type==='combat_tactic'?`${MILITARY_CARDS[action.tactic].name} · ${mine.hand[action.tactic]} available · ${MILITARY_CARDS[action.tactic].text}`:action.type==='combat_stay'?'Stay and fight':`Escape ${action.amount} Explorer${action.amount===1?'':'s'} → ${nameForCoord(action.destination)} (${action.destination}) · pay ${action.amount} Energy`;
-      return `<button class="button ${action.type==='combat_stay'?'':'button-primary'}" type="button" data-combat-action="${index}">${esc(label)}</button>`;
-    }).join('');
-    $('#combat-help').textContent=view.stage==='tactic'?`Your base attack is ${combatPower(mine.pieces)}; the opponent’s is ${combatPower(enemy.pieces)}. Fire adds 1 hit. Screen prevents 2. Opponent bonuses and shields remain unknown until both commit. Damage is simultaneous.`:'Escape moves only the chosen Explorers. Other units stay. Energy costs are included in these choices; there is no ship-stacking limit.';
-    $('#combat-history').innerHTML=view.summary.map(line=>`<p>${esc(line)}</p>`).join('');
-    $$('[data-combat-action]').forEach(button=>button.addEventListener('click',()=>applyCombatAction(ME,actions[Number(button.dataset.combatAction)])));
+    $('#combat-status').textContent=view.stage==='escape' ? actor===ME?'Escape with Explorers or stay and fight.':'Waiting for the enemy’s escape decision.' : actor===ME?'Select a tactic, then commit. Both sides reveal together.':mine.committed?'Your tactic is committed. Waiting for the enemy.':'Waiting for the enemy to commit.';
+    const enemySide=view.side==='attacker'?'defender':'attacker';
+    const commitment=force=>view.stage==='escape'?(force.escapeDone?'Ready':'Escape decision pending'):(force.committed?'Committed · face down':'Not committed');
+    $('#combat-forces').innerHTML=combatTableSide(view,enemySide,false,actions)+`<div class="combat-table-divider"><span>Enemy: ${commitment(enemy)}</span><span>${view.stage==='escape'?'Prepare for combat':'Reveal together'}</span><span>You: ${commitment(mine)}</span></div>`+combatTableSide(view,view.side,true,actions);
+    const inspected=MILITARY_CARDS[combatTableUi.inspect || combatTableUi.tactic];
+    $('#combat-help').textContent=inspected?`${inspected.name}: ${inspected.text}`:view.stage==='tactic'?'Damage is simultaneous. Tap any enemy tactic to read its effect; their committed choice stays hidden.':'Only the chosen Explorers escape. Other units stay. Pay 1 Energy for each escaping Explorer.';
+    if (view.stage==='escape' && actions.length) {
+      const label=action=>action.type==='combat_stay'?'Stay and fight':`Escape ${action.amount} Explorer${action.amount===1?'':'s'} → ${nameForCoord(action.destination)} (${action.destination}) · ${action.amount} Energy`;
+      if (!actions[combatTableUi.escape]) combatTableUi.escape=0;
+      $('#combat-options').innerHTML=`${actions.length>1?`<label class="combat-escape-picker" for="combat-escape-option">Explorers<select id="combat-escape-option">${actions.map((action,index)=>`<option value="${index}" ${index===combatTableUi.escape?'selected':''}>${esc(label(action))}</option>`).join('')}</select></label>`:'<span class="combat-action-note">No paid escape is available.</span>'}<button class="button button-primary" type="button" data-combat-action="${combatTableUi.escape}">${actions[combatTableUi.escape].type==='combat_stay'?'Stay and fight':'Confirm escape'}</button>`;
+      if (actions.length>1) $('#combat-escape-option').addEventListener('change',event=>{combatTableUi.escape=Number(event.target.value);renderCombat();$('#combat-escape-option').focus();});
+    } else if (actions.length) {
+      const index=actions.findIndex(action=>action.tactic===combatTableUi.tactic);
+      $('#combat-options').innerHTML=`<span class="combat-action-note">${index<0?'Choose one available tactic above.':'Your selection is private until you commit.'}</span><button class="button button-primary" type="button" data-combat-action="${index}" ${index<0?'disabled':''}>${index<0?'Select a tactic':`Commit ${esc(MILITARY_CARDS[combatTableUi.tactic].name)}`}</button>`;
+    } else $('#combat-options').innerHTML='<span class="combat-action-note">Waiting for the other faction. Your choices are saved.</span>';
+    const historyOpen=$('#combat-history').querySelector('details')?.open;
+    $('#combat-history').innerHTML=view.summary.length?`<details ${historyOpen?'open':''}><summary>Previous volleys (${view.volleys.length})</summary>${view.summary.map(line=>`<p>${esc(line)}</p>`).join('')}</details>`:'';
+    $$('[data-combat-tactic]').forEach(button=>button.addEventListener('click',()=>{combatTableUi.tactic=button.dataset.combatTactic;combatTableUi.inspect=null;renderCombat();$(`[data-combat-tactic="${combatTableUi.tactic}"]`)?.focus();}));
+    $$('[data-combat-inspect]').forEach(button=>button.addEventListener('click',()=>{combatTableUi.inspect=button.dataset.combatInspect;renderCombat();$(`[data-combat-inspect="${combatTableUi.inspect}"]`)?.focus();}));
+    $$('[data-combat-action]').forEach(button=>button.addEventListener('click',()=>{
+      const action=actions[Number(button.dataset.combatAction)];
+      if(action) {button.disabled=true;applyCombatAction(ME,action);}
+    }));
     // The Sector Scan that started the move must not lie over the battle's tactics.
     if (!dialog.open) { if ($('#sector-popover')?.matches?.(':popover-open')) $('#sector-popover').hidePopover(); dialog.showModal(); }
   }

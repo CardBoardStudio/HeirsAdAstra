@@ -3227,3 +3227,110 @@ body.background-stars .galaxy-board::before {
 .trade-panel .trade-offer p, .trade-panel .trade-terms { font-size: 12.5px; }
 .trade-panel .trade-ledger { grid-template-columns: 1fr; gap: 5px; }
 @media (prefers-reduced-motion: reduce) { .trade-handle, .trade-panel, .trade-drawer.open .trade-panel { transition: none; } }
+
+/* Battle card table (#combat-table). The class is added by the current renderer;
+   retained engines keep their original dialog against this additive markup. */
+.combat-dialog.card-table-battle { --battle-glyph: 42px; width: min(1120px, calc(100vw - 24px)); max-height: calc(100dvh - 24px); padding: 14px 18px; overflow: visible; background: radial-gradient(ellipse at center, #2d4540, #172b2c 80%); }
+.combat-dialog.combat-dense { --battle-glyph: 28px; }
+.card-table-battle .dialog-heading { align-items: center; gap: 16px; margin-bottom: 10px; }
+.card-table-battle .dialog-heading h2 { margin: 2px 0 0; font-size: 21px; line-height: 1.15; }
+.card-table-battle .dialog-heading .eyebrow { font-size: 10px; letter-spacing: .15em; }
+.card-table-battle .dialog-heading p { margin: 3px 0 0; font-size: 12px; line-height: 1.3; }
+.combat-volley { flex: none; padding: 7px 10px; border: 1px solid #a49c6f88; border-radius: 5px; color: var(--gold); background: #152725; font-size: 12px; font-weight: 700; }
+.card-table-battle .combat-forces { display: grid; grid-template-columns: 1fr; gap: 8px; }
+.card-table-battle .combat-side { display: flex; flex-direction: column; gap: 9px; min-width: 0; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.combat-hand-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 5px; }
+.combat-hand-heading h3 { margin: 0; font-size: 12px; color: var(--text); }
+.combat-hand-heading > span { font-size: 11px; color: var(--muted); }
+.combat-card-row { display: flex; justify-content: center; flex-wrap: wrap; gap: 6px; }
+.combat-tactic { position: relative; display: flex; flex: 0 1 148px; flex-direction: column; justify-content: space-between; gap: 3px; min-width: 0; min-height: 66px; margin: 0; padding: 7px 9px 6px; border: 1px solid var(--paper-edge); border-top: 3px solid color-mix(in srgb, var(--tactic-accent) 65%, #435146); border-radius: 6px; background: radial-gradient(ellipse at top left, #fff9ef, transparent 85%), var(--paper); color: var(--ink); text-align: left; font: inherit; box-shadow: 0 2px 0 #948269, 0 4px 7px #0003; cursor: pointer; }
+.combat-tactic strong { font-size: 12px; line-height: 1.15; font-weight: 750; }
+.combat-tactic-stats { font-size: 11px; line-height: 1.2; }
+.combat-tactic-count { margin-top: auto; color: #48544b; font-size: 10.5px; line-height: 1.2; }
+.combat-tactic.spent { border-top-color: #87928b; background: #c2c9b9; box-shadow: none; color: #36473d; }
+.combat-tactic.selected { outline: 2px solid var(--cyan); outline-offset: 1px; background: #e3f8ed; box-shadow: 0 3px 0 #61a48d, 0 5px 12px #0005; }
+.combat-tactic.selected .combat-tactic-count { color: #1d5141; font-weight: 750; }
+.combat-tactic:disabled { cursor: default; }
+.combat-tactic:not(:disabled):hover { border-color: #e6ce90; box-shadow: 0 2px 0 #948269, 0 4px 10px #0006; }
+.combat-tactic:focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+.combat-fleet { display: grid; grid-template-columns: minmax(155px, .8fr) minmax(0, 3fr); align-items: center; gap: 14px; min-height: 69px; }
+.combat-fleet > header { display: grid; gap: 2px; min-width: 0; }
+.combat-faction { display: flex; gap: 7px; align-items: center; }
+.combat-faction-dot { flex: 0 0 7px; height: 7px; border-radius: 50%; background: var(--combat-owner); }
+.combat-faction h3 { margin: 0; font-size: 13px; line-height: 1.2; overflow-wrap: anywhere; }
+.combat-role { font-size: 10px; color: var(--muted); letter-spacing: .05em; text-transform: uppercase; }
+.combat-power { font-size: 11px; color: var(--muted); }
+.combat-power b { font-size: 15px; color: var(--text); font-variant-numeric: tabular-nums; }
+.combat-units { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 8px 24px; min-width: 0; }
+.combat-unit { display: grid; justify-items: center; gap: 3px; margin: 0; min-width: 75px; max-width: 150px; text-align: center; }
+.combat-unit .board-icon { width: var(--battle-glyph); height: var(--battle-glyph); color: var(--combat-owner); filter: drop-shadow(0 2px 2px #0008); }
+.combat-unit .board-glyph { stroke-width: 1.6; }
+.combat-unit figcaption { display: grid; gap: 1px; }
+.combat-unit figcaption strong { font-size: 11px; line-height: 1.15; }
+.combat-unit figcaption > span { font-size: 11px; line-height: 1.15; color: var(--muted); font-variant-numeric: tabular-nums; }
+.combat-unit figcaption b { font-weight: 650; color: var(--text); }
+.combat-hull { display: block; width: 78px; height: 4px; border-radius: 2px; background: #98b4aa30; overflow: hidden; }
+.combat-hull > span { display: block; height: 100%; background: var(--combat-owner); }
+.combat-unit.destroyed { opacity: .65; }
+.combat-unit.destroyed .board-icon { color: var(--muted); }
+.combat-table-divider { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 14px; padding: 7px 0; border-top: 1px solid #a6b59d44; border-bottom: 1px solid #a6b59d44; color: var(--muted); font-size: 11px; line-height: 1.25; }
+.combat-table-divider > :nth-child(2) { color: var(--gold); font-size: 10px; text-transform: uppercase; letter-spacing: .1em; }
+.card-table-battle #combat-help { min-height: 16px; margin: 10px 0 7px; color: var(--muted); font-size: 12px; line-height: 1.3; }
+.card-table-battle .combat-options { display: flex; align-items: center; justify-content: space-between; gap: 8px 14px; padding-top: 9px; border-top: 1px solid #a6b59d44; }
+.card-table-battle .combat-options .button { flex: 0 0 auto; min-height: 40px; padding: 7px 14px; font-size: 12px; text-align: center; }
+.combat-action-note { color: var(--muted); font-size: 12px; }
+.combat-escape-picker { display: flex; flex: 1; align-items: center; gap: 10px; color: var(--muted); font-size: 12px; }
+.combat-escape-picker select { width: 100%; min-width: 0; min-height: 40px; padding: 7px; border: 1px solid #a49c6f88; border-radius: 5px; background: #152725; color: var(--text); font: inherit; }
+.card-table-battle .combat-history { margin-top: 8px; border-top: 0; max-height: 18dvh; overflow: auto; font-size: 11px; line-height: 1.4; }
+.card-table-battle .combat-history summary { color: var(--muted); cursor: pointer; }
+.card-table-battle .combat-history p { margin: 5px 0; }
+.card-table-battle .combat-save-note { display: none; }
+@media (max-height: 760px) and (min-width: 600px) {
+  .combat-dialog.card-table-battle { padding: 10px 14px; }
+  .card-table-battle .dialog-heading { margin-bottom: 7px; }
+  .combat-tactic { min-height: 60px; padding: 5px 8px; }
+  .combat-fleet { min-height: 61px; }
+  .card-table-battle .combat-side { gap: 7px; }
+  .combat-table-divider { padding: 5px 0; }
+  .card-table-battle #combat-help { margin: 7px 0 5px; font-size: 11px; }
+}
+@media (max-width: 900px) and (min-width: 600px) {
+  .combat-tactic { flex-basis: 134px; }
+  .combat-fleet { grid-template-columns: minmax(140px, .9fr) minmax(0, 2fr); gap: 8px; }
+  .combat-units { gap: 7px 12px; }
+}
+/* At enlarged browser zoom, keep the enemy band above yours and put each
+   band's ships beside its large tactic hand instead of adding another row. */
+@media (max-height: 650px) and (min-width: 600px) and (min-height: 600px) {
+  .card-table-battle.combat-dense .combat-side { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; }
+  .card-table-battle.combat-dense .combat-hand { grid-column: 2; grid-row: 1; }
+  .card-table-battle.combat-dense .combat-fleet { grid-column: 1; grid-row: 1; grid-template-columns: 1fr; gap: 8px; }
+  .card-table-battle.combat-dense .combat-tactic { flex-basis: 112px; }
+  .card-table-battle.combat-dense .combat-units { gap: 7px; }
+  .card-table-battle.combat-dense .combat-unit { width: 62px; min-width: 0; max-width: 90px; }
+}
+@media (max-width: 599px), (max-height: 599px) {
+  .combat-dialog.card-table-battle { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 14px; overflow-y: auto; }
+  .card-table-battle .dialog-heading { align-items: start; gap: 8px; }
+  .card-table-battle .dialog-heading h2 { font-size: 19px; }
+  .card-table-battle .dialog-heading p { font-size: 11px; }
+  .combat-volley { max-width: 100px; padding: 6px; font-size: 11px; text-align: center; }
+  .combat-card-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 7px; }
+  .combat-tactic { min-height: 78px; padding: 7px; }
+  .combat-fleet { grid-template-columns: 1fr; gap: 8px; padding: 3px 0; }
+  .combat-fleet > header { grid-template-columns: 1fr auto; align-items: center; }
+  .combat-faction h3 { font-size: 12px; }
+  .combat-role { grid-column: 1; }
+  .combat-power { grid-column: 2; grid-row: 1 / 3; }
+  .combat-units { gap: 10px 18px; }
+  .combat-unit .board-icon { width: 40px; height: 40px; }
+  .combat-table-divider { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+  .combat-table-divider > :nth-child(2) { grid-column: 1 / -1; grid-row: 1; text-align: center; }
+  .combat-table-divider > :last-child { text-align: right; }
+  .card-table-battle .combat-options { align-items: stretch; flex-wrap: wrap; }
+  .card-table-battle .combat-options .button { min-height: 44px; flex: 1 1 auto; }
+  .combat-escape-picker { flex-basis: 100%; }
+  .combat-escape-picker select { min-height: 44px; }
+  .card-table-battle .combat-history { max-height: 24dvh; }
+}
+@media (pointer: coarse) { .combat-tactic { min-height: 66px; } }
