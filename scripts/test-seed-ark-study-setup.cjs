@@ -1,3 +1,5 @@
+// Historical Rust policy compatibility fixture only. New studies use browser-bot-study.cjs.
+process.env.GR_ALLOW_ARCHIVED_RUST_BOTS='1';
 // Frozen-arm setup equality and full retained-baseline neutrality, not balance games.
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path');
 const {play}=require('./native-investment-study.cjs'),{archiveRecords,hash}=require('./lib/simulation-archive.cjs');

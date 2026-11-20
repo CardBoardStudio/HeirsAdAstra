@@ -1,3 +1,5 @@
+// Historical Rust policy compatibility fixture only. New studies use browser-bot-study.cjs.
+process.env.GR_ALLOW_ARCHIVED_RUST_BOTS='1';
 // Exercise the actual frozen executable, not only the Rust unit-test build.
 const assert=require('node:assert/strict');
 const {bridge}=require('./native-investment-study.cjs');

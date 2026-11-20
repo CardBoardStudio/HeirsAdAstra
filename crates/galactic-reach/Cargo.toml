@@ -10,3 +10,10 @@ serde.workspace = true
 serde_json.workspace = true
 rquickjs = "0.14"
 rand = "0.8"
+
+[features]
+archived-rust-bots = []
+
+[[example]]
+name = "policy-study"
+required-features = ["archived-rust-bots"]

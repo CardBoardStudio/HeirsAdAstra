@@ -3340,7 +3340,9 @@ function createGalacticReach(options = {}) {
   }
 
   function runAiOperation() {
-    if (state.pendingCombat || state.phase !== 'operations' || state.activePlayer === ME || state.winner !== null) return;
+    if (!headless || options.browserPolicy !== true) {
+      if (state.pendingCombat || state.phase !== 'operations' || state.activePlayer === ME || state.winner !== null) return;
+    } else if (state.pendingCombat || state.phase !== 'operations' || state.winner !== null) return;
     if (overflowPlayer()>=0) return;
     // Learn to play: the rivals hold still so each lesson's position stays as staged.
     if (TUTORIAL) { passOperations(state.activePlayer); return; }
@@ -5896,6 +5898,7 @@ function createGalacticReach(options = {}) {
   function headlessPort() {
     return {
       get state() { return state; }, get turnSerial() { return turnSerial; }, get cardSerial() { return cardSerial; },
+      runAiOperation, runAiBuy, chooseCombatAction, aiIncome,
       clone, deckContents, canPlayExchange, COLONY_LIFE_COST, colonyTerms, aiTradeGoals, aiGoalTradePlan, aiExchangeResource, aiTryExchange, catalogMarketEnabled, marketOffers, marketCopiesRemaining, bankTradeRate, ALL_CARDS, MARKET_TIERS, marketTier, BASIC_CARDS, RELIC_CARDS, STRUCTURES, SHIP_STATS, RESOURCES, STORAGE_UPGRADE, RELIC_STORAGE_POINTS, CAPACITY_SUPPLY, SUPPLY_CARDS, storageUpgradeCost, EXCAVATION_COST, nearestProbeRelic,
       canAfford, canConvertCard, cardResources, resourceGainTotal, remainingResourceCapacity, addResources,
       removeHandCard, passOperations, completeAction, nextBuyPlayer, buyCard, upgradeStarter,
