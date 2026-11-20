@@ -423,10 +423,26 @@ function createGalacticReach(options = {}) {
   Object.assign(CARD_BY_TAG,Object.fromEntries([...Object.values(ADVANCED_CARDS),...Object.values(RELIC_CARDS)].filter(def=>def.tag).map(def=>[def.tag,def])));
   const ALL_CARDS = { ...BASIC_CARDS, ...ADVANCED_CARDS, ...MARKET_MILITARY, ...SUPPLY_CARDS, ...RELIC_CARDS };
 
+  // The card vocabulary: one glyph per idea that recurs in card text.
+  const VOCAB_ICONS = {
+    prestige: '<span class="vocab-icon vocab-star" aria-hidden="true">★</span>',
+    draw: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="5" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h8a2 2 0 0 0 2-2V7"></path></svg></span>',
+    hit: '<span class="vocab-icon vocab-hit" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5l14 14M19 5 5 19"></path><path d="M3 9l3-3M15 21l3-3M21 9l-3-3M9 21l-3-3"></path></svg></span>',
+    miss: '<span class="vocab-icon vocab-miss" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"></path></svg></span>',
+    colonize: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 21V4"></path><path d="M5 4h12l-2.5 4L17 12H5"></path></svg></span>',
+    build: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m14 4 6 6-3 3-6-6z"></path><path d="m11 7-8 8 3 3 8-8"></path></svg></span>',
+    move: '<span class="vocab-icon vocab-move" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 12h13"></path><path d="m13 6 6 6-6 6"></path></svg></span>',
+    limit: '<span class="vocab-icon vocab-limit" aria-hidden="true"><i></i></span>',
+  };
+  const VOCAB_LABELS = [['prestige','Prestige'],['draw','Draw a card'],['move','Move'],['hit','Hit'],['miss','Miss'],['limit','Limit'],['colonize','Colonize'],['build','Build']];
+  const COUNT_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5 };
+
   // Card data only, for the card gallery page: no galaxy, state, timers or storage.
   if (options.catalog === true) return {
     rulesVersion: `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`, MARKET_CARDS, ADVANCED_CARDS, MARKET_MILITARY, BASIC_TACTICS, BASIC_CARDS, RELIC_CARDS,
-    MARKET_SIZE, MARKET_COPIES, MARKET_TIERS, MARKET_TIER_SLOTS, marketTier, STARTING_LIMIT, DEFAULT_VICTORY_TARGET, VICTORY_TARGET_CHOICES, RESOURCES, RESOURCE_NAMES
+    MARKET_SIZE, MARKET_COPIES, MARKET_TIERS, MARKET_TIER_SLOTS, marketTier, STARTING_LIMIT, DEFAULT_VICTORY_TARGET, VICTORY_TARGET_CHOICES, RESOURCES, RESOURCE_NAMES,
+    // Shared, state-free presentation for the gallery's costs and card descriptions.
+    resourceDots, iconText, BOARD_ICONS
   };
 
 
@@ -1018,19 +1034,6 @@ function createGalacticReach(options = {}) {
     return `<span class="resource-dots" role="img" aria-label="${label}">${chips}</span>`;
   }
 
-  // The card vocabulary: one glyph per idea that recurs in card text.
-  const VOCAB_ICONS = {
-    prestige: '<span class="vocab-icon vocab-star" aria-hidden="true">★</span>',
-    draw: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="5" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h8a2 2 0 0 0 2-2V7"></path></svg></span>',
-    hit: '<span class="vocab-icon vocab-hit" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5l14 14M19 5 5 19"></path><path d="M3 9l3-3M15 21l3-3M21 9l-3-3M9 21l-3-3"></path></svg></span>',
-    miss: '<span class="vocab-icon vocab-miss" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"></path></svg></span>',
-    colonize: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 21V4"></path><path d="M5 4h12l-2.5 4L17 12H5"></path></svg></span>',
-    build: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m14 4 6 6-3 3-6-6z"></path><path d="m11 7-8 8 3 3 8-8"></path></svg></span>',
-    move: '<span class="vocab-icon vocab-move" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 12h13"></path><path d="m13 6 6 6-6 6"></path></svg></span>',
-    limit: '<span class="vocab-icon vocab-limit" aria-hidden="true"><i></i></span>',
-  };
-  const VOCAB_LABELS = [['prestige','Prestige'],['draw','Draw a card'],['move','Move'],['hit','Hit'],['miss','Miss'],['limit','Limit'],['colonize','Colonize'],['build','Build']];
-  const COUNT_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5 };
   // A card's effect in the vocabulary: the same sentence with its recurring ideas as glyphs.
   function iconText(text) {
     const count = word => COUNT_WORDS[String(word).toLowerCase()] || word;
