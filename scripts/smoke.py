@@ -60,8 +60,8 @@ for path, content_type in [("/", "text/html"), ("/galactic-reach/styles.css", "t
     assert status == 200 and content_type in headers["Content-Type"] and len(body) > 100, path
 
 home = request("/")[2]
-assert b"<title>Galactic Reach" in home and b"Drawing Board" not in home
-assert b"Galactic Reach" in request("/galactic-reach/")[2]
+assert b"<title>Heirs Ad Astra" in home and b"Drawing Board" not in home
+assert b"Heirs Ad Astra" in request("/galactic-reach/")[2]
 status, headers, rulebook = request("/galactic-reach/rulebook.html")
 assert status == 200 and "text/html" in headers["Content-Type"]
 assert b'<meta name="rules-version" content="galactic-reach/38.43">' in rulebook
@@ -174,5 +174,5 @@ else:
     gr_ladder = request('/api/arena?game=galactic-reach', cookie=account_cookie)[2]
     assert len(gr_ladder['bots']) == 4 and all(b['games'] == 4 for b in gr_ladder['bots'])
     assert abs(sum(b['elo'] for b in gr_ladder['bots']) - 4800) < 1e-8
-    print('Second adapter smoke passed: four-player Galactic Reach, seat rotation, separate Elo, exact-once retry.')
+    print('Second adapter smoke passed: four-player Heirs Ad Astra, seat rotation, separate Elo, exact-once retry.')
 assert request('/api/arena', cookie=account_cookie)[2] == ladder

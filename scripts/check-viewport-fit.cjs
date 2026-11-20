@@ -1,4 +1,4 @@
-// Galactic Reach screens must fit the viewport at 1280x720 and larger: no scrolling may be
+// Heirs Ad Astra screens must fit the viewport at 1280x720 and larger: no scrolling may be
 // required to view or play (AGENTS.md). This drives a headless Chrome over the DevTools
 // protocol (Node built-ins only) through the key play states and fails when the document
 // scrolls, a game panel or card clips its content, a control leaves the viewport, or a

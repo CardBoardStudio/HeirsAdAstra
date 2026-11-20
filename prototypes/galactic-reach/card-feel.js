@@ -1,4 +1,4 @@
-// Galactic Reach card feel: presentation only. Cards read as printed card stock that tilts
+// Heirs Ad Astra card feel: presentation only. Cards read as printed card stock that tilts
 // toward the pointer; the hand is held in a slight fan; pointing at a hand card shows it at
 // reading size beside the map; draws, plays, conversions, purchases and production move
 // between the piles, the market and your reserves; and a hand card can be dragged onto the

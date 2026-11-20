@@ -1,4 +1,4 @@
-<!-- Title: "Area: what changes", imperative, ≤ 72 chars (e.g. "Galactic Reach: Harbors refit Fleets").
+<!-- Title: "Area: what changes", imperative, ≤ 72 chars (e.g. "Heirs Ad Astra: Harbors refit Fleets").
 Commits follow the same shape in miniature: `git config commit.template .gitmessage`. -->
 
 ## Change
@@ -8,7 +8,7 @@ Describe the player-visible change and why it is useful.
 ## Rules grounding
 
 <!-- Cite rulebook.html#section links and explain how the change follows or revises those rules.
-For work unrelated to Galactic Reach, start with "Not applicable:" and give the reason plus its applicable specification.
+For work unrelated to Heirs Ad Astra, start with "Not applicable:" and give the reason plus its applicable specification.
 Example: [Movement](prototypes/galactic-reach/rulebook.html#movement): preserve the five-unit destination limit. -->
 
 ## Gameplay impact

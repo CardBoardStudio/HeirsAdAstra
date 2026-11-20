@@ -1,4 +1,4 @@
-//! Shared multi-human Galactic Reach tables.
+//! Shared multi-human Heirs Ad Astra tables.
 //!
 //! The server is authoritative. A table is its event log (`log::TableLog`): seat
 //! actions plus the hidden-information authority's shuffles, so the live position

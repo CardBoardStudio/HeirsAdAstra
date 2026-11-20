@@ -176,7 +176,7 @@ pub fn refusal(
         r#"<a href="/">Open the start page</a>"#.into()
     };
     let page = format!(
-        r#"<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Invite required · Galactic Reach</title><style>body{{font:16px/1.5 system-ui,sans-serif;background:#0b1622;color:#d7edf8;display:grid;place-items:center;min-height:100vh;margin:0}}main{{max-width:32rem;padding:2rem}}a{{color:#79e3f2}}</style><main><h1>Invite required</h1><p>{message}</p><p>{action}</p></main></html>"#
+        r#"<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Invite required · Heirs Ad Astra</title><style>body{{font:16px/1.5 system-ui,sans-serif;background:#0b1622;color:#d7edf8;display:grid;place-items:center;min-height:100vh;margin:0}}main{{max-width:32rem;padding:2rem}}a{{color:#79e3f2}}</style><main><h1>Invite required</h1><p>{message}</p><p>{action}</p></main></html>"#
     );
     Some((status, axum::response::Html(page)).into_response())
 }

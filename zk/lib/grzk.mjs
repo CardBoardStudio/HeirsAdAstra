@@ -1,4 +1,4 @@
-// Galactic Reach ZK draw: client half. Plans a draw exactly as circuits/gr_draw
+// Heirs Ad Astra ZK draw: client half. Plans a draw exactly as circuits/gr_draw
 // constrains it, then proves it with bb.js (UltraHonk, keccak ZK flavor), the
 // proof the vendored Soroban verifier accepts. Runs in Node and the browser.
 import { BarretenbergSync, Fr, UltraHonkBackend } from '@aztec/bb.js';

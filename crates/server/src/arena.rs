@@ -33,7 +33,7 @@ impl GameKind {
             }
             Self::GalacticReach => {
                 galactic_reach::BrowserProfile::parse(version)
-                    .ok_or_else(|| bad("Choose a Galactic Reach policy."))?;
+                    .ok_or_else(|| bad("Choose a Heirs Ad Astra policy."))?;
             }
         }
         Ok(())
@@ -95,7 +95,7 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
 }
 pub async fn catalog() -> Json<serde_json::Value> {
     Json(json!({"games":[
-        {"id":"galactic-reach","name":"Galactic Reach","href":"/galactic-reach/","rules_version":galactic_reach::RULES,"experiment":galactic_reach::EXPERIMENT,"mode":"Browser playtest + AI arena","rated":true,"seats":4,"pool":GameKind::GalacticReach.pool(),"description":"Integrated Playtest: aligned corner portals, combined relic orders, off-turn resource actions and new cards on the adopted balance rules. Start a new game."},
+        {"id":"galactic-reach","name":"Heirs Ad Astra","href":"/galactic-reach/","rules_version":galactic_reach::RULES,"experiment":galactic_reach::EXPERIMENT,"mode":"Browser playtest + AI arena","rated":true,"seats":4,"pool":GameKind::GalacticReach.pool(),"description":"Integrated Playtest: aligned corner portals, combined relic orders, off-turn resource actions and new cards on the adopted balance rules. Start a new game."},
         {"id":"voidwright","name":"Voidwright","href":"/voidwright/","rules_version":RULES_VERSION,"mode":"Server tables + AI arena","rated":true,"seats":2,"pool":GameKind::Voidwright.pool(),"description":"Build a fleet of cards. Play with friends or compare AI players in the rated arena."}
     ],"policies":[
         {"game":"voidwright","id":"explorer","version":"explorer/1","name":"Explorer","description":"Experiments with random purchases and sometimes passes."},
@@ -590,6 +590,14 @@ mod calibration_tests {
             );
         }
         assert!(GameKind::GalacticReach.pool().contains("browser-v1"));
+    }
+    #[tokio::test]
+    async fn catalog_names_the_game_heirs_ad_astra() {
+        let catalog = catalog().await.0;
+        let game = &catalog["games"][0];
+        // The id stays galactic-reach: saved tables and links carry it.
+        assert_eq!(game["id"], "galactic-reach");
+        assert_eq!(game["name"], "Heirs Ad Astra");
     }
     #[test]
     fn incomplete_simulations_report_limits_instead_of_storage_failure() {

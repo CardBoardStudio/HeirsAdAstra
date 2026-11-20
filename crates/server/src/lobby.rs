@@ -1,4 +1,4 @@
-//! Galactic Reach waiting room. A host's table gets a private invite link, seats
+//! Heirs Ad Astra waiting room. A host's table gets a private invite link, seats
 //! fill as signed-in friends join, and the host chooses the number of AI rivals
 //! and their difficulty before Start.
 //!
@@ -14,7 +14,7 @@ const SEATS: u32 = 4;
 /// Prestige targets a host may choose for a new table (rules #victory). New games default to 30.
 pub const VICTORY_TARGETS: [u32; 5] = [20, 30, 40, 50, 60];
 pub const DEFAULT_VICTORY_TARGET: u32 = 30;
-/// Difficulty choices, named after the existing Galactic Reach AI policies.
+/// Difficulty choices, named after the existing Heirs Ad Astra AI policies.
 pub const DIFFICULTIES: [(&str, &str, &str); 2] = [
     (
         "standard",

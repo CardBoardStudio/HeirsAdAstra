@@ -50,7 +50,7 @@
       if (view.ai_error) status.textContent = `${view.ai_error} Reload to retry; if it persists, tell the host.`;
       else if (view.status === 'finished') status.textContent = 'Game over. Export game report now includes every hidden card.';
       else if (!busy) status.textContent = mine ? 'Your move.' : `Waiting for ${view.seats[active]?.name || 'the table'}…`;
-      document.title = `${mine && view.status !== 'finished' ? '● Your move · ' : ''}${view.name} · Galactic Reach`;
+      document.title = `${mine && view.status !== 'finished' ? '● Your move · ' : ''}${view.name} · Heirs Ad Astra`;
       // Say why Undo stops short of the start of the turn: a reveal is final.
       const undo = view.undo || {};
       const note = !mine ? '' : undo.available && undo.stop ? `Undo goes back only to just after ${undo.stop}.` : !undo.available && /^Undo stops/.test(undo.reason || '') ? undo.reason : '';

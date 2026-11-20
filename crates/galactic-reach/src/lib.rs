@@ -1,4 +1,4 @@
-//! Galactic Reach's existing JavaScript rules behind the shared Rust game contract.
+//! Heirs Ad Astra's existing JavaScript rules behind the shared Rust game contract.
 //! QuickJS has no host IO, filesystem, timers, or module loader. Each match gets a
 //! separate heap, memory/stack limits, and a wall-clock interrupt deadline.
 use game_core::{GameAdapter, PlayerAgent};
@@ -103,7 +103,7 @@ const ADAPTER: &str = include_str!("../../../prototypes/galactic-reach/adapter.j
 const MATCH_TIMEOUT: Duration = Duration::from_secs(300);
 /// A shared table's per-request budget, renewed with `extend_deadline`.
 pub const SHARED_STEP: Duration = Duration::from_secs(20);
-pub const SIMULATION_TIMEOUT: &str = "Galactic Reach simulation exceeded its time limit.";
+pub const SIMULATION_TIMEOUT: &str = "Heirs Ad Astra simulation exceeded its time limit.";
 fn execution_error(deadline: Instant, error: impl ToString) -> String {
     if Instant::now() >= deadline {
         SIMULATION_TIMEOUT.into()
@@ -433,7 +433,7 @@ impl GalacticReach {
             .map_err(|e| {
                 execution_error(
                     deadline.get(),
-                    format!("Galactic Reach initialization failed: {e}"),
+                    format!("Heirs Ad Astra initialization failed: {e}"),
                 )
             })?;
         let snapshot = Self::read_snapshot(&context, deadline.get())?;
@@ -477,7 +477,7 @@ impl GalacticReach {
         let json = context
             .with(|ctx| ctx.eval::<String, _>("JSON.stringify(game.snapshot())"))
             .map_err(|e| {
-                execution_error(deadline, format!("Galactic Reach execution failed: {e}"))
+                execution_error(deadline, format!("Heirs Ad Astra execution failed: {e}"))
             })?;
         serde_json::from_str(&json).map_err(|e| e.to_string())
     }
@@ -538,7 +538,7 @@ impl GameAdapter for GalacticReach {
         };
         self.context
             .with(|ctx| ctx.eval::<(), _>(script))
-            .map_err(|e| execution_error(deadline, format!("Galactic Reach action failed: {e}")))?;
+            .map_err(|e| execution_error(deadline, format!("Heirs Ad Astra action failed: {e}")))?;
         self.snapshot = Self::read_snapshot(&self.context, self.deadline.get())?;
         if self.trace.is_some() {
             let view = self.replay_view()?;

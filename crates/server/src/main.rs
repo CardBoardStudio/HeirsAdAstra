@@ -659,7 +659,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         shared: table_service_on(&store, shared::AI_PACE, {
             let channel = shared::channel::Channel::from_env(&store, |key| std::env::var(key).ok());
             let pruned = channel.keep_current(now())?;
-            tracing::info!(channel = channel.name, rules = %channel.rules, pruned, "galactic reach channel");
+            tracing::info!(channel = channel.name, rules = %channel.rules, pruned, "heirs ad astra channel");
             channel
         }),
         store,

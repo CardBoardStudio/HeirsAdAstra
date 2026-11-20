@@ -1026,7 +1026,7 @@ function createGalacticReach(options = {}) {
   // A save this engine will not resume is left untouched; the reason goes to the console,
   // because the page itself only says the save could not be loaded.
   function rejectSave(reason) {
-    globalThis.console?.warn?.(`Galactic Reach did not load the save at ${SAVE_KEY}: ${reason}`);
+    globalThis.console?.warn?.(`Heirs Ad Astra did not load the save at ${SAVE_KEY}: ${reason}`);
     return false;
   }
 
@@ -5039,7 +5039,7 @@ function createGalacticReach(options = {}) {
       || (definition.kind === 'Expansion' || definition.affinity === 'Settlement' ? 'colony' : 'starbase');
     const art = CARD_ART_KEYS.get(definition);
     if (art) return `<span class="card-art has-picture" aria-hidden="true"><img class="card-picture" src="card-art/${art}.webp" alt="" loading="lazy" decoding="async" draggable="false"><span class="card-emblem">${BOARD_ICONS[motif]}</span></span>`;
-    return `<span class="card-art" aria-hidden="true"><span class="card-orbit"></span>${BOARD_ICONS[motif]}<span class="card-registration">GALACTIC REACH</span></span>`;
+    return `<span class="card-art" aria-hidden="true"><span class="card-orbit"></span>${BOARD_ICONS[motif]}<span class="card-registration">HEIRS AD ASTRA</span></span>`;
   }
 
   function cardMarkup(card, location) {
@@ -6022,7 +6022,7 @@ function createGalacticReach(options = {}) {
     }
     if (!failed.length) return;
     for (const [name, error] of failed) {
-      console.error(`Galactic Reach could not draw ${name}:`, error);
+      console.error(`Heirs Ad Astra could not draw ${name}:`, error);
       const message = `${name}: ${error?.message || error}`;
       if (!renderErrors.includes(message)) { renderErrors.push(message); toast(`Part of the table failed to draw (${message}). Please report it with an exported game report.`); }
     }

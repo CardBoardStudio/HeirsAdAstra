@@ -1,4 +1,4 @@
-# One policy for Galactic Reach rivals
+# One policy for Heirs Ad Astra rivals
 
 The intended player behavior is in the canonical rulebook [computer rivals](../../prototypes/galactic-reach/rulebook.html#computer-rivals) and [rival planning](../../prototypes/galactic-reach/rulebook.html#rival-planning). Solo play, new shared tables and new arena matches use the actual `runAiOperation`, `runAiBuy` and `chooseCombatAction` functions in `prototypes/galactic-reach/app.js`. There is no separately maintained Rust scoring policy for new games.
 

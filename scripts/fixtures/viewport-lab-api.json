@@ -55,7 +55,7 @@
     "href": "/galactic-reach/",
     "id": "galactic-reach",
     "mode": "Browser playtest + AI arena",
-    "name": "Galactic Reach",
+    "name": "Heirs Ad Astra",
     "pool": "galactic-reach/33.38:four-player:placement:policies-v26",
     "rated": true,
     "rules_version": "galactic-reach/33.38",
