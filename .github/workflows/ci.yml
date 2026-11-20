@@ -55,6 +55,10 @@ jobs:
       - run: node scripts/test-galactic-reach.cjs
       - run: node scripts/check-card-gallery.cjs
       - run: node scripts/check-relic-interface.cjs
+      - name: Max UI controls and card banks
+        run: node scripts/check-max-ui.cjs
+        env:
+          CHECK_SIZES: 1920x1080
       - run: node scripts/test-playtest-notes.cjs
       - run: node scripts/test-change-queue.cjs
       - run: node scripts/test-long-reach.cjs
