@@ -3104,8 +3104,19 @@ body.background-stars .galaxy-board::before {
   #hand-row > .game-card:is(:hover, :focus-within) .card-buttons .button { font-size: max(12px, calc(10.5px / var(--table-zoom, 1))) !important; }
 }
 
-/* Build costs: compare each piece across the same four resource columns. */
+/* Each resource symbol is one unit of the printed price. */
+.legend-cost-symbols, .legend-cost-group { display: inline-flex; align-items: center; }
+.legend-cost-symbols { flex-wrap: wrap; gap: 3px 7px; }
+.legend-cost-group { flex-wrap: nowrap; gap: 2px; }
+.symbol-legend-cost .legend-cost-symbols .resource-symbol { width: 18px; height: 18px; }
+.map-key-dialog .symbol-vocab { display: grid; }
+/* Retained engines still render their original cost table against these shared styles. */
 @media (min-width: 600px) and (min-height: 600px) {
+  #map-legend-corner .legend-cost-list { grid-column: 1 / -1; display: grid; gap: 5px; margin: 0; padding: 2px 0; }
+  .legend-cost-row { display: grid; grid-template-columns: max-content minmax(0, 1fr); align-items: center; gap: 12px; }
+  .legend-cost-row dd { margin: 0; justify-self: end; }
+  #map-legend-corner .legend-cost-symbols { justify-content: flex-end; }
+  #map-legend-corner .legend-cost-symbols .resource-symbol { width: 14px; height: 14px; }
   #map-legend-corner .legend-cost-table { grid-column: 1 / -1; width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
   .legend-cost-table th:first-child { width: 32%; text-align: left; }
   .legend-cost-table :is(th, td) { padding: 4px 2px; border: 1px solid #c2a76b40; text-align: center; }

@@ -3920,14 +3920,20 @@ function createGalacticReach(options = {}) {
     // teaches itself without opening the Map key (which keeps the full descriptions).
     const corner = $('#map-legend-corner');
     const pieceCost = type => type === 'colony' ? { biomass: COLONY_LIFE_COST } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
-    const costRow = (icon, label, cost) => `<tr><th scope="row"><span class="legend-cost-name">${icon}<b>${label}</b></span></th>${RESOURCES.map(resource => `<td>${cost?.[resource] || ''}</td>`).join('')}</tr>`;
-    if (corner) corner.innerHTML = `<table class="legend-cost-table" aria-label="Resource costs"><thead><tr><th scope="col">Build</th>${RESOURCES.map(resource => `<th scope="col"><span class="legend-res ${resource}"><i></i>${RESOURCE_NAMES[resource]}</span></th>`).join('')}</tr></thead><tbody>`
+    // One printed resource symbol per unit paid, matching the pieces beside each price.
+    const costSymbols = cost => {
+      const present = RESOURCES.filter(resource => cost?.[resource] > 0);
+      const label = present.map(resource => `${cost[resource]} ${RESOURCE_NAMES[resource]}`).join(', ');
+      return `<span class="legend-cost-symbols" role="img" aria-label="${label}">${present.map(resource => `<span class="legend-cost-group" title="${cost[resource]} ${RESOURCE_NAMES[resource]}">${resourceDot(resource).repeat(cost[resource])}</span>`).join('')}</span>`;
+    };
+    const costRow = (icon, label, cost) => `<div class="legend-cost-row"><dt class="legend-cost-name">${icon}<b>${label}</b></dt><dd>${costSymbols(cost)}</dd></div>`;
+    if (corner) corner.innerHTML = `<dl class="legend-cost-list" aria-label="Resource costs">`
       + entries.map(([type,label]) => costRow(BOARD_ICONS[type], label, pieceCost(type))).join('')
       + costRow('<span class="legend-icon">◈</span>', 'Excavate', EXCAVATION_COST)
-      + `</tbody></table><span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
+      + `</dl><span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
     $('#symbol-legend').innerHTML = `<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) => {
       const cost = type === 'colony' ? { biomass: COLONY_LIFE_COST } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
-      return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-cost">${resourceDots(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
+      return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-cost">${costSymbols(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
     }).join('')}<strong class="legend-heading">Card icons</strong><span class="legend-vocab symbol-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
   }
 
