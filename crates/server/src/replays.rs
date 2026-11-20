@@ -1,4 +1,4 @@
-//! Owner-scoped, completed Galactic Reach matches. Replaying never updates ratings.
+//! Owner-scoped, completed Heirs Ad Astra matches. Replaying never updates ratings.
 use super::*;
 use serde_json::Value;
 pub(super) fn simulate(

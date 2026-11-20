@@ -1,6 +1,6 @@
-# Shared Galactic Reach tables
+# Shared Heirs Ad Astra tables
 
-Two to four people play one Galactic Reach game in separate browsers; AI rivals fill the empty seats. Player rules: [rulebook #shared-tables](../prototypes/galactic-reach/rulebook.html#shared-tables).
+Two to four people play one Heirs Ad Astra game in separate browsers; AI rivals fill the empty seats. Player rules: [rulebook #shared-tables](../prototypes/galactic-reach/rulebook.html#shared-tables).
 
 ## How a move travels
 

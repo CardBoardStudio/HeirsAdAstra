@@ -1,4 +1,4 @@
-// Galactic Reach Learn to play, end to end with real input. Run against a served build:
+// Heirs Ad Astra Learn to play, end to end with real input. Run against a served build:
 //
 //   chrome-devtools-axi open 'http://127.0.0.1:3117/galactic-reach/?tutorial=1'
 //   TUTORIAL_URL=... chrome-devtools-axi run < scripts/tutorial-walkthrough.axi.js

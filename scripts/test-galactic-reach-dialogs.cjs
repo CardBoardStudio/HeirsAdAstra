@@ -1,4 +1,4 @@
-// Runs the unmodified Galactic Reach app.js against a minimal fake DOM, so the real startup,
+// Runs the unmodified Heirs Ad Astra app.js against a minimal fake DOM, so the real startup,
 // save-migration, and round-end dialog paths execute exactly as they do in the browser.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -1561,5 +1561,5 @@ for (const { name, body } of tests) {
     console.log(error.stack.split('\n').map(line => `  ${line}`).join('\n'));
   }
 }
-console.log(`${tests.length - failed}/${tests.length} Galactic Reach checks passed.`);
+console.log(`${tests.length - failed}/${tests.length} Heirs Ad Astra checks passed.`);
 process.exitCode = failed ? 1 : 0;

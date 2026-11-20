@@ -1,6 +1,6 @@
 # Simulation archives
 
-New Galactic Reach studies use the [canonical browser policy runner](rules/browser-bots.md). Rust bot policies are archived for historical reproduction only.
+New Heirs Ad Astra studies use the [canonical browser policy runner](rules/browser-bots.md). Rust bot policies are archived for historical reproduction only.
 
 Every normal run of `balance-simulations.cjs`, `strategic-bot-study.cjs`, `profile-bot-search.cjs`, and `card-evolution/run.cjs` now creates a full archive for each game. Summary output is additional evidence, never the only retained result. The exported study `factory` also archives by default, so a custom study using that factory inherits recording. Custom policy handoffs share one recorder for the entire game.
 

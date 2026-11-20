@@ -1,7 +1,7 @@
 # cargo-nextest runs every test binary in one pool, one process per test.
 # CI uses it (.github/workflows/ci.yml); plain `cargo test` still runs everything.
 #
-# The heavy tier plays whole Galactic Reach matches and takes most of the suite's
+# The heavy tier plays whole Heirs Ad Astra matches and takes most of the suite's
 # time. The default profile skips it; the `heavy` profile runs only it. See
 # docs/release.md#heavy-tests. Keep the two filters below in step.
 #

@@ -1,4 +1,4 @@
-# Galactic Reach releases
+# Heirs Ad Astra releases
 
 Newest first. Each section is written by `node scripts/release.cjs cut` from the `changes/` entries merged since the previous release ([release process](release.md)). Releases before this file existed are described in the [rules maintenance guide](rules/README.md).
 

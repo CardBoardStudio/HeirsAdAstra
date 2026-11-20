@@ -1,4 +1,4 @@
-// Galactic Reach guidance: presentation only. On every one of your turns it says what you can
+// Heirs Ad Astra guidance: presentation only. On every one of your turns it says what you can
 // do right now, beside the piece of the table it is about, and the first time a mechanic
 // matters it explains that mechanic once, with a link to its rulebook section. Learn to play
 // (tutorial.js) drives the same coach mark through fixed lessons. app.js calls rendered() after

@@ -1,6 +1,6 @@
-# Galactic Reach prototype
+# Heirs Ad Astra prototype
 
-Galactic Reach is a self-contained browser prototype for a four-faction strategy game. One human player competes against three computer-controlled factions to explore a large hex map, gather resources, build fleets and colonies, improve a deck, choose resource directives, and reach 20 Prestige.
+Heirs Ad Astra is a self-contained browser prototype for a four-faction strategy game. One human player competes against three computer-controlled factions to explore a large hex map, gather resources, build fleets and colonies, improve a deck, choose resource directives, and reach 20 Prestige.
 
 ## Play locally
 

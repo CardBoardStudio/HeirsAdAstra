@@ -1,6 +1,8 @@
-# Galactic Reach
+# Heirs Ad Astra
 
-**Galactic Reach** is a four-faction strategy game in playtest: command your faction, build your fleet, and chart a path to the stars. It runs in the browser against computer-controlled rivals or with friends at a shared table, on a Rust and SQLite server that also hosts accounts, invitations and a rated AI arena.
+**Heirs Ad Astra** is a four-faction strategy game in playtest: command your faction, build your fleet, and chart a path to the stars. It runs in the browser against computer-controlled rivals or with friends at a shared table, on a Rust and SQLite server that also hosts accounts, invitations and a rated AI arena.
+
+Play the released game at <https://heirsadastra.app/>. Every merge to `main` deploys to the dev site at <https://dev.heirsadastra.app/>.
 
 ## Run locally
 
@@ -11,17 +13,17 @@ rustup target add wasm32-unknown-unknown
 ./scripts/dev.sh
 ```
 
-Open **http://127.0.0.1:3000** for the Galactic Reach home. Play as a guest without signing in, or create an account under **Your account**, save its private recovery key, then create tables in **Your tables** or AI players in **AI arena**. The build script installs the pinned `wasm-bindgen` CLI under the ignored `.tools/` directory on first use. No Node runtime or frontend JavaScript framework is required to host the games. The server embeds QuickJS for Galactic Reach’s shared JavaScript rules. Node is used only for the browser-rule regression check.
+Open **http://127.0.0.1:3000** for the Heirs Ad Astra home. Play as a guest without signing in, or create an account under **Your account**, save its private recovery key, then create tables in **Your tables** or AI players in **AI arena**. The build script installs the pinned `wasm-bindgen` CLI under the ignored `.tools/` directory on first use. No Node runtime or frontend JavaScript framework is required to host the games. The server embeds QuickJS for Heirs Ad Astra’s shared JavaScript rules. Node is used only for the browser-rule regression check.
 
 For two human players on one computer, use separate browser profiles or a private window. Share the table invitation, join before launch, then have the host launch. Recovery keys and Nido identities return to the same account across sign-ins; browser sessions expire after 24 hours. The legacy development and preview login forms still create temporary identities.
 
 ## The game
 
-[`prototypes/galactic-reach`](prototypes/galactic-reach) contains **Galactic Reach**, a self-contained browser prototype for a four-faction strategy game. It supports one human player against three computer-controlled factions, saved in the browser, and account tables shared with friends. The home page links to it at `/galactic-reach/`. The Streamlined Reach experiment uses rules 12.17 and separate v11 browser keys; 4.9, 5.10, 6.11, 7.12, 8.13, 9.14, and 10.15 account tables retain their archived engines. See the prototype README for local play instructions and scope.
+[`prototypes/galactic-reach`](prototypes/galactic-reach) contains **Heirs Ad Astra**, a self-contained browser prototype for a four-faction strategy game. It supports one human player against three computer-controlled factions, saved in the browser, and account tables shared with friends. The home page links to it at `/galactic-reach/`. The Streamlined Reach experiment uses rules 12.17 and separate v11 browser keys; 4.9, 5.10, 6.11, 7.12, 8.13, 9.14, and 10.15 account tables retain their archived engines. See the prototype README for local play instructions and scope.
 
 ## Included
 
-- Galactic Reach home, persistent human profiles, recovery-key login, session revocation, and owned AI accounts.
+- Heirs Ad Astra home, persistent human profiles, recovery-key login, session revocation, and owned AI accounts.
 - Reusable game/player traits, seven reference AI policies across two adapters, authoritative matches with rotating seats, and persistent per-lab Elo. See [game platform](docs/game-platform.md).
 - The current prototype/platform/experiment dependency graph and follow-up PR plan are tracked in the [playtest roadmap](docs/playtest-roadmap.md).
 - Optional local release deployment through Tailscale Funnel. See [local HTTPS hosting](docs/local-hosting.md).
@@ -33,7 +35,7 @@ For two human players on one computer, use separate browser profiles or a privat
 
 ## Rules
 
-Galactic Reach has a [canonical 12.17 rulebook](prototypes/galactic-reach/rulebook.html), served at `/galactic-reach/rulebook.html` on the live site and each PR preview. Read the [maintenance guide](docs/rules/README.md) before making changes; every gameplay-logic change must update the rulebook in the same PR. The [interactive tutorial](docs/rules/tutorial.md) is planned after rules review.
+Heirs Ad Astra has a [canonical 12.17 rulebook](prototypes/galactic-reach/rulebook.html), served at `/galactic-reach/rulebook.html` on the live site and each PR preview. Read the [maintenance guide](docs/rules/README.md) before making changes; every gameplay-logic change must update the rulebook in the same PR. The [interactive tutorial](docs/rules/tutorial.md) is planned after rules review.
 
 ## Build and verify
 
@@ -76,15 +78,15 @@ For a shared deployment, serve through HTTPS, set `APP_ORIGIN` to its exact publ
 
 The server currently knows the decks and controls shuffle entropy. Other players cannot retrieve your hand or draw order through the API, but this is **not** cryptographic privacy from the server. There is no Soroban deployment or ZKP implementation yet. [Architecture and migration notes](docs/architecture.md) explain what can be reused and what needs a different protocol.
 
-Galactic Reach implements the shared game/AI contract and runs authoritative, rated matches in the arena. Galactic Reach reuses its browser rules inside the server and retains archived engines for old tables and replays. There is not yet a visual card editor or arbitrary game plugin system. Polling updates the table every 1.8 seconds. The prototype does not yet provide spectators, disconnect timeouts, game deletion, turn timers, or public matchmaking. Nido sign-in currently supports single-passkey admin authority on the pinned testnet implementation.
+Heirs Ad Astra implements the shared game/AI contract and runs authoritative, rated matches in the arena. Heirs Ad Astra reuses its browser rules inside the server and retains archived engines for old tables and replays. There is not yet a visual card editor or arbitrary game plugin system. Polling updates the table every 1.8 seconds. The prototype does not yet provide spectators, disconnect timeouts, game deletion, turn timers, or public matchmaking. Nido sign-in currently supports single-passkey admin authority on the pinned testnet implementation.
 
 ## Example game: Voidwright
 
-The platform keeps a second implementation of the game/AI contract, **Voidwright**, as its example game: a deterministic Rust deck builder (`crates/game`) with a Yew/WebAssembly UI (`crates/web`), revision-checked human tables under `/api/games`, and a rated arena adapter. Players are not offered it: the home page, tables and AI arena show Galactic Reach only, while `/voidwright/`, its API routes, its tests and the container smoke check keep it working. Its rules and card setup are in [Voidwright cards and rules](docs/cards.md).
+The platform keeps a second implementation of the game/AI contract, **Voidwright**, as its example game: a deterministic Rust deck builder (`crates/game`) with a Yew/WebAssembly UI (`crates/web`), revision-checked human tables under `/api/games`, and a rated arena adapter. Players are not offered it: the home page, tables and AI arena show Heirs Ad Astra only, while `/voidwright/`, its API routes, its tests and the container smoke check keep it working. Its rules and card setup are in [Voidwright cards and rules](docs/cards.md).
 
 ## Pull request previews
 
-The repository includes a multi-stage Docker image and a Render Blueprint with automatic per-PR service previews. GitHub Actions builds and smoke-tests the actual deployment image. Preview instances have an access-code-protected test login and isolated, disposable game data; the main service keeps test login disabled. Galactic Reach work targets the user-designated stable lane, `codex/add-galactic-reach-prototype`; breaking rules experiments use separate pull requests and preview URLs.
+The repository includes a multi-stage Docker image and a Render Blueprint with automatic per-PR service previews. GitHub Actions builds and smoke-tests the actual deployment image. Preview instances have an access-code-protected test login and isolated, disposable game data; the main service keeps test login disabled. Heirs Ad Astra work targets the user-designated stable lane, `codex/add-galactic-reach-prototype`; breaking rules experiments use separate pull requests and preview URLs.
 
 See [the playtest branching workflow](docs/playtest-workflow.md) for stable and experimental lanes. See [PR preview activation](docs/pr-previews.md) for the one-time Render/GitHub connection, first-PR bootstrap, access code, lifecycle, and storage limitations. The checked-in Blueprint is a disposable testing host, not durable production infrastructure. Study data and screenshots have left the current source tree but remain in retained Git history; see [history slim](docs/history-slim.md) for pinned access and the separately approved archive/rewrite plan.
 

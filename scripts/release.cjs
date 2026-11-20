@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Galactic Reach releases (docs/release.md).
+// Heirs Ad Astra releases (docs/release.md).
 //
 //   node scripts/release.cjs status [--released origin/stable]
 //   node scripts/release.cjs cut [--name "Harbor Ships playtest"] [--released origin/stable]
@@ -188,7 +188,7 @@ ${marker}`);
     }
     write(rel, text);
   }
-  replaceIn('docs/rules/README.md', [[/\*\*Galactic Reach [\d.]+ \/ [^*]+\*\*/, `**Galactic Reach ${to.label} / ${to.name}**`]]);
+  replaceIn('docs/rules/README.md', [[/\*\*Heirs Ad Astra [\d.]+ \/ [^*]+\*\*/, `**Heirs Ad Astra ${to.label} / ${to.name}**`]]);
 }
 
 /** Adds this cycle's entries to docs/releases.md and the game's panel. */
@@ -199,7 +199,7 @@ function notes(from, to, entries, bumped) {
     ? `Rules-changing release: start a new game. Unfinished ${from.label} games and tables keep the archived ${from.label} ${from.name} engine.`
     : 'Save-compatible release: games in progress continue.';
   const line = e => `- **${e.title}**${e.compat === 'breaking' ? ' (rules change)' : ''}${e.pr ? ` (#${e.pr})` : ''}: ${e.body.replace(/\s*\n\s*/g, ' ')}`;
-  let doc = exists(NOTES) ? read(NOTES) : '# Galactic Reach releases\n\nNewest first. Each section is written by `node scripts/release.cjs cut` from the `changes/` entries merged since the previous release ([release process](release.md)).\n';
+  let doc = exists(NOTES) ? read(NOTES) : '# Heirs Ad Astra releases\n\nNewest first. Each section is written by `node scripts/release.cjs cut` from the `changes/` entries merged since the previous release ([release process](release.md)).\n';
   const first = !doc.includes(key);
   if (first) {
     const start = doc.indexOf('\n## ');

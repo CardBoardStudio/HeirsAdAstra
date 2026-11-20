@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101d22">
-  <title>Card gallery · Galactic Reach 38.43</title>
-  <meta name="description" content="Every Galactic Reach 38.43 market card and alien relic with its art, effect and a place to leave playtest feedback.">
+  <title>Card gallery · Heirs Ad Astra 38.43</title>
+  <meta name="description" content="Every Heirs Ad Astra 38.43 market card and alien relic with its art, effect and a place to leave playtest feedback.">
   <link rel="stylesheet" href="styles.css?v=cheaper-cards-32-37">
   <link rel="stylesheet" href="card-feel.css?v=2">
   <style>
@@ -80,11 +80,11 @@
   <main class="gallery" id="gallery">
     <header>
       <div>
-        <div class="eyebrow" id="gallery-version">GALACTIC REACH · 38.43 CONSTRUCT III PLAYTEST</div>
+        <div class="eyebrow" id="gallery-version">HEIRS AD ASTRA · 38.43 CONSTRUCT III PLAYTEST</div>
         <h1>Card gallery</h1>
         <p class="lede">Browse every market card and <a href="#alien-relic-gallery" id="show-relic-gallery">alien relic</a> in this playtest. Market cards follow the Expensive, Medium and Cheap tiers; relics have their own section. Use the printed id when leaving feedback. Neither market cards nor relics convert to resources. Each design's art is credited under <a href="#card-art-credits">Card art credits</a>.</p>
       </div>
-      <nav class="links" aria-label="Galactic Reach">
+      <nav class="links" aria-label="Heirs Ad Astra">
         <a class="button button-ghost" href="./" style="text-decoration:none">← Back to the game</a>
         <a class="button button-ghost" href="rulebook.html#cards" style="text-decoration:none">Card rules</a>
       </nav>
@@ -107,7 +107,7 @@
       <p class="lede">Every card design shows a public-domain painting, print or photograph from the <a href="https://www.nga.gov/open-access-images.html">National Gallery of Art, Washington</a>, released as open access under CC0. The Gallery asks for a credit, given here. Use of these works does not imply endorsement by the Gallery. The art is decoration only: a card does what its text says (<a href="rulebook.html#card-art">rulebook</a>).</p>
       <div id="credit-groups"><p class="store-status">Loading credits…</p></div>
     </section>
-    <footer class="site-footer"><span id="site-footer-version">Galactic Reach</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="#card-art-credits">Credits</a></footer>
+    <footer class="site-footer"><span id="site-footer-version">Heirs Ad Astra</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="#card-art-credits">Credits</a></footer>
   </main>
   <script>globalThis.drawingBoardTableBoot = true;</script>
   <script src="app.js?v=cheaper-cards-32-37"></script>
@@ -117,9 +117,9 @@
     const catalog = createGalacticReach({ catalog: true });
     // The label follows the engine this page loaded, so an archived copy names its own rules.
     const version = catalog.rulesVersion.split('/').pop();
-    document.querySelector('#gallery-version').textContent = `GALACTIC REACH · ${version} · CARD GALLERY`;
-    document.title = `Card gallery · Galactic Reach ${version}`;
-    document.querySelector('#site-footer-version').textContent = `Galactic Reach ${version} · playtest`;
+    document.querySelector('#gallery-version').textContent = `HEIRS AD ASTRA · ${version} · CARD GALLERY`;
+    document.title = `Card gallery · Heirs Ad Astra ${version}`;
+    document.querySelector('#site-footer-version').textContent = `Heirs Ad Astra ${version} · playtest`;
     const $ = selector => document.querySelector(selector);
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     // Stable gallery feedback references, independent of deck order or sorting.
@@ -235,7 +235,7 @@
     function renderExport() {
       const lines = Object.entries(saved).filter(([,entry])=>entry?.vote||entry?.note?.trim()).sort(([a],[b])=>a.localeCompare(b))
         .map(([code,entry])=>`${code} ${cards.find(c=>c.code===code)?.name||retiredFeedbackNames[code]||'Retired card'}: ${entry.vote||'no vote'}${entry.note?.trim()?` — ${entry.note.trim()}`:''}`);
-      $('#feedback-text').value = lines.length ? `Galactic Reach ${catalog.rulesVersion} card feedback\n${lines.join('\n')}` : '';
+      $('#feedback-text').value = lines.length ? `Heirs Ad Astra ${catalog.rulesVersion} card feedback\n${lines.join('\n')}` : '';
     }
     $('#deck-filter').insertAdjacentHTML('beforeend', [['all', `All ${cards.length}`], ['normal', 'Normal deck'], ['military', 'Military deck'], ['relic', 'Alien relics']]
       .map(([id, label]) => `<button type="button" class="button button-ghost" data-filter="${id}">${label}</button>`).join(''));

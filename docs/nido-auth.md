@@ -1,6 +1,6 @@
 # Nido authentication
 
-Galactic Reach supports passwordless sign-in with current Nido **Stellar testnet** wallets. On the account page, select **Continue with Nido**, choose your wallet, and approve the sign-in message with its passkey. Your first sign-in creates a persistent player account; later sign-ins return to its tables and AI roster. No playtest enrollment code, client secret, or manually enrolled public key is needed. Recovery-key accounts remain a separate sign-in method; signing in with a wallet does not merge another account into it.
+Heirs Ad Astra supports passwordless sign-in with current Nido **Stellar testnet** wallets. On the account page, select **Continue with Nido**, choose your wallet, and approve the sign-in message with its passkey. Your first sign-in creates a persistent player account; later sign-ins return to its tables and AI roster. No playtest enrollment code, client secret, or manually enrolled public key is needed. Recovery-key accounts remain a separate sign-in method; signing in with a wallet does not merge another account into it.
 
 ## Host setup
 
@@ -8,10 +8,10 @@ Nido is enabled by default. Set `APP_ORIGIN` to the exact externally reachable H
 
 - `NIDO_AUTH=0` disables wallet sign-in and invalidates wallet sessions on their next API request.
 - `NIDO_RPC_URL` optionally selects another trusted **HTTPS testnet RPC**. Its reported network passphrase is checked on every ownership lookup. This does not switch the wallet to another network.
-- `NIDO_WALLET_HOST` (default `test.nido.fyi`) picks the Nido wallet. Every wallet URL comes from it: the connect page `https://<host>/connect/`, each account's pages (sign, security, delegate-doc) at `https://<account>.<host>/`, and the RP ID and origin that sign-in assertions must carry. A numbered Nido PR preview such as `362.test.nido.fyi` puts accounts at `<account>--362.test.nido.fyi`, so set `NIDO_WALLET_HOST=362.test.nido.fyi` to sign in with that preview. The server publishes the derived URLs as `nido_wallet` in `GET /api/session`; the lab's "Manage your Nido wallet" link and the Galactic Reach Testnet seat use them. Passkeys belong to one wallet host, so an account created on `test.nido.fyi` cannot approve on a preview, and the reverse; create the account on the wallet you configure. A preview must use the same account Wasm and verifier as the pins below; `nido.fyi` (mainnet) is rejected.
+- `NIDO_WALLET_HOST` (default `test.nido.fyi`) picks the Nido wallet. Every wallet URL comes from it: the connect page `https://<host>/connect/`, each account's pages (sign, security, delegate-doc) at `https://<account>.<host>/`, and the RP ID and origin that sign-in assertions must carry. A numbered Nido PR preview such as `362.test.nido.fyi` puts accounts at `<account>--362.test.nido.fyi`, so set `NIDO_WALLET_HOST=362.test.nido.fyi` to sign in with that preview. The server publishes the derived URLs as `nido_wallet` in `GET /api/session`; the lab's "Manage your Nido wallet" link and the Heirs Ad Astra Testnet seat use them. Passkeys belong to one wallet host, so an account created on `test.nido.fyi` cannot approve on a preview, and the reverse; create the account on the wallet you configure. A preview must use the same account Wasm and verifier as the pins below; `nido.fyi` (mainnet) is rejected.
 - `NIDO_SIGNERS_FILE` is retired. Remove it; startup rejects it with an explanation rather than silently continuing static-key authentication.
 
-The Tailscale origin can stay private to your tailnet: the wallet returns through your browser, so Nido's servers do not need access to Galactic Reach. Use the same browser throughout the redirect and return.
+The Tailscale origin can stay private to your tailnet: the wallet returns through your browser, so Nido's servers do not need access to Heirs Ad Astra. Use the same browser throughout the redirect and return.
 
 ## Supported wallet authority
 
@@ -28,8 +28,8 @@ Wallets created on the October 9 deployment are archived on testnet and need a n
 ## Authentication and session lifecycle
 
 1. A five-minute random challenge is bound to an HttpOnly, SameSite=Lax browser cookie. Only its hash is stored. The original game/account destination is stored server-side and restricted to local game pages.
-2. The wallet returns its address. Galactic Reach validates its checksum and live authority before requesting a signature over the app origin, testnet network, address, nonce, and expiry.
-3. Nido signs (the RP ID and origin are the account's wallet host, `<account>.test.nido.fyi` by default) `SHA-256("Nido signed message (v1):\n" || message)`. Galactic Reach re-reads live wallet authority, checks the envelope, exact account origin and RP hash, WebAuthn challenge, user presence and verification, and P-256 signature. A public key supplied by the browser is never itself an identity authority.
+2. The wallet returns its address. Heirs Ad Astra validates its checksum and live authority before requesting a signature over the app origin, testnet network, address, nonce, and expiry.
+3. Nido signs (the RP ID and origin are the account's wallet host, `<account>.test.nido.fyi` by default) `SHA-256("Nido signed message (v1):\n" || message)`. Heirs Ad Astra re-reads live wallet authority, checks the envelope, exact account origin and RP hash, WebAuthn challenge, user presence and verification, and P-256 signature. A public key supplied by the browser is never itself an identity authority.
 4. Challenge consumption, persistent account creation, and session issuance are atomic. Replay, expiry, cancellation, and invalid proofs cannot issue a session. Errors return to the account UI; successful sign-in returns to the selected destination.
 5. Accounts retain the existing `nido:<address>` IDs and display names. Sessions use the same 24-hour expiry, ten-session cap, logout, and revoke-other-sessions controls as recovery-key accounts.
 6. Wallet sessions retain the verified public key and recheck live authority on API use after 60 seconds. Removed keys, recovery freezes, and unsupported upgrades invalidate the session. A network outage denies requests after the cached authorization expires; it never extends stale authority. Static-key-era sessions require fresh authentication. Other account types remain usable during RPC outages.

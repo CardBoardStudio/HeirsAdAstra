@@ -1,4 +1,4 @@
-//! Galactic Reach table (scout prototype): private hands from committed decks.
+//! Heirs Ad Astra table (scout prototype): private hands from committed decks.
 //!
 //! One hidden-information mechanic end to end. Each seat commits a secret seed
 //! when it sits. Every draw is two steps so nobody can preview it: an action

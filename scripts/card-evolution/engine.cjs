@@ -1,4 +1,4 @@
-// Headless Galactic Reach for the card-evolution study. It runs the browser engine
+// Headless Heirs Ad Astra for the card-evolution study. It runs the browser engine
 // (prototypes/galactic-reach/app.js) in a vm, as the balance studies do, with three
 // source patches and no rule changes:
 //   1. every seat is played by the rival policy;

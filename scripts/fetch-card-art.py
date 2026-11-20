@@ -1,4 +1,4 @@
-# Rebuild Galactic Reach card art from the National Gallery of Art's open-access images.
+# Rebuild Heirs Ad Astra card art from the National Gallery of Art's open-access images.
 # Each card design gets one public-domain work (openaccess=1 in NGA's opendata), cropped 2:1
 # through IIIF, converted to WebP (cwebp), plus card-art/manifest.json with the credits.
 #   git clone --depth 1 https://github.com/NationalGalleryOfArt/opendata /tmp/nga

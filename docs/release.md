@@ -1,4 +1,4 @@
-# Galactic Reach releases
+# Heirs Ad Astra releases
 
 Two channels, two branches:
 
@@ -78,7 +78,7 @@ The same check fails a Release PR that still has pending entries: cut them first
 
 ## Heavy tests
 
-Five Rust tests play whole Galactic Reach matches, and the JavaScript balance harness plays 24 more. Together they took most of CI's time, so they no longer run on change PRs. CI runs them as two jobs in `.github/workflows/ci.yml`, **Heavy simulations** (the Rust heavy tier in `.config/nextest.toml`) and **Balance harness**, on:
+Five Rust tests play whole Heirs Ad Astra matches, and the JavaScript balance harness plays 24 more. Together they took most of CI's time, so they no longer run on change PRs. CI runs them as two jobs in `.github/workflows/ci.yml`, **Heavy simulations** (the Rust heavy tier in `.config/nextest.toml`) and **Balance harness**, on:
 
 - the cut PR (`release/next` → `main`), whose CI the Release cut workflow starts with `workflow_dispatch`;
 - the standing Release PR (`main` → `stable`), which every merge to `main` synchronizes, so the heavy tests still run after each merge and a regression shows up before it can ship;
