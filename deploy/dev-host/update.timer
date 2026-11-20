@@ -1,5 +1,5 @@
 [Unit]
-Description=Check for a new Drawing Board main every minute
+Description=Check for a new Drawing Board @BRANCH@ every minute
 
 [Timer]
 OnBootSec=1min

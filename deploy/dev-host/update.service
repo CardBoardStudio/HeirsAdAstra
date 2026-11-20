@@ -1,10 +1,11 @@
 [Unit]
-Description=Deploy the newest Drawing Board main to the dev host (docs/release.md#dev-host)
+Description=Deploy the newest Drawing Board @BRANCH@ to the @INSTANCE@ host (docs/release.md#dev-host)
 After=docker.service network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
 User=@USER@
+Environment=DEV_HOST_INSTANCE=@INSTANCE@ DEV_HOST_ROOT=@ROOT@
 ExecStart=@ROOT@/bin/dev-host.sh update
 TimeoutStartSec=45min
