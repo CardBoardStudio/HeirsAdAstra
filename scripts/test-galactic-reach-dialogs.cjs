@@ -1449,6 +1449,17 @@ test('Shared Buy exchange sends its resource choice without finishing Buy',()=>{
 test('Retained Seed Ark has no unadopted draw alternative',()=>{
  const storage=createStorage(),state=boot(storage).saved();state.players[0].hand=[{id:'retained-seed',key:'seedArk'}];writeSave(storage,state);const game=boot(storage);assert.equal(game.dom.lastQuery('[data-order-draw]').length,0);
 });
+test('MaxBot is optional, previewed by name and retained through reload',()=>{
+ const storage=createStorage(),game=boot(storage);assert(!game.saved().players.some(p=>p.strategy==='maxbot'));
+ game.click('new-game-button');game.dom.element('new-game-maxbot').checked=true;
+ game.dom.element('new-game-maxbot').listeners.change.forEach(fn=>fn({type:'change'}));
+ assert(game.dom.element('new-game-neighbor').textContent.includes('MaxBot'));
+ game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();assert(!game.saved().players.some(p=>p.strategy==='maxbot'));
+ game.click('new-game-button');game.dom.element('new-game-maxbot').checked=true;game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
+ const max=game.saved().players.find(p=>p.strategy==='maxbot');assert(max);assert.equal(max.name,'MaxBot');assert.equal(game.saved().players.filter(p=>p.strategy==='maxbot').length,1);
+ const reload=boot(storage);assert.equal(reload.saved().players[max.id].name,'MaxBot');reload.click('new-game-button');assert(reload.dom.element('new-game-maxbot').checked);
+ reload.dom.element('new-game-maxbot').checked=false;reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();assert(!reload.saved().players.some(p=>p.strategy==='maxbot'));
+});
 for (const { name, body } of tests) {
   try {
     body();

@@ -62,7 +62,7 @@ function createGalacticReach(options = {}) {
   const PLAYER_COLORS = ['#55d9f4', '#ff9f6e', '#a58cff', '#f2cf66'];
   const PLAYER_NAMES = ['You', 'Ember Directorate', 'Violet Assembly', 'Helios Compact'];
   const PLAYER_STRATEGIES = ['human', 'military', 'economy', 'expansion'];
-  const STRATEGY_NAMES = { military: 'Military', economy: 'Economy', expansion: 'Expansion' };
+  const STRATEGY_NAMES = { military: 'Military', economy: 'Economy', expansion: 'Expansion', maxbot: 'MaxBot' };
   // Rules #setup: in a solo game the three rival factions are dealt to seats 1-3 at random.
   // Home order maps these logical seats to physical homes. A lineup lists the
   // rival (1-3, by its default seat) in seats 1, 2 and 3; headless games keep [1,2,3].
@@ -87,10 +87,10 @@ function createGalacticReach(options = {}) {
   function neighborSeat(homeOrder=DEFAULT_HOME_ORDER) {
     return homeOrder.indexOf(homeOrder[0]^1);
   }
-  function lineupText(lineup, homeOrder=DEFAULT_HOME_ORDER) {
+  function lineupText(lineup, homeOrder=DEFAULT_HOME_ORDER, maxbot=false) {
     const neighbor=neighborSeat(homeOrder);
     const seats=[neighbor,...[1,2,3].filter(id=>id!==neighbor)];
-    const [near,...far]=seats.map(id=>{const n=lineup[id-1];return `${options.names?.[id]||PLAYER_NAMES[n]} (${STRATEGY_NAMES[PLAYER_STRATEGIES[n]]})`;});
+    const [near,...far]=seats.map(id=>{const n=lineup[id-1];return maxbot&&PLAYER_STRATEGIES[n]==='economy' ? 'MaxBot (MaxBot)' : `${options.names?.[id]||PLAYER_NAMES[n]} (${STRATEGY_NAMES[PLAYER_STRATEGIES[n]]})`;});
     return {neighbor:near,far:far.join(' and ')};
   }
   const BOARD_RADIUS = 10;
@@ -603,8 +603,9 @@ function createGalacticReach(options = {}) {
     const deck = [];
     for (let i = 0; i < 3; i += 1) deck.push(makeCard('move',true), makeCard('construct',true));
     const faction = index === 0 ? 0 : lineup[index - 1];
+    const maxbot=(options.maxbot===true||newGameSettings.maxbot===true)&&PLAYER_STRATEGIES[faction]==='economy';
     return {
-      id: index, name: options.names?.[index] || PLAYER_NAMES[faction], color: PLAYER_COLORS[faction], strategy: PLAYER_STRATEGIES[faction],
+      id: index, name: maxbot?'MaxBot':options.names?.[index] || PLAYER_NAMES[faction], color: PLAYER_COLORS[faction], strategy: maxbot?'maxbot':PLAYER_STRATEGIES[faction],
       resources: { matter: 0, energy: 0, biomass: 1, data: 1 }, deck: shuffled(deck,`deck:${index}`), discard: [], hand: [], inPlay: [],
       resourceLimits: { matter:4, energy:4, biomass:4, data:4 }, storageUpgrades: 0, storagePurchases: 0, storage: [], initialShipyardCoord: null, cardsPurchased: 0, relicsExcavated: 0, combatVictories: 0, passed: false, tradeUsed: false, bought: 0,
       buyDiscountEach: 0, buyHubDiscounts: 0, bankExchangeResources: [], buyStartDiscardIds: [], buyStartInPlayIds: [], buyStartHandIds: [], combatBonus: 0, military: [], cardPrestige: 0,
@@ -3062,6 +3063,15 @@ function createGalacticReach(options = {}) {
     return Boolean(resource&&resolveHumanSpecial(card,ALL_CARDS[card.key],playerId,resource));
   }
 
+  function maxBotLate(playerId) {
+    return state.players[playerId].strategy==='maxbot' && (state.round>=10
+      || Math.max(...state.players.map((_,id)=>calculatePrestige(id)))>=victoryTarget()*.65);
+  }
+
+  function maxBotWarehouse(playerId) {
+    return aiCards(playerId).some(c=>c.key==='foldedWarehouse');
+  }
+
   function aiCardUtility(playerId, key) {
     const p=state.players[playerId],def=ALL_CARDS[key],cards=aiCards(playerId),effect=def.effect||{};
     const horizon=Math.max(1,Math.min(5,Math.ceil((victoryTarget()-Math.max(...state.players.map((_,id)=>calculatePrestige(id))))/5)));
@@ -3098,6 +3108,12 @@ function createGalacticReach(options = {}) {
       value-=owned*(draw>=2?9:12);
       if (!draw&&!def.gainPrestige) value-=Math.max(0,cards.length-10)*1.3;
       if (horizon===1&&!def.gainPrestige) value-=15;
+    }
+    if(p.strategy==='maxbot') {
+      if(key==='foldedWarehouse'&&!maxBotWarehouse(playerId))value+=80;
+      if(def.gainPrestige)value+=maxBotLate(playerId)?30:5;
+      if(effect.draw>=2 && cards.filter(c=>ALL_CARDS[c.key].effect?.draw>=2).length>=2)value-=20;
+      if(effect.bankRate && cards.some(c=>ALL_CARDS[c.key].effect?.bankRate))value-=25;
     }
     return value;
   }
@@ -3182,10 +3198,11 @@ function createGalacticReach(options = {}) {
   }
 
   function chooseAiBuild(playerId, goalsOnly = false) {
-    const p=state.players[playerId],military=p.strategy==='military',economy=['economy','market'].includes(p.strategy),expansion=p.strategy==='expansion';
+    const p=state.players[playerId],military=p.strategy==='military'||maxBotLate(playerId),economy=['economy','market','maxbot'].includes(p.strategy),expansion=['expansion','maxbot'].includes(p.strategy),maxbot=p.strategy==='maxbot';
     const yards=controlledPlanets(playerId).filter(([,p])=>p.upgrade==='starbase'),income=aiIncome(playerId);
     const horizon=aiInvestmentHorizon(),limits=resourceLimits(playerId);
     const targets={matter:Math.min(limits.matter,5),energy:Math.min(limits.energy,4),biomass:Math.min(limits.biomass,expansion?4:3),data:Math.min(limits.data,aiRelicsRemain()?4:3)},options=[];
+    if(maxbot)for(const r of RESOURCES)targets[r]=Math.min(limits[r],r==='biomass'?6:8);
     const settlers=countPlacedShips(playerId,'settler'),explorers=countPlacedShips(playerId,'explorer'),fleets=countPlacedShips(playerId,'fleet');
     const defense=aiColonyDefense(playerId),enemyFleets=Math.max(0,...Object.values(state.fleets).flatMap(g=>Object.entries(g).filter(([id])=>+id!==playerId).map(([,f])=>f.fleet||0)));
     const colonyGoals=state.clusters.some(c=>c.kind==='world' && state.planets[c.center].owner!==playerId);
@@ -3193,16 +3210,17 @@ function createGalacticReach(options = {}) {
       const shortage=Math.max(0,targets[planet.type]-income[planet.type]);
       const useful=Math.min(planet.owner===playerId?1:HARVESTER_YIELD,Math.max(0,targets[planet.type]-income[planet.type]));
       const payback=useful*Math.max(0,horizon-1);
-      options.push({kind:'harvester',coord,score:planet.type==='data'&&!income.data&&state.round<=2?53:shortage&&payback>=3?10+shortage*7+(economy?4:0):1});
+      options.push({kind:'harvester',coord,score:planet.type==='data'&&!income.data&&state.round<=2?53:shortage&&payback>=3?(maxbot?28:10)+shortage*(maxbot?3:7)+(economy?4:0):maxbot?-1:1});
+      const localYard=maxbot&&clusterHasColony(playerId,planet.cluster)&&!yards.some(([,yard])=>yard.cluster===planet.cluster);
       const forward=yards.length<2 && colonyPlanets(playerId).some(([center])=>state.planets[center].cluster===planet.cluster) && yards.every(([y])=>hexDistance(y,coord)>6);
-      options.push({kind:'starbase',coord,score:!yards.length?50+(!p.initialShipyardCoord&&coord===aiInitialShipyard(playerId)? .1:0):forward?military?15:10:0});
+      options.push({kind:'starbase',coord,score:!yards.length?50+(!p.initialShipyardCoord&&coord===aiInitialShipyard(playerId)? .1:0):localYard?58:forward?military?15:10:0});
     }
     for (const [coord] of yards) {
       const group=state.fleets[coord]?.[playerId]||{};
       if (canPlaceShip(playerId,'settler') && !group.settler && colonyGoals && settlers<(expansion?2:1)) options.push({kind:'settler',coord,score:settlers?22:32+(expansion?3:0)});
-      if (aiRelicsRemain() && canPlaceShip(playerId,'explorer') && !group.explorer && explorers<1) options.push({kind:'explorer',coord,score:28+(economy?2:0)});
+      if (aiRelicsRemain() && canPlaceShip(playerId,'explorer') && !group.explorer && explorers<1) options.push({kind:'explorer',coord,score:maxbot&&!maxBotWarehouse(playerId)?48:28+(economy?2:0)});
       const urgent=defense.filter(d=>d.needed>0&&travelDistance(coord,d.coord)<=6).sort((a,b)=>travelDistance(coord,a.coord)-travelDistance(coord,b.coord))[0];
-      const desired=military?5:enemyFleets?Math.min(3,colonyPlanets(playerId).length):0;
+      const desired=maxbot&&maxBotLate(playerId)?8:military?5:enemyFleets?Math.min(3,colonyPlanets(playerId).length):0;
       const alreadyStaging=urgent&&(group.fleet||0)>=urgent.attackers+1;
       if (canPlaceShip(playerId,'fleet') && (urgent&&!alreadyStaging||fleets<desired)) options.push({kind:'fleet',coord,score:urgent&&!alreadyStaging?85-travelDistance(coord,urgent.coord)*3:military?30:27});
     }
@@ -3249,7 +3267,7 @@ function createGalacticReach(options = {}) {
   }
 
   function chooseAiMove(playerId, card = {}, routeCache = new Map()) {
-    const p=state.players[playerId],military=p.strategy==='military',expansion=p.strategy==='expansion',economy=['economy','market'].includes(p.strategy);
+    const p=state.players[playerId],military=p.strategy==='military'||maxBotLate(playerId),expansion=['expansion','maxbot'].includes(p.strategy),economy=['economy','market','maxbot'].includes(p.strategy);
     const groups=Object.entries(state.fleets).filter(([,g])=>fleetCount(g[playerId]));
     const targets=[],defense=aiColonyDefense(playerId);
     const add=(source,moving,goal,value,moveGroup,cannotAttack)=>{
@@ -3327,7 +3345,7 @@ function createGalacticReach(options = {}) {
         const goals=known;
         for (const goal of goals) {
           if (groups.some(([at,other])=>at!==source&&other[playerId].explorer&&travelDistance(at,goal)<travelDistance(source,goal))) continue;
-          add(source,explorers,goal,known.length?(economy?44:39):29,'explorer',true);
+          add(source,explorers,goal,known.length?(p.strategy==='maxbot'&&!maxBotWarehouse(playerId)?56:economy?44:39):29,'explorer',true);
         }
 
       }
@@ -3360,7 +3378,7 @@ function createGalacticReach(options = {}) {
       if (aiUseResources(p,colonize.id,cost)&&applyColonizeOrder(id,target,colonize)) return;
     }
     // Pure-gain orders first: permanent Prestige, permanent capacity, and big draws.
-    const boost=p.hand.find(c=>{const effect=ALL_CARDS[c.key].effect;return effect&&(effect.prestige||effect.limits||effect.allocate||effect.draw>=2);});
+    const boost=(p.strategy==='maxbot'&&p.hand.find(c=>c.key==='foldedWarehouse'))||p.hand.find(c=>{const effect=ALL_CARDS[c.key].effect;return effect&&(effect.prestige||effect.limits||effect.allocate||effect.draw>=2);});
     if (boost&&resolveCardEffect(id,boost,ALL_CARDS[boost.key],ALL_CARDS[boost.key].effect.allocate?aiModuleAllocation(id,ALL_CARDS[boost.key].effect.allocate):null)) return;
     const excavation=p.hand.find(c=>['probe','excavate'].includes(c.key));
     if (excavation) {
@@ -3538,11 +3556,11 @@ function createGalacticReach(options = {}) {
     const marketChoices=()=>marketOffers().map((card,index)=>({source:catalogMarketEnabled()?'catalog':'market',index,key:card.key})).map(x=>({...x,score:aiBuyValue(id,x.key),bank:bankPlanForCost(p,purchaseCost(p,x.key),immediate)})).filter(x=>x.score>0&&preservesPayment(x)).sort((a,b)=>b.score-a.score||a.bank.length-b.bank.length);
     const purchase=choice=>choice&&choice.bank.every(t=>bankTrade(id,t.giveType,t.getType))&&buyCard(id,choice.source,choice.source==='catalog'?choice.key:choice.index);
     const horizon=victoryTarget()-Math.max(...state.players.map((_,i)=>calculatePrestige(i)));
-    const early=marketChoices()[0],marketFirst=p.strategy==='market';
+    const early=marketChoices()[0],marketFirst=['market','maxbot'].includes(p.strategy);
     const established=aiCards(id).some(c=>c.starter&&c.key==='construct'&&starterLevel(c)>=2);
     if(yard&&early&&(marketFirst?established&&early.score>=18:established&&early.score>=24))purchase(early);
     if(marketFirst&&established)aiCapacityForTarget(id);
-    for(let n=0;yard&&n<4&&horizon>3;n++) {
+    for(let n=0;yard&&n<(p.strategy==='maxbot'?2:4)&&horizon>3;n++) {
       const candidates=[...p.hand,...p.discard,...p.inPlay].filter(c=>c.starter&&starterLevel(c)<3);
       const rank=c=>starterLevel(c)===2?40:c.key==='construct'&&!aiCards(id).some(c=>c.key==='construct'&&c.upgraded)?45:c.key==='construct'?25:20;
       const upgrade=candidates.sort((a,b)=>rank(b)-rank(a)||a.id.localeCompare(b.id)).find(c=>RESOURCES.some(r=>p.resources[r]>=upgradePrice(c)+(immediate[r]||0)));
@@ -5676,13 +5694,18 @@ function createGalacticReach(options = {}) {
       // Rules #solo-seating: deal physical homes and preview the rival sharing your half.
       newGameLineup=validLineup(options.lineup) ? [...options.lineup] : rollLineup();
       newGameHomeOrder=validHomeOrder(options.homeOrder) ? [...options.homeOrder] : TUTORIAL ? [...DEFAULT_HOME_ORDER] : rollHomeOrder();
-      const {neighbor,far}=lineupText(newGameLineup,newGameHomeOrder);
+      $('#new-game-maxbot').checked=state.players.some(p=>p.strategy==='maxbot');
+      const {neighbor,far}=lineupText(newGameLineup,newGameHomeOrder,$('#new-game-maxbot').checked);
       $('#new-game-neighbor').innerHTML=`<strong>Your neighbor: ${esc(neighbor)}.</strong> It shares your half of the map. Across the map: ${esc(far)}.`;
       $('#new-game-dialog').showModal();
     });
+    $('#new-game-maxbot').addEventListener('change',()=>{
+      const {neighbor,far}=lineupText(newGameLineup,newGameHomeOrder,$('#new-game-maxbot').checked);
+      $('#new-game-neighbor').textContent=`Your neighbor: ${neighbor}. It shares your half of the map. Across the map: ${far}.`;
+    });
     $('#new-game-dialog').addEventListener('close',()=>{
       if ($('#new-game-dialog').returnValue!=='start') return;
-      newGameSettings={victoryTarget:Number($('#new-game-target').value),lineup:newGameLineup,homeOrder:newGameHomeOrder};
+      newGameSettings={victoryTarget:Number($('#new-game-target').value),lineup:newGameLineup,homeOrder:newGameHomeOrder,maxbot:$('#new-game-maxbot').checked};
       clearTurnHistory();
       state=newState(); fillMarket(); logEvent(`The four factions entered the Reach and drew their opening five cards. First to ${victoryTarget()} Prestige at a round's end wins.`); logNeighbor(); saveGame(); render(); beginRound();
     });

@@ -124,3 +124,6 @@ require('./test-random-solo-homes.cjs');
 require("./test-bot-family-plan.cjs");
 require("./test-bot-family-study.cjs");
 require('./test-browser-bot-policy.cjs');
+require("./test-maxbot.cjs");
+
+require("./test-maxbot-study.cjs");
