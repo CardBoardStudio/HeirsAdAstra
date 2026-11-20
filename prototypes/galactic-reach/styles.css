@@ -3729,3 +3729,7 @@ body.background-stars #hand-row { --n: var(--max-hand-count, 5) !important; }
     grid-column:3 !important; grid-row:1 / 9 !important; align-self:end !important; justify-self:end !important; margin:0 0 8px !important;
   }
 }
+@media (min-width:600px) and (min-height:600px) and (max-height:800px) {
+  /* Keep the buttons and tracker at full size, including counts beyond 21. */
+  body.background-stars.max-reference-rails #max-bank-nav .max-bank-label { display:none; }
+}
