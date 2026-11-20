@@ -544,7 +544,20 @@ async fn optional_board_waits_without_taking_a_seat_and_keeps_player_cookies() {
         .0,
         StatusCode::OK
     );
-    let before = view(&app, &id, &both).await.2;
+    // Seating is randomized. Let the opening AI turns finish before capturing
+    // the sequence used below; display operations do not pause the authority.
+    let mut before = view(&app, &id, &both).await.2;
+    for _ in 0..200 {
+        if before["seats"][before["active"].as_u64().unwrap() as usize]["human"] == true {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        before = view(&app, &id, &both).await.2;
+    }
+    assert_eq!(
+        before["seats"][before["active"].as_u64().unwrap() as usize]["human"],
+        true
+    );
     assert_eq!(
         before["seats"]
             .as_array()
