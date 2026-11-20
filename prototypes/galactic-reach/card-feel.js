@@ -404,7 +404,7 @@
     if (!dialog) return; // Archived pages keep their own layout.
     const banks = {
       relics: { node: $('#relics-panel'), title: 'Relics', help: 'The three face-up rewards. Excavate at a located relic to claim one.' },
-      market: { node: $('#market-panel'), title: 'Market', help: 'Expensive · Medium · Cheap. Purchased cards enter their normal piles.' },
+      market: { node: $('#market-panel'), title: 'Market', help: 'Purchased cards enter their normal piles.' },
       basics: { node: $('#upgrade-group'), title: 'Basics', help: 'Improve your starters, add a Capacity Module, or inspect the Trash pile.' }
     };
     const buttons = [...document.querySelectorAll('[data-card-bank]')];
@@ -416,6 +416,26 @@
     const active = () => document.body.classList.contains('background-stars');
     const buying = () => !$('#finish-buy-button').hidden;
     const excavating = () => !$('#cancel-excavate').hidden;
+    function labelMarketRows() {
+      const row = $('#market-row');
+      row.querySelectorAll('.max-market-tier-label').forEach(label => label.remove());
+      if (!enabled) return;
+      for (const [index, [tier, name]] of [['expensive', 'Expensive'], ['medium', 'Moderate'], ['cheap', 'Cheap']].entries()) {
+        const cards = [...row.querySelectorAll(`:scope > [data-market-tier="${tier}"]`)];
+        if (!cards.length) continue;
+        const label = document.createElement('span');
+        label.className = 'max-market-tier-label';
+        label.textContent = name;
+        label.style.setProperty('--max-tier-index', index);
+        row.append(label);
+        cards.forEach((card, slot) => {
+          card.style.setProperty('--max-tier-index', index);
+          card.style.setProperty('--max-tier-slot', slot);
+          card.style.setProperty('--max-tier-phone-column', slot % 2 + 2);
+          card.style.setProperty('--max-tier-phone-row', index * 2 + Math.floor(slot / 2) + 1);
+        });
+      }
+    }
     function close() { if (dialog.open) dialog.close(); }
     function choose(name) {
       if (!banks[name]) return;
@@ -450,6 +470,7 @@
         }
         wasBuying = false; wasExcavating = false; wasChoosing = false; relicsRequested = false;
       }
+      labelMarketRows();
       if (!enabled) return;
       const buy = buying(), choosing = excavating();
       const dig = choosing && (relicsRequested || !!$('#relic-row [data-excavate-relic]:not(:disabled)'));

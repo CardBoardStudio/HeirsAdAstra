@@ -3537,6 +3537,38 @@ body.background-stars :is(.gr-coach-eyebrow, .gr-coach-rule) { color: #b0cfff; }
 }
 
 #max-bank-dialog #max-bank-content :is(#market-row, #upgrade-market, .relic-row) .card-effect { mask-image: none !important; -webkit-mask-image: none !important; line-clamp: unset !important; align-self: start !important; }
+
+/* Keep each tier's label alongside its own cards, including exhausted slots. */
+#max-bank-dialog #max-bank-content #market-row:has(> .max-market-tier-label) {
+  grid-template-columns: 24px repeat(3, minmax(0, 1fr)) !important;
+}
+#max-bank-dialog #max-bank-content #market-row:has(> .max-market-tier-label) > .game-card {
+  grid-column: calc(var(--max-tier-slot) + 2) !important;
+  grid-row: calc(var(--max-tier-index) + 1) !important;
+}
+.max-market-tier-label {
+  grid-column: 1;
+  grid-row: calc(var(--max-tier-index) + 1);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  place-self: center;
+  color: #afc1dc;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+@media (max-width: 599px), (max-height: 599px) {
+  #max-bank-dialog #max-bank-content #market-row:has(> .max-market-tier-label) {
+    grid-template-columns: 20px repeat(2, minmax(0, 1fr)) !important;
+  }
+  #max-bank-dialog #max-bank-content #market-row:has(> .max-market-tier-label) > .game-card {
+    grid-column: var(--max-tier-phone-column) !important;
+    grid-row: var(--max-tier-phone-row) !important;
+  }
+  .max-market-tier-label { grid-row: calc(var(--max-tier-index) * 2 + 1) / span 2; }
+}
 /* Phones keep the three banks above their drawers; guidance leaves those controls clear. */
 @media (max-width: 599px), (max-height: 599px) {
   body.background-stars { --sheet-h: min(52dvh, calc(100dvh - 190px)); }
@@ -3658,6 +3690,10 @@ body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now i {
 @keyframes max-hand-breathe { 50% { scale: 1.025; outline-color: #b4d4ff; filter: drop-shadow(0 0 10px #95bff670); } }
 
 /* Max's UI seating: move the existing pieces; keep their card and button sizes. */
+/* The hand's wide layout box can reach over the action buttons. Only its cards
+   should catch input; empty space must let mouse and touch reach the controls. */
+body.background-stars #hand-row { pointer-events: none; }
+body.background-stars #hand-row > .game-card { pointer-events: auto; }
 @media (min-width: 600px) and (min-height: 600px) {
   body.background-stars #resource-grid.resource-grid {
     --bank-caption-h: 0px;
