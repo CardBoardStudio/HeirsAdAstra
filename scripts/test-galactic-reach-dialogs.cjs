@@ -240,6 +240,15 @@ function combatStorage(attacker=0,stage='escape') {
   const storage=createStorage();writeSave(storage,state);return storage;
 }
 
+function continueCombat(game) {
+  // Current UI previews a tactic before committing it. Archived engines commit
+  // directly, so the same continuation helper also exercises their old controls.
+  const tactic=game.dom.lastQuery('[data-combat-tactic]').find(button=>!button.disabled);
+  if(tactic)tactic.click();
+  const action=game.dom.lastQuery('[data-combat-action]').find(button=>!button.disabled);
+  assert(action,'Must offer the human a legal continuation');action.click();game.settle();
+}
+
 const tests = [];
 function test(name, body) {
  if(name.startsWith('Seed Ark ')||name.startsWith('Shared-table Seed Ark')){
@@ -375,7 +384,7 @@ for(const attacker of [0,1]) for(const stage of ['escape','tactic','committed','
   const reload=boot(storage);assert(reload.dialog('combat').open);
   assert.doesNotMatch(reload.dom.element('combat-forces').innerHTML,/choice|commitments/,'No unrevealed opponent tactic rendered');
   let choices=0;
-  while(reload.saved().pendingCombat){assert(choices++<8);const buttons=reload.dom.lastQuery('[data-combat-action]');assert(buttons.length,'Must offer the human a legal continuation');buttons[0].click();reload.settle();}
+  while(reload.saved().pendingCombat){assert(choices++<8);continueCombat(reload);}
   assert(!reload.dialog('combat').open);assert(!reload.saved().pendingMove);
   assert.equal(reload.saved().players[attacker].inPlay.filter(c=>c.id==='dialog-combat-move').length,1);
   assert.equal(reload.saved().log.filter(line=>/ moved .+ from /.test(line)).length,1,'Movement completes once despite reload and repeated close');
@@ -390,11 +399,82 @@ for(const attacker of [0,1]) for(const stage of ['escape','tactic','committed','
   reportReload.click('message-continue');assert(!reportReload.saved().pendingCombatReport);
 });
 
+test('battle table previews and enemy inspection spend nothing; only Commit locks a tactic',()=>{
+  const game=boot(combatStorage(0,'tactic')),before=JSON.stringify(game.saved()),rng=game.randomCalls();
+  assert(game.dom.lastQuery('[data-combat-action]')[0].disabled,'Commit needs a selected tactic');
+  game.dom.lastQuery('[data-combat-inspect]').find(button=>button.dataset.combatInspect==='defensiveScreen').click();
+  assert.match(game.dom.element('combat-help').textContent,/Defensive Screen: Prevent 2 hits/);
+  game.dom.lastQuery('[data-combat-tactic]').find(button=>button.dataset.combatTactic==='concentratedFire').click();
+  assert.match(game.dom.element('combat-options').innerHTML,/Commit Concentrated Fire/);
+  assert.equal(JSON.stringify(game.saved()),before,'Reading and selecting cards do not change the saved position');
+  assert.equal(game.randomCalls(),rng,'Presentation never consumes randomness');
+  const commit=game.dom.lastQuery('[data-combat-action]')[0];assert(!commit.disabled);
+  commit.click();game.settle();
+  const after=JSON.stringify(game.saved());assert.notEqual(after,before);
+  commit.click();game.settle();assert.equal(JSON.stringify(game.saved()),after,'An old Commit button cannot submit twice');
+  assert.equal(game.saved().pendingCombat.volleys[0].attacker.tactic,'concentratedFire');
+});
+
+test('battle table shows public purchased tactics and usage without leaking the enemy commitment or regular hand',()=>{
+  const storage=combatStorage(1,'committed'),state=JSON.parse(storage.getItem(SAVE_KEY));
+  state.players[1].military=[{key:'railBattery',id:'rail-a'},{key:'railBattery',id:'rail-b'},{key:'phaseLance',id:'lance'}];
+  state.players[1].hand=[{key:'warSongOfHollowStars',id:'private-reaction'}];
+  Object.assign(state.pendingCombat.hands.attacker,{railBattery:1,phaseLance:1});
+  state.pendingCombat.used.attacker=['railBattery'];
+  writeSave(storage,state);const first=boot(storage),html=first.dom.element('combat-forces').innerHTML;
+  assert(html.indexOf('combat-enemy')<html.indexOf('combat-own'),'Enemy is above you even when you defend');
+  assert.match(html,/Rail Battery: 1 available, 1 used/);
+  assert.match(html,/Phase Lance: 1 available, 0 used/);
+  assert.doesNotMatch(html,/War-Song|private-reaction/);
+  const other=JSON.parse(JSON.stringify(state));other.pendingCombat.commitments.attacker='phaseLance';
+  const otherStorage=createStorage();writeSave(otherStorage,other);
+  const second=boot(otherStorage);assert.equal(second.dom.element('combat-forces').innerHTML,html,'Different hidden choices produce exactly the same battle table');
+  assert.match(second.dom.element('combat-options').innerHTML,/Select a tactic/,'Human defender may choose after a committed opponent');
+});
+
+test('battle table keeps damaged units separate and counts identical healthy ships',()=>{
+  const storage=combatStorage(0,'later'),state=JSON.parse(storage.getItem(SAVE_KEY));
+  state.pendingCombat.attackerPieces.push({type:'fleet',hull:7,power:3,damage:0},{type:'fleet',hull:7,power:3,damage:0});
+  state.fleets['9,-10'][0].fleet=3;writeSave(storage,state);
+  const game=boot(storage),html=game.dom.element('combat-forces').innerHTML;
+  assert.match(html,/Fleet: 3 attack, 6\/7 hull/);
+  assert.match(html,/2 × Fleet: 3 attack, 7\/7 hull each/);
+  assert.match(html,/class="board-icon"/);assert.match(html,/class="combat-hull"/);
+  assert.match(html,/Concentrated Fire: 2 available, 0 used/);
+  assert.match(html,/Defensive Screen: 1 available, 1 used/);
+});
+
+test('a shared battle at seat two selects locally and sends one explicit commit',()=>{
+  const state=JSON.parse(combatStorage(0,'tactic').getItem(SAVE_KEY)),sent=[];
+  state.activePlayer=2;state.pendingCombat.attackerId=2;
+  const network={seat:2,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+  const game=boot(createStorage(),20261013,{hostname:'localhost',search:''},{network});
+  assert.match(game.dom.element('combat-status').textContent,/Select a tactic/);
+  game.dom.lastQuery('[data-combat-tactic]').find(button=>button.dataset.combatTactic==='defensiveScreen').click();
+  assert.deepEqual(sent,[],'A preview is not a network command');
+  game.dom.lastQuery('[data-combat-action]')[0].click();
+  assert.equal(sent.length,1);assert.equal(sent[0][0].type,'combat_tactic');assert.equal(sent[0][0].tactic,'defensiveScreen');
+});
+
+test('paid Explorer escape stays a preview until its explicit confirmation',()=>{
+  const storage=combatStorage(0,'escape'),state=JSON.parse(storage.getItem(SAVE_KEY));
+  state.players[0].resources.energy=2;state.fleets['9,-10'][0].explorer=2;
+  state.pendingCombat.attackerPieces.push({type:'explorer',hull:1,power:1,damage:0},{type:'explorer',hull:1,power:1,damage:0});
+  writeSave(storage,state);const game=boot(storage),before=JSON.stringify(game.saved());
+  const picker=game.dom.element('combat-escape-option');picker.value='1';fire(picker,'change');
+  assert.match(game.dom.element('combat-options').innerHTML,/Confirm escape/);
+  assert.equal(JSON.stringify(game.saved()),before,'Choosing an escape spends neither Energy nor an Explorer');
+  game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();
+  assert.equal(game.saved().players[0].resources.energy,1);
+  assert.equal(game.saved().pendingCombat.attackerPieces.filter(piece=>piece.type==='explorer').length,1);
+  assert.equal(game.saved().pendingCombat.stage,'tactic');
+});
+
 test('30.35 archive: salvage caps automatically before the saved final report',archived(()=>{
  const storage=combatStorage(0,'tactic'),state=JSON.parse(storage.getItem(SAVE_KEY));
  for(const seat of [0,1]){state.players[seat].resources.matter=4;state.players[seat].hand.push({key:'naniteOssuary',id:`salvage-${seat}`});}
  writeSave(storage,state);const game=boot(storage);let choices=0;
- while(game.saved().pendingCombat){assert(choices++<8);game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();}
+ while(game.saved().pendingCombat){assert(choices++<8);continueCombat(game);}
  assert(game.dialog('message').open);assert(!game.dialog('overflow').open);assert.equal(game.saved().players[0].resources.matter,4);assert(game.saved().log.some(l=>l.includes('automatically discarded')));
  const reload=boot(storage);assert(reload.dialog('message').open);assert.equal(reload.saved().players[0].resources.matter,4);reload.click('message-continue');assert(!reload.saved().pendingCombatReport);
 }));
@@ -996,7 +1076,7 @@ test('decisive combat awards Prestige once and the saved report preserves it', (
  state.pendingCombat.defenderPieces=[{type:'settler',hull:4,power:1,damage:0}];
  state.fleets['9,-10'][1]={settler:1,explorer:0,fleet:0};writeSave(storage,state);
  const game=boot(storage);let choices=0;
- while(game.saved().pendingCombat){assert(choices++<8);game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();}
+ while(game.saved().pendingCombat){assert(choices++<8);continueCombat(game);}
  assert.equal(game.saved().players[0].combatVictories,1);
  assert.equal(game.saved().lastCombat.prestigeWinner,0);
  assert.match(game.dom.element('message-body').textContent,/gained 2 Prestige/);
@@ -1112,8 +1192,7 @@ test('Undo retains the audit and records which events it reverses, including acr
 
 test('combat history retains secret choices and volley arithmetic without changing the observer view', () => {
  const storage=combatStorage(0,'tactic'),game=boot(storage);
- const choice=game.dom.lastQuery('[data-combat-action]')[0];
- assert(choice);choice.click();game.settle();game.click('export-game-report');
+ continueCombat(game);game.click('export-game-report');
  const events=game.downloads.at(-1).save.gameHistory.events;
  assert(events.some(e=>e.kind==='combat-choice'&&e.actor===0&&e.action.tactic==='concentratedFire'));
  const volley=events.find(e=>e.kind==='combat-volley');assert(volley);assert.equal(volley.results.attacker.base,3);
@@ -1135,7 +1214,7 @@ test('a complete browser game exports setup through victory and retains its hist
    assert(turn<350,'Browser rivals should finish a game: '+JSON.stringify({round:game.saved().round,phase:game.saved().phase,active:game.saved().activePlayer,pendingConstruct:game.saved().pendingConstruct,pendingBuildOrder:game.saved().pendingBuildOrder,players:game.saved().players.map(p=>({id:p.id,prestige:p.prestige,resources:p.resources,hand:p.hand.map(c=>c.key)})),log:game.saved().log.slice(-10)}));
    const state=game.saved();
    if(state.pendingCombatReport)game.click('message-continue');
-   else if(state.pendingCombat){game.dom.lastQuery('[data-combat-action]')[0].click();game.settle();}
+   else if(state.pendingCombat)continueCombat(game);
    else if(game.dialog('overflow').open){
      const player=state.players[0];
      for(const resource of ['matter','energy','biomass','data']) game.dom.element('overflow-'+resource).value=String(Math.max(0,player.resources[resource]-player.resourceLimits[resource]));

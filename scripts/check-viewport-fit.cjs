@@ -144,14 +144,24 @@ function matTradeState() {
   state.players[0].resources = { matter: 5, energy: 2, biomass: 3, data: 1 };
   return state;
 }
-function combatState(stage) {
+function combatState(stage, military = false) {
   const { adapter, engine, state } = freshEngine();
   state.activePlayer = 0; state.phase = 'operations'; state.turnStage = 'action';
   state.fleets = { '10,-10': { 0: { fleet: 3, explorer: 0, settler: 1 } }, '9,-10': { 1: { fleet: 2, explorer: 1, settler: 0 } } };
   state.players.forEach((p, id) => { p.hand = id === 0 ? [card('move', { starter: true })] : []; p.resources = { matter: 0, energy: 0, biomass: 0, data: 0 }; });
+  if (military) for (const player of state.players.slice(0, 2)) player.military = Object.keys(engine.MILITARY_CARDS)
+    .filter(key => !['concentratedFire', 'defensiveScreen'].includes(key)).flatMap(key => [card(key), card(key)]);
   const move = adapter.legalActions(0).find(x => x.type === 'move' && x.source === '10,-10' && x.destination === '9,-10');
   adapter.applyAction(0, move);
-  if (stage === 'tactic') { engine.applyCombatAction(0, { type: 'combat_stay' }); engine.applyCombatAction(1, { type: 'combat_stay' }); }
+  if (stage !== 'escape') { engine.applyCombatAction(0, { type: 'combat_stay' }); engine.applyCombatAction(1, { type: 'combat_stay' }); }
+  if (stage === 'damaged') { engine.applyCombatAction(0, { type: 'combat_tactic', tactic: 'defensiveScreen' }); engine.applyCombatAction(1, { type: 'combat_tactic', tactic: 'defensiveScreen' }); }
+  return state;
+}
+function combatEscapeState() {
+  const state = combatState('escape');
+  state.players[0].resources.energy = 3;
+  state.fleets['9,-10'][0].explorer = 3;
+  state.pendingCombat.attackerPieces.push(...Array.from({length:3}, () => ({type:'explorer', hull:1, power:1, damage:0})));
   return state;
 }
 
@@ -231,8 +241,12 @@ const CASES = [
   // Phones: the Table drawer holds the race and the standings table.
   { name: 'standings with units and worlds (Table drawer on phones)', save: piecesState(), click: ['.phone-drawers [data-drawer="table"]'], devices: true },
   { name: 'relics tab', save: operationsState(['move']), click: ['#relics-tab'] },
-  { name: 'battle: escape choice', save: combatState('escape') },
-  { name: 'battle: tactic choice', save: combatState('tactic') },
+  { name: 'battle: escape choice', save: combatState('escape'), devices: true },
+  { name: 'battle: paid Explorer escapes', save: combatEscapeState(), devices: true },
+  { name: 'battle: tactic choice', save: combatState('tactic'), devices: true },
+  { name: 'battle: selected tactic', save: combatState('tactic'), click: ['[data-combat-tactic="concentratedFire"]'], devices: true },
+  { name: 'battle: damaged ships', save: combatState('damaged'), devices: true },
+  { name: 'battle: full public military decks', save: combatState('tactic', true), devices: true },
   { name: 'saved table bar', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), table: true },
   { name: 'shared table, hand', shared: sharedView(operationsState(['move', 'construct', 'probe', 'construct', 'move'])), devices: true },
   { name: 'shared table, market', shared: sharedView(buyState(chunks[1])), click: ['#market-tab'] },
@@ -349,13 +363,14 @@ const MEASURE = `(() => {
     const clips = /(auto|scroll|hidden|clip)/.test(getComputedStyle(e).overflowY + getComputedStyle(e).overflowX);
     // Visually hidden text (clip-path: inset(50%)) is read by screen readers, not shown.
     // A phone truncates its one-line turn strip on purpose (the full text is in the menu).
-    if (clips && !(phone && getComputedStyle(e).textOverflow === 'ellipsis') && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2) && !getComputedStyle(e).clipPath.includes('inset(50%)') && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, input, textarea') && !e.closest('[aria-hidden="true"]'))
+    const phoneBattleScroll = phone && e.matches('.combat-dialog.card-table-battle');
+    if (clips && !(phone && getComputedStyle(e).textOverflow === 'ellipsis') && ((!phoneBattleScroll && e.scrollHeight > e.clientHeight + 2) || e.scrollWidth > e.clientWidth + 2) && !getComputedStyle(e).clipPath.includes('inset(50%)') && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, input, textarea') && !e.closest('[aria-hidden="true"]'))
       problems.push('clipped content: ' + label(e) + ' ' + e.scrollWidth + 'x' + e.scrollHeight + ' in ' + e.clientWidth + 'x' + e.clientHeight);
     if (e.matches('button, a[href], select, input, textarea, .game-card, .score-card, .resource-box, .hex, dialog[open], .lobby-seat') && !e.closest('.sr-only, .skip-link, .skip')) {
       if (r.left < -1 || r.right > W + 1 || (!phone && (r.top < -1 || r.bottom > H + 1))) problems.push('outside viewport: ' + label(e) + ' [' + [r.left, r.top, r.right, r.bottom].map(Math.round) + ']');
     }
     // Cards may not clip their own text (buttons hide overflow inside their box).
-    if (e.matches('.game-card, .military-card, .trade-offer, .score-card, .resource-box, .combat-options .button') && !e.matches('.score-card:is(:hover, :focus-within)') && e.scrollHeight > e.clientHeight + 2)
+    if (e.matches('.game-card, .military-card, .combat-tactic, .trade-offer, .score-card, .resource-box, .combat-options .button') && !e.matches('.score-card:is(:hover, :focus-within)') && e.scrollHeight > e.clientHeight + 2)
       problems.push('card text cut: ' + label(e) + ' ' + e.scrollHeight + ' > ' + e.clientHeight);
     // Overflow above a box (centred button content) is not counted by scrollHeight.
     if (e.matches('.game-card, .score-card, .resource-box')) for (const child of e.children) {
