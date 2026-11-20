@@ -133,6 +133,13 @@ async function main() {
     await click('[data-excavate-relic]');
     const dug=await saved();assert(dug.planets[coord].relicClaimed);assert(!await open());
     console.log('ok - excavation opens Relics, Escape preserves it, and a reward resolves through the engine');
+    await click('#table-menu-button'); await click('#rules-button');
+    const rulebook = await evaluate("document.querySelector('#rules-dialog a[href]').href");
+    assert.equal(await evaluate(`fetch(${source(rulebook)}).then(r=>r.status)`),200, 'rulebook is anonymously readable');
+    await browser.send('Emulation.setDeviceMetricsOverride',{width:390,height:844,deviceScaleFactor:1,mobile:true});
+    await browser.navigate(rulebook + '#card-banks'); await settle();
+    assert(await evaluate('document.querySelector(":target").id==="card-banks" && document.documentElement.scrollWidth<=innerWidth+1'), 'card-bank section links work at a narrow viewport');
+    console.log('ok - game Rules navigation, anonymous rulebook, card-bank anchor and narrow viewport');
   } catch (error) { console.error(await evaluate(`({body:document.body.className,zoom:document.documentElement.style.cssText,shell:document.querySelector('.app-shell').getBoundingClientRect().toJSON(),menu:document.querySelector('#table-menu-button').getBoundingClientRect().toJSON()})`)); fs.writeFileSync('/private/tmp/max-ui-failure.png',Buffer.from((await browser.send('Page.captureScreenshot',{format:'png'})).data,'base64')); throw error; } finally {browser.close();server.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
