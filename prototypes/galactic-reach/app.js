@@ -2261,7 +2261,7 @@ function createGalacticReach(options = {}) {
     return best?applyRelicAction(seat,best):false;
   }
 
-  let relicChoiceCard=null,relicChoiceBattle=false,relicChoiceChosen=false;
+  let relicChoiceCard=null,relicChoiceBattle=false,relicChoiceChosen=false,reservoirCommitting=false;
   function availableRelicChoices() {
     if(relicChoiceBattle)return combatActions(ME).filter(a=>a.type==='combat_relic');
     const actions=network?(serverHints.relics||[]):state.pendingRelic?relicDraftActions(ME):relicOperations(ME);
@@ -2279,8 +2279,17 @@ function createGalacticReach(options = {}) {
     if(state.pendingRelic?.playerId===ME){relicChoiceCard=state.pendingRelic.card;relicChoiceBattle=false;}
     if(!relicChoiceBattle&&!relicChoiceCard){if(dialog.open)dialog.close();return;}
     const actions=availableRelicChoices();
-    if(!actions.length){relicChoiceCard=null;relicChoiceBattle=false;if(dialog.open)dialog.close();return;}
+    if(!actions.length){relicChoiceCard=null;relicChoiceBattle=false;if(dialog.open)dialog.close();if(storageAllocationDraft?.redistribute)$('#storage-allocation-dialog').close();return;}
     const card=state.players[ME].hand.find(c=>c.id===relicChoiceCard),def=card&&ALL_CARDS[card.key];
+    if(!relicChoiceBattle&&def?.relicAbility==='reservoir'&&document.body.classList.contains('background-stars')) {
+      if(dialog.open)dialog.close();
+      if(!reservoirCommitting) {
+        if(storageAllocationDraft?.cardId===card.id&&storageAllocationDraft.redistribute)updateStorageAllocation();
+        else openStorageAllocation(card.id);
+      }
+      return;
+    }
+    if(storageAllocationDraft?.redistribute){storageAllocationDraft=null;$('#storage-allocation-dialog').close();}
     $('#relic-choice-title').textContent=relicChoiceBattle?'Play a battle relic':def?.name||'Choose a relic action';
     $('#relic-choice-help').textContent=state.pendingRelic?`Capacity draft: ${RESOURCES.map(r=>`${RESOURCE_NAMES[r]} ${state.pendingRelic.limits[r]}`).join(' · ')}. Confirm to play the card, or cancel to keep it.`:def?.text||'Choose a held relic and its target. This does not replace your normal tactic.';
     const filter=$('#relic-choice-filter').value.toLowerCase(),select=$('#relic-choice-options'),previous=relicChoiceChosen?select.value:'';
@@ -5428,22 +5437,84 @@ function createGalacticReach(options = {}) {
     }).join('\n'));
   }
 
+  function storageAllocationValues() {
+    return Object.fromEntries(RESOURCES.map(r=>{const value=$(`#storage-points-${r}`).value;return [r,value===''?NaN:Number(value)];}));
+  }
+  // Use the existing start/shift/confirm commands, including at shared tables.
+  // This is a different way to choose the same legal redistribution, not a new action.
+  function reservoirCommands(limits) {
+    const pending=state.pendingRelic,p=state.players[ME],base=resourceLimits(ME);
+    if(!RESOURCES.every(r=>Number.isSafeInteger(limits[r])&&limits[r]>=Math.max(STARTING_LIMIT,p.resources[r]))
+      ||RESOURCES.reduce((n,r)=>n+limits[r]-base[r],0)!==0)return null;
+    const actions=network?(serverHints.relics||[]):pending?relicDraftActions(ME):relicOperations(ME);
+    const commands=[];
+    if(pending) {
+      if(pending.playerId!==ME||pending.card!==storageAllocationDraft?.cardId||!actions.some(a=>a.type==='relic_confirm'))return null;
+    } else {
+      const start=actions.find(a=>a.ability==='reservoir'&&a.card===storageAllocationDraft?.cardId);
+      if(!start)return null;
+      commands.push(start);
+    }
+    const current=pending?.limits||base,remaining=Object.fromEntries(RESOURCES.map(r=>[r,limits[r]-current[r]]));
+    for(const giveType of RESOURCES)for(const getType of RESOURCES) {
+      if(remaining[giveType]>=0||remaining[getType]<=0)continue;
+      const amount=Math.min(-remaining[giveType],remaining[getType]);
+      commands.push({type:'relic_shift',giveType,getType,amount});
+      remaining[giveType]+=amount;remaining[getType]-=amount;
+    }
+    commands.push({type:'relic_confirm'});
+    return commands;
+  }
+  function commitReservoirAllocation(commands) {
+    reservoirCommitting=true;
+    try {
+      for(const command of commands)if(!applyRelicAction(ME,command))return false;
+      return true;
+    } finally {reservoirCommitting=false;render();}
+  }
   function updateStorageAllocation() {
     if (!storageAllocationDraft) return;
-    const allocation=Object.fromEntries(RESOURCES.map(r=>[r,Number($(`#storage-points-${r}`).value)]));
+    const allocation=storageAllocationValues();
     const total=RESOURCES.reduce((n,r)=>n+allocation[r],0);
+    if(storageAllocationDraft.redistribute) {
+      const base=storageAllocationDraft.base,limits=Object.fromEntries(RESOURCES.map(r=>[r,base[r]+allocation[r]]));
+      RESOURCES.forEach(r=>{$(`#storage-limit-${r}`).textContent=`Current ${base[r]} → ${Number.isSafeInteger(limits[r])?limits[r]:'—'}`;});
+      const sameBase=RESOURCES.every(r=>base[r]===resourceLimits(ME)[r]);
+      const valid=sameBase&&!!reservoirCommands(limits);
+      $('#storage-allocation-status').textContent=!Number.isSafeInteger(total)?'Enter whole-number changes.':`Net change: ${total>0?'+':''}${total}${valid?' · Balanced':total!==0?' · Must be 0':' · Keep every limit at least 4 and high enough for your resources.'}`;
+      $('#storage-allocation-confirm').disabled=!valid;
+      return;
+    }
     RESOURCES.forEach(r=>{$(`#storage-limit-${r}`).textContent=`Current ${resourceLimits(ME)[r]} → ${resourceLimits(ME)[r]+(Number.isInteger(allocation[r])&&allocation[r]>=0?allocation[r]:0)}`;});
     $('#storage-allocation-status').textContent=`${Number.isFinite(total)?total:0} of ${storageAllocationDraft.points} points assigned`;
     $('#storage-allocation-confirm').disabled=!validStorageAllocation(allocation,storageAllocationDraft.points);
   }
 
   function openStorageAllocation(cardId = null) {
-    if (headless || replayMode || !canManageResources(ME)) return false;
+    if (headless || replayMode) return false;
     const card=cardId?state.players[ME].hand.find(c=>c.id===cardId):null;
     // Rules #storage-allocation: a played Capacity Module or Cradle of Lost Suns chooses a split.
     const definition=card&&ALL_CARDS[card.key],cradle=definition?.tag==='alienCradle';
-    if (state.phase!=='operations'||!card||!(cradle||definition.effect?.allocate)) return false;
+    const redistribute=definition?.relicAbility==='reservoir'&&document.body.classList.contains('background-stars');
+    if(!canManageResources(ME)&&!(redistribute&&state.pendingRelic?.playerId===ME&&state.pendingRelic.card===cardId))return false;
+    if (state.phase!=='operations'||!card||!(cradle||definition.effect?.allocate||redistribute)) return false;
+    if(redistribute) {
+      const base=clone(resourceLimits(ME)),p=state.players[ME],total=RESOURCES.reduce((n,r)=>n+base[r],0);
+      storageAllocationDraft={cardId,redistribute:true,base};
+      $('#storage-allocation-title').textContent='Redistribute capacity';
+      $('#storage-allocation-help').textContent='Move capacity between resources. Positive and negative changes must add to zero. Keep each limit at least 4 and high enough for the resources you hold.';
+      $('#storage-allocation-cost').textContent=`Prismatic Reservoir · ${total} total capacity · uses your Operations action.`;
+      $('#storage-allocation-confirm').textContent='Play Prismatic Reservoir';
+      $('#storage-allocation-options').innerHTML=RESOURCES.map(r=>{
+        const min=Math.max(STARTING_LIMIT,p.resources[r])-base[r],max=total-RESOURCES.filter(other=>other!==r).reduce((n,other)=>n+Math.max(STARTING_LIMIT,p.resources[other]),0)-base[r];
+        const value=(state.pendingRelic?.limits[r]??base[r])-base[r];
+        return `<label class="storage-allocation-option" for="storage-points-${r}">${resourceDot(r)}<span>${RESOURCE_NAMES[r]}<small id="storage-limit-${r}"></small></span><input id="storage-points-${r}" aria-label="${RESOURCE_NAMES[r]} capacity change" aria-describedby="storage-limit-${r}" type="number" min="${min}" max="${max}" step="1" value="${value}" required></label>`;
+      }).join('');
+      RESOURCES.forEach(r=>{const input=$(`#storage-points-${r}`);input.value=String((state.pendingRelic?.limits[r]??base[r])-base[r]);input.addEventListener('input',updateStorageAllocation);});
+      updateStorageAllocation();$('#storage-allocation-dialog').showModal();return true;
+    }
     storageAllocationDraft={cardId,points:cradle?RELIC_STORAGE_POINTS:definition.effect.allocate};
+    $('#storage-allocation-title').textContent='Allocate capacity';
     $('#storage-allocation-help').textContent=`Assign all ${storageAllocationDraft.points} points. Each point raises one chosen resource limit by 1. You may put several points into the same resource.`;
     $('#storage-allocation-cost').innerHTML=cradle?'Cradle of Lost Suns · no resource payment. Gain 2 Life and draw one card after confirming.':'Capacity Module · uses your Operations action. After confirming, the card goes to your Storage pile.';
     $('#storage-allocation-confirm').textContent=cradle?'Play relic and add capacity':'Play Capacity Module';
@@ -6166,6 +6237,7 @@ function createGalacticReach(options = {}) {
     $('#sector-popover').addEventListener('toggle',()=>{ pointedOrderCard=null; syncPlaysHere(); });
     fitTable();
     window.addEventListener('resize',fitTable);
+    window.addEventListener('resize',()=>{if(state.pendingRelic||storageAllocationDraft?.redistribute)renderRelicChoice();});
     window.addEventListener('resize',fitMarket);
     // A resized window starts the column untightened, so a window that grows gets it back.
     window.addEventListener('resize',() => { document.documentElement.classList.remove('left-tight', 'left-tighter'); stackLeft(); });
@@ -6260,7 +6332,13 @@ function createGalacticReach(options = {}) {
     $('#close-relic-catalog').addEventListener('click',()=>$('#relic-catalog-dialog').close());
     $('#cancel-excavate').addEventListener('click',()=>{if(state.actionMode!=='excavate' || state.pendingCombat)return;clearAction();switchTab('hand');render();saveGame();});
     $('#storage-allocation-cancel').addEventListener('click',()=>$('#storage-allocation-dialog').close());
-    $('#storage-allocation-dialog').addEventListener('close',()=>{storageAllocationDraft=null;});
+    $('#storage-allocation-dialog').addEventListener('close',()=>{
+      const draft=storageAllocationDraft;storageAllocationDraft=null;
+      if(draft?.redistribute) {
+        relicChoiceCard=null;relicChoiceBattle=false;
+        if(state.pendingRelic?.playerId===ME&&state.pendingRelic.card===draft.cardId)applyRelicAction(ME,{type:'relic_cancel'});
+      }
+    });
     $('#exchange-resource-cancel').addEventListener('click',()=>$('#exchange-resource-dialog').close());
     $('#archive-purge-cancel').addEventListener('click',()=>$('#archive-purge-dialog').close());
     $('#archive-purge-dialog').addEventListener('close',()=>{archivePurgeCardId=null;});
@@ -6275,7 +6353,17 @@ function createGalacticReach(options = {}) {
     });
     $('#storage-allocation-form').addEventListener('submit',event=>{
       event.preventDefault();if(!storageAllocationDraft)return;
-      const allocation=Object.fromEntries(RESOURCES.map(r=>[r,Number($(`#storage-points-${r}`).value)]));
+      const allocation=storageAllocationValues();
+      if(storageAllocationDraft.redistribute) {
+        const base=storageAllocationDraft.base;
+        if(!RESOURCES.every(r=>base[r]===resourceLimits(ME)[r])||network?.busy())return;
+        const commands=reservoirCommands(Object.fromEntries(RESOURCES.map(r=>[r,base[r]+allocation[r]])));
+        if(!commands)return;
+        storageAllocationDraft=null;relicChoiceCard=null;relicChoiceBattle=false;
+        $('#storage-allocation-dialog').close();
+        if(!commitReservoirAllocation(commands))toast('The table changed. Choose your capacity changes again.');
+        return;
+      }
       if(!validStorageAllocation(allocation,storageAllocationDraft.points)||!canManageResources(ME))return;
       const card=state.players[ME].hand.find(c=>c.id===storageAllocationDraft.cardId);
       if(!card)return;
@@ -6409,6 +6497,7 @@ function createGalacticReach(options = {}) {
     useBuyEffect = (card, id = ME) => { if (mine(id)) send({type:'buy_effect',card}); };
     decommission = (id, card, resource) => mine(id) && send({type:'decommission',card,resource});
     applyRelicAction = (id, action) => mine(id) && send(action);
+    commitReservoirAllocation = commands => send(...commands);
     applyCombatAction = (id, action) => mine(id) && send(action);
     // Shared-table Undo: the server rolls the whole table back and every seat refreshes.
     undoLastTurn = () => { if (serverUndo.available && !network.busy()) network.undo(); };

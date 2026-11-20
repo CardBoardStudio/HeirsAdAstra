@@ -1282,6 +1282,48 @@ test('30.35 archive: Trade Consortium commits into play on its first exchange ac
 }));
 
 
+function reservoirSave(pending=false) {
+ const storage=createStorage(),state=boot(storage).saved(),p=state.players[0];
+ Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ p.hand=[{id:'reservoir',key:'prismaticReservoir'},{id:'keep-moving',key:'move',starter:true}];
+ p.resourceLimits={matter:4,energy:4,biomass:4,data:8};p.resources={matter:0,energy:0,biomass:0,data:5};
+ p.storage=[{id:'stored',key:'capacityModule',allocation:{matter:0,energy:0,biomass:0,data:4}}];
+ if(pending)state.pendingRelic={playerId:0,card:'reservoir',limits:{matter:5,energy:4,biomass:4,data:7}};
+ writeSave(storage,state);return storage;
+}
+function reservoirInput(game,resource,value) {const input=game.dom.element('storage-points-'+resource);input.value=String(value);fire(input,'input');}
+test('Max UI Reservoir uses capacity controls and requires a zero-sum legal draft',()=>{
+ const storage=reservoirSave(),game=boot(storage),before=game.saved();game.dom.document.body.classList.contains=name=>name==='background-stars';
+ const play=()=>game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='reservoir').click();
+ play();game.settle();assert(game.dialog('storage-allocation').open);assert(!game.dialog('relic-action').open);
+ for(const r of ['matter','energy','biomass','data'])assert.equal(game.dom.element('storage-points-'+r).value,'0');
+ reservoirInput(game,'matter',3);assert(game.dom.element('storage-allocation-confirm').disabled);assert.match(game.dom.element('storage-allocation-status').textContent,/Net change: \+3/);
+ fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});assert.deepEqual(game.saved(),before);
+ reservoirInput(game,'data',-3);assert(!game.dom.element('storage-allocation-confirm').disabled);assert.match(game.dom.element('storage-limit-data').textContent,/Current 8 → 5/);
+ reservoirInput(game,'matter',4);reservoirInput(game,'data',-4);assert(game.dom.element('storage-allocation-confirm').disabled,'Held Data forbids reducing its limit to 4');
+ reservoirInput(game,'matter',3.5);reservoirInput(game,'data',-3.5);assert(game.dom.element('storage-allocation-confirm').disabled,'Fractional changes cannot confirm');
+ game.click('storage-allocation-cancel');assert.deepEqual(game.saved(),before,'Cancel spends no card or action');
+ play();reservoirInput(game,'matter',3);reservoirInput(game,'data',-3);fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();
+ const after=game.saved();assert.deepEqual(after.players[0].resourceLimits,{matter:7,energy:4,biomass:4,data:5});assert.deepEqual(after.players[0].resources,before.players[0].resources);assert.deepEqual(after.players[0].storage,before.players[0].storage);assert(!after.pendingRelic);assert(after.players[0].inPlay.some(c=>c.id==='reservoir'));assert(!game.dialog('storage-allocation').open);
+});
+test('Max UI Reservoir restores an existing saved redistribution and Escape cancels it',()=>{
+ const storage=reservoirSave(true),game=boot(storage);game.dom.document.body.classList.contains=name=>name==='background-stars';fire(game.dom.element('relic-choice-filter'),'input');game.settle();
+ assert(game.dialog('storage-allocation').open);assert.equal(game.dom.element('storage-points-matter').value,'1');assert.equal(game.dom.element('storage-points-data').value,'-1');
+ game.pressEscape('storage-allocation');assert(!game.saved().pendingRelic);assert.deepEqual(game.saved().players[0].resourceLimits,{matter:4,energy:4,biomass:4,data:8});assert(game.saved().players[0].hand.some(c=>c.id==='reservoir'));
+});
+test('Shared Max UI Reservoir sends one batch of existing legal commands only on confirmation',()=>{
+ const state=JSON.parse(reservoirSave().getItem(SAVE_KEY)),sent=[];
+ const network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state,hints:{relics:[{type:'relic',card:'reservoir',ability:'reservoir'}]}},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});game.dom.document.body.classList.contains=name=>name==='background-stars';
+ game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='reservoir').click();reservoirInput(game,'matter',3);assert.deepEqual(sent,[]);reservoirInput(game,'data',-3);assert.deepEqual(sent,[]);
+ fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();assert.deepEqual(sent,[[{type:'relic',card:'reservoir',ability:'reservoir'},{type:'relic_shift',giveType:'data',getType:'matter',amount:3},{type:'relic_confirm'}]]);
+ // Run the submitted batch through the unchanged authoritative adapter as well.
+ const context=vm.createContext({});vm.runInContext(adapterSource+source,context);let engine;const factory=context.createGalacticAdapter;context.createGalacticAdapter=e=>{engine=e;return factory(e);};
+ const authority=context.createGalacticReach({headless:true});Object.assign(engine.state,JSON.parse(JSON.stringify(state)));
+ for(const command of sent[0])authority.applyAction(0,command);
+ assert.deepEqual(JSON.parse(JSON.stringify(engine.state.players[0].resourceLimits)),{matter:7,energy:4,biomass:4,data:5});assert(!engine.state.pendingRelic);
+});
+
 // A Capacity Module in hand: choosing its order opens the split; cancelling plays nothing.
 const playModule=game=>game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='module').click();
 const moduleSave=()=>{const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:2,energy:2,biomass:2,data:2};state.players[0].hand.push({id:'module',key:'capacityModule',starter:false,upgraded:false});writeSave(storage,state);return storage;};
