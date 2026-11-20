@@ -4446,7 +4446,7 @@ function createGalacticReach(options = {}) {
     const corner = $('#map-legend-corner');
     const pieceCost = type => type === 'colony' ? { biomass: COLONY_LIFE_COST } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
     const costRow = (icon, label, cost) => `<tr><th scope="row"><span class="legend-cost-name">${icon}<b>${label}</b></span></th>${RESOURCES.map(resource => `<td>${cost?.[resource] || ''}</td>`).join('')}</tr>`;
-    if (corner) corner.innerHTML = `<table class="legend-cost-table" aria-label="Resource costs"><thead><tr><th scope="col">Build</th>${RESOURCES.map(resource => `<th scope="col"><span class="legend-res ${resource}"><i></i>${RESOURCE_NAMES[resource]}</span></th>`).join('')}</tr></thead><tbody>`
+    if (corner) corner.innerHTML = `<table class="legend-cost-table" aria-label="Resource costs"><thead><tr><th scope="col">Build</th>${RESOURCES.map(resource => `<th scope="col" aria-label="${RESOURCE_NAMES[resource]}"><span class="legend-res ${resource}"><i></i><span class="legend-resource-name">${RESOURCE_NAMES[resource]}</span><span class="legend-resource-short" aria-hidden="true">${RESOURCE_NAMES[resource][0]}</span></span></th>`).join('')}</tr></thead><tbody>`
       + entries.map(([type,label]) => costRow(BOARD_ICONS[type], label, pieceCost(type))).join('')
       + costRow('<span class="legend-icon">◈</span>', 'Excavate', EXCAVATION_COST)
       + `</tbody></table><span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
@@ -6018,7 +6018,10 @@ function createGalacticReach(options = {}) {
     const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || document.body.classList.contains('background-stars'));
     const zoom = Number(document.documentElement?.style?.getPropertyValue('--table-zoom')) || 1;
     let top = 0;
-    const stack = [...LEFT_STACK, ...(document.body.classList.contains('background-stars') ? ['#max-bank-nav'] : [])];
+    const maxUI = document.body.classList.contains('background-stars');
+    // Kept engines that predate this layout retain their original reference rails.
+    document.body.classList.toggle('max-reference-rails', maxUI);
+    const stack = [...LEFT_STACK, ...(maxUI ? ['#map-legend-corner'] : [])];
     for (const sel of stack) {
       const el = $(sel);
       if (!el?.style || !el.getBoundingClientRect || !el.matches) continue;
@@ -6030,9 +6033,21 @@ function createGalacticReach(options = {}) {
       if (h) top += h + (document.body.classList.contains('background-stars') ? (sel === '#prestige-track' ? 36 : 16) : 8);
     }
     const root = document.documentElement, legend = $('#map-legend-corner'), last = $(stack.at(-1));
-    const bankButtons = document.body.classList.contains('background-stars') && landscape ? $('#max-bank-nav')?.getBoundingClientRect?.() : null;
-    if (bankButtons?.height) root.style.setProperty('--max-notice-top', `${Math.round(bankButtons.bottom + 24 * zoom)}px`);
-    else root.style.removeProperty('--max-notice-top');
+    legend?.setAttribute('aria-hidden', String(!maxUI));
+    const bankButtons = maxUI && landscape ? $('#max-bank-nav')?.getBoundingClientRect?.() : null;
+    if (bankButtons?.height) root.style.setProperty('--max-bank-stack-h', `${Math.ceil(bankButtons.height / zoom) + 18}px`);
+    else root.style.removeProperty('--max-bank-stack-h');
+    // Max's cost key now occupies the left stack; the bank buttons live on the right.
+    if (maxUI) {
+      const key = landscape ? legend?.getBoundingClientRect?.() : null;
+      const handleH = $('#open-trade')?.getBoundingClientRect?.().height || 0;
+      if (key?.height) {
+        root.style.setProperty('--max-notice-top', `${Math.round(key.top)}px`);
+        root.style.setProperty('--trade-top', `${Math.round(key.bottom + 16 * zoom + handleH / 2)}px`);
+      } else ['--max-notice-top', '--trade-top'].forEach(name => root.style.removeProperty(name));
+      return;
+    }
+    root.style.removeProperty('--max-notice-top');
     // The map key lies in the middle of the column's free height (between the stack and your piles
     // and hand), so the column has no long bare stretch.
     const end = last?.getBoundingClientRect?.(), track = $('#prestige-track')?.getBoundingClientRect?.(), keyBox = legend?.getBoundingClientRect?.();
@@ -6051,8 +6066,7 @@ function createGalacticReach(options = {}) {
     // Trade's handle lies on the table's left edge in the gap between the comms card and the map key,
     // ending above the key where notices appear (in a tight column it may overlap the comms card).
     const stackBottom = landscape ? last?.getBoundingClientRect?.() : null, handleH = $('#open-trade')?.getBoundingClientRect?.().height || 0;
-    if (bankButtons?.height) root.style.setProperty('--trade-top', `${Math.round(bankButtons.bottom + 16 * zoom + handleH / 2)}px`);
-    else if (key?.height && stackBottom?.height) root.style.setProperty('--trade-top', `${Math.round(Math.min((stackBottom.bottom + key.top) / 2, key.top - 4 * zoom - handleH / 2))}px`);
+    if (key?.height && stackBottom?.height) root.style.setProperty('--trade-top', `${Math.round(Math.min((stackBottom.bottom + key.top) / 2, key.top - 4 * zoom - handleH / 2))}px`);
     else root.style.removeProperty('--trade-top');
     // When the stack and the map key cannot both fit above your piles and hand, tighten the column
     // once (the latest comms entry only) and stack again; a second step drops the icon list from
@@ -6167,7 +6181,7 @@ function createGalacticReach(options = {}) {
       const refitMaxLeft = new ResizeObserver(() => {
         if (document.body.classList.contains('background-stars')) { stackLeft(); fitMap(); settleFit(); }
       });
-      ['#prestige-track', '.phase-stepper', '.log-panel', '#max-bank-nav'].forEach(sel => { const el = $(sel); if (el) refitMaxLeft.observe(el); });
+      ['#prestige-track', '.phase-stepper', '.log-panel', '#map-legend-corner', '#max-bank-nav'].forEach(sel => { const el = $(sel); if (el) refitMaxLeft.observe(el); });
       // Hex positions are measured as fractions of the board, and a hex's fixed-size parts shift
       // those fractions a little with scale. When a fit has resized the board (a frame later), fit
       // once more at the new size; a fit that keeps the size ends it, so this cannot loop.
