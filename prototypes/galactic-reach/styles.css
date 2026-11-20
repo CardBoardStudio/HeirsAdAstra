@@ -3299,6 +3299,16 @@ body.background-stars .galaxy-board::before {
   .combat-fleet { grid-template-columns: minmax(140px, .9fr) minmax(0, 2fr); gap: 8px; }
   .combat-units { gap: 7px 12px; }
 }
+/* At enlarged browser zoom, keep the enemy band above yours and put each
+   band's ships beside its large tactic hand instead of adding another row. */
+@media (max-height: 650px) and (min-width: 600px) and (min-height: 600px) {
+  .card-table-battle.combat-dense .combat-side { display: grid; grid-template-columns: 140px minmax(0, 1fr); align-items: center; gap: 12px; }
+  .card-table-battle.combat-dense .combat-hand { grid-column: 2; grid-row: 1; }
+  .card-table-battle.combat-dense .combat-fleet { grid-column: 1; grid-row: 1; grid-template-columns: 1fr; gap: 8px; }
+  .card-table-battle.combat-dense .combat-tactic { flex-basis: 112px; }
+  .card-table-battle.combat-dense .combat-units { gap: 7px; }
+  .card-table-battle.combat-dense .combat-unit { width: 62px; min-width: 0; max-width: 90px; }
+}
 @media (max-width: 599px), (max-height: 599px) {
   .combat-dialog.card-table-battle { width: calc(100vw - 16px); max-height: calc(100dvh - 16px); padding: 14px; overflow-y: auto; }
   .card-table-battle .dialog-heading { align-items: start; gap: 8px; }
