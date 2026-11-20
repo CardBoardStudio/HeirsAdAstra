@@ -3616,7 +3616,7 @@ body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now i {
   body.background-stars #resource-grid.resource-grid:has(.mat-lap) { --bank-caption-h: 24px; }
 }
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
-  body.background-stars .app-shell { --seat-piles-offset: 550px; --seat-discard-offset: 400px; --seat-actions-offset: 430px; }
+  body.background-stars .app-shell { --seat-piles-offset: 550px; --seat-action-gap: 30px; --seat-discard-offset: calc(var(--seat-piles-offset) - 2 * var(--pile-w) - 18px); --seat-actions-offset: calc(var(--seat-discard-offset) + var(--seat-action-gap)); }
   body.background-stars .app-shell #deck-button { margin-left: max(52px, calc(50% - var(--seat-piles-offset))) !important; }
   body.background-stars .app-shell #in-play-button { margin-left: calc(max(52px, calc(50% - var(--seat-piles-offset))) + var(--pile-w) + 9px) !important; }
   body.background-stars .app-shell #military-button { margin-left: calc(max(52px, calc(50% - var(--seat-piles-offset))) + 2 * var(--pile-w) + 18px) !important; }
@@ -3624,18 +3624,36 @@ body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now i {
   body.background-stars .app-shell #hand-panel .hand-tools {
     grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: start !important; align-self: end !important;
     width: max(110px, var(--tools-w)) !important; margin: 0 0 8px calc(50% + var(--seat-actions-offset)) !important;
-    flex-direction: column; align-items: start; gap: 8px;
+    flex-direction: column; align-items: center; gap: 8px;
   }
   body.background-stars .app-shell #hand-panel .hand-tools .button:not(#convert-all-button) { width: var(--tools-w) !important; }
   body.background-stars .app-shell #hand-panel .hand-tools #convert-all-button { position: static !important; width: max(110px, var(--tools-w)) !important; }
   body.background-stars .app-shell .map-tools { grid-column: 1 / -1 !important; grid-row: 9 !important; align-self: end !important; margin-bottom: 8px !important; }
-  :root:not(.table-wide) body.background-stars .app-shell { --seat-discard-offset: 365px; --seat-actions-offset: 400px; }
+  :root:not(.table-wide) body.background-stars .app-shell { --seat-action-gap: 35px; }
   :root:not(.table-wide) body.background-stars .app-shell #hand-panel .hand-tools { align-self: center !important; margin-bottom: 0 !important; }
 }
 
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
-  :root.table-wide body.background-stars .app-shell:has(#hand-row > :nth-child(7)) { --seat-piles-offset: 610px; --seat-discard-offset: 470px; --seat-actions-offset: 500px; }
-  :root.table-wide body.background-stars .app-shell:has(#hand-row > :nth-child(10)) { --seat-piles-offset: 720px; --seat-discard-offset: 580px; --seat-actions-offset: 610px; }
-  :root.table-wide body.background-stars .app-shell:has(#hand-row > :nth-child(10)) #hand-panel .hand-tools { align-self: center !important; margin-bottom: 0 !important; }
-  :root:not(.table-wide) body.background-stars .app-shell:has(#hand-row > :nth-child(7)) { --seat-discard-offset: 430px; --seat-actions-offset: 470px; }
+  :root.table-wide body.background-stars .app-shell:has(#hand-row > :nth-child(7)) { --seat-piles-offset: 610px; }
+  :root.table-wide body.background-stars .app-shell:has(#hand-row > :nth-child(10)) { --seat-piles-offset: 720px; }
+  :root.table-wide body.background-stars .app-shell:has(#hand-row > :nth-child(10)) #hand-panel .hand-tools { align-self: center !important; margin-bottom: 48px !important; }
 }
+
+/* Give the round panel its own space instead of squeezing four phase labels together. */
+@media (min-width: 600px) and (min-height: 600px) {
+  body.background-stars .app-shell .phase-stepper {
+    width: min(340px, calc(100% + 100px)); padding: 12px 14px !important;
+    gap: 10px !important; row-gap: 10px !important;
+  }
+  body.background-stars .app-shell .phase-stepper strong { font-size: 12px !important; line-height: 1.4 !important; }
+  body.background-stars .app-shell .phase-stepper ol {
+    display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%; max-width: none !important; padding: 6px !important; gap: 8px !important;
+  }
+  body.background-stars .app-shell .phase-stepper li {
+    min-width: 0; padding: 5px 8px 5px 20px !important; font-size: 11.5px !important;
+    line-height: 1.4 !important; border: 1px solid #6682a94d !important; border-radius: 7px !important;
+  }
+}
+
+body.background-stars #hand-row { --n: var(--max-hand-count, 5) !important; }

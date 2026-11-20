@@ -5634,6 +5634,11 @@ function createGalacticReach(options = {}) {
     if (typeof ResizeObserver === 'function') {
       const refit = new ResizeObserver(() => { fitMarket(); stackLeft(); fitMap(); balanceSupply(); settleFit(); });
       ['.app-shell', '#market-panel', '#relics-panel', '.board-map-region'].forEach(sel => { const el = $(sel); if (el) refit.observe(el); });
+      // Max’s round labels may wrap as fonts settle; keep every item below them in place.
+      const refitMaxLeft = new ResizeObserver(() => {
+        if (document.body.classList.contains('background-stars')) { stackLeft(); fitMap(); settleFit(); }
+      });
+      ['#prestige-track', '.phase-stepper', '.log-panel', '#max-bank-nav'].forEach(sel => { const el = $(sel); if (el) refitMaxLeft.observe(el); });
       // Hex positions are measured as fractions of the board, and a hex's fixed-size parts shift
       // those fractions a little with scale. When a fit has resized the board (a frame later), fit
       // once more at the new size; a fit that keeps the size ends it, so this cannot loop.

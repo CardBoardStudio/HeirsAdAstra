@@ -43,6 +43,7 @@
   // ---- The hand fan: a gentle arc, the middle cards a few pixels higher. ----
   function fanHand() {
     const cards = $$('#hand-row > .game-card');
+    $('#hand-row')?.style.setProperty('--max-hand-count', String(Math.max(2, cards.length)));
     const mid = (cards.length - 1) / 2, step = cards.length > 6 ? 1.4 : 2.2;
     cards.forEach((card, index) => {
       const offset = index - mid;
