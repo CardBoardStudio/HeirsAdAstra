@@ -1159,6 +1159,11 @@ summary:focus-visible, input:focus-visible, select:focus-visible { outline: 2px 
 .hex.energy { --hex-fill:#5d8798; }
 .hex.biomass { --hex-fill:#658d6b; }
 .hex.data { --hex-fill:#8d7d9d; }
+/* Deep jewel terrain belongs only to Max's UI; resource symbols keep their own colours. */
+body.background-stars .hex.matter { --hex-fill:#939da7; }
+body.background-stars .hex.energy { --hex-fill:#327aab; }
+body.background-stars .hex.biomass { --hex-fill:#448d68; }
+body.background-stars .hex.data { --hex-fill:#8e62a9; }
 .hex:is(.matter,.energy,.biomass,.data) .hex-buildings { color:#fff9ec; }
 .hex:is(.matter,.energy,.biomass,.data) .hex-buildings .board-icon { filter:drop-shadow(0 1px 1px #07101a); }
 .game-card .resource-symbol, .game-card .inline-resource .resource-symbol { width:24px; height:24px; }
