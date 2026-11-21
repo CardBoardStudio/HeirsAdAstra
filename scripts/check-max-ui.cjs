@@ -68,8 +68,11 @@ async function main() {
         if (!phone && (r.left < -1 || r.right > innerWidth + 1 || r.top < -1 || r.bottom > innerHeight + 1)) problems.push('outside viewport: ' + e.className);
         if (d.open && e.matches('.game-card, .card-effect') && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2)) problems.push('card clips: ' + e.textContent.slice(0,35));
       }
+      if(d.open && ![...d.querySelectorAll('.game-card')].some(e=>e.checkVisibility()&&e.getBoundingClientRect().width>0))problems.push('active card bank contains no visible cards');
       if (d.open && !phone) { const c=document.querySelector('#max-bank-content'); if (c.scrollHeight > c.clientHeight+2) problems.push('bank scrolls'); }
       if (d.open && d.dataset.bank === 'market') {
+        const widths=[...d.querySelectorAll('#market-row > .game-card')].map(e=>e.getBoundingClientRect().width);
+        if(widths.length&&Math.max(...widths)-Math.min(...widths)>2)problems.push('market card columns have unequal widths');
         const labels = [...d.querySelectorAll('.max-market-tier-label')];
         if (labels.map(e=>e.textContent).join() !== 'Expensive,Moderate,Cheap') problems.push('market tier labels are missing');
         labels.forEach((label,index)=>{
@@ -120,7 +123,7 @@ async function main() {
       }
       return problems.concat(window.galacticReachRenderErrors || []);
     })()`);
-    assert.deepEqual(issues, []);
+    assert.deepEqual(issues, [], await evaluate('JSON.stringify({viewport:[innerWidth,innerHeight],document:[document.documentElement.scrollWidth,document.documentElement.scrollHeight],body:[document.body.scrollWidth,document.body.scrollHeight]})'));
     assert.deepEqual(browser.errors.filter(e=>!/seat\.js|zk\//.test(e)), []);
   }
   try {
@@ -166,6 +169,7 @@ async function main() {
         await click('#table-menu-button'); await click('#background-toggle');
         assert.equal(await evaluate('document.querySelector("#market-panel").closest("#max-bank-dialog")'), null);
         assert.equal(await evaluate('document.querySelectorAll(".max-market-tier-label").length'),0,'green market keeps its original layout');
+        assert.equal(await evaluate('getComputedStyle(document.body).getPropertyValue("--matter").trim()'),'#e9a23b','Willem keeps the P5 palette');
         assert(!(await evaluate('document.querySelector("#max-bank-nav").checkVisibility()')));
         await click('#table-menu-button'); await click('#background-toggle');
         assert(await evaluate('!!document.querySelector("#market-panel").closest("#max-bank-dialog")'));
