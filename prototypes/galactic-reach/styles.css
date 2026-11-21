@@ -3078,25 +3078,43 @@ body.background-stars .galaxy-board::before {
    There is no separate copy beside the map. ==== */
 @media (min-width: 600px) and (min-height: 600px) {
   #hand-row { align-items: flex-end !important; overflow: visible !important; --raise-w: 250px; }
+  /* One spacing scale inside the raised card (2, 6, 10px): --near between the effect line and its
+     rule text, --far between groups of text, --box before the picture and the buttons (text keeps
+     its own leading, a box does not, so those read the same), and the same --pad inset on the
+     left, right and bottom (the bottom has no border, so its padding takes the border's 2px too).
+     The card keeps the height it had before these steps, so nothing placed beside it moves. */
   #hand-row > .game-card:is(:hover, :focus-within) {
+    --near: 2px; --far: 6px; --box: 10px; --pad: 10px;
     width: var(--raise-w) !important; height: auto !important; max-height: none !important; z-index: 40;
     /* Grow from the resting place, shifted left only as far as needed to stay inside the hand. */
     --shift: min(0px, calc(var(--hand-w, 100000px) - var(--slot-x, 0px) - var(--raise-w)));
-    margin-left: calc(var(--step) + var(--shift)) !important; margin-right: calc(var(--top-w) - var(--raise-w) - var(--shift)) !important; padding: 6px 12px 10px 8px !important;
-    grid-template-columns: auto minmax(0, 1fr) !important; grid-template-areas: "cost type" "cost name" "head head" "effect effect" "note note" "art art" "buttons buttons" !important;
-    grid-template-rows: auto auto auto auto auto auto auto !important; row-gap: 4px !important; align-content: start !important;
+    margin-left: calc(var(--step) + var(--shift)) !important; margin-right: calc(var(--top-w) - var(--raise-w) - var(--shift)) !important;
+    padding: 0 var(--pad) calc(var(--pad) + 2px) !important;
+    /* The top strip is the conversion box and the type line, centred on one another; everything
+       below starts at the same left edge, the box's icon included. */
+    grid-template-columns: auto minmax(0, 1fr) !important; grid-template-areas: "cost type" "name name" "head head" "effect effect" "note note" "art art" "buttons buttons" !important;
+    grid-template-rows: auto auto auto auto auto auto auto !important; column-gap: 0 !important; row-gap: 0 !important; align-content: start !important;
   }
   #hand-row > .game-card:first-child:is(:hover, :focus-within) { margin-left: var(--shift) !important; }
   #hand-row > .game-card:last-child:not(:first-child):is(:hover, :focus-within) { margin-right: 0 !important; margin-left: calc(var(--step) - (var(--raise-w) - var(--top-w))) !important; }
   #hand-row > .game-card:is(:hover, :focus-within) :is(.card-type, .card-headline, .card-effect) { display: block !important; white-space: normal !important; overflow: visible !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-type { grid-area: type; align-self: center; padding-left: 6px; font-size: 10px !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-name { grid-area: name; padding-left: 6px; font-size: 18px !important; line-height: 1.15 !important; white-space: normal !important; overflow: visible !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-headline { grid-area: head; font-size: 12.5px !important; font-weight: 650; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-effect { grid-area: effect; margin: 0 !important; font-size: 12.5px !important; line-height: 1.4 !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-art.has-picture { grid-area: art; height: 84px !important; min-height: 84px; margin: 0 !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { grid-area: buttons; position: static !important; width: auto !important; height: auto !important; clip-path: none !important; }
-  /* The conversion box still shares the raised card's top-left corner. */
-  #hand-row > .game-card:is(:hover, :focus-within) .card-footer { grid-area: cost !important; grid-row: 1 / 3 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-type { grid-area: type; align-self: center; margin: 0 !important; padding: 6.5px 0; font-size: 10px !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-name { grid-area: name; margin: 0 !important; padding: 0; font-size: 18px !important; line-height: 1.15 !important; white-space: normal !important; overflow: visible !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-headline { grid-area: head; margin: var(--far) 0 0 !important; font-size: 12.5px !important; font-weight: 650; }
+  /* With no effect line, the rule text starts where that line's text would have. */
+  #hand-row > .game-card:is(:hover, :focus-within) .card-effect { grid-area: effect; margin: calc(var(--far) + var(--near)) 0 0 !important; font-size: 12.5px !important; line-height: 1.4 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-headline ~ .card-effect { margin-top: var(--near) !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-limit-note { grid-area: note; margin: var(--near) 0 0 !important; }
+  /* The picture fills its window exactly (no inset), the same 79px tall as before. */
+  #hand-row > .game-card:is(:hover, :focus-within) .card-art.has-picture { grid-area: art; height: 79px !important; min-height: 79px; margin: var(--box) 0 0 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-art.has-picture .card-picture { top: 0; height: 100%; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { grid-area: buttons; position: static !important; width: auto !important; height: auto !important; margin: var(--box) 0 0 !important; clip-path: none !important; }
+  /* The conversion box fills the top-left corner; its inner padding matches the card's, so its
+     icon lines up with the text below it. */
+  #hand-row > .game-card:is(:hover, :focus-within) .card-footer {
+    grid-area: cost !important; grid-row: 1 !important; align-self: stretch !important; align-items: center;
+    margin: 0 var(--far) 0 calc(-1 * var(--pad)) !important; padding: 0 6px 0 var(--pad) !important;
+  }
 }
 
 /* ==== The map key lies in the middle of the left column's free height (see stackLeft). ==== */
@@ -3128,8 +3146,9 @@ body.background-stars .galaxy-board::before {
   #hand-row > .game-card:is(:hover, :focus-within) :is(.card-type, .card-art) { display: none !important; }
   #hand-row > .game-card:is(:hover, :focus-within) .card-name { font-size: 15px !important; padding-left: 0; }
   #hand-row > .game-card:is(:hover, :focus-within) .card-effect { font-size: 12px !important; line-height: 1.32 !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { display: flex !important; flex-direction: column; gap: 4px; align-self: center; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-footer { grid-row: 1 / 3 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { display: flex !important; flex-direction: column; gap: 4px; align-self: center; margin: 6px 0 0 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) :is(.card-name, .card-headline, .card-effect, .card-headline ~ .card-effect) { margin: 0 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-footer { grid-row: 1 / 3 !important; align-self: start !important; margin: -6px 0 0 -8px !important; padding: 3px 6px 3px 7px !important; }
 }
 /* On a table shrunk to fit a small window (or browser zoom), the raised card keeps reading size. */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
