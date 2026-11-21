@@ -11,6 +11,7 @@ on:
       - prototypes/galactic-reach/rulebook.html
       - prototypes/galactic-reach/rulebook.css
       - prototypes/galactic-reach/styles.css
+      - prototypes/lab/heirs-emblem*.svg
       - docs/releases.md
       - .github/workflows/pages.yml
   pull_request:
@@ -20,6 +21,7 @@ on:
       - prototypes/galactic-reach/rulebook.html
       - prototypes/galactic-reach/rulebook.css
       - prototypes/galactic-reach/styles.css
+      - prototypes/lab/heirs-emblem*.svg
       - docs/releases.md
       - .github/workflows/pages.yml
   workflow_dispatch:
