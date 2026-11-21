@@ -3962,7 +3962,7 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   #hand-row .game-card:not(:hover):not(:focus-within) > .corner-button { min-width: 0; min-height: 0; font-size: 1em; box-shadow: none; }
   #hand-row .game-card:not(:hover):not(:focus-within) > .card-symbols.corner-button { border-width: 0 1.5px 1.5px 0; border-radius: 7px 0 8px 0; }
   #hand-row .game-card:not(:hover):not(:focus-within) > .card-footer.corner-button { border-style: solid !important; border-color: color-mix(in srgb, var(--card-accent, #8d8268) 70%, #4a4234) !important; border-width: 0 0 1.5px 1.5px !important; border-radius: 0 7px 0 8px !important; background: color-mix(in srgb, var(--card-accent, #8d8268) 14%, #fffaf0) !important; }
-  #hand-row .game-card:not(:hover):not(:focus-within) :is(.card-name, .card-headline, .card-effect) { font-size: 12.5px; }
+  #hand-row .game-card:not(:hover):not(:focus-within) :is(.card-name, .card-headline, .card-effect) { font-size: 12.5px; contain: inline-size; }
   #hand-row .game-card:not(:hover):not(:focus-within):has(> .card-symbols) .card-effect { display: none !important; }
 
   /* Market and upgrade cards: effect symbols, name between, price; the name wraps to two lines at
@@ -4062,7 +4062,7 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
     font-size: clamp(10px, calc((var(--top-w) + min(0px, var(--step)) - 14px) / 3.6), 18px) !important; row-gap: 3px !important;
   }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer) { justify-self: start !important; margin: 0 !important; padding: 0 !important; border-color: transparent !important; background: none !important; }
-  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-footer { grid-row: auto !important; }
+  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-footer { grid-row: 2 !important; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-symbols { max-width: 100%; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-symbols .corner-group { flex-wrap: wrap; }
 }

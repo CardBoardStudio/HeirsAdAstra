@@ -80,7 +80,9 @@
     });
     // Beyond the fan's room (neighbours overlap, or a card's corners are wider than the card), each
     // card stacks its symbols in the strip that shows.
-    row.classList.toggle('fan-tight', step < 0 || cards.some(card => !raisedNow(card) && card.scrollWidth > card.clientWidth + 1));
+    const cramped = card => { const sym = card.querySelector(':scope > .card-symbols'), foot = card.querySelector(':scope > .card-footer');
+      return Boolean(sym) && sym.offsetLeft + sym.offsetWidth > (foot?.offsetWidth ? foot.offsetLeft : card.clientWidth) + 1; };
+    row.classList.toggle('fan-tight', step < 0 || cards.some(card => !raisedNow(card) && cramped(card)));
     placeSlots();
   }
   addEventListener('resize', () => requestAnimationFrame(fanHand));
