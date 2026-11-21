@@ -4003,22 +4003,13 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   .phone-card-sheet .phone-card-close { top: auto; bottom: 4px; }
 }
 
-/* Card-choice and bank dialogs: the one-line header over the summary. */
-:is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .game-card:has(> .card-symbols) { grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "head head cost" !important; }
-:is(#max-bank-dialog, .market-choice-dialog) :is(#upgrade-market, .relic-row) .game-card:has(> .card-symbols) { grid-template-areas: "sym name cost" "head head head" !important; }
-:is(#max-bank-dialog, .market-choice-dialog) .game-card > .card-symbols { grid-area: sym; justify-self: start; margin: 0 !important; font-size: 17px; }
-/* On a phone the choice cards are too small for both: they keep their one-line summary, which
-   already prints the same symbols with their numbers, and leave out the corner symbols. */
-@media (max-width: 599px), (max-height: 599px) {
-  :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, .card-choice-row) .game-card:has(> .card-symbols) { grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "name cost" "head cost" !important; }
-  :is(#max-bank-dialog, .market-choice-dialog) :is(#upgrade-market, .relic-row) .game-card:has(> .card-symbols) { grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "name cost" "head head" !important; }
-  :is(#max-bank-dialog, .market-choice-dialog) .game-card > .card-symbols { display: none !important; }
-}
+/* Card-choice and bank dialogs keep their own layout and one-line summary, which already prints
+   the card's symbols with their numbers; they leave out the corner symbols. */
+:is(#max-bank-dialog, .market-choice-dialog) .game-card > .card-symbols { display: none !important; }
 
 /* Long names: measured between the corners without clamping or breaking words; a name that does not
    fit there (a word too wide, or more than two lines) moves under the corners. */
 .game-card.name-probe > .card-name { display: block !important; -webkit-line-clamp: unset !important; line-clamp: unset !important; max-height: none !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; white-space: normal !important; overflow: hidden !important; text-overflow: clip !important; }
-.game-card > .card-name { overflow-wrap: normal; hyphens: manual; }
 @media (min-width: 600px) and (min-height: 600px) {
   .market-cards #market-row > .game-card.name-under:not(:hover):not(:focus):not(:focus-within):has(> .card-symbols) { grid-template-areas: "sym sym cost" "name name cost" "art art cost" !important; grid-template-rows: auto auto minmax(0, 1fr) !important; }
   .market-cards #market-row > .game-card.name-under:is(:hover, :focus, :focus-within) { grid-template-areas: "sym sym cost" "name name cost" "effect effect effect" "note note note" !important; }
@@ -4064,3 +4055,9 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols.corner-button { align-self: start; margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)); padding: var(--pad) 10px 8px var(--pad); border-width: 0 1.5px 1.5px 0; border-radius: 8px 0 9px 0; box-shadow: none; }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-footer:has(.corner-dots) { align-self: start; margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0; padding: var(--pad) var(--pad) 8px 10px; border-width: 0 0 1.5px 1.5px; border-style: solid; border-radius: 0 8px 0 9px; box-shadow: none; }
 .phone-card-sheet .game-card > .corner-button { min-height: 44px; min-width: 52px; }
+
+/* With colour chips (a resource symbol is a chip in its colour, dark symbol on top), the convert
+   tab stays a neutral button that frames its chip; the effect symbols stay in the card's ink. */
+.card-symbols, .card-symbols :is(.vocab-icon, .vocab-move, .vocab-hit, .vocab-miss, .vocab-limit) { color: var(--ink, #253436); }
+.card-symbols .vocab-star { color: var(--ink, #253436); }
+.game-card .corner-button .resource-symbol { border-radius: 28%; }
