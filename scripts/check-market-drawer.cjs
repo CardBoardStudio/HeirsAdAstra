@@ -14,7 +14,7 @@ const { findChrome, launch, operationsState, buyState } = require('./check-viewp
 const ROOT = path.resolve(__dirname, '../prototypes');
 const APP = fs.readFileSync(path.join(ROOT, 'galactic-reach/app.js'), 'utf8');
 const KEY = `galactic-reach-save-v${APP.match(/const SAVE_FORMAT_VERSION = (\d+)/)[1]}`;
-const SIZES = process.env.CHECK_SIZES ? process.env.CHECK_SIZES.split(',').map(v => v.split('x').map(Number)) : [[1280, 720], [1440, 900], [1920, 1080], [1024, 768], [390, 844], [844, 390]];
+const SIZES = process.env.CHECK_SIZES ? process.env.CHECK_SIZES.split(',').map(v => v.split('x').map(Number)) : [[1280, 720], [1440, 900], [1920, 1080], [1024, 768], [820, 1180], [390, 844], [844, 390]];
 const isPhone = ([w, h]) => Math.min(w, h) < 600;
 const source = value => JSON.stringify(value);
 const MARKET = ['worldEngine', 'ascendancyCodex', 'aegisLattice', 'deflectorGrid', 'torpedoSpread', 'railBattery', 'colonyPods', 'prefabYards', 'signalRelay'];
@@ -125,6 +125,32 @@ async function main() {
         assert.equal(await drawer(), 'hand', `${label}: cancelling returns the drawer you had`);
         clean();
         console.log(`ok - ${label} phone Supply drawer: closed, on demand, Buy turn, Excavate`);
+        continue;
+      }
+      if (height > width) {
+        // An upright table: the supply band under the map, closed by default, opened by the handle,
+        // by the Buy turn (there is no whole-card view) and by Excavate.
+        await load(ops());
+        assert.equal(await view(), 'closed', `${label}: the band starts closed`);
+        assert.equal(await shown('#market-row > .game-card'), false, `${label}: no market cards on the table`);
+        const closedMap = await mapWidth();
+        await click('#market-handle');
+        assert.equal(await view(), 'side', `${label}: the handle opens the band`);
+        assert.equal(await shown('#market-row > .game-card'), true, `${label}: with the market`);
+        assert.equal(await shown('#market-size'), false, `${label}: no size button upright`);
+        assert((await mapWidth()) <= closedMap, `${label}: the map makes room for the band`);
+        await fitsWindow();
+        await click('#market-handle');
+        await click('#board-primary');
+        assert.equal(await view(), 'side', `${label}: the Buy turn opens the band`);
+        await fitsWindow();
+        await click('#board-primary');
+        assert.equal(await view(), 'closed', `${label}: Finish Buy closes it again`);
+        await load(excavating());
+        assert.equal(await view(), 'side', `${label}: Excavate opens the band`);
+        assert.equal(await shown('#relic-row .game-card'), true, `${label}: with the relics`);
+        clean();
+        console.log(`ok - ${label} upright market band: closed, handle, Buy turn, Excavate`);
         continue;
       }
       // Closed by default: no supply on the table and a larger map; the handle is a real button.

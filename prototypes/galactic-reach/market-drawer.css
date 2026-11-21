@@ -1,12 +1,14 @@
-/* ==== The market drawer (rules #shared-board). On a landscape table the supply - the relics, the
-   market's three rows and the Upgrades - lies on the table's right edge as a drawer:
+/* ==== The market drawer (rules #shared-board). On the table the supply - the relics, the market's
+   three rows and the Upgrades - is a drawer on the table's right edge:
    - closed (the default): no column at all, the map takes the room; only the Market handle shows;
    - side: the supply column as before (compact cards), the map re-fitted beside it;
    - full (your Buy turn): the market and the Upgrades as whole cards on a sheet laid over the map's
      right-hand side. The column under it keeps its width, so the map does not move for it.
+   An upright table (an iPad held upright) has only closed and open: its supply band under the map.
    app.js (showMarket) sets :root.market-drawer and one of .market-closed, .market-side,
    .market-full (.market-no-column while the column under them is closed); .market-in and
-   .market-out run the one slide in or out, .market-moving lasts until it has settled. Without .market-drawer (Max's table, retained engines) nothing here applies. ==== */
+   .market-out run the one movement in or out, .market-moving lasts until it has settled. Without
+   .market-drawer (Max's table, retained engines) nothing here applies. ==== */
 .market-handles[hidden], .market-sheet { display: none; }
 
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
@@ -18,6 +20,16 @@
   :root.market-drawer.market-no-column .board-map-region { place-items: start !important; }
   :root.market-drawer.market-no-column .board-map-region > .galaxy-board { justify-self: start !important; margin-left: var(--map-left, 0px) !important; }
   :root.market-drawer.market-full .market-handles { grid-column: 2 / 4; align-self: center; justify-self: end; margin: 0 var(--sheet-w) 0 0; }
+}
+/* Upright: the handle on the table's right edge in the map's empty upper-right corner, under the map tools. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  :root.market-drawer .market-handles {
+    grid-column: 1 / -1; grid-row: 3; align-self: start; justify-self: end; z-index: 32;
+    display: flex; flex-direction: column; align-items: flex-end; margin: 150px -16px 0 0;
+  }
+}
+
+@media (min-width: 600px) and (min-height: 600px) {
   /* A tab on the edge, like Trade's on the left edge. */
   :root.market-drawer :is(.market-handle, .market-size) {
     position: relative; display: flex; align-items: center; justify-content: center; min-width: 30px; min-height: 104px; margin: 0; padding: 10px 4px;
@@ -97,6 +109,6 @@
   :root.market-drawer :is(#relics-panel, #market-panel, #upgrade-group, .market-sheet) { transition: none !important; }
 }
 /* Phones keep their Supply drawer (the drawer buttons); the handles are for the table. */
-@media (max-width: 599px), (max-height: 599px), (orientation: portrait) {
+@media (max-width: 599px), (max-height: 599px) {
   .market-handles, .market-sheet { display: none !important; }
 }

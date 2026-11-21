@@ -464,8 +464,12 @@ const MEASURE = `(() => {
   // No wasted felt on a wide desktop table: the largest rectangle of table not covered by any piece
   // or hex stays under 4% of the window (measured on an 8px grid).
   // Only the table during a game is measured (not a waiting room, nor a shared table's top bar).
+  // With the market drawer closed (rulebook #shared-board) the map is limited by the window's
+  // height, so the closed market's room shows as felt beside the centred map: that state alone is
+  // not measured (at 1920x1080 an empty 568x736 area, 20% of the window).
   const tableArea = document.querySelector('.app-shell')?.getBoundingClientRect();
-  if (!phone && !modal && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, .board-stage.map-zoomed')) {
+  const marketClosed = document.documentElement.classList.contains('market-drawer') && document.documentElement.classList.contains('market-closed');
+  if (!phone && !modal && !marketClosed && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, .board-stage.map-zoomed')) {
     const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .standings-stats, .phase-stepper, .log-panel, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
     const cell = 8, cols = Math.ceil(innerWidth / cell), rows = Math.ceil(innerHeight / cell), heights = new Array(cols).fill(0);
     const covered = new Uint8Array(cols * rows);
@@ -661,11 +665,11 @@ async function runCase(browser, origin, testCase, viewport) {
   // zoom) it may scroll vertically, like a phone.
   await browser.evaluate(`window.__fitMode = ${JSON.stringify(isPhone([width, height]) || (testCase.lobby && height < 700) ? 'phone' : 'fit')}; true`);
   const { problems, slack } = await browser.evaluate(MEASURE);
-  // The market drawer's state: the table's view (closed, side, full), or on a phone whether the
-  // Supply drawer is open; a portrait table keeps its supply band.
+  // The market drawer's state: the table's view (closed, side, full; an upright table has no
+  // whole-card view, so its Buy turn opens the band), or on a phone whether the Supply drawer is open.
   if (testCase.marketView) {
     const got = await browser.evaluate(`(() => { const c = document.documentElement.classList; if (c.contains('market-drawer')) return ['closed', 'side', 'full'].find(v => c.contains('market-' + v)); if (matchMedia('(max-width: 599px), (max-height: 599px)').matches) return document.body.dataset.drawer === 'supply' ? 'open' : 'closed'; return 'band'; })()`);
-    const want = got === 'band' ? 'band' : isPhone([width, height]) ? (testCase.marketView === 'closed' ? 'closed' : 'open') : testCase.marketView;
+    const want = isPhone([width, height]) ? (testCase.marketView === 'closed' ? 'closed' : 'open') : height > width && testCase.marketView === 'full' ? 'side' : testCase.marketView;
     if (got !== want) problems.push(`market drawer: ${got}, expected ${want}`);
   }
   if (testCase.buyVisible) {

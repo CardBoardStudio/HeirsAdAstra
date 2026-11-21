@@ -6033,7 +6033,10 @@ function createGalacticReach(options = {}) {
   const marketNeeds = new Map(), marketDeclined = new Set();
   if (!headless && typeof window !== 'undefined') try { const saved = window.localStorage?.getItem(MARKET_PREF); if (MARKET_VIEWS.includes(saved)) marketPref = saved; } catch { /* storage blocked: closed */ }
   const marketDrawerOn = () => !headless && typeof window !== 'undefined' && !!document.documentElement?.classList && tableLayout()
-    && !!window.matchMedia?.('(orientation: landscape)').matches && !document.body.classList.contains('background-stars');
+    && !document.body.classList.contains('background-stars');
+  // An upright table (an iPad held upright) has the supply as a band under the map: open or closed,
+  // with no whole-card sheet, so the Buy turn opens the band.
+  const marketUpright = () => typeof window !== 'undefined' && !window.matchMedia?.('(orientation: landscape)').matches;
   const myBuyTurn = () => !replayMode && state.winner === null && state.phase === 'buy' && state.activePlayer === ME;
   // need: 'relics' (only the side panel shows the relics), 'market' (any open view) or null (done).
   function needMarket(reason, need) {
@@ -6045,9 +6048,11 @@ function createGalacticReach(options = {}) {
   function marketTarget() {
     const key = myBuyTurn() ? `${state.round}` : null;
     if (key !== marketBuyKey) { marketBuyKey = key; marketBuyView = key ? 'full' : null; }
-    const view = key ? marketBuyView : marketPref, needs = [...marketNeeds.values()];
-    if (needs.includes('relics')) return 'side';
-    return needs.includes('market') && view === 'closed' ? 'side' : view;
+    let view = key ? marketBuyView : marketPref;
+    const needs = [...marketNeeds.values()];
+    if (needs.includes('relics')) view = 'side';
+    else if (needs.includes('market') && view === 'closed') view = 'side';
+    return view === 'full' && marketUpright() ? 'side' : view;
   }
   // The player's own choice: it outranks any task's need until that task is over.
   function chooseMarketView(view) {
@@ -6065,7 +6070,7 @@ function createGalacticReach(options = {}) {
     handle.setAttribute('aria-label', open ? 'Close the market' : 'Open the market');
     handle.title = open ? 'Close the market' : marketBuyKey ? 'Open the market: your Buy turn' : 'Open the market';
     handle.dataset.buying = String(Boolean(marketBuyKey));
-    size.hidden = !open;
+    size.hidden = !open || marketUpright();
     size.firstElementChild.textContent = view === 'full' ? 'Smaller' : 'Larger';
     size.setAttribute('aria-label', view === 'full' ? 'Smaller market: the side panel' : 'Larger market: whole cards');
   }
@@ -6224,9 +6229,9 @@ function createGalacticReach(options = {}) {
     const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || document.body.classList.contains('background-stars')) && !$('.board-stage.map-zoomed');
     if (!landscape || !region?.getBoundingClientRect || !board) { ['--map-w', '--map-top'].forEach(name => root.style.removeProperty(name)); return; }
     // The market's whole cards lie over the map: it keeps the place it has beside the column under
-    // them (see showMarket), fitted once for that column and again after a resize.
+    // them (see showMarket), fitted once for that column at the table's current size.
     const sheet = root.classList.contains('market-drawer') && root.classList.contains('market-full');
-    if (sheet && mapFitFor === marketColumn) return;
+    if (sheet && mapFitFor === `${marketColumn}:${Math.round(region.getBoundingClientRect().width)}x${Math.round(region.getBoundingClientRect().height)}`) return;
     const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1;
     const box = region.getBoundingClientRect(), b = board.getBoundingClientRect();
     if (!b.width || !box.width) return;
@@ -6266,7 +6271,7 @@ function createGalacticReach(options = {}) {
     root.style.setProperty('--map-top', `${Math.floor(place.dy / zoom)}px`);
     if (closed) root.style.setProperty('--map-left', `${Math.floor(place.dx / zoom)}px`); else root.style.removeProperty('--map-left');
     fitMapFrom = b.width;
-    mapFitFor = marketColumn;
+    mapFitFor = `${marketColumn}:${Math.round(box.width)}x${Math.round(box.height)}`;
   }
 
   // On the table the supply is six rows of three cards, all one size: the relics, the market's
@@ -6321,11 +6326,13 @@ function createGalacticReach(options = {}) {
   // The whole-card sheet: the market's three rows of three cards in real card proportions (63:88)
   // as tall as the column allows, the Upgrades in two columns beside them; on a narrower table the
   // cards shrink so the sheet leaves the left-hand column and a strip of the map uncovered.
-  const SHEET_PAD = 12, SHEET_SPLIT = 18, SHEET_GAP = 8, SHEET_MAP_MIN = 120;
+  // The strip it leaves is at least wide enough for a guidance note (about 330 window pixels) beside it.
+  const SHEET_PAD = 12, SHEET_SPLIT = 18, SHEET_GAP = 8, SHEET_NOTE_ROOM = 350;
   function fitMarketSheet(tableW, height) {
     const root = document.documentElement, shell = $('.app-shell'), style = getComputedStyle(shell);
     const left = parseFloat(style.getPropertyValue('--left-w')) || 250, side = parseFloat(style.paddingRight) || 16, gapX = parseFloat(style.columnGap) || 14;
-    const room = tableW - 2 * side - left - gapX - SHEET_MAP_MIN;
+    const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1;
+    const room = tableW - 2 * side - left - gapX - SHEET_NOTE_ROOM / zoom;
     let cardH = Math.floor((height - 2 * SHEET_PAD - 2 * SHEET_GAP) / 3), cardW = Math.floor(cardH * 63 / 88);
     const widest = Math.floor((room - 2 * SHEET_PAD - SHEET_SPLIT - 3 * SHEET_GAP) / 5);
     if (cardW > widest) { cardW = widest; cardH = Math.floor(cardW * 88 / 63); }
