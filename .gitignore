@@ -44,3 +44,6 @@ trusted-signers.local.json
 
 # The shared review-conventions validator, checked out by the Rules contract job.
 /.review-conventions/
+
+# The docs site build (scripts/build-site.cjs).
+/_site/
