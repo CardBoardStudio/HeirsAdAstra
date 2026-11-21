@@ -1,38 +1,48 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Heirs Ad Astra">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="9 9 182 182" role="img" aria-label="Heirs Ad Astra">
   <title>Heirs Ad Astra</title>
-  <!-- Small-size emblem. Speed lines: one per resource, in the game's order (matter, energy,
+  <!-- Small-size emblem (37 px header): the round emblem with the long ticks only. Speed lines: one per resource, in the game's order (matter, energy,
        biomass, data); colours are the matter, energy, biomass and data custom
        properties in prototypes/galactic-reach/styles.css. -->
-  
-  <circle cx="100" cy="100" r="99" fill="#0d1222"/>
-  <circle cx="100" cy="100" r="88" fill="none" stroke="#f0b862" stroke-width="12"/>
-  <g stroke="#f0b862" stroke-width="6">
-    <line x1="161.49" y1="135.5" x2="170.15" y2="140.5"/>
-    <line x1="135.5" y1="161.49" x2="140.5" y2="170.15"/>
-    <line x1="64.5" y1="161.49" x2="59.5" y2="170.15"/>
-    <line x1="38.51" y1="135.5" x2="29.85" y2="140.5"/>
-    <line x1="38.51" y1="64.5" x2="29.85" y2="59.5"/>
-    <line x1="64.5" y1="38.51" x2="59.5" y2="29.85"/>
-    <line x1="135.5" y1="38.51" x2="140.5" y2="29.85"/>
-    <line x1="161.49" y1="64.5" x2="170.15" y2="59.5"/>
-  </g>
+  <circle cx="100" cy="100" r="90.12" fill="#0d1222"/>
   <g>
-    <path fill="#f2b53b" d="M100 20L100 100L91 100Z"/><path fill="#d0901f" d="M100 20L100 100L109 100Z"/>
-    <path fill="#f2b53b" d="M100 180L100 100L109 100Z"/><path fill="#d0901f" d="M100 180L100 100L91 100Z"/>
-    <path fill="#f2b53b" d="M180 100L100 100L100 94Z"/><path fill="#d0901f" d="M180 100L100 100L100 106Z"/>
-    <path fill="#f2b53b" d="M20 100L100 100L100 106Z"/><path fill="#d0901f" d="M20 100L100 100L100 94Z"/>
+    <path fill="#f2b53b" d="M101.03 24.45L101.03 100L86.84 100Z"/><path fill="#d0901f" d="M101.03 24.45L101.03 100L115.22 100Z"/>
+    <path fill="#f2b53b" d="M101.03 175.55L101.03 100L115.22 100Z"/><path fill="#d0901f" d="M101.03 175.55L101.03 100L86.84 100Z"/>
+    <path fill="#f2b53b" d="M175.56 100L101.03 100L101.03 96.56Z"/><path fill="#d0901f" d="M175.56 100L101.03 100L101.03 103.44Z"/>
+    <path fill="#f2b53b" d="M24.44 100L101.03 100L101.03 103.44Z"/><path fill="#d0901f" d="M24.44 100L101.03 100L101.03 96.56Z"/>
+    <path fill="#f2b53b" d="M55.66 59.14L101.03 100L93.55 108.31Z"/><path fill="#d0901f" d="M55.66 59.14L101.03 100L108.51 91.69Z"/>
+    <path fill="#f2b53b" d="M146.73 141.14L101.03 100L108.51 91.69Z"/><path fill="#d0901f" d="M146.73 141.14L101.03 100L93.55 108.31Z"/>
   </g>
-  <g transform="translate(100 100) rotate(-10) skewX(-14)">
+  <g transform="translate(101.03 100) rotate(-13.6) skewX(-20)">
     <!-- A navy layer behind the lines hides the star there. -->
     <g fill="#0d1222">
-      <rect x="-43" y="-33.75" width="82" height="21"/>
-      <rect x="-38" y="-18.25" width="76" height="21"/>
-      <rect x="-33" y="-2.75" width="70" height="21"/>
-      <rect x="-28" y="12.75" width="64" height="21"/>
+      <rect x="-50.1" y="-26.81" width="100.21" height="14.63"/>
+      <rect x="-50.1" y="-13.81" width="100.21" height="14.63"/>
+      <rect x="-36.56" y="-0.81" width="86.67" height="14.63"/>
+      <rect x="-23.02" y="12.19" width="73.13" height="14.63"/>
     </g>
-    <rect fill="#e9a23b" x="-38" y="-28.75" width="72" height="11"/>
-    <rect fill="#ff6f59" x="-33" y="-13.25" width="66" height="11"/>
-    <rect fill="#7fd6b5" x="-28" y="2.25" width="60" height="11"/>
-    <rect fill="#5fc9d8" x="-23" y="17.75" width="54" height="11"/>
+    <rect fill="#e9a23b" x="-46.04" y="-22.75" width="92.08" height="6.5"/>
+    <rect fill="#ff6f59" x="-46.04" y="-9.75" width="92.08" height="6.5"/>
+    <rect fill="#7fd6b5" x="-32.5" y="3.25" width="78.54" height="6.5"/>
+    <rect fill="#5fc9d8" x="-18.96" y="16.25" width="65" height="6.5"/>
+  </g>
+  <!-- The rim sits on top, so nothing inside crosses it. -->
+  <g fill="none" stroke="#f0b862">
+    <circle cx="100" cy="100" r="87" stroke-width="6.24"/>
+    <circle cx="100" cy="100" r="77" stroke-width="2.88"/>
+    <!-- Degree scale: the long ticks, every 30 degrees. -->
+    <g stroke-width="1.92">
+      <line stroke-width="3.6" x1="178.4" y1="100" x2="185.6" y2="100"/>
+      <line stroke-width="3.6" x1="167.9" y1="139.2" x2="174.13" y2="142.8"/>
+      <line stroke-width="3.6" x1="139.2" y1="167.9" x2="142.8" y2="174.13"/>
+      <line stroke-width="3.6" x1="100" y1="178.4" x2="100" y2="185.6"/>
+      <line stroke-width="3.6" x1="60.8" y1="167.9" x2="57.2" y2="174.13"/>
+      <line stroke-width="3.6" x1="32.1" y1="139.2" x2="25.87" y2="142.8"/>
+      <line stroke-width="3.6" x1="21.6" y1="100" x2="14.4" y2="100"/>
+      <line stroke-width="3.6" x1="32.1" y1="60.8" x2="25.87" y2="57.2"/>
+      <line stroke-width="3.6" x1="60.8" y1="32.1" x2="57.2" y2="25.87"/>
+      <line stroke-width="3.6" x1="100" y1="21.6" x2="100" y2="14.4"/>
+      <line stroke-width="3.6" x1="139.2" y1="32.1" x2="142.8" y2="25.87"/>
+      <line stroke-width="3.6" x1="167.9" y1="60.8" x2="174.13" y2="57.2"/>
+    </g>
   </g>
 </svg>
