@@ -255,6 +255,8 @@
   /* The Rules link sits at the end of the title's line. */
   :root .gr-coach:not(.in-dialog):not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-auto-flow: row dense; column-gap: 8px; align-items: baseline; }
   :root .gr-coach:not(.in-dialog) > * { grid-column: 1 / -1; }
+  /* (Notes still step aside while the game menu is open.) */
+  :root body.menu-open .gr-coach:not(.in-dialog) { display: none !important; }
   :root .gr-coach:not(.in-dialog) > .gr-coach-title { grid-column: 1; }
   :root .gr-coach:not(.in-dialog) > .gr-coach-rule { grid-column: 2; margin: 0; }
   :root .gr-coach:not(.in-dialog) .gr-coach-actions { gap: 4px 6px; margin-top: 6px; }
@@ -274,7 +276,7 @@
   .rotate-prompt-icon .rotate-from { stroke: var(--muted, #b4bdb6); stroke-dasharray: 5 6; opacity: .7; }
   .rotate-prompt-icon .rotate-to { stroke: var(--gold, #d9bd80); fill: #0b161466; }
   .rotate-prompt-icon .rotate-arrow { stroke: var(--gold, #d9bd80); }
-  .rotate-prompt p { max-width: 16em; margin: 0; font: 700 19px/1.35 Georgia, 'Times New Roman', serif; letter-spacing: .01em; }
+  .rotate-prompt p { max-width: 16em; margin: 0; text-wrap: balance; font: 700 19px/1.35 Georgia, 'Times New Roman', serif; letter-spacing: .01em; }
   /* Windows and popovers lie in the top layer, above any z-index: they wait, hidden, until the phone turns. */
   html.rotate-now :is(dialog[open], :popover-open) { visibility: hidden !important; }
   html.rotate-now dialog::backdrop { background: none !important; }

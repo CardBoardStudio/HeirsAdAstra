@@ -771,8 +771,8 @@
   // card, an Upgrade) opens it when the note first appears; if you close it again, the note points
   // at the Market handle instead. No note points at a hidden card.
   // On a phone held sideways (phone.css) the mat (with the piles and the Upgrades), the score
-  // track and the comms log are drawers on the left edge. A note opens the drawer that holds what it
-  // points at or where its card should go, when the note first appears (app.js puts back the drawer
+  // track and the comms log are drawers on the left edge. A Learn to play note opens the drawer that
+  // holds what it points at or where its card should go, when the note first appears (app.js puts back the drawer
   // you had once it is over); a part it only mentions opens a drawer too, unless the note is about
   // the map, which a drawer would cover. A part left in a closed drawer is shown by that drawer's
   // handle instead, lit and labelled with where it is.
@@ -786,12 +786,14 @@
     const key = tip && sideways() ? JSON.stringify([tip.id, tip.title, tip.step]) : '';
     if (key !== drawerKey) {
       drawerKey = key;
-      // (Asked for even when that drawer is already open: the drawer the note before opened stays.)
-      const hidden = el => el && el.isConnected, opens = el => drawerOf(el)?.[1] !== 'supply' && drawerOf(el)?.[1];
-      const primary = key ? [tip.anchor, tip.show?.ghost?.to] : [];
-      const onMap = key && [tip.anchor, tip.show?.ghost?.to, ...(tip.marks || [])].some(el => el?.closest?.('.board-map-region'));
-      const mentioned = key && !onMap ? (tip.show?.callouts || []).map(c => c?.el) : [];
-      need?.('guide', [...primary, ...mentioned].filter(hidden).map(opens).find(Boolean) || null);
+      // Only Learn to play opens drawers; in your own games a note lights the handle instead. (A drawer
+      // is asked for even when it is already open: the drawer the step before opened stays.)
+      const teaching = key && globalThis.galacticReachTutorial?.active;
+      const present = el => el?.isConnected, opens = el => drawerOf(el)?.[1] !== 'supply' && drawerOf(el)?.[1];
+      const primary = teaching ? [tip.anchor, tip.show?.ghost?.to] : [];
+      const onMap = teaching && [tip.anchor, tip.show?.ghost?.to, ...(tip.marks || [])].some(el => el?.closest?.('.board-map-region'));
+      const mentioned = teaching && !onMap ? (tip.show?.callouts || []).map(c => c?.el) : [];
+      need?.('guide', [...primary, ...mentioned].filter(present).map(opens).find(Boolean) || null);
     }
     if (!key) return tip;
     let next = tip;
