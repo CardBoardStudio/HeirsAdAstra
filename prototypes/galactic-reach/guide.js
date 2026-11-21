@@ -508,11 +508,12 @@
     ghostAnimation?.cancel(); ghostAnimation = null; ghostKey = '';
   }
   const pad = (r, n) => ({ left: r.left - n, top: r.top - n, right: r.right + n, bottom: r.bottom + n, width: r.width + 2 * n, height: r.height + 2 * n });
-  // A callout's label, on the given side of its part.
-  const labelStyle = (r, side, W) => side === 'left' ? `right:${Math.round(W - r.left + 6)}px;top:${Math.round(r.top + r.height / 2)}px;transform:translateY(-50%)`
+  // A callout's label, on the given side of its part (a raised label, 'top' lifted by `lift` px, sits
+  // above a crowded row).
+  const labelStyle = (r, side, W, lift = 0) => side === 'left' ? `right:${Math.round(W - r.left + 6)}px;top:${Math.round(r.top + r.height / 2)}px;transform:translateY(-50%)`
     : side === 'right' ? `left:${Math.round(r.right + 6)}px;top:${Math.round(r.top + r.height / 2)}px;transform:translateY(-50%)`
     : side === 'bottom' ? `left:${Math.round(r.left + r.width / 2)}px;top:${Math.round(r.bottom + 6)}px;transform:translateX(-50%)`
-    : `left:${Math.round(r.left + r.width / 2)}px;top:${Math.round(r.top - 6)}px;transform:translate(-50%,-100%)`;
+    : `left:${Math.round(r.left + r.width / 2)}px;top:${Math.round(r.top - 6 - lift)}px;transform:translate(-50%,-100%)`;
   function drawStage() {
     const visibleNote = coach && !coach.hidden && !coach.classList.contains('in-dialog') && getComputedStyle(coach).display !== 'none' && getComputedStyle(coach).visibility !== 'hidden';
     if (!currentShow || !visibleNote) { hideStage(); return; }
@@ -542,14 +543,17 @@
     const layer = stage.querySelector('.gr-stage-labels');
     layer.innerHTML = labels.map(l => `<span class="gr-stage-label active" style="${labelStyle(l.r, l.side, W)}">${esc(l.label)}</span>`).join('');
     // Labels shown together: one that would lie over an earlier label, the note or its arrow takes
-    // another side of its part. The same parts always give the same places.
-    if (labels.length > 1) {
+    // another side of its part, or failing that rises above it until it is clear. The same parts
+    // always give the same places.
+    if (currentShow.together) {
       const taken = [coach, pointer?.hidden ? null : pointer].filter(Boolean).map(el => el.getBoundingClientRect());
       const over = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
       [...layer.children].forEach((span, i) => {
         const { r, side } = labels[i];
-        const fits = place => { span.style.cssText = labelStyle(r, place, W); const b = span.getBoundingClientRect(); return b.left >= 0 && b.right <= W && b.top >= 0 && b.bottom <= H && !taken.some(t => over(b, t)); };
-        if (![side, ...['top', 'bottom', 'right', 'left'].filter(x => x !== side)].some(fits)) span.style.cssText = labelStyle(r, side, W);
+        const fits = ([place, lift]) => { span.style.cssText = labelStyle(r, place, W, lift); const b = span.getBoundingClientRect(); return b.left >= 0 && b.right <= W && b.top >= 0 && b.bottom <= H && !taken.some(t => over(b, t)); };
+        const tall = span.offsetHeight + 4;
+        const places = [side, ...['top', 'bottom', 'right', 'left'].filter(x => x !== side)].map(x => [x, 0]).concat([1, 2, 3, 4].map(k => ['top', k * tall]));
+        if (!places.some(fits)) span.style.cssText = labelStyle(r, side, W);
         taken.push(span.getBoundingClientRect());
       });
     }
