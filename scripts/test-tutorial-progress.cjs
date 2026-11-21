@@ -68,6 +68,19 @@ assert.deepEqual(open({ entries: practice({ step: 36, stepId: 'finished' }) }).k
   assert.deepEqual(page.keys(), everything);
   assert.equal(page.context.galacticReachTutorial.progress().stepId, 'convert-rest');
 }
+// A place saved at Lesson 1's former second step (its Move conversion, now part of the first step)
+// was left part-way: it resumes on the same practice game, at Lesson 1.
+{
+  const page = open({ entries: practice({ step: 1, stepId: 'convert-move' }) });
+  assert.deepEqual(page.keys(), everything);
+  // The smallest table the first step reads: your Move not yet converted (no Energy).
+  page.context.galacticReachGuide = { handCard: () => null, hex: () => null, turnButton: () => null };
+  const player = { resources: { matter: 1, energy: 0, biomass: 1, data: 1 }, hand: [], deck: [], discard: [], inPlay: [] };
+  const state = { tutorialRules: RULES, pendingCombat: null, phase: 'operations', activePlayer: 0, winner: null, players: [player], planets: {}, clusters: [], fleets: {} };
+  const tip = page.context.galacticReachTutorial.tip({ state, structures: { harvester: { cost: { energy: 1 } } }, turnSerial: () => 1, stage: () => true }, null);
+  assert.match(tip.eyebrow, /^Lesson 1 of /);
+  assert.equal(page.context.galacticReachTutorial.progress().stepId, 'first-construct');
+}
 // A place saved before steps were named still resumes.
 assert.deepEqual(open({ entries: practice({ step: 3, stepId: undefined }) }).keys(), everything);
 // A reload or Back/Forward keeps the same walkthrough, even on its first step or once finished.

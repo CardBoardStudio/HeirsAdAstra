@@ -6,7 +6,8 @@
 // It starts a fresh tutorial and, step by step, does what the coach mark asks: Next on a
 // reading step, otherwise it clicks the pulsing element (a hand card's own Use order or Convert button, a lit hex, a Sector Scan
 // choice, a dialog's control) with real pointer clicks, never by calling the game. It fails
-// when a step does not advance, and prints each step it completed.
+// when a step does not advance, or when a step that waits for an action offers a button (Next,
+// Find …) instead of leaving the lit control as the way on, and prints each step it completed.
 const url = globalThis.process?.env?.TUTORIAL_URL || 'http://127.0.0.1:3117/galactic-reach/?tutorial=1';
 const log = (...parts) => console.log(parts.join(' '));
 const read = () => page.eval(() => {
@@ -17,7 +18,10 @@ const read = () => page.eval(() => {
   const step = tutorial.steps[progress.step];
   const dialog = [...document.querySelectorAll('dialog[open]')].find(d => d.matches(':modal'));
   return {
-    step: progress.step, total: tutorial.steps.length, id: step?.id || 'finished', info: Boolean(step?.info), cueOnly: Boolean(target?.classList.contains('gr-coach-card-cue') && coach?.hidden), title: coach?.querySelector('.gr-coach-title')?.textContent || '',
+    step: progress.step, total: tutorial.steps.length, id: step?.id || 'finished', info: Boolean(step?.info), reviewing: progress.view < progress.step,
+    // Buttons the note offers besides Back, Exit tutorial and Skip lesson (an action step has none).
+    nextLabel: coach?.querySelector('[data-coach="next"]')?.textContent || null,
+    noteShown: Boolean(coach && !coach.hidden), extra: coach && !coach.hidden ? [...coach.querySelectorAll('[data-coach]:not([hidden])')].map(b => b.dataset.coach).filter(a => !['back', 'exit', 'skip'].includes(a)) : [], cueOnly: Boolean(target?.classList.contains('gr-coach-card-cue') && coach?.hidden), title: coach?.querySelector('.gr-coach-title')?.textContent || '',
     text: coach?.querySelector('.gr-coach-text')?.textContent || '', dialog: dialog?.id || null,
     scan: Boolean(document.querySelector('#sector-popover')?.matches(':popover-open')),
     target: target ? { tag: target.tagName, id: target.id, card: target.closest('#hand-row') ? target.dataset.cardId : null, coord: target.dataset.coord || null,
@@ -77,7 +81,7 @@ async function act(s) {
   }
   if (!s.target) return null;
   if (s.target.card) {
-    const convert = /^convert-/.test(s.id);
+    const convert = /^convert-|^first-construct$/.test(s.id);
     const selector = convert ? `[data-resource-card="${s.target.card}"]`
       : s.id === 'excavate' ? `[data-order-card="${s.target.card}"][data-order-mode="excavate"]`
       : `[data-order-card="${s.target.card}"]`;
@@ -104,8 +108,8 @@ const opening = await page.eval(() => ({
   hidden: document.querySelector('#gr-coach')?.hidden,
   otherAnimations: [...document.querySelectorAll('#hand-row .game-card:not(.gr-coach-target)')].map(c => getComputedStyle(c).animationName),
 }));
-if (opening.step !== 'first-construct' || opening.cue !== 'construct' || opening.count !== 1 || !opening.hidden || opening.otherAnimations.some(a => a !== 'none')) throw new Error(`Opening cue regression: ${q(opening)}`);
-log('PASS opening: only Construct is cued; instructions wait for inspection');
+if (opening.step !== 'first-construct' || opening.cue !== 'move' || opening.count !== 1 || !opening.hidden || opening.otherAnimations.some(a => a !== 'none')) throw new Error(`Opening cue regression: ${q(opening)}`);
+log('PASS opening: only the Move to convert is cued; instructions wait for inspection');
 let last = -1, stuck = 0;
 let finished = false;
 for (let i = 0; i < 400; i++) {
@@ -113,6 +117,10 @@ for (let i = 0; i < 400; i++) {
   if (s.id === 'finished') { log(`PASS tutorial finished: ${s.total} steps`); finished = true; break; }
   if (s.step !== last) { log(`step ${s.step + 1}/${s.total} ${s.id}: ${s.title}`); last = s.step; stuck = 0; }
   else if (++stuck > 12) throw new Error(`Stuck at ${s.id}: ${q(s)}`);
+  // A step that waits for an action offers no Next, Find or other button that does or finds it:
+  // the lit control on the table is the way on, and using it advances the step.
+  if (!s.info && !s.reviewing && s.extra.length) throw new Error(`Action step ${s.id} offers ${q(s.extra)}: ${q(s)}`);
+  if (s.info && !s.dialog && s.noteShown && (!s.extra.includes('next') || s.nextLabel !== 'Next')) throw new Error(`Reading step ${s.id} needs a plain Next (no Find …): ${q(s)}`);
   // This chrome-devtools-axi build reports "fn is not a function" after a click that landed.
   try { await act(s); } catch (error) { if (!/fn is not a function/.test(error.message)) log(`  (retry ${s.id}: ${error.message})`); }
   await sleep(700);

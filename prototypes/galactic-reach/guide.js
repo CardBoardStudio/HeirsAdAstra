@@ -655,6 +655,23 @@
     }
   }
 
+  // A walkthrough step brings what it lights into view once, as the step starts: a hand card past
+  // the edge of a narrow screen's scrolling hand. Only the scrolling row that holds it moves (at
+  // once, before the note is placed), never the table, so the note does not chase a scroll.
+  let broughtKey = '';
+  function bringIntoView(element) {
+    for (let box = element.parentElement; box && box !== document.body; box = box.parentElement) {
+      const style = getComputedStyle(box);
+      const across = /auto|scroll/.test(style.overflowX) && box.scrollWidth > box.clientWidth;
+      const down = /auto|scroll/.test(style.overflowY) && box.scrollHeight > box.clientHeight;
+      if (!across && !down) continue;
+      const b = box.getBoundingClientRect(), r = element.getBoundingClientRect();
+      const left = across && (r.left < b.left || r.right > b.right) ? box.scrollLeft + (r.left + r.right - b.left - b.right) / 2 : box.scrollLeft;
+      const top = down && (r.top < b.top || r.bottom > b.bottom) ? box.scrollTop + (r.top + r.bottom - b.top - b.bottom) / 2 : box.scrollTop;
+      if (left !== box.scrollLeft || top !== box.scrollTop) box.scrollTo({ left, top, behavior: 'instant' });
+    }
+  }
+
   function hide() { if (coach) { if (coach.matches(':popover-open')) coach.hidePopover(); coach.hidden = true; } clearTargets(); lastKey = ''; raisedOver = null; currentAnchor = null; placePointer(null); currentShow = null; hideStage(); }
 
   // A reshuffle happened when, between two looks, the deck grew and the discard pile emptied.
@@ -692,6 +709,7 @@
         }
       }
     } catch (error) { console.error('Guidance could not read the table.', error); tip = null; }
+    const stepKey = tip?.bringIntoView ? JSON.stringify([tip.id, tip.step]) : '';
     if (tip?.followCallouts && tip.show?.callouts?.length) {
       const live = tip.show.callouts.filter(c => c?.el && shown(c.el));
       // The note itself names the lit part (it moves with it), so the stage draws rings without labels.
@@ -701,6 +719,8 @@
     cueCard = tip?.revealOnInspect && shown(tip.anchor) ? tip.anchor : null;
     cueKey = cueCard ? JSON.stringify([tip.id, tip.step, cueCard.dataset.cardId]) : '';
     document.body.classList.toggle('gr-card-guidance', Boolean(cueCard));
+    const lit = cueCard || tip?.anchor;
+    if (stepKey && stepKey !== broughtKey && lit && shown(lit)) { broughtKey = stepKey; bringIntoView(lit); }
     if (cueCard && inspectedKey !== cueKey) {
       // Start with one real card, without a tooltip, spotlight, pointer or ghost drag.
       // Inspection reveals the explanation; it stays available for the rest of this step.
