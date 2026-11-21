@@ -427,3 +427,200 @@ async fn board_focus_is_public_ephemeral_and_only_reaches_the_acting_phone() {
         "suggestions expire when the position changes"
     );
 }
+
+#[tokio::test]
+async fn optional_board_waits_without_taking_a_seat_and_keeps_player_cookies() {
+    let (app, host, id) = setup().await;
+    let (_, _, host_link) = scoped(&app, &id, "host-phone", &host, json!({})).await;
+    let other_device = redeem_phone(&app, &id, &host_link).await;
+    let (code, h, _) = scoped(&app, &id, "play-here", &host, json!({})).await;
+    assert_eq!(code, StatusCode::OK);
+    let player = session(&h);
+    assert_eq!(
+        view(&app, &id, &other_device).await.0,
+        StatusCode::OK,
+        "opening here does not revoke another device"
+    );
+    let (code, h, _) = scoped(
+        &app,
+        &id,
+        "play-here",
+        &format!("{host}; {player}"),
+        json!({}),
+    )
+    .await;
+    assert_eq!(code, StatusCode::OK);
+    assert!(
+        !h.contains_key(header::SET_COOKIE),
+        "reopening reuses the player credential"
+    );
+    let (code, _, link) = scoped(&app, &id, "board-grant", &host, json!({})).await;
+    assert_eq!(code, StatusCode::OK, "{link}");
+    assert!(link["qr"].as_str().unwrap().contains("<svg"));
+    let board = redeem_phone(&app, &id, &link).await;
+    assert!(board.starts_with(&board_cookie_name(&id)));
+    assert!(!player.starts_with(&board_cookie_name(&id)));
+    let both = format!("{player}; {board}");
+    let board_view = |cookie: String| {
+        let app = &app;
+        let id = &id;
+        async move {
+            call(
+                app,
+                "GET",
+                &format!("/api/tabletop/{id}/board"),
+                &cookie,
+                json!({}),
+            )
+            .await
+        }
+    };
+    let waiting = board_view(both.clone()).await;
+    assert_eq!(waiting.0, StatusCode::OK);
+    assert_eq!(waiting.2, json!({"status":"waiting","name":"Phones"}));
+    assert_eq!(view(&app, &id, &both).await.2["status"], "waiting");
+    // Old board credentials remain valid, but a board credential never becomes a player.
+    let legacy = board.replacen(&board_cookie_name(&id), &cookie_name(&id), 1);
+    assert_eq!(board_view(legacy.clone()).await.0, StatusCode::OK);
+    assert_eq!(view(&app, &id, &legacy).await.0, StatusCode::UNAUTHORIZED);
+    assert!(
+        !scoped(&app, &id, "play-here", &board, json!({}))
+            .await
+            .0
+            .is_success()
+    );
+    let (code, h, _) = call(
+        &app,
+        "POST",
+        "/api/auth/dev",
+        "",
+        json!({"name":"Another account"}),
+    )
+    .await;
+    assert_eq!(code, StatusCode::OK);
+    assert_eq!(
+        scoped(&app, &id, "play-here", &session(&h), json!({}))
+            .await
+            .0,
+        StatusCode::FORBIDDEN
+    );
+    assert!(
+        !call(
+            &app,
+            "POST",
+            &format!("/api/tables/{id}/lobby/start"),
+            &host,
+            json!({})
+        )
+        .await
+        .0
+        .is_success(),
+        "a display does not fill the second human seat"
+    );
+    let (_, _, invite) = scoped(&app, &id, "phone-invite", &host, json!({})).await;
+    let (guest, _) = join_phone(&app, &id, &invite, "Guest").await;
+    let pending = requests(&app, &id, &host).await;
+    assert_eq!(
+        scoped(
+            &app,
+            &id,
+            "approve",
+            &host,
+            json!({"participant":pending["requests"][0]["participant"],"approve":true})
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    assert_eq!(
+        call(
+            &app,
+            "POST",
+            &format!("/api/tables/{id}/lobby/start"),
+            &host,
+            json!({})
+        )
+        .await
+        .0,
+        StatusCode::OK
+    );
+    // Seating is randomized. Let the opening AI turns finish before capturing
+    // the sequence used below; display operations do not pause the authority.
+    let mut before = view(&app, &id, &both).await.2;
+    for _ in 0..200 {
+        if before["seats"][before["active"].as_u64().unwrap() as usize]["human"] == true {
+            break;
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(10)).await;
+        before = view(&app, &id, &both).await.2;
+    }
+    assert_eq!(
+        before["seats"][before["active"].as_u64().unwrap() as usize]["human"],
+        true
+    );
+    assert_eq!(
+        before["seats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|s| s["human"] == true)
+            .count(),
+        2
+    );
+    let public = board_view(both.clone()).await;
+    assert_eq!(public.0, StatusCode::OK);
+    assert!(
+        public.2["state"]["players"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|p| p.get("hand").is_none())
+    );
+    assert_eq!(
+        scoped(&app, &id, "board-revoke", &host, json!({})).await.0,
+        StatusCode::OK
+    );
+    assert_eq!(board_view(both.clone()).await.0, StatusCode::UNAUTHORIZED);
+    let seat = before["seat"].as_u64().unwrap() as usize;
+    let card = &before["state"]["players"][seat]["hand"][0]["id"];
+    let result = scoped(
+        &app,
+        &id,
+        "act",
+        &both,
+        json!({"seq":before["seq"],"actions":[{"type":"resource","card":card}]}),
+    )
+    .await;
+    assert_eq!(
+        result.0,
+        StatusCode::OK,
+        "play continues after board revocation: {}",
+        result.2
+    );
+    assert_eq!(view(&app, &id, &guest).await.0, StatusCode::OK);
+    assert_eq!(view(&app, &id, &other_device).await.0, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn waiting_display_alone_cannot_start_the_table_as_solo() {
+    let (app, host, id) = setup().await;
+    assert_eq!(
+        scoped(&app, &id, "board-grant", &host, json!({})).await.0,
+        StatusCode::OK
+    );
+    let result = call(
+        &app,
+        "POST",
+        &format!("/api/tables/{id}/lobby/start"),
+        &host,
+        json!({}),
+    )
+    .await;
+    assert_eq!(result.0, StatusCode::BAD_REQUEST);
+    assert!(
+        result.2["error"]
+            .as_str()
+            .unwrap()
+            .contains("two to four people")
+    );
+}

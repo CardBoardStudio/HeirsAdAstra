@@ -98,6 +98,41 @@ pub async fn host_phone(
     .await
 }
 
+/// Open the owner's seat here without revoking their other paired device.
+/// This endpoint keeps the ordinary membership gate and checks table ownership.
+pub async fn play_here(
+    State(app): State<App>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> ApiResult<Response> {
+    host(&app, &headers, &id)?;
+    let owner = user(&app, &headers)?;
+    {
+        let db = app.store.0.lock().map_err(internal)?;
+        let exists: bool = db
+            .query_row(
+                "SELECT EXISTS(SELECT 1 FROM gr_lobbies WHERE table_id=?)",
+                [&id],
+                |r| r.get(0),
+            )
+            .map_err(internal)?;
+        if !exists {
+            return Err(bad("Open a waiting room first."));
+        }
+        db.execute("INSERT OR IGNORE INTO tabletop_rooms(table_id) SELECT table_id FROM gr_lobbies WHERE table_id=?", [&id]).map_err(internal)?;
+    }
+    if principal(&app, &headers, &id, "player")
+        .ok()
+        .flatten()
+        .as_deref()
+        == Some(&owner.id)
+    {
+        return Ok(Json(json!({"ok":true})).into_response());
+    }
+    let secret = grant(&app, &id, "player", Some(&owner.id))?;
+    redeem(State(app), Path(id), Json(Redeem { token: secret })).await
+}
+
 #[derive(Deserialize)]
 pub struct Join {
     invite: String,
@@ -136,7 +171,7 @@ pub async fn join(
         }
         if pending >= 12 {
             return Err(bad(
-                "The host must review pending phones before another can join.",
+                "The host must review pending player requests before another can join.",
             ));
         }
         tx.execute(
@@ -191,7 +226,7 @@ pub async fn approve(
         .optional()
         .map_err(internal)?;
     if status.as_deref() != Some("pending") {
-        return Err(bad("This phone has already been reviewed."));
+        return Err(bad("This player request has already been reviewed."));
     }
     if input.approve {
         let count: u32 = tx
@@ -296,6 +331,9 @@ async fn player_view(app: &App, headers: &HeaderMap, id: &str) -> ApiResult<Valu
     let mut view = app.shared.view(id, &participant).await?;
     view["client_path"] = json!(format!("/api/tabletop/{id}/client/"));
     view["tabletop"] = json!(true);
+    if host(app, headers, id).is_ok() {
+        view["manage_url"] = json!(format!("/tabletop/host.html?table={id}"));
+    }
     if view["active"] == view["seat"] {
         view["board_focus"] = app
             .shared
