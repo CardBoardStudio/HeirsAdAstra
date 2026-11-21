@@ -20,6 +20,15 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
         db.execute_batch("ALTER TABLE solo_tables ADD COLUMN rules_version TEXT NOT NULL DEFAULT 'galactic-reach/4.9';
         UPDATE solo_tables SET rules_version='galactic-reach/' || json_extract(state,'$.state.version') || '.' || json_extract(state,'$.state.rulesRevision') WHERE state IS NOT NULL;")?;
     }
+    // Additive: a game started alone keeps its chosen Prestige target with the table
+    // (rules #victory-target). Null means the table never chose one here.
+    let has_target = db
+        .prepare("PRAGMA table_info(solo_tables)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .any(|c| c.as_deref() == Ok("victory_target"));
+    if !has_target {
+        db.execute_batch("ALTER TABLE solo_tables ADD COLUMN victory_target INTEGER;")?;
+    }
     Ok(())
 }
 fn table_url(game: &str, id: &str) -> String {
@@ -68,6 +77,9 @@ pub async fn list(
         let shared = crate::shared::status(&db, &id)?;
         let (status, url) = if let Some(shared) = shared.as_deref() {
             (shared, crate::shared::url(&id))
+        } else if waiting && crate::tabletop::enabled(&db, &id)? {
+            // Played with others: back to the waiting screen that holds its link.
+            ("waiting", format!("/tabletop/host.html?table={id}"))
         } else if waiting {
             ("waiting", crate::lobby::url(&id))
         } else {
@@ -102,6 +114,10 @@ pub struct Create {
     /// Heirs Ad Astra: open a waiting room (invite link, seats, rivals) before Start.
     #[serde(default)]
     lobby: bool,
+    /// Heirs Ad Astra played alone: the Prestige target for its first game
+    /// (rules #victory-target). A waiting room's host chooses it in the room.
+    #[serde(default)]
+    victory_target: Option<u32>,
 }
 fn rounds() -> u16 {
     20
@@ -133,6 +149,15 @@ pub async fn create(
     if input.game != "galactic-reach" {
         return Err(bad("Choose a supported game."));
     }
+    if let Some(target) = input.victory_target
+        && (input.lobby || !crate::lobby::VICTORY_TARGETS.contains(&target))
+    {
+        return Err(bad(if input.lobby {
+            "Choose the Prestige target in the waiting room."
+        } else {
+            "Choose a listed Prestige target."
+        }));
+    }
     let db = app.store.0.lock().map_err(internal)?;
     let count: u32 = db
         .query_row(
@@ -147,9 +172,10 @@ pub async fn create(
         ));
     }
     let id = uuid::Uuid::new_v4().simple().to_string();
+    // Played alone, this row is the whole game: no waiting room, invitation or shared table.
     db.execute(
-        "INSERT INTO solo_tables(id,owner_id,name,created,updated,rules_version) VALUES(?,?,?,?,?,?)",
-        params![id, u.id, name, now(), now(),galactic_reach::RULES],
+        "INSERT INTO solo_tables(id,owner_id,name,created,updated,rules_version,victory_target) VALUES(?,?,?,?,?,?,?)",
+        params![id, u.id, name, now(), now(),galactic_reach::RULES,input.victory_target],
     )
     .map_err(internal)?;
     if input.lobby {
@@ -385,6 +411,88 @@ mod tests {
             .next()
             .unwrap()
             .into()
+    }
+    #[tokio::test]
+    async fn playing_alone_never_opens_a_waiting_room_invitation_or_shared_table() {
+        let a = app(true);
+        let me = account(&a, "Alone").await;
+        // An unlisted target is refused, and a waiting room chooses its target in the room.
+        for body in [
+            json!({"game":"galactic-reach","name":"Alone","victory_target":35}),
+            json!({"game":"galactic-reach","name":"Alone","victory_target":40,"lobby":true}),
+        ] {
+            assert_eq!(
+                call(&a, "POST", "/api/tables", &me, body).await.0,
+                StatusCode::BAD_REQUEST
+            );
+        }
+        let (s, _, t) = call(
+            &a,
+            "POST",
+            "/api/tables",
+            &me,
+            json!({"game":"galactic-reach","name":"Alone · Nov 21","victory_target":40}),
+        )
+        .await;
+        assert_eq!(s, StatusCode::OK, "{t}");
+        let id = t["id"].as_str().unwrap().to_string();
+        assert_eq!(t["url"], format!("/galactic-reach/?table={id}"));
+        let table = call(&a, "GET", &format!("/api/tables/{id}"), &me, json!({}))
+            .await
+            .2;
+        assert!(table["lobby"].is_null(), "{table}");
+        assert!(table["shared_url"].is_null(), "{table}");
+        assert_eq!(table["settings"]["victory_target"], 40);
+        let shared_rows = |a: &App| {
+            let db = a.store.0.lock().unwrap();
+            [
+                "gr_lobbies",
+                "gr_lobby_seats",
+                "tabletop_rooms",
+                "tabletop_requests",
+                "tabletop_grants",
+                "gr_shared_tables",
+            ]
+            .map(|t| {
+                db.query_row(&format!("SELECT count(*) FROM {t}"), [], |r| {
+                    r.get::<_, u32>(0)
+                })
+                .unwrap()
+            })
+        };
+        assert_eq!(shared_rows(&a), [0; 6], "created alone");
+        // No waiting room, invitation, device link or shared table can be opened for it.
+        for (method, path) in [
+            ("GET", format!("/api/tables/{id}/lobby")),
+            ("POST", format!("/api/tables/{id}/lobby/start")),
+            ("POST", format!("/api/tabletop/{id}/phone-invite")),
+            ("POST", format!("/api/tabletop/{id}/play-here")),
+            ("POST", format!("/api/tabletop/{id}/host-phone")),
+            ("POST", format!("/api/tabletop/{id}/board-grant")),
+        ] {
+            assert!(
+                !call(&a, method, &path, &me, json!({})).await.0.is_success(),
+                "{path}"
+            );
+        }
+        assert_eq!(shared_rows(&a), [0; 6], "still alone after those requests");
+        let shelf = call(&a, "GET", "/api/tables", &me, json!({})).await.2;
+        assert_eq!(shelf[0]["url"], format!("/galactic-reach/?table={id}"));
+        assert_eq!(shelf[0]["status"], "new");
+        // A table created alone without a target keeps the engine default (null here).
+        let (_, _, plain) = call(
+            &a,
+            "POST",
+            "/api/tables",
+            &me,
+            json!({"game":"galactic-reach","name":"Plain"}),
+        )
+        .await;
+        let plain = plain["id"].as_str().unwrap();
+        let plain = call(&a, "GET", &format!("/api/tables/{plain}"), &me, json!({}))
+            .await
+            .2;
+        assert!(plain["settings"].is_null(), "{plain}");
     }
     #[tokio::test]
     async fn galactic_reach_waiting_room_invites_seats_and_starts() {

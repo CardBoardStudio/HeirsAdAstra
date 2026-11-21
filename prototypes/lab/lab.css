@@ -1024,7 +1024,6 @@ main:focus {
 .nido-signin p { max-width:650px; }
 @media (max-width:700px) { .nido-signin { align-items:stretch; flex-direction:column; } }
 
-.guest-link { display:block; margin-top:18px; font-size:12px; }
 .invitation-row { padding:18px 0; border-bottom:1px solid var(--line); overflow-wrap:anywhere; }
 .invitation-row:last-child { border-bottom:0; }
 .table-link > div { min-width:0; overflow-wrap:anywhere; }
@@ -1086,11 +1085,22 @@ main:focus {
 .dash-empty { color: var(--muted); text-align: center !important; padding: 26px 0 !important; }
 @media (max-width: 780px) { .dash-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } .dash-tools > div:first-child { grid-column: 1 / -1; } .dash-table { min-width: 640px; } }
 
-/* Learn to play sits beside Create a table on the home page (docs/rules/tutorial.md). */
-.hero-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
-.hero-actions .learn-to-play { border-color: var(--gold); color: var(--text); }
-.hero-actions .learn-to-play:hover { border-color: var(--gold-hover); }
-.learn-note { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
+/* Every game starts from two choices (docs/tabletop.md#starting-a-game): Play alone and
+   Play with others, side by side, stacked on a narrow screen. Picking up a game sits beneath. */
+.start-choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 4px; max-width: 520px; }
+.start-choice { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 92px; padding: 16px 18px; border-radius: 10px; border: 1px solid var(--gold); text-align: left; font: inherit; cursor: pointer; text-decoration: none; }
+.start-choice strong { font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.start-choice small { font-size: 12px; line-height: 1.45; }
+.start-choice.alone, .start-choice.alone small { background: var(--gold); color: var(--on-gold); }
+.start-choice.alone:hover, .start-choice.alone:hover small { background: var(--gold-hover); }
+.start-choice.others { background: var(--secondary); color: var(--text); }
+.start-choice.others small { color: var(--muted); }
+.start-choice.others:hover { border-color: var(--gold-hover); }
+.start-choice:disabled { opacity: .6; cursor: progress; }
+.resume { display: flex; flex-wrap: wrap; gap: 6px 18px; margin: 16px 0 0; }
+.alone-panel { max-width: 520px; }
+.alone-panel select { width: 100%; }
+@media (max-width: 560px) { .start-choices { grid-template-columns: minmax(0, 1fr); } .start-choice { min-height: 76px; } }
 
 /* Cards and the small dialogs are paper printed in the game's inks, as the game's cards are:
    inside them the text, lines, links, fields and focus ring take the ink colours. */

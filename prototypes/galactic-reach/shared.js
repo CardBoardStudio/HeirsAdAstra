@@ -149,6 +149,25 @@
       if (!stream || stream.readyState === EventSource.CLOSED || Date.now() - lastMessage > 15000) reconnect();
     });
     window.addEventListener('online', () => { resync(); reconnect(); });
+    // How this device is used (rulebook #phone-pairing), chosen when joining: "my hand"
+    // opens a phone on the hand, "the whole game" on the map. The game menu changes it.
+    const DEVICE = `heirs-device:${id}`;
+    let deviceView = 'game';
+    try { deviceView = localStorage.getItem(DEVICE) === 'hand' ? 'hand' : 'game'; } catch { /* the whole game */ }
+    const deviceButton = document.createElement('button');
+    deviceButton.type = 'button'; deviceButton.className = 'button button-ghost'; deviceButton.id = 'device-view-button';
+    function useDevice(view, save) {
+      deviceView = view; document.body.dataset.deviceView = view;
+      deviceButton.textContent = view === 'hand' ? 'This device: my hand' : 'This device: the whole game';
+      deviceButton.title = `Switch to ${view === 'hand' ? 'the whole game' : 'my hand'}`;
+      if (save) try { localStorage.setItem(DEVICE, view); } catch { /* applies to this page */ }
+      const drawers = document.querySelector('.phone-drawers'), open = document.body.dataset.drawer || '';
+      if (!drawers || getComputedStyle(drawers).display === 'none') return;
+      if (view === 'hand' && open !== 'hand') drawers.querySelector('[data-drawer="hand"]')?.click();
+      if (view === 'game' && open) drawers.querySelector(`[data-drawer="${open}"]`)?.click();
+    }
+    deviceButton.addEventListener('click', () => useDevice(deviceView === 'hand' ? 'game' : 'hand', true));
+    document.querySelector('.header-actions')?.prepend(deviceButton);
     const leave = () => { clearTimeout(retryTimer); stream?.close(); stream = null; location.assign(tabletop ? `/tabletop/phone.html?table=${id}` : '/?game=galactic-reach#tables'); };
     bar.querySelector('a').addEventListener('click', event => { event.preventDefault(); leave(); });
     try {
@@ -171,6 +190,7 @@
         paused: () => busy || !!controls?.pending(), newTable: leave
       });
       controls?.update(view);
+      useDevice(deviceView, false);
       if (tabletop) { bar.querySelector('a').textContent='Device setup'; bar.querySelector('a').href=`/tabletop/phone.html?table=${id}`; }
       const library = document.querySelector('.header-actions a');
       if (library) { library.textContent = tabletop ? 'Device setup' : 'Your tables'; library.href = tabletop ? `/tabletop/phone.html?table=${id}` : '/?game=galactic-reach#tables'; }

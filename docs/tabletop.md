@@ -5,6 +5,36 @@ adds an online browser experience for an Android tablet and iPhone Safari. The
 server remains the rules, shuffle, AI and save authority. This is not offline or
 trustless play. Rust portability, P2P and ZK are separate follow-up issues.
 
+## Starting a game
+
+The home page offers two choices, and the same words are used throughout.
+
+- **Play alone** (`#alone`) asks only for the Prestige target, then creates an
+  account table with `victory_target` and opens it. Every game has four factions,
+  so three computer rivals play. It creates no waiting room (`gr_lobbies`),
+  invitation, tabletop room, device grant or shared table, and the lobby, invite and
+  pairing endpoints refuse it. Without an account, **Play alone** opens the game in
+  this browser (`/galactic-reach/?new=1`) with the engine's own **New game** choices.
+- **Play with others** creates a waiting-room table named after the host and opens
+  the waiting screen (`/tabletop/host.html`). The player link is issued at once and
+  shown as **Share link** (the system share sheet where the browser has one),
+  **Copy link**, the link as text and a QR code. The tab keeps that link in
+  `sessionStorage`, and the host-only requests response says whether a link is still
+  valid (`invite_live`, never the token), so a reload or a second tab never rotates a
+  link already sent; **Make a new link** does, after a confirmation.
+- Resuming sits beneath the two choices: the latest unfinished account game and an
+  unfinished game saved in this browser.
+
+Every device in a game says once how it is used, stored per game in
+`localStorage` (`heirs-device:<table>`): **My hand** or **The whole game** for a
+player, or, for the host only, **The board for everyone**. A joiner answers it
+together with their name, and joining needs both, so no one is in the game without a
+choice. The host answers on the waiting screen; Start waits for that answer and for
+a second person. In the game, `shared.js` opens a phone on the hand drawer (My hand)
+or on the map (The whole game), and the game menu's **This device** item switches
+between them. A player link cannot open the board-only view: a shared screen still
+uses the host's separate board link (**Show the board on another screen**).
+
 ## Public board boundary
 
 `adapter.publicState()` explicitly lists public information. It never clones a
@@ -14,17 +44,17 @@ board receives counts, not hand/deck contents, and combat uses the nonparticipan
 projection. Finishing a game does not expand board access. Raw table events and
 full replay reports are not board APIs.
 
-The organizer chooses **Play on this device** or **Use as shared board** once.
-Personal play opens the invitation lobby. A shared board first shows **Connect
-your phone** for the organizer’s existing seat, then changes to **Invite players**
-after that phone redeems its link. The choice is a per-table sessionStorage
-preference, not a game rule or an inference from viewport size. Host setup remains
-accessible for management; starting navigates to the selected game/display. Guest players can use phones,
+The host's device choice is not a game rule or an inference from viewport size.
+**My hand** and **The whole game** open the host's seat on this device; **The board
+for everyone** first shows **Connect your phone** for the host's existing seat, and
+Start waits until that phone has redeemed its link. The waiting screen remains
+accessible for management; starting navigates to the chosen game or board. Guest players can use phones,
 desktops or personal tablets. Their complete game already adapts to the viewport;
 further layout controls are tracked in #155.
 
-**Show public board here** opens a public display, or **Add a shared display** shares
-a QR/link with a separate screen, before or after Start. Waiting displays contain
+Choosing **The board for everyone** after Start opens a public display here, and
+**Show the board on another screen** (under **More**) shares a QR/link with a
+separate screen, before or after Start. Waiting displays contain
 only the table name and waiting status. No display connection is required to start
 or continue. The server remains the authority when all screens close.
 
@@ -53,8 +83,12 @@ network or visibility changes. No credential is placed in a request URL.
 - `node scripts/test-shared-tables.cjs`: hidden-card, relic, combat and public DTO checks.
 - `cargo test -p server tabletop`: role/table scope, expiration, revocation,
   invite-only boundaries and restored public views.
+- `TABLETOP_ORIGIN=http://127.0.0.1:PORT node scripts/check-start-flow.cjs` (also run
+  first by `check-tabletop-roles.cjs`): the two home choices at phone and desktop sizes; Play alone starts a saved game at the chosen
+  target with no waiting room, invitation or shared table; a visitor gets New game.
 - `TABLETOP_ORIGIN=http://127.0.0.1:PORT node scripts/check-tabletop-roles.cjs`:
-  real create/setup flow, guest approval, a waiting display, personal tablet/phone,
+  Play with others to the waiting screen, a stable link on reload, the joiner's
+  required device choice reaching their game and the menu, guest approval, a waiting display, personal tablet/phone,
   independent cookies, display revocation followed by play, reload and anonymous
   rules. Runs in CI against an isolated DEV_AUTH server. `SHOTS=path` saves captures.
 - `node scripts/check-tabletop-ui.cjs`: Chromium desktop, tablet orientations and
@@ -65,13 +99,15 @@ Player-facing rules live only in the [canonical rulebook](../prototypes/galactic
 
 ## Guest phone pairing
 
-New shared tables open **Table setup** directly. An existing account-owned
-waiting room also links there. The organizer still owns a player seat, independent
+**Play with others** opens the waiting screen directly, and **Your tables** links a
+waiting game there once it has one. An existing account-owned waiting room keeps its
+own page, its account invitation and its solo Start. The organizer still owns a player seat, independent
 of which device shows the public board; this does not add a nonplaying organizer
 seat. **Play here** requires the signed-in owner and issues or reuses a scoped
 player session without revoking a paired device. Explicit replacement still
 revokes old player grants. Other host operations keep the account membership gate. Guests scan a
-room QR or follow its link, choose a local name and choose **Join game**. Their room name is shown after a POST with the
+room QR or follow its link, enter a local name, choose how their device is used and
+choose **Join**. Their room name is shown after a POST with the
 invitation token validates it; only the room name is returned, without a roster,
 account identity or new credential. The token never enters a request URL.
 Match the
@@ -84,7 +120,7 @@ Returning paired devices resume their existing seat rather than joining again.
 Pending and ready screens explain what the host must do next. Network failures
 retry in place; invalid/revoked invitations explain that the host must reconnect
 the device. Replacement and public-display revocation require explicit confirmation
-in **Table settings & devices**. The host-only requests response includes whether
+under **More** on the waiting screen. The host-only requests response includes whether
 the host seat has a redeemed player session; it exposes no token.
 
 A guest has an internal participant row without a login credential. Its pending
