@@ -104,6 +104,8 @@ async function main() {
             const top=dots.at(-1).getBoundingClientRect(), zoom=Number(document.documentElement.style.getPropertyValue('--table-zoom'))||1;
             if (!col.querySelector('.mat-lap') && top.top-box.top>24*zoom) problems.push('unused space above resource circles');
           }
+          const columns=[...bank.querySelectorAll('.resource-box')],firstRing=columns[0].querySelector('.mat-stock.mat-stars i').getBoundingClientRect(),lastRing=columns.at(-1).querySelector('.mat-stock.mat-stars i').getBoundingClientRect();
+          for(const line of bank.querySelectorAll('.max-resource-dividers > i')){const r=line.getBoundingClientRect();if(Math.abs(r.left-firstRing.left)>1||Math.abs(r.right-lastRing.right)>1)problems.push('divider ends must align with the outer resource circles');}
           if (!phone && box.left < innerWidth * .7) problems.push('resource bank is not on the right');
         }
         if (!phone) {

@@ -4870,7 +4870,8 @@ function createGalacticReach(options = {}) {
     const grid=$('#resource-grid'),lines=grid?.querySelectorAll('.max-resource-dividers i'),cols=grid?.querySelectorAll('.resource-box');
     if(!lines?.length||!cols?.length)return;
     const box=grid.getBoundingClientRect(),scale=box.width/grid.offsetWidth;if(!scale)return;
-    const first=cols[0].getBoundingClientRect(),last=cols[cols.length-1].getBoundingClientRect(),dots=cols[0].querySelectorAll('.mat-stars.mat-stock > i');
+    const dots=cols[0].querySelectorAll('.mat-stars.mat-stock > i'),first=dots[0]?.getBoundingClientRect(),last=cols[cols.length-1].querySelector('.mat-stars.mat-stock > i')?.getBoundingClientRect();
+    if(!first||!last)return;
     [5,10].forEach((n,i)=>{const lower=dots[n-1]?.getBoundingClientRect(),upper=dots[n]?.getBoundingClientRect();if(!lower||!upper)return;
       Object.assign(lines[i].style,{left:`${(first.left-box.left)/scale}px`,width:`${(last.right-first.left)/scale}px`,top:`${((lower.top+upper.bottom)/2-box.top)/scale}px`});});
   }
