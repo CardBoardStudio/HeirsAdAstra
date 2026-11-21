@@ -6074,7 +6074,8 @@ function createGalacticReach(options = {}) {
     size.firstElementChild.textContent = view === 'full' ? 'Smaller' : 'Larger';
     size.setAttribute('aria-label', view === 'full' ? 'Smaller market: the side panel' : 'Larger market: whole cards');
   }
-  function refitMarketTable() { supplyExtra = 0; fitMarket(); stackLeft(); fitMap(); balanceSupply(); settleFit(); }
+  // A column that opens or closes starts its extra width afresh; the whole-card sheet keeps the column under it as it is.
+  function refitMarketTable(columnChanged = true) { if (columnChanged) supplyExtra = 0; fitMarket(); stackLeft(); fitMap(); balanceSupply(); settleFit(); }
   function showMarket() {
     if (typeof document === 'undefined' || !document.documentElement?.classList || !document.body?.classList) return;
     if (phoneLayout()) followMarketOnPhone();
@@ -6101,9 +6102,10 @@ function createGalacticReach(options = {}) {
     const place = next => {
       root.classList.remove('market-closed', 'market-side', 'market-full');
       root.classList.add(`market-${next}`);
+      const columnChanged = next !== 'full' && next !== marketColumn;
       if (next !== 'full') marketColumn = next;
       root.classList.toggle('market-no-column', marketColumn === 'closed');
-      refitMarketTable();
+      refitMarketTable(columnChanged);
     };
     // Notes and the guide wait for this: nothing on the table is placed against a moving panel.
     const settled = () => { root.classList.remove('market-moving', 'market-in', 'market-out'); window.dispatchEvent(new Event('gr-market-settled')); };
@@ -6249,7 +6251,7 @@ function createGalacticReach(options = {}) {
     // The bottom band's pieces too: the map reaches down between your hand, piles, buttons and mat.
     const band = [...document.querySelectorAll('#hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].map(e => rect(e));
     // The race line and its goal stick out past the track's box on the right (the counts sit before them).
-    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('#max-bank-nav')), rect($('.map-tools')), rect($('#map-legend-corner')), sheet ? null : rect($('#market-handles')), ...band].filter(Boolean);
+    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('#max-bank-nav')), rect($('.map-tools')), rect($('#guide-switch')), rect($('#map-legend-corner')), sheet ? null : rect($('#market-handles')), ...band].filter(Boolean);
     const clear = (width, top, left) => hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
     // The map lies against the supply. A map shorter than its space may also slide up or down
     // (centred first) so its empty corners take the panels above and below. With the market

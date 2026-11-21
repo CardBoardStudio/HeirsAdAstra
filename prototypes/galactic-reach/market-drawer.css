@@ -14,7 +14,7 @@
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
   :root.market-drawer .market-handles {
     grid-column: 3; grid-row: 1 / 9; align-self: start; justify-self: start; z-index: 32;
-    display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin: 150px 0 0; transform: translateX(-100%);
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin: 172px 0 0; transform: translateX(-100%);
   }
   /* Closed, the map is centred in the room it has, or as near the middle as its corners allow (see fitMap). */
   :root.market-drawer.market-no-column .board-map-region { place-items: start !important; }
