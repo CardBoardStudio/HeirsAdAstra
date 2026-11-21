@@ -28,7 +28,7 @@ async function main() {
   const saved = async () => { const s = JSON.parse(await snapshot()); return s.state || s; };
   async function load(state, stars = true) {
     await browser.navigate(origin + '/galactic-reach/rulebook.html');
-    await evaluate(`localStorage.clear(); localStorage.setItem(${source(KEY)}, ${source(JSON.stringify(state))}); localStorage.setItem('galactic-reach-background', ${source(stars ? 'stars' : 'green')}); true`);
+    await evaluate(`localStorage.clear(); localStorage.setItem('galactic-reach-guide-v1', JSON.stringify({enabled:false})); localStorage.setItem(${source(KEY)}, ${source(JSON.stringify(state))}); localStorage.setItem('galactic-reach-background', ${source(stars ? 'stars' : 'green')}); true`);
     browser.errors.length = 0;
     await browser.navigate(origin + '/galactic-reach/');
     await evaluate(`document.fonts.ready.then(() => new Promise(done => {
@@ -69,7 +69,21 @@ async function main() {
         if (d.open && e.matches('.game-card, .card-effect') && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2)) problems.push('card clips: ' + e.textContent.slice(0,35));
       }
       if (d.open && !phone) { const c=document.querySelector('#max-bank-content'); if (c.scrollHeight > c.clientHeight+2) problems.push('bank scrolls'); }
+      if (d.open && d.dataset.bank === 'market') {
+        const labels = [...d.querySelectorAll('.max-market-tier-label')];
+        if (labels.map(e=>e.textContent).join() !== 'Expensive,Moderate,Cheap') problems.push('market tier labels are missing');
+        labels.forEach((label,index)=>{
+          const cards=[...d.querySelectorAll('[data-market-tier="'+['expensive','medium','cheap'][index]+'"]')].map(e=>e.getBoundingClientRect());
+          const r=label.getBoundingClientRect(), top=Math.min(...cards.map(c=>c.top)), bottom=Math.max(...cards.map(c=>c.bottom));
+          if (getComputedStyle(label).writingMode!=='vertical-rl' || r.right>Math.min(...cards.map(c=>c.left)) || Math.abs(r.top+r.height/2-(top+bottom)/2)>2) problems.push('market label is not vertical beside its tier: '+label.textContent);
+        });
+      }
       if (!d.open) {
+        const terrainKey=document.querySelector('.max-resource-legend');
+        if (!terrainKey.checkVisibility()) problems.push('board resource legend is missing');
+        for (const resource of ['matter','energy','biomass','data']) {
+          if (getComputedStyle(terrainKey.querySelector('.'+resource)).backgroundColor!==getComputedStyle(document.querySelector('.hex.'+resource),'::before').backgroundColor) problems.push('resource legend does not match the board: '+resource);
+        }
         const bank = document.querySelector('#resource-grid'), box = bank.getBoundingClientRect();
         if (bank.checkVisibility()) {
           const key = bank.querySelector('.ring-key'), first = bank.querySelector('.resource-box');
@@ -89,7 +103,10 @@ async function main() {
           const track=document.querySelector('#prestige-track').getBoundingClientRect(), round=document.querySelector('.phase-stepper').getBoundingClientRect();
           if (round.top - track.bottom < 12) problems.push('Prestige track and round counter need more space');
           const nav=document.querySelector('#max-bank-nav').getBoundingClientRect(), trade=document.querySelector('#open-trade').getBoundingClientRect();
-          if (trade.top<nav.bottom+6) problems.push('Trade overlaps the card bank buttons');
+          const key=document.querySelector('#map-legend-corner'), keyBox=key.getBoundingClientRect(), comms=document.querySelector('.log-panel').getBoundingClientRect();
+          if (nav.left<innerWidth*.7 || nav.bottom>box.top-5) problems.push('card banks must sit above the resource tracker on the right');
+          if (!key.checkVisibility() || key.getAttribute('aria-hidden')==='true' || keyBox.top<comms.bottom+5) problems.push('building cost legend must be visible below Comms');
+          if (trade.top<keyBox.bottom+6) problems.push('Trade overlaps the building cost legend');
           if (innerWidth>innerHeight) {
             const tools=document.querySelector('.map-tools').getBoundingClientRect();
             if (tools.top<innerHeight*.7) problems.push('map tools are not at the bottom right');
@@ -107,6 +124,29 @@ async function main() {
       await browser.send('Emulation.setDeviceMetricsOverride', {width,height,deviceScaleFactor:1,mobile:width<1200});
       await browser.send('Emulation.setTouchEmulationEnabled', {enabled:width<1200,maxTouchPoints:5});
       await browser.send('Emulation.setEmulatedMedia', {features:[{name:'prefers-reduced-motion',value:'reduce'}]});
+      // These must be pointer clicks, not element.click(): at wide sizes the hand's
+      // transparent layout box used to cover both controls without looking overlapped.
+      const mixed=operationsState(['move','construct','colonize','move']);
+      mixed.players[0].hand[3].upgraded=true;
+      // Keep an affordable starter upgrade so Buy has a decision and does not auto-finish.
+      mixed.players[0].resources={matter:0,energy:0,biomass:0,data:2};
+      await load(mixed);
+      await click('#board-primary');
+      assert.equal((await saved()).phase,'buy','Pass & buy responds with cards still in hand');
+      assert(await open(),'passing opens Market');
+      await load(mixed);
+      await click('#convert-all-button');
+      const converted=await saved(), me=converted.players[0];
+      assert.deepEqual(me.hand.map(c=>c.id),mixed.players[0].hand.slice(2).map(c=>c.id),'bulk Convert leaves Colonize and upgraded starters in hand');
+      assert.deepEqual(me.inPlay.map(c=>c.id),mixed.players[0].hand.slice(0,2).map(c=>c.id),'both eligible starters go to In play');
+      assert.deepEqual(me.resources,{matter:1,energy:1,biomass:0,data:2});
+      assert.equal(converted.phase,'operations');
+      await click('#board-primary');
+      assert.equal((await saved()).phase,'buy','Pass still responds after converting');
+      await load(operationsState(['move','construct']));
+      await click('#convert-all-button');
+      assert.equal((await saved()).players[0].hand.length,0);
+      assert.equal((await saved()).phase,'buy','converting the last starters automatically passes');
       await load(operationsState(['move','construct','move','construct','move']));
       const before = await snapshot(); await fit(phone);
       for (const name of ['relics','market','basics']) {
@@ -120,6 +160,7 @@ async function main() {
       else {
         await click('#table-menu-button'); await click('#background-toggle');
         assert.equal(await evaluate('document.querySelector("#market-panel").closest("#max-bank-dialog")'), null);
+        assert.equal(await evaluate('document.querySelectorAll(".max-market-tier-label").length'),0,'green market keeps its original layout');
         assert(!(await evaluate('document.querySelector("#max-bank-nav").checkVisibility()')));
         await click('#table-menu-button'); await click('#background-toggle');
         assert(await evaluate('!!document.querySelector("#market-panel").closest("#max-bank-dialog")'));
@@ -144,7 +185,7 @@ async function main() {
         assert(await open(), 'the bank remains available after its upgrade dialog closes');
       }
       await click('#max-bank-finish'); assert(!await open(), 'Finish Buy closes the bank');
-      console.log(`ok - ${width}x${height}: banks, Escape, save isolation, purchase and Finish Buy`);
+      console.log(`ok - ${width}x${height}: pointer Convert/Pass, automatic pass, vertical tiers, banks, Escape, save isolation, purchase and Finish Buy`);
     }
     // A legal excavation site opens the reward bank. Closing it spends nothing; claiming uses
     // the same live reward button and grants the normal card and Prestige.

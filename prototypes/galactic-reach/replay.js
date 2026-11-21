@@ -140,7 +140,7 @@
     const analysis = analyse(data, view.describe, names);
     const last = data.frames.length;
     const elo = names.map((_, seat) => ({ before: match.before[seat], after: match.after[seat] }));
-    document.title = `Replay · ${names.join(' vs ')} · Galactic Reach`;
+    document.title = `Replay · ${names.join(' vs ')} · Heirs Ad Astra`;
     $('#replay-summary').textContent = `${match.pool.includes(':placement:') ? 'Placement Elo' : 'Original win/loss Elo'} · ${data.summary.rounds} rounds · ${last} decisions`;
     $('#replay-round').innerHTML = [...analysis.rounds].map(([round, step]) => `<option value="${step}">${round}</option>`).join('');
     $('#replay-view').insertAdjacentHTML('beforeend', names.map((name, seat) => `<option value="${seat}">${esc(name)}</option>`).join(''));

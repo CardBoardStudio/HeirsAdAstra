@@ -1,4 +1,4 @@
-// Galactic Reach card feel: presentation only. Cards read as printed card stock that tilts
+// Heirs Ad Astra card feel: presentation only. Cards read as printed card stock that tilts
 // toward the pointer; the hand is held in a slight fan; pointing at a hand card shows it at
 // reading size beside the map; draws, plays, conversions, purchases and production move
 // between the piles, the market and your reserves; and a hand card can be dragged onto the
@@ -41,24 +41,67 @@
   });
 
   // ---- The hand fan: a gentle arc, the middle cards a few pixels higher. ----
+  // The hand is a fan (rules #card-corners): card tops side by side along a shallow arc, each
+  // turned a few degrees about its top centre, a small gap between neighbouring tops so both
+  // upper corners of every card show. The fan fills the room the hand already has: a small hand
+  // keeps full-width cards, a large one narrows them, down to FAN_MIN_W; only beyond that do
+  // neighbours overlap (a card's right corner then lies under its neighbour).
+  const FAN_GAP = 6, FAN_MIN_W = 56, FAN_MAX_DEG = 3.2, FAN_SPREAD_DEG = 14, FAN_SAG = 10;
   function fanHand() {
-    const cards = $$('#hand-row > .game-card');
-    $('#hand-row')?.style.setProperty('--max-hand-count', String(Math.max(2, cards.length)));
-    const mid = (cards.length - 1) / 2, step = cards.length > 6 ? 1.4 : 2.2;
+    const row = $('#hand-row'), cards = $$('#hand-row > .game-card');
+    row?.style.setProperty('--max-hand-count', String(Math.max(2, cards.length)));
+    if (!row) return;
+    for (const name of ['--top-w', '--step', 'padding-left', 'justify-content']) row.style.removeProperty(name);
+    const phone = globalThis.matchMedia?.('(max-width: 599px), (max-height: 599px)').matches;
+    const n = cards.length, mid = (n - 1) / 2;
+    if (phone || !n) { delete row.dataset.fanRoom; row.classList.remove('fan-tight'); cards.forEach(card => ['--cf-fan', '--cf-arc'].forEach(name => card.style.removeProperty(name))); placeSlots(); return; }
+    const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
+    // The room ends before any control that shares the hand's band (in some layouts the turn's
+    // buttons sit inside the hand's box), so no card covers one.
+    const box = row.getBoundingClientRect(), styles = getComputedStyle(row);
+    const ends = $$('#convert-all-button, #board-primary, #hand-panel .hand-tools > *').map(el => el.getBoundingClientRect())
+      .filter(r => r.width && r.left > box.left + 40 && r.left < box.right && r.bottom > box.top && r.top < box.bottom).map(r => r.left - 8);
+    const room = (Math.min(box.right, ...ends) - box.left) / zoom;
+    // A raised card stays inside this room too (placeSlots gives it to the CSS as --hand-w).
+    row.dataset.fanRoom = room.toFixed(1);
+    const full = parseFloat(styles.getPropertyValue('--top-w')) || 168;
+    let width = Math.min(full, (room + FAN_GAP) / n - FAN_GAP), step = FAN_GAP;
+    if (width < FAN_MIN_W) { width = FAN_MIN_W; step = n > 1 ? (room - n * width) / (n - 1) : 0; }
+    row.classList.remove('fan-tight');
+    const lead = Math.max(0, (room - (n * width + (n - 1) * step)) / 2);
+    row.style.setProperty('--top-w', `${width.toFixed(1)}px`, 'important');
+    row.style.setProperty('--step', `${step.toFixed(1)}px`, 'important');
+    // The fan centres itself in its room (some layouts centre the row as well, which would count twice).
+    row.style.setProperty('padding-left', `${lead.toFixed(1)}px`, 'important');
+    row.style.setProperty('justify-content', 'flex-start', 'important');
+    const turn = n > 1 ? Math.min(FAN_MAX_DEG, FAN_SPREAD_DEG / (n - 1)) : 0;
+    // The arc comes from each card's height, not a shift: a card further out is shorter, so its top
+    // sits lower while its foot stays on the hand's floor, and the corner its turn lowers stays above it.
+    cards.forEach(card => card.style.removeProperty('--fan-h'));
+    const floor = cards[0].offsetHeight;
     cards.forEach((card, index) => {
-      const offset = index - mid;
-      card.style.setProperty('--cf-fan', `${(offset * step).toFixed(2)}deg`);
-      card.style.setProperty('--cf-arc', `${(-Math.max(0, 5 - offset * offset * 1.1)).toFixed(1)}px`);
+      const offset = index - mid, angle = offset * turn * Math.PI / 180, sag = mid ? FAN_SAG * (offset / mid) ** 2 : 0;
+      card.style.setProperty('--cf-fan', `${(offset * turn).toFixed(2)}deg`);
+      const height = Math.max(0, (floor - sag - width / 2 * Math.abs(Math.sin(angle))) / Math.cos(angle));
+      card.style.setProperty('--fan-h', `${height.toFixed(1)}px`);
+      // Bottom-aligned, the card's top would sit at floor - height: lift it to sit at its sag.
+      card.style.setProperty('--cf-arc', `${(sag - (floor - height)).toFixed(1)}px`);
     });
+    // Beyond the fan's room (neighbours overlap, or a card's corners are wider than the card), each
+    // card stacks its symbols in the strip that shows.
+    const cramped = card => { const sym = card.querySelector(':scope > .card-symbols'), foot = card.querySelector(':scope > .card-footer');
+      return Boolean(sym) && sym.offsetLeft + sym.offsetWidth > (foot?.offsetWidth ? foot.offsetLeft : card.clientWidth) + 1; };
+    row.classList.toggle('fan-tight', step < 0 || cards.some(card => !raisedNow(card) && cramped(card)));
     placeSlots();
   }
+  addEventListener('resize', () => requestAnimationFrame(fanHand));
   // Each card's resting place in the hand, in table units, so a raised card can stay inside the
   // hand's band (styles.css shifts it left when it would run past the hand's right edge).
   function placeSlots() {
     const row = $('#hand-row'), box = row?.getBoundingClientRect?.();
     if (!box?.width) return;
     const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
-    row.style.setProperty('--hand-w', `${Math.round(box.width / zoom)}px`);
+    row.style.setProperty('--hand-w', `${Math.round(Number(row.dataset.fanRoom) || box.width / zoom)}px`);
     for (const card of $$('#hand-row > .game-card')) {
       if (card.matches(':hover, :focus-within')) continue;
       card.style.setProperty('--slot-x', `${Math.round((card.getBoundingClientRect().left - box.left) / zoom)}px`);
@@ -171,10 +214,48 @@
     globalThis.galacticReachMaxUI?.rendered(next);
     fanHand();
     syncAim();
+    fitNames();
     const before = view, saved = previous;
     view = next; previous = null;
     if (before && saved && !next.replay && !still() && !drag) animate(before, next, saved);
   }
+
+  // ---- Raising a hand card (rules #card-corners): the card straightens and lifts (CSS); its
+  // corners stay in its corners. A corner acts only on a raised card: on a touch screen the tap
+  // that raises a resting card does not also press the corner under the finger. ----
+  const raisedNow = card => card.matches(':hover, :focus-within');
+  const raisedBy = new WeakMap();
+  document.addEventListener('pointerdown', event => {
+    const card = event.target.closest?.('#hand-row > .game-card');
+    if (card && event.pointerType === 'touch' && !card.dataset.cfRaised) raisedBy.set(card, performance.now());
+  }, true);
+  const raiseFrom = event => { if (event.pointerType === 'touch') return; const card = event.target.closest?.('#hand-row > .game-card'); if (card && raisedNow(card)) card.dataset.cfRaised = '1'; };
+  document.addEventListener('pointerover', raiseFrom);
+  document.addEventListener('focusin', raiseFrom);
+  document.addEventListener('click', event => {
+    if (event.detail === 0) return;
+    const corner = event.target.closest?.('#hand-row .corner-button'), card = corner?.closest('.game-card');
+    if (!card || !raisedBy.has(card)) return;
+    raisedBy.delete(card);
+    event.preventDefault(); event.stopPropagation();
+    corner.focus({ preventScroll: true });
+  }, true);
+  // A card's name sits between its two corners, wrapping only between words and to two lines at
+  // most (rules #card-corners); a name that does not fit there moves under the corners.
+  function fitNames() {
+    // Measured for all cards at once (one probe, one read, one write) so a render costs two layouts.
+    const cards = $$(':is(#hand-row, #market-row, #upgrade-market) > .game-card:is(:has(> .card-symbols), :has(> .card-footer))')
+      .filter(card => !card.matches(':hover, :focus-within')).map(card => [card, card.querySelector(':scope > .card-name')]).filter(([, name]) => name?.getClientRects().length);
+    cards.forEach(([card]) => { card.classList.remove('name-under'); card.classList.add('name-probe'); });
+    const under = cards.map(([, name]) => { const line = parseFloat(getComputedStyle(name).lineHeight) || name.offsetHeight; return name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > line * 2 + 2; });
+    cards.forEach(([card], index) => { card.classList.remove('name-probe'); card.classList.toggle('name-under', under[index]); });
+  }
+  addEventListener('resize', () => requestAnimationFrame(fitNames));
+  function settle() {
+    requestAnimationFrame(() => { for (const card of $$('#hand-row > .game-card[data-cf-raised]')) if (!raisedNow(card)) delete card.dataset.cfRaised; });
+  }
+  document.addEventListener('pointerout', settle);
+  document.addEventListener('focusout', settle);
 
   // ---- Drag a hand card onto the map (or onto your reserves to convert it). ----
   // A card can be picked up anywhere on it, its buttons included: a press that moves more
@@ -404,7 +485,7 @@
     if (!dialog) return; // Archived pages keep their own layout.
     const banks = {
       relics: { node: $('#relics-panel'), title: 'Relics', help: 'The three face-up rewards. Excavate at a located relic to claim one.' },
-      market: { node: $('#market-panel'), title: 'Market', help: 'Expensive · Medium · Cheap. Purchased cards enter their normal piles.' },
+      market: { node: $('#market-panel'), title: 'Market', help: 'Purchased cards enter their normal piles.' },
       basics: { node: $('#upgrade-group'), title: 'Basics', help: 'Improve your starters, add a Capacity Module, or inspect the Trash pile.' }
     };
     const buttons = [...document.querySelectorAll('[data-card-bank]')];
@@ -412,10 +493,30 @@
       bank.home = document.createComment('Card bank home');
       bank.node.before(bank.home);
     }
-    let enabled = false, selected = 'market', wasBuying = false, wasExcavating = false, wasChoosing = false, relicsRequested = false, opener = null;
+    let enabled = false, selected = 'market', wasBuying = false, wasExcavating = false, wasChoosing = false, relicsRequested = false, opener = null, fitFrame = 0;
     const active = () => document.body.classList.contains('background-stars');
     const buying = () => !$('#finish-buy-button').hidden;
     const excavating = () => !$('#cancel-excavate').hidden;
+    function labelMarketRows() {
+      const row = $('#market-row');
+      row.querySelectorAll('.max-market-tier-label').forEach(label => label.remove());
+      if (!enabled) return;
+      for (const [index, [tier, name]] of [['expensive', 'Expensive'], ['medium', 'Moderate'], ['cheap', 'Cheap']].entries()) {
+        const cards = [...row.querySelectorAll(`:scope > [data-market-tier="${tier}"]`)];
+        if (!cards.length) continue;
+        const label = document.createElement('span');
+        label.className = 'max-market-tier-label';
+        label.textContent = name;
+        label.style.setProperty('--max-tier-index', index);
+        row.append(label);
+        cards.forEach((card, slot) => {
+          card.style.setProperty('--max-tier-index', index);
+          card.style.setProperty('--max-tier-slot', slot);
+          card.style.setProperty('--max-tier-phone-column', slot % 2 + 2);
+          card.style.setProperty('--max-tier-phone-row', index * 2 + Math.floor(slot / 2) + 1);
+        });
+      }
+    }
     function close() { if (dialog.open) dialog.close(); }
     function choose(name) {
       if (!banks[name]) return;
@@ -450,7 +551,12 @@
         }
         wasBuying = false; wasExcavating = false; wasChoosing = false; relicsRequested = false;
       }
+      labelMarketRows();
       if (!enabled) return;
+      // The engine's first fit precedes the updated hand and bank layout. Refit
+      // after those settle so a transient width cannot leave an iPad off-center.
+      cancelAnimationFrame(fitFrame);
+      fitFrame = requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
       const buy = buying(), choosing = excavating();
       const dig = choosing && (relicsRequested || !!$('#relic-row [data-excavate-relic]:not(:disabled)'));
       $('#max-bank-finish').hidden = !buy;

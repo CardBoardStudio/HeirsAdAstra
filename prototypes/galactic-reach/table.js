@@ -126,7 +126,7 @@
       revision = table.revision;
       cacheKey = `drawing-board-table:${table.owner_id}:${id}`;
       bar.querySelector('#saved-table-name').textContent = table.name;
-      document.title = `${table.name} · Galactic Reach`;
+      document.title = `${table.name} · Heirs Ad Astra`;
       let save = table.save;
       let local = null;
       try { local = JSON.parse(localStorage.getItem(cacheKey) || 'null'); } catch { /* Account save remains available without browser storage. */ }

@@ -1,0 +1,53 @@
+/* Heirs Ad Astra's colours, in one place. The game (styles.css imports this file) and the
+   site around it (prototypes/lab/lab.css, and the server's invite-required page) both read
+   these custom properties, so changing a colour here changes it everywhere. Archived engines
+   keep the palette they were released with: scripts/release.cjs inlines this file into the
+   archived styles.css, and scripts/build-site.cjs does the same for the docs site. */
+:root {
+  /* The table's felt, from its lit centre to its edge. */
+  --felt-light: #2c6a55;
+  --felt: #235946;
+  --felt-deep: #183f33;
+  /* Surfaces and lines on the table. */
+  --bg: #10191d;
+  --surface: #19272b;
+  --surface-2: #213237;
+  --line: #3c4b4a;
+  --line-bright: #6e7b70;
+  /* Text on the table, and the accents. */
+  --text: #f0ebdd;
+  --muted: #b4bdb6;
+  --cyan: #85d0c4;
+  --gold: #d9bd80;
+  --gold-hover: #edcf8f;
+  --on-gold: #24302d;
+  --green: #6ee7a8;
+  --red: #ff7c8b;
+  --purple: #bc9cff;
+  /* Buttons. */
+  --button: #2d4142;
+  --button-edge: #62756d;
+  --button-hover: #385350;
+  --danger: #62403b;
+  --danger-edge: #a17061;
+  --danger-text: #ffc2b5;
+  /* Cards and other printed paper, and the inks printed on it. */
+  --paper: #eee6d3;
+  --paper-edge: #b9ab8e;
+  --ink: #253436;
+  --ink-muted: #566461;
+  /* Resources (palette P5), and their map tiles: each toned to the map's slate. */
+  --matter: #e9a23b;
+  --energy: #ff6f59;
+  --biomass: #7fd6b5;
+  --data: #5fc9d8;
+  --matter-tile: color-mix(in srgb, var(--matter) 63%, #26323a);
+  --energy-tile: color-mix(in srgb, var(--energy) 77%, #26323a);
+  --biomass-tile: color-mix(in srgb, var(--biomass) 56%, #26323a);
+  --data-tile: color-mix(in srgb, var(--data) 60%, #26323a);
+  /* Seats: you, then the three AI rivals. */
+  --human: #55d9f4;
+  --ai-1: #ff9f6e;
+  --ai-2: #a58cff;
+  --ai-3: #f2cf66;
+}

@@ -37,6 +37,17 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: ./scripts/build-web.sh
       - run: node scripts/check-rulebook.cjs dist/galactic-reach
+      - name: Table setup and independent device roles
+        run: |
+          cargo build --locked -p server
+          DEV_AUTH=1 BIND_ADDR=127.0.0.1:3324 APP_ORIGIN=http://127.0.0.1:3324 DATABASE_PATH=/tmp/tabletop-roles.sqlite target/debug/server > /tmp/tabletop-roles.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 50); do
+            curl -fsS http://127.0.0.1:3324/api/health >/dev/null && break
+            sleep 1
+          done
+          TABLETOP_ORIGIN=http://127.0.0.1:3324 node scripts/check-tabletop-roles.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: drawing-board-web
@@ -54,6 +65,13 @@ jobs:
       - run: node --check prototypes/galactic-reach/app.js
       - run: node scripts/test-galactic-reach.cjs
       - run: node scripts/check-card-gallery.cjs
+      - run: node scripts/check-emblem.cjs
+      - run: node scripts/test-guide-switch.cjs
+      - run: node scripts/check-relic-interface.cjs
+      - name: Max UI controls and card banks
+        run: node scripts/check-max-ui.cjs
+        env:
+          CHECK_SIZES: 1920x1080
       - run: node scripts/test-playtest-notes.cjs
       - run: node scripts/test-change-queue.cjs
       - run: node scripts/test-long-reach.cjs
@@ -88,6 +106,8 @@ jobs:
       - run: node scripts/test-cleanup-draw.cjs
       - run: node scripts/test-simulation-archive.cjs
       - run: node --test deploy/pr-mixer/pr-mixer.test.mjs
+      - run: node scripts/check-mixer-ui.cjs
+      - run: node --test deploy/dev-host/dev-host.test.mjs
   # Heavy tier: whole simulated matches. They run on the release PRs, not on change
   # PRs (docs/release.md#heavy-tests): the cut PR (release/next -> main, whose CI the
   # Release cut workflow starts with workflow_dispatch, or pull_request when the cut

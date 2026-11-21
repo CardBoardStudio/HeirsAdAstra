@@ -41,10 +41,17 @@
     }
   }
   function render(view) {
+    if(view.manage_url){$('manage').href=view.manage_url;$('manage').hidden=false;}
+    if(view.status==='waiting') {
+      lastMessage=Date.now();$('title').textContent=view.name;
+      status.textContent='Waiting for the host to start. This public display takes no player seat.';
+      return;
+    }
     if(current&&view.seq<current.seq)return;
     current=view;lastMessage=Date.now();const state=view.state;
+    if(!nodes.size)buildMap(state.boardRadius);
     $('title').textContent=view.name;
-    status.textContent=view.status==='finished'?'Game over · private cards remain on phones':`Round ${state.round} · ${state.phase} · ${state.players[state.active]?.name||'Table'} to act`;
+    status.textContent=view.status==='finished'?'Game over · private cards remain on personal devices':`Round ${state.round} · ${state.phase} · ${state.players[state.active]?.name||'Table'} to act`;
     $('rules').href=`${view.client_path}rulebook.html#shared-tables`;
     $('players').replaceChildren(...state.players.map(p=>{const card=el('article');card.className=`player${state.active===p.id?' acting':''}`;card.style.setProperty('--player',p.color||colors[p.id]);
       card.append(el('strong',p.name),el('p',`${p.prestige} / ${state.victoryTarget} Prestige · ${p.handCount} in hand`),el('p',Object.entries(p.resources).map(([k,v])=>`${k[0].toUpperCase()} ${v}/${p.limits[k]}`).join(' · ')));return card;}));
@@ -74,12 +81,12 @@
   $('wake').onclick=async()=>{try{wake=await navigator.wakeLock.request('screen');$('wake').textContent='Screen stays awake';wake.addEventListener('release',()=>{$('wake').textContent='Keep screen awake';});}catch{$('wake').textContent='Keep awake unavailable';}};
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')resync();else{stream?.close();clearTimeout(retryTimer);status.textContent='Board paused. Return to reconnect.';}});
   window.addEventListener('online',resync);
-  setInterval(()=>{if(current&&document.visibilityState==='visible'&&Date.now()-lastMessage>25000)resync();},5000);
+  setInterval(()=>{if(lastMessage&&document.visibilityState==='visible'&&Date.now()-lastMessage>25000)resync();},5000);
   (async()=>{try{
     if(!/^[a-f0-9]{32}$/.test(id||''))throw new Error('Open the board link from the host’s shared table.');
     const secret=new URLSearchParams(location.hash.slice(1)).get('pair');
     history.replaceState(null,'',location.pathname+location.search);
     if(secret)await api('redeem',{token:secret});
-    const view=await api('board');buildMap(view.state.boardRadius);render(view);connect();
+    const view=await api('board');render(view);connect();
   }catch(error){failed(error);}})();
 })();

@@ -31,6 +31,9 @@ fn token() -> String {
 fn cookie_name(id: &str) -> String {
     format!("drawing_board_tabletop_{id}")
 }
+fn board_cookie_name(id: &str) -> String {
+    format!("drawing_board_public_{id}")
+}
 fn valid_id(id: &str) -> bool {
     id.len() == 32 && id.bytes().all(|c| c.is_ascii_hexdigit())
 }
@@ -69,11 +72,25 @@ fn principal(app: &App, headers: &HeaderMap, id: &str, role: &str) -> ApiResult<
     if !valid_id(id) {
         return Err(refused());
     }
-    let secret = cookie(headers, &cookie_name(id)).ok_or_else(refused)?;
-    let row = app.store.0.lock().map_err(internal)?.query_row(
+    // Board sessions never replace a private player session. Keep accepting old
+    // board cookies, but every candidate must still match the requested role.
+    let names = if role == "board" {
+        vec![board_cookie_name(id), cookie_name(id)]
+    } else {
+        vec![cookie_name(id)]
+    };
+    for name in names {
+        let Some(secret) = cookie(headers, &name) else {
+            continue;
+        };
+        let row = app.store.0.lock().map_err(internal)?.query_row(
         "SELECT participant FROM tabletop_grants WHERE token_hash=? AND table_id=? AND role=? AND kind='session' AND expires>?",
         params![digest(&secret), id, role, now()], |r| r.get::<_,Option<String>>(0)).optional().map_err(internal)?;
-    row.ok_or_else(refused)
+        if let Some(participant) = row {
+            return Ok(participant);
+        }
+    }
+    Err(refused())
 }
 /// Exact bootstrap assets and capability-authenticated endpoints bypass the
 /// ordinary invite gate. Every API here performs its own role/table check.
@@ -101,6 +118,7 @@ pub fn delegated_path(path: &str) -> bool {
                 | "focus"
                 | "stream"
                 | "join"
+                | "invite-details"
                 | "seat"
                 | "act"
                 | "undo"
@@ -117,11 +135,31 @@ pub async fn issue_board(
 ) -> ApiResult<Json<Value>> {
     host(&app, &headers, &id)?;
     // Refuse before minting a link if the pinned engine has no public projection.
-    app.shared.public_view(&id).await?;
+    let view = public_view(&app, &id).await?;
+    if view["status"] == "waiting" {
+        // The older waiting-room Start action must keep the same two-human
+        // requirement when the organizer paired a display before any players.
+        app.store
+            .0
+            .lock()
+            .map_err(internal)?
+            .execute(
+                "INSERT OR IGNORE INTO tabletop_rooms(table_id) VALUES(?)",
+                [&id],
+            )
+            .map_err(internal)?;
+    }
     let secret = grant(&app, &id, "board", None)?;
-    Ok(Json(
-        json!({"url":format!("/tabletop/board.html?table={id}#pair={secret}"),"expires_in":LINK_LIFETIME}),
-    ))
+    let url = format!(
+        "{}/tabletop/board.html?table={id}#pair={secret}",
+        app.origin
+    );
+    let qr = qrcode::QrCode::new(url.as_bytes())
+        .map_err(internal)?
+        .render::<qrcode::render::svg::Color>()
+        .min_dimensions(240, 240)
+        .build();
+    Ok(Json(json!({"url":url,"qr":qr,"expires_in":LINK_LIFETIME})))
 }
 pub async fn revoke_board(
     State(app): State<App>,
@@ -177,17 +215,37 @@ pub async fn redeem(
     };
     let value = format!(
         "{}={secret}; Path=/api/tabletop/{id}/; HttpOnly; SameSite=Strict; Max-Age={SESSION_LIFETIME}{secure}",
-        cookie_name(&id)
+        if role == "board" {
+            board_cookie_name(&id)
+        } else {
+            cookie_name(&id)
+        }
     );
     Ok(([(header::SET_COOKIE, value)], Json(json!({"role":role}))).into_response())
 }
+// Waiting displays never receive the lobby roster, account identities or invites.
+async fn public_view(app: &App, id: &str) -> ApiResult<Value> {
+    let waiting: Option<String> = {
+        let db = app.store.0.lock().map_err(internal)?;
+        db.query_row("SELECT t.name FROM solo_tables t JOIN gr_lobbies l ON l.table_id=t.id WHERE t.id=? AND l.status IN ('waiting','starting')", [id], |r| r.get(0)).optional().map_err(internal)?
+    };
+    if let Some(name) = waiting {
+        return Ok(json!({"name":name,"status":"waiting"}));
+    }
+    Ok(app.shared.public_view(id).await?)
+}
+
 pub async fn board(
     State(app): State<App>,
     headers: HeaderMap,
     Path(id): Path<String>,
 ) -> ApiResult<Json<Value>> {
     principal(&app, &headers, &id, "board")?;
-    Ok(Json(app.shared.public_view(&id).await?))
+    let mut view = public_view(&app, &id).await?;
+    if host(&app, &headers, &id).is_ok() {
+        view["manage_url"] = json!(format!("/tabletop/host.html?table={id}"));
+    }
+    Ok(Json(view))
 }
 pub async fn stream(
     State(app): State<App>,
@@ -197,7 +255,7 @@ pub async fn stream(
     principal(&app, &headers, &id, "board")?;
     let changes = app.shared.subscribe();
     let closing = app.shared.shutdown_subscription();
-    let first = app.shared.public_view(&id).await?;
+    let first = public_view(&app, &id).await?;
     let events = futures_util::stream::unfold(
         (Some(first), app, headers, id, changes, closing),
         |(first, app, headers, id, mut changes, mut closing)| async move {
@@ -225,7 +283,7 @@ pub async fn stream(
                 if principal(&app, &headers, &id, "board").is_err() {
                     return None;
                 }
-                app.shared.public_view(&id).await.ok()?
+                public_view(&app, &id).await.ok()?
             };
             let event = Event::default().event("view").data(view.to_string());
             Some((

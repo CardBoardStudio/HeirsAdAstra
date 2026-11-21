@@ -1,5 +1,5 @@
 //! Shared table shelf. Voidwright retains its authoritative multiplayer API;
-//! Galactic Reach solo tables store private, unrated browser saves with CAS.
+//! Heirs Ad Astra solo tables store private, unrated browser saves with CAS.
 use crate::*;
 use rusqlite::{Connection, OptionalExtension, params};
 pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
@@ -99,7 +99,7 @@ pub struct Create {
     practice: bool,
     #[serde(default = "rounds")]
     round_limit: u16,
-    /// Galactic Reach: open a waiting room (invite link, seats, rivals) before Start.
+    /// Heirs Ad Astra: open a waiting room (invite link, seats, rivals) before Start.
     #[serde(default)]
     lobby: bool,
 }
@@ -143,7 +143,7 @@ pub async fn create(
         .map_err(internal)?;
     if count >= 100 {
         return Err(bad(
-            "This account has reached its 100 Galactic Reach table limit.",
+            "This account has reached its 100 Heirs Ad Astra table limit.",
         ));
     }
     let id = uuid::Uuid::new_v4().simple().to_string();
@@ -271,7 +271,7 @@ fn validate(save: &serde_json::Value) -> ApiResult<()> {
         )
         || !(s["winner"].is_null() || s["winner"].as_u64().is_some_and(|r| r < 4))
     {
-        return Err(bad("This is not a supported Galactic Reach save."));
+        return Err(bad("This is not a supported Heirs Ad Astra save."));
     }
     Ok(())
 }

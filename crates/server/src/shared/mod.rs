@@ -1,4 +1,4 @@
-//! Shared multi-human Galactic Reach tables.
+//! Shared multi-human Heirs Ad Astra tables.
 //!
 //! The server is authoritative. A table is its event log (`log::TableLog`): seat
 //! actions plus the hidden-information authority's shuffles, so the live position
@@ -15,7 +15,9 @@ use crate::*;
 use authority::HiddenInfoAuthority;
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
 use channel::{Channel, Engine};
-use galactic_reach::{BuiltinAgent, GalacticReach, SHARED_STEP, Strategy};
+#[cfg(test)]
+use galactic_reach::Strategy;
+use galactic_reach::{BrowserProfile, GalacticReach, SHARED_STEP};
 use game_core::{GameAdapter, PlayerAgent};
 use log::{Event, NewEvent, Seat, Table, TableLog};
 use rusqlite::Connection;
@@ -348,7 +350,7 @@ fn fold(
         ),
         None => None,
     };
-    let engine = match engine {
+    let mut engine = match engine {
         Engine::Builtin => {
             GalacticReach::shared_on(&table.rules, &seats, table.victory_target, resume, shuffle)?
         }
@@ -361,6 +363,12 @@ fn fold(
             shuffle,
         )?,
     };
+    engine.set_browser_profiles(std::array::from_fn(|seat| {
+        table.seats[seat]
+            .policy
+            .as_deref()
+            .and_then(BrowserProfile::parse)
+    }))?;
     let mut live = Live {
         table: table.clone(),
         engine,
@@ -395,6 +403,7 @@ fn fold(
 /// The current rival for a seat's stored policy. A table keeps the policy it was
 /// dealt with, but its moves are in the log, so a newer version of the same
 /// profile (`gr-economy/25` to `/26`) takes over its future decisions.
+#[cfg(test)]
 fn rival(policy: &str) -> Option<Strategy> {
     Strategy::parse(policy).or_else(|| {
         [
@@ -734,17 +743,13 @@ impl Tables {
                     seed[31] ^= seat as u8;
                 }
                 // The exact policy the table was dealt with (archived agents
-                // included), else the current version of the same profile.
-                let agent = galactic_reach::agent(&policy, seed)
-                    .or_else(|_| {
-                        rival(&policy)
-                            .map(|s| {
-                                Box::new(BuiltinAgent::new(s, seed))
-                                    as Box<dyn PlayerAgent<GalacticReach>>
-                            })
-                            .ok_or_else(|| format!("Unknown AI policy {policy}."))
-                    })
-                    .map_err(broken)?;
+                // included); never substitute a current policy for an unknown recorded ID.
+                let agent = if BrowserProfile::parse(&policy).is_some() {
+                    galactic_reach::agent(&policy, seed)
+                } else {
+                    galactic_reach::historical_agent(&policy, seed)
+                }
+                .map_err(broken)?;
                 slot.insert(agent)
             }
         };
@@ -1100,7 +1105,19 @@ pub fn status(db: &Connection, id: &str) -> ApiResult<Option<String>> {
 /// Seats people in join order, then AI rivals (test fixtures; Start uses [`random_seats`]).
 #[cfg(test)]
 pub fn seats(humans: &[(String, String)]) -> Vec<Seat> {
-    seats_at(humans, &[0, 1, 2, 3])
+    // Historical fixture tables may select an archived engine. They retain native IDs.
+    let mut seats = seats_at(humans, &[0, 1, 2, 3]);
+    for seat in &mut seats {
+        if let Some(policy) = &seat.policy {
+            let profile = policy
+                .trim_start_matches("gr-browser-")
+                .split('/')
+                .next()
+                .unwrap();
+            seat.policy = Some(format!("gr-{profile}/29"));
+        }
+    }
+    seats
 }
 
 /// Seats a waiting room's people at random when the host starts (rulebook
@@ -1115,11 +1132,11 @@ pub fn random_seats(humans: &[(String, String)], rng: &mut impl rand::Rng) -> Ve
 
 /// `order[i]` is the seat of the `i`-th person who joined.
 fn seats_at(humans: &[(String, String)], order: &[usize; 4]) -> Vec<Seat> {
-    const RIVALS: [(&str, Strategy); 4] = [
-        ("Cyan Concord", Strategy::Military),
-        ("Ember Directorate", Strategy::Military),
-        ("Violet Assembly", Strategy::Economy),
-        ("Helios Compact", Strategy::Expansion),
+    const RIVALS: [(&str, BrowserProfile); 4] = [
+        ("Cyan Concord", BrowserProfile::Military),
+        ("Ember Directorate", BrowserProfile::Military),
+        ("Violet Assembly", BrowserProfile::Economy),
+        ("Helios Compact", BrowserProfile::Expansion),
     ];
     (0..4)
         .map(|seat| {

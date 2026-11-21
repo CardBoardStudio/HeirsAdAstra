@@ -54,7 +54,7 @@ assert.equal(t.adapter.activeSeat(),1,'Responding does not consume an order');
 assert.equal(t.port.state.players[1].resources.matter,5);
 assert.throws(()=>t.adapter.applyAction(1,accept),/Illegal action/,'An accepted offer cannot settle twice');
 assert(!t.adapter.legalActions(1).some(a=>a.type==='trade_accept'));
-console.log('Galactic Reach: mechanics, non-mutating legality, forged commands, shared open trades, and single settlement passed.');
+console.log('Heirs Ad Astra: mechanics, non-mutating legality, forged commands, shared open trades, and single settlement passed.');
 // Upgraded orders must be legal in exactly the same way for browser and arena.
 function orderFixture(key,upgraded=true) {
   const f=engine();f.port.state.phase='operations';f.port.state.activePlayer=0;
@@ -123,3 +123,10 @@ require('./test-random-solo-homes.cjs');
 
 require("./test-bot-family-plan.cjs");
 require("./test-bot-family-study.cjs");
+require('./test-browser-bot-policy.cjs');
+require("./test-maxbot.cjs");
+
+require("./test-maxbot-study.cjs");
+require("./test-captured-harvesters.cjs");
+
+require('./test-relic-deck.cjs');

@@ -1,4 +1,4 @@
-// Lossless, append-only archives for offline Galactic Reach simulations.
+// Lossless, append-only archives for offline Heirs Ad Astra simulations.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),zlib=require('node:zlib');
 const ROOT=path.resolve(__dirname,'../..'),FORMAT='galactic-reach-simulation/1';
 const RECORDER_SOURCE=fs.readFileSync(__filename,'utf8');

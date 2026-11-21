@@ -11,7 +11,7 @@ mkdir -p dist/voidwright dist/galactic-reach dist/lab
 cp crates/web/index.html dist/voidwright/index.html
 cp crates/web/style.css dist/style.css
 cp prototypes/galactic-reach/index.html dist/galactic-reach/index.html
-cp prototypes/galactic-reach/styles.css dist/galactic-reach/styles.css
+cp prototypes/galactic-reach/styles.css prototypes/galactic-reach/palette.css dist/galactic-reach/
 cp prototypes/galactic-reach/card-feel.js prototypes/galactic-reach/card-feel.css dist/galactic-reach/
 # On-table guidance and the Learn to play walkthrough (index.html?tutorial=1).
 cp prototypes/galactic-reach/guide.js prototypes/galactic-reach/guide.css prototypes/galactic-reach/tutorial.js dist/galactic-reach/
@@ -25,10 +25,13 @@ cp prototypes/galactic-reach/cards.html dist/galactic-reach/cards.html
 rm -rf dist/galactic-reach/card-art && cp -R prototypes/galactic-reach/card-art dist/galactic-reach/card-art
 cp prototypes/galactic-reach/shared.js dist/galactic-reach/shared.js
 cp prototypes/galactic-reach/tabletop-controls.js prototypes/galactic-reach/tabletop-controls.css dist/galactic-reach/
+cp prototypes/galactic-reach/market-drawer.css dist/galactic-reach/
 cp prototypes/galactic-reach/replay.js dist/galactic-reach/replay.js
 cp prototypes/lab/index.html dist/index.html
 cp prototypes/lab/index.html dist/lab/index.html
 cp prototypes/lab/lab.css prototypes/lab/lab.js prototypes/lab/replay.js dist/lab/
+# The emblem: the hanging astrolabe, its round version, and its reductions for the header (mark) and the favicon.
+cp prototypes/lab/heirs-emblem.svg prototypes/lab/heirs-emblem-round.svg prototypes/lab/heirs-emblem-mark.svg prototypes/lab/heirs-emblem-favicon.svg dist/lab/
 
 # Preserve the complete v4 through v10 browsers alongside v11; tables never upgrade implicitly.
 mkdir -p dist/galactic-reach/rules/4.9

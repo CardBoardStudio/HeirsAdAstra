@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="7 7 186 186" role="img" aria-label="Heirs Ad Astra">
+  <title>Heirs Ad Astra</title>
+  <!-- Favicon (16 to 32 px): the round emblem with the cardinal ticks and cardinal star points only. Speed lines: one per resource, in the game's order (matter, energy,
+       biomass, data); colours are the matter, energy, biomass and data custom
+       properties in prototypes/galactic-reach/palette.css. -->
+  <circle cx="100" cy="100" r="92.2" fill="#0d1222"/>
+  <g>
+    <path fill="#f2b53b" d="M101.03 25.41L101.03 100L86.84 100Z"/><path fill="#d0901f" d="M101.03 25.41L101.03 100L115.22 100Z"/>
+    <path fill="#f2b53b" d="M101.03 174.59L101.03 100L115.22 100Z"/><path fill="#d0901f" d="M101.03 174.59L101.03 100L86.84 100Z"/>
+    <path fill="#f2b53b" d="M174.6 100L101.03 100L101.03 96.56Z"/><path fill="#d0901f" d="M174.6 100L101.03 100L101.03 103.44Z"/>
+    <path fill="#f2b53b" d="M25.4 100L101.03 100L101.03 103.44Z"/><path fill="#d0901f" d="M25.4 100L101.03 100L101.03 96.56Z"/>
+  </g>
+  <g transform="translate(101.03 100) rotate(-13.6) skewX(-20)">
+    <!-- A navy layer behind the lines hides the star there. -->
+    <g fill="#0d1222">
+      <rect x="-57.81" y="-30.94" width="115.63" height="16.88"/>
+      <rect x="-57.81" y="-15.94" width="115.63" height="16.88"/>
+      <rect x="-42.19" y="-0.94" width="100" height="16.88"/>
+      <rect x="-26.56" y="14.06" width="84.38" height="16.88"/>
+    </g>
+    <rect fill="#e9a23b" x="-53.13" y="-26.25" width="106.25" height="7.5"/>
+    <rect fill="#ff6f59" x="-53.13" y="-11.25" width="106.25" height="7.5"/>
+    <rect fill="#7fd6b5" x="-37.5" y="3.75" width="90.63" height="7.5"/>
+    <rect fill="#5fc9d8" x="-21.87" y="18.75" width="75" height="7.5"/>
+  </g>
+  <!-- The rim sits on top, so nothing inside crosses it. -->
+  <g fill="none" stroke="#f0b862">
+    <circle cx="100" cy="100" r="87" stroke-width="10.4"/>
+    <circle cx="100" cy="100" r="77" stroke-width="4.8"/>
+    <!-- Degree scale: the cardinal ticks. -->
+    <g stroke-width="3.2">
+      <line stroke-width="6" x1="178.4" y1="100" x2="185.6" y2="100"/>
+      <line stroke-width="6" x1="100" y1="178.4" x2="100" y2="185.6"/>
+      <line stroke-width="6" x1="21.6" y1="100" x2="14.4" y2="100"/>
+      <line stroke-width="6" x1="100" y1="21.6" x2="100" y2="14.4"/>
+    </g>
+  </g>
+</svg>

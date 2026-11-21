@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101d22">
-  <title>Card gallery · Galactic Reach 38.43</title>
-  <meta name="description" content="Every Galactic Reach 38.43 market card and alien relic with its art, effect and a place to leave playtest feedback.">
+  <title>Card gallery · Heirs Ad Astra 38.43</title>
+  <meta name="description" content="Every Heirs Ad Astra 38.43 market card and alien relic with its art, effect and a place to leave playtest feedback.">
   <link rel="stylesheet" href="styles.css?v=cheaper-cards-32-37">
   <link rel="stylesheet" href="card-feel.css?v=2">
   <style>
@@ -37,9 +37,20 @@
     .gallery-cost .resource-dots { flex-direction: column; align-items: flex-end; gap: 4px; }
     .gallery-cost .resource-chip { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; gap: 3px; }
     .gallery-cost .resource-chip strong { color: var(--ink); font-size: .875rem; }
+    /* The card's header is one line: effect symbols left, name between, price in the top-right corner. */
+    .gallery-card-heading { grid-template-columns: max-content minmax(0, 1fr) auto; align-items: start; }
+    .gallery-card-heading > .card-symbols { grid-column: 1; grid-row: 1; align-self: center; font-size: 18px; }
+    .gallery-card-heading > h3 { grid-column: 2; grid-row: 1; align-self: center; text-align: center; overflow-wrap: normal; }
+    .gallery-card-heading:not(:has(> .card-symbols)) > h3 { grid-column: 1 / 3; }
+    .gallery-card-heading > .effect { grid-column: 1 / 3; }
+    .gallery-card-heading > .gallery-cost { grid-column: 3; }
+    .gallery-card-heading:not(:has(.gallery-cost)) { grid-template-columns: max-content minmax(0, 1fr); }
+    .gallery-card .needs .code { color: #765721; font-weight: 750; letter-spacing: .04em; }
+    .gallery-cost .corner-dots .resource-chip { justify-content: flex-end; }
     .gallery-card .resource-symbol, .gallery-card .inline-resource .resource-symbol { width: 18px; height: 18px; }
-    .gallery-card .resource-symbol.matter { color: #566b71; } .gallery-card .resource-symbol.energy { color: #1f6d88; }
-    .gallery-card .resource-symbol.biomass { color: #3d734f; } .gallery-card .resource-symbol.data { color: #79528b; }
+    .gallery-card .resource-symbol { border-radius: 28%; color: var(--ink); } .gallery-card .resource-symbol svg { transform: scale(.72); }
+    .gallery-card .resource-symbol.matter { background: var(--matter); } .gallery-card .resource-symbol.energy { background: var(--energy); }
+    .gallery-card .resource-symbol.biomass { background: var(--biomass); } .gallery-card .resource-symbol.data { background: var(--data); }
     .gallery-card .inline-resource { display: inline-flex; vertical-align: -.2em; }
     .gallery-card .needs { margin: 0 12px 10px; color: #5a5138; font-size: .75rem; }
     .gallery-feedback { display: flex; flex-direction: column; gap: 8px; padding: 12px; margin-top: auto; border-top: 1px solid #a89d8370; background: var(--surface); color: var(--text); }
@@ -80,11 +91,11 @@
   <main class="gallery" id="gallery">
     <header>
       <div>
-        <div class="eyebrow" id="gallery-version">GALACTIC REACH · 38.43 CONSTRUCT III PLAYTEST</div>
+        <div class="eyebrow" id="gallery-version">HEIRS AD ASTRA · 38.43 CONSTRUCT III PLAYTEST</div>
         <h1>Card gallery</h1>
         <p class="lede">Browse every market card and <a href="#alien-relic-gallery" id="show-relic-gallery">alien relic</a> in this playtest. Market cards follow the Expensive, Medium and Cheap tiers; relics have their own section. Use the printed id when leaving feedback. Neither market cards nor relics convert to resources. Each design's art is credited under <a href="#card-art-credits">Card art credits</a>.</p>
       </div>
-      <nav class="links" aria-label="Galactic Reach">
+      <nav class="links" aria-label="Heirs Ad Astra">
         <a class="button button-ghost" href="./" style="text-decoration:none">← Back to the game</a>
         <a class="button button-ghost" href="rulebook.html#cards" style="text-decoration:none">Card rules</a>
       </nav>
@@ -107,7 +118,7 @@
       <p class="lede">Every card design shows a public-domain painting, print or photograph from the <a href="https://www.nga.gov/open-access-images.html">National Gallery of Art, Washington</a>, released as open access under CC0. The Gallery asks for a credit, given here. Use of these works does not imply endorsement by the Gallery. The art is decoration only: a card does what its text says (<a href="rulebook.html#card-art">rulebook</a>).</p>
       <div id="credit-groups"><p class="store-status">Loading credits…</p></div>
     </section>
-    <footer class="site-footer"><span id="site-footer-version">Galactic Reach</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="#card-art-credits">Credits</a></footer>
+    <footer class="site-footer"><span id="site-footer-version">Heirs Ad Astra</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="#card-art-credits">Credits</a></footer>
   </main>
   <script>globalThis.drawingBoardTableBoot = true;</script>
   <script src="app.js?v=cheaper-cards-32-37"></script>
@@ -117,9 +128,9 @@
     const catalog = createGalacticReach({ catalog: true });
     // The label follows the engine this page loaded, so an archived copy names its own rules.
     const version = catalog.rulesVersion.split('/').pop();
-    document.querySelector('#gallery-version').textContent = `GALACTIC REACH · ${version} · CARD GALLERY`;
-    document.title = `Card gallery · Galactic Reach ${version}`;
-    document.querySelector('#site-footer-version').textContent = `Galactic Reach ${version} · playtest`;
+    document.querySelector('#gallery-version').textContent = `HEIRS AD ASTRA · ${version} · CARD GALLERY`;
+    document.title = `Card gallery · Heirs Ad Astra ${version}`;
+    document.querySelector('#site-footer-version').textContent = `Heirs Ad Astra ${version} · playtest`;
     const $ = selector => document.querySelector(selector);
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
     // Stable gallery feedback references, independent of deck order or sorting.
@@ -132,8 +143,9 @@
     };
     const market = Object.entries(catalog.MARKET_CARDS || { ...catalog.ADVANCED_CARDS, ...catalog.MARKET_MILITARY }).map(([key, def]) => ({ key, ...def }));
     const relics = Object.entries(catalog.RELIC_CARDS).map(([key, def]) => {
-      if (!relicIds[key]) throw new Error(`Missing gallery feedback id for relic ${key}`);
-      return { key, ...def, code: relicIds[key], relic: true };
+      const code=def.code||relicIds[key];
+      if (!code) throw new Error(`Missing gallery feedback id for relic ${key}`);
+      return { key, ...def, code, relic: true };
     });
     const cards = [...market, ...relics];
     const family = card => card.relic ? 'relic' : card.military ? 'military' : 'normal';
@@ -174,13 +186,13 @@
         const work = art[card.key];
         return `<article class="gallery-card ${family(card)}" data-card-key="${card.key}" data-card-code="${card.code}" style="--accent:${card.accent}" aria-labelledby="name-${card.code}">
           <div class="gallery-card-heading">
-          <div class="meta"><span class="code">${card.code}</span><span>${card.relic ? `Alien relic · ${esc(card.affinity)}` : card.military ? 'Military deck' : `Normal deck · ${esc(card.kind)}`}</span></div>
+          ${catalog.cardSymbols ? catalog.cardSymbols(card) : ''}
           <h3 id="name-${card.code}">${esc(card.name)}</h3>
-          ${card.relic ? '' : `<div class="gallery-cost">${catalog.resourceDots ? catalog.resourceDots(card.cost) : chips(card.cost)}</div>`}
+          ${card.relic ? '' : `<div class="gallery-cost">${catalog.cornerDots ? catalog.cornerDots(card.cost) : catalog.resourceDots ? catalog.resourceDots(card.cost) : chips(card.cost)}</div>`}
           <p class="effect" title="${esc(card.text)}"><span class="effect-symbols" aria-hidden="true">${catalog.iconText ? catalog.iconText(card.text) : esc(card.text)}</span><span class="sr-only">${esc(card.text)}</span></p>
           </div>
-          ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.BOARD_ICONS?.starbase || ''}</figure>`}
-          ${card.relic ? '<p class="needs">Excavation reward · no market price</p>' : needs(card) ? `<p class="needs">Needs ${esc(needs(card))}</p>` : ''}
+          ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.BOARD_ICONS?.[card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase'] || ''}</figure>`}
+          <p class="needs"><span class="code" title="Card id for feedback">${card.code}</span>${card.relic ? ' · Excavation reward · no market price' : card.military ? ' · Military deck' : ''}${!card.relic && needs(card) ? ` · Needs ${esc(needs(card))}` : ''}</p>
           <div class="gallery-feedback" ${feedbackVisible ? '' : 'hidden'}>
           <div class="vote" role="group" aria-label="Your verdict on ${esc(card.name)}">
             ${['like', 'neutral', 'dislike'].map(vote => `<button type="button" class="button" data-card="${card.code}" data-vote="${vote}" aria-pressed="${entry.vote === vote}">${vote === 'like' ? 'Liked it' : vote === 'dislike' ? 'Disliked it' : 'Neutral'}</button>`).join('')}
@@ -230,11 +242,11 @@
       }
       renderExport();
     }
+    const retiredFeedbackNames={N17:'Archive Purge',R01:'Phase-Shear Drive',R04:'Obelisk of Annihilation',R05:'Aegis of the Silent Architects',R09:'Memory Prism',R10:'Archive of Tides',R11:'Stellar Crucible',R12:'Evergreen Ark',R14:'Cinder Drive'};
     function renderExport() {
-      const lines = cards.filter(c => saved[c.code]?.vote || saved[c.code]?.note?.trim())
-        .sort((a, b) => a.code.localeCompare(b.code))
-        .map(c => `${c.code} ${c.name}: ${saved[c.code].vote || 'no vote'}${saved[c.code].note?.trim() ? ` — ${saved[c.code].note.trim()}` : ''}`);
-      $('#feedback-text').value = lines.length ? `Galactic Reach ${catalog.rulesVersion} card feedback\n${lines.join('\n')}` : '';
+      const lines = Object.entries(saved).filter(([,entry])=>entry?.vote||entry?.note?.trim()).sort(([a],[b])=>a.localeCompare(b))
+        .map(([code,entry])=>`${code} ${cards.find(c=>c.code===code)?.name||retiredFeedbackNames[code]||'Retired card'}: ${entry.vote||'no vote'}${entry.note?.trim()?` — ${entry.note.trim()}`:''}`);
+      $('#feedback-text').value = lines.length ? `Heirs Ad Astra ${catalog.rulesVersion} card feedback\n${lines.join('\n')}` : '';
     }
     $('#deck-filter').insertAdjacentHTML('beforeend', [['all', `All ${cards.length}`], ['normal', 'Normal deck'], ['military', 'Military deck'], ['relic', 'Alien relics']]
       .map(([id, label]) => `<button type="button" class="button button-ghost" data-filter="${id}">${label}</button>`).join(''));
@@ -257,6 +269,7 @@
     function renderCredits() {
       const names = Object.fromEntries([catalog.BASIC_CARDS, catalog.BASIC_TACTICS, catalog.ADVANCED_CARDS, catalog.MARKET_MILITARY, catalog.RELIC_CARDS]
         .flatMap(set => Object.entries(set)).map(([key, def]) => [key, `${def.code ? `${def.code} · ` : ''}${def.name}`]));
+      for(const [key,code] of Object.entries(relicIds))if(!names[key]&&retiredFeedbackNames[code])names[key]=`${code} · ${retiredFeedbackNames[code]}`;
       const families = {};
       for (const [key, work] of Object.entries(art)) (families[work.family] ||= []).push([key, work]);
       $('#credit-groups').innerHTML = Object.entries(families).map(([family, works]) => `<h3>${esc(family)}</h3><ul class="credit-list">${works.map(([key, work]) => `<li>

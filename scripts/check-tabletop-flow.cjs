@@ -18,13 +18,13 @@ async function wait(browser,expression){await browser.evaluate(`new Promise((res
     await phone.navigate(invite.url);
     await wait(phone,"!document.querySelector('#join').hidden");
     await phone.evaluate(`document.querySelector('#name').value='Phone guest';document.querySelector('#join').requestSubmit()`);
-    await wait(phone,"document.querySelector('#status').textContent.includes('host approval')");
+    await wait(phone,"document.querySelector('#status').textContent.includes('Waiting for your host')");
     const {data:requests}=await api(`/api/tabletop/${id}/requests`,host);
     assert.equal(requests.requests.length,1);
     await api(`/api/tabletop/${id}/approve`,host,{participant:requests.requests[0].participant,approve:true});
-    await wait(phone,"document.querySelector('#status').textContent.includes('Approved')");
+    await wait(phone,"document.querySelector('#status').textContent.includes('You’re in')");
     await api(`/api/tables/${id}/lobby/start`,host,{});
-    // Pairing navigates to the real game bundle when the host starts.
+    // Start opens the approved player automatically.
     for(let i=0;i<100;i++){
       const url=await phone.evaluate('location.pathname');if(url.includes('/client/'))break;
       await new Promise(resolve=>setTimeout(resolve,100));
@@ -65,7 +65,7 @@ async function wait(browser,expression){await browser.evaluate(`new Promise((res
     }
     await phone.send('Page.reload');await wait(phone,"document.querySelector('.app-shell') && !document.querySelector('.app-shell').inert");
     const {data:boardLink}=await api(`/api/tabletop/${id}/board-grant`,host,{});
-    await board.navigate(origin+boardLink.url);await wait(board,"document.querySelectorAll('.player').length===4");
+    await board.navigate(new URL(boardLink.url, origin).href);await wait(board,"document.querySelectorAll('.player').length===4");
     assert(await board.evaluate("document.querySelectorAll('.hex').length===331"));
     assert.deepEqual(phone.errors,[]);assert.deepEqual(board.errors,[]);
     console.log('ok - real guest pairing, host approval, pinned game assets, reload, and separate public board');

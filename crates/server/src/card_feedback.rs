@@ -1,4 +1,4 @@
-//! Galactic Reach card feedback for the 31.36 Capacity Cards experiment. The card
+//! Heirs Ad Astra card feedback for the 31.36 Capacity Cards experiment. The card
 //! gallery posts a like, dislike or neutral vote and a short note per stable card id
 //! (Nxx normal, Mxx military, Rxx relic). The host appends each entry as one JSON line
 //! to the file named by `CARD_FEEDBACK_PATH`. Without that variable the endpoint is

@@ -24,7 +24,7 @@ const RULEBOOK = 'prototypes/galactic-reach/rulebook.html';
   assert.deepEqual(run([], '## Change\nA thing.'), ['rules-grounding', 'gameplay-impact'], 'Missing declarations fail');
   assert.deepEqual(run([], body.replace('#round', '#missing')), ['rulebook-anchors']);
   assert.deepEqual(run([], body.replace('None: presentation changes preserve all actions and saved-state meaning.', 'None:')), ['gameplay-impact']);
-  const unrelated = '## Rules grounding\nNot applicable: account styling only; see docs/nido-auth.md for the authentication contract.\n## Gameplay impact\nNone: no Galactic Reach game behavior or state changes.';
+  const unrelated = '## Rules grounding\nNot applicable: account styling only; see docs/nido-auth.md for the authentication contract.\n## Gameplay impact\nNone: no Heirs Ad Astra game behavior or state changes.';
   assert.deepEqual(run(['crates/server/src/accounts.rs'], unrelated), []);
   assert.deepEqual(run(['prototypes/galactic-reach/app.js', RULEBOOK], unrelated), ['rule-bearing-grounding']);
   assert.deepEqual(run([], body.replace(/(## \w+[\w ]*\n)([^#]+)/g, '$1<!-- $2 -->\n')), ['rules-grounding', 'gameplay-impact'], 'Unfilled template comments do not count');
@@ -34,11 +34,11 @@ const RULEBOOK = 'prototypes/galactic-reach/rulebook.html';
   const advisory = await loadContext(ROOT, '.github/review-conventions.json');
   for (const heading of ['Rules grounding', 'Gameplay impact', 'How to review', 'Decisions for review']) assert(advisory.templates.default.includes(heading), heading);
   const commit = message => checkCommitMessage(message, advisory).map(f => f.rule);
-  assert.deepEqual(commit('Galactic Reach: Harbors refit Fleets'), [], 'A small commit needs only its subject');
-  assert.deepEqual(commit('Galactic Reach: Harbors refit Fleets\n\nWhy: fleets stranded far from home.\n\nRefs: #57\nBreaking-Change: saved fleets gain hull.'), []);
+  assert.deepEqual(commit('Heirs Ad Astra: Harbors refit Fleets'), [], 'A small commit needs only its subject');
+  assert.deepEqual(commit('Heirs Ad Astra: Harbors refit Fleets\n\nWhy: fleets stranded far from home.\n\nRefs: #57\nBreaking-Change: saved fleets gain hull.'), []);
   assert.deepEqual(commit('Harbors refit Fleets'), ['header-format']);
-  assert.deepEqual(commit('Galactic Reach: Harbors refit Fleets\n\nFleets were stranded.'), ['body-why']);
-  assert.deepEqual(commit('Galactic Reach: Harbors refit Fleets\n\nWhy: x.\n\nBREAKING CHANGE: y'), ['trailer-breaking']);
+  assert.deepEqual(commit('Heirs Ad Astra: Harbors refit Fleets\n\nFleets were stranded.'), ['body-why']);
+  assert.deepEqual(commit('Heirs Ad Astra: Harbors refit Fleets\n\nWhy: x.\n\nBREAKING CHANGE: y'), ['trailer-breaking']);
 
   // The code rules (scripts/review-conventions-rules.mjs): one compatibility box
   // ticked, matched by the changes/ entry. Entries are read from the checkout.
@@ -61,7 +61,7 @@ const RULEBOOK = 'prototypes/galactic-reach/rulebook.html';
   const sized = (message, sha) => checkCommitMessage(message, advisory, { sha }).map(f => f.rule);
   assert.deepEqual(sized('Review guidance: split the shared core', '1bc2136'), ['commit-body'], 'A large subject-only commit is reported');
   assert.deepEqual(sized('Review guidance: split the shared core\n\nWhy: two repositories share it.', '1bc2136'), []);
-  assert.deepEqual(sized('Galactic Reach: align the relics item', '913872d'), [], 'A small commit needs only its subject');
+  assert.deepEqual(sized('Heirs Ad Astra: align the relics item', '913872d'), [], 'A small commit needs only its subject');
   assert.deepEqual(sized('Review guidance: split the shared core'), [], 'An unknown commit is skipped');
 
   // One pinned ref of the shared validator, everywhere it is named.

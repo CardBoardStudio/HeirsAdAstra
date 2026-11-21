@@ -7,14 +7,14 @@
   }
   function issueBody(notes, current) {
     const rows = notes.filter(n => n.include !== false);
-    return ['## Playtest feedback', '', `Game: ${current.game || 'Galactic Reach'}`, `Rules: ${current.rules || 'unspecified'}`, `Playtest: ${safeUrl(current.url)}`, '', ...rows.flatMap((note, i) => {
+    return ['## Playtest feedback', '', `Game: ${current.game || 'Heirs Ad Astra'}`, `Rules: ${current.rules || 'unspecified'}`, `Playtest: ${safeUrl(current.url)}`, '', ...rows.flatMap((note, i) => {
       const c = note.context || {}, target = note.target;
       const where = [c.rules && `rules ${c.rules}`, c.round && `round ${c.round}`, c.phase, c.active && `active: ${c.active}`].filter(Boolean).join(' · ');
       return [`### ${i + 1}. ${target?.label || 'General observation'}`, where, note.createdAt ? `Recorded: ${note.createdAt}` : '', target?.coord ? `Map hex: ${target.coord}` : '', '', note.text, ''];
     })].filter(line => line !== undefined).join('\n');
   }
   function issueLink(title, body) {
-    const base = ISSUE_BASE + '?title=' + encodeURIComponent(title || 'Galactic Reach playtest feedback');
+    const base = ISSUE_BASE + '?title=' + encodeURIComponent(title || 'Heirs Ad Astra playtest feedback');
     const full = base + '&body=' + encodeURIComponent(body);
     return {url: full.length <= 7000 ? full : base, needsCopy: full.length > 7000};
   }
@@ -26,7 +26,7 @@
   const doc = host.document;
   if (!doc || doc.getElementById('playtest-notes-root')) return;
   const script = doc.currentScript;
-  const game = script?.dataset.game || 'Galactic Reach', rules = script?.dataset.rules || 'unspecified';
+  const game = script?.dataset.game || 'Heirs Ad Astra', rules = script?.dataset.rules || 'unspecified';
   const key = `drawing-board-playtest-notes-v1:${game}:${rules}`;
   let data, pickMode = false, removed = null, frame = null;
   try { data = normalize(JSON.parse(host.localStorage.getItem(key))); } catch (_) { data = normalize(null); }

@@ -1,4 +1,4 @@
-// Galactic Reach screens must fit the viewport at 1280x720 and larger: no scrolling may be
+// Heirs Ad Astra screens must fit the viewport at 1280x720 and larger: no scrolling may be
 // required to view or play (AGENTS.md). This drives a headless Chrome over the DevTools
 // protocol (Node built-ins only) through the key play states and fails when the document
 // scrolls, a game panel or card clips its content, a control leaves the viewport, or a
@@ -175,6 +175,8 @@ function sharedView(state) {
       { seat: 2, name: 'Violet Assembly' }, { seat: 3, name: 'Helios Compact' }], state };
 }
 
+// A hand of any size, mixing starters (with their conversion corner) and bought cards.
+const fanHand = size => Array.from({ length: size }, (_, i) => ['move', 'construct', ...MARKET.filter(c => c.code.startsWith('N')).map(c => c.key)][i % 12]);
 const longHand = ['move', 'construct', ...MARKET.filter(c => c.code.startsWith('N')).slice(0, 6).map(c => c.key)];
 // A real market is three cards from each price row (rulebook #market-tiers). Four pages cycle every
 // design through its row, heaviest text first, so page 1 is each row's worst case.
@@ -186,6 +188,9 @@ const chunks = [0, 1, 2, 3].map(page => byTier.flatMap(row => [0, 1, 2].map(n =>
 const CASES = [
   { name: 'operations, 5-card hand', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), devices: true },
   { name: 'operations, 8-card hand', save: operationsState(longHand) },
+  // The hand is a fan (rules #card-corners): every card shows both upper corners, for the smallest,
+  // a typical and the largest hands, on desktop, tablet and phone.
+  ...[1, 5, 10, 12].map(size => ({ name: `operations, fan of ${size}`, save: operationsState(fanHand(size)), expect: 'fan', devices: true })),
   { name: 'operations, raised hand card (long text)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), focus: '#hand-row .game-card:nth-child(3) button' },
   { name: 'operations, 8-card hand raised', save: operationsState(longHand), focus: '#hand-row .game-card:nth-child(5) button' },
   // A chosen order shows a toast; it must not cover the hand or any control.
@@ -221,7 +226,14 @@ const CASES = [
   // Trading with the bank on the mat: drag (mouse, and touch on iPads), and tap then tap.
   { name: 'mat: drag Matter onto Data trades 4 for 1', save: matTradeState(), matTrade: { from: 'matter', to: 'data', how: 'drag', expect: { matter: -4, data: 1 } }, devices: 'tablet' },
   { name: 'mat: tap Matter, then Data', save: matTradeState(), matTrade: { from: 'matter', to: 'data', how: 'tap', expect: { matter: -4, data: 1 } } },
-  { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
+  // The market drawer (rulebook #shared-board): closed by default, the map taking its room; the
+  // Market handle opens the side panel (the Supply drawer on phones); your Buy turn shows whole
+  // cards over the map, and Smaller returns the side panel.
+  { name: 'market closed (operations)', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), marketView: 'closed', extraSizes: true, devices: true },
+  { name: 'market side panel (operations)', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), click: ['#market-handle', '.phone-drawers [data-drawer="supply"]'], marketView: 'side', extraSizes: true, devices: true },
+  { name: 'buy, whole-card market', save: buyState(chunks[0], { matter: 8, energy: 8, biomass: 8, data: 8 }), marketView: 'full', buyVisible: true, extraSizes: true, devices: true },
+  { name: 'buy, market shrunk to the side panel', save: buyState(chunks[0]), click: ['#market-size'], marketView: 'side', buyVisible: true },
+  { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab', '#market-handle'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'], buyVisible: true, extraSizes: i === 0 })),
   // Buy with an empty hand (everything converted or played): the market and Finish Buy must show.
   { name: 'buy, held 2:1 exchange card', save: (() => { const s=buyState(chunks[0]); s.players[0].hand=[card('exchangeProtocol')]; return s; })(), focus: '[data-order-card]' },
@@ -334,24 +346,31 @@ const MEASURE = `(() => {
     const t = top.getBoundingClientRect();
     if (t.top < -1 || t.bottom > H + 1 || t.left < -1 || t.right > W + 1) problems.push('card top outside viewport: ' + label(top));
     // A top shows its one-line headline, its effect in icons, or its effect, whichever it shows.
-    const summary = [top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(e => e && e.getClientRects().length) || top.querySelector('.card-headline') || top.querySelector('.card-effect');
+    // A card's summary: its corner symbols where it has them (rules #card-corners), else its one-line effect.
+    const summary = [top.querySelector('.card-symbols'), top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(e => e && e.getClientRects().length) || top.querySelector('.card-symbols') || top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
     // An open Sector Scan (a popover over the map) or Trade panel may cover card tops while it is open.
     if (!document.querySelector(':is(dialog[open], body.menu-open, .sector-popover:popover-open, .trade-drawer.open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
       const c = chip.getBoundingClientRect(), hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       if (!hit || !top.contains(hit)) { problems.push('gain badge covered in ' + label(top)); break; }
     }
+    // A resting hand card shows only its symbols (rules #card-corners): its name is for screen readers then.
+    const symbols = top.querySelector(':scope > .card-symbols'), nameEl = top.querySelector('.card-name');
+    const nameShown = !(symbols && symbols.getClientRects().length && nameEl && getComputedStyle(nameEl).clipPath.includes('inset(50%)'));
     // Only level I starters print a gain badge; an empty footer has nothing to show.
     const footer = top.querySelector('.card-footer');
     // In the hand, a top's text and badges must end before its right-hand neighbour begins.
     const next = top.closest('#hand-row') && top.nextElementSibling;
     if (next && !document.querySelector('#hand-row .game-card:is(:hover, :focus, :focus-within)')) {
       const limit = next.getBoundingClientRect().left;
-      const parts = [top.querySelector('.card-name'), summary, ...top.querySelectorAll('.card-footer .resource-chip, .card-footer .level-badge')].filter(Boolean);
-      const under = parts.find(part => { const t = part.getBoundingClientRect(); return t.width > 0 && t.right > limit + 1; });
+      const parts = [nameShown ? top.querySelector('.card-name') : null, summary, ...top.querySelectorAll('.card-footer .resource-chip, .card-footer .level-badge')].filter(Boolean);
+      // The hand is a fan of turned cards (rules #card-corners): test what lies on top of each part,
+      // not bounding boxes, which a turned card overstates.
+      const under = parts.find(part => { const t = part.getBoundingClientRect(); if (!(t.width > 0)) return false;
+        return [t.left + 2, t.left + t.width / 2, t.right - 2].some(x => { const hit = document.elementFromPoint(x, t.top + t.height / 2)?.closest('#hand-row > .game-card'); return hit && hit !== top; }); });
       if (under) problems.push('hand text under the next card: ' + label(under) + ' in ' + label(top));
     }
-    for (const part of [top.querySelector('.card-name'), footer?.textContent.trim() || footer?.querySelector('.resource-chip') ? footer : null, summary].filter(Boolean)) {
+    for (const part of [nameShown ? top.querySelector('.card-name') : null, footer?.textContent.trim() || footer?.querySelector('.resource-chip') ? footer : null, summary].filter(Boolean)) {
       const p = part.getBoundingClientRect();
       if (p.height < 4 || p.top < t.top - 1 || p.bottom > t.bottom + 1) { problems.push('card top hides ' + label(part) + ' in ' + label(top)); break; }
     }
@@ -380,7 +399,7 @@ const MEASURE = `(() => {
     }
   }
   // Every button on a raised card must be reachable: nothing may lie over its centre.
-  for (const button of document.querySelectorAll(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-buttons .button')) {
+  for (const button of document.querySelectorAll(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) :is(.card-buttons .button, .corner-button)')) {
     if (!shown(button) || modal) continue;
     const b = button.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
     if (!hit || !button.contains(hit)) problems.push('raised card button covered: ' + label(button) + ' by ' + (hit ? label(hit) : 'nothing'));
@@ -428,7 +447,7 @@ const MEASURE = `(() => {
   if (!phone && !modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
     // The centre and both side edges of every hex must be clickable.
     const r = hex.getBoundingClientRect(), y = r.top + r.height / 2;
-    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open, .trade-drawer.open, #gr-coach, .gr-coach-pointer, .gr-stage'); });
+    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open, .trade-drawer.open, #gr-coach, .gr-coach-pointer, .gr-stage, .market-full :is(.market-sheet, #market-panel, #upgrade-group, .market-handles)'); });
     if (blocked) { const hit = document.elementFromPoint(...blocked); problems.push('hex covered at ' + Math.round(blocked[0]) + ',' + Math.round(y) + ' by ' + (hit ? label(hit) : 'nothing')); break; }
   }
   // The map fills the space left to it. On a landscape table it reaches between the left-hand
@@ -442,7 +461,7 @@ const MEASURE = `(() => {
     if (matchMedia('(orientation: landscape)').matches) {
       if (!document.querySelector('.log-panel.open')) {
         const hexes = [...board.querySelectorAll('.hex')].map(hex => hex.getBoundingClientRect());
-        const panels = [...document.querySelectorAll('#prestige-track, .standings-stats, .phase-stepper, .log-panel, .map-tools, #map-legend-corner, #hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].filter(shown);
+        const panels = [...document.querySelectorAll('#prestige-track, .standings-stats, .phase-stepper, .log-panel, .map-tools, #map-legend-corner, #hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, #market-handles')].filter(shown);
         const apart = (h, o) => Math.max(o.left - h.right, h.left - o.right, o.top - h.bottom, h.top - o.bottom, 0);
         const gaps = [['region left', Math.min(...hexes.map(h => h.left)) - r.left], ['region top', Math.min(...hexes.map(h => h.top)) - r.top], ['region bottom', r.bottom - Math.max(...hexes.map(h => h.bottom))],
           ...panels.map(e => { const o = e.getBoundingClientRect(); return [label(e).slice(0, 40), Math.min(...hexes.map(h => apart(h, o)))]; })];
@@ -457,9 +476,13 @@ const MEASURE = `(() => {
   // No wasted felt on a wide desktop table: the largest rectangle of table not covered by any piece
   // or hex stays under 4% of the window (measured on an 8px grid).
   // Only the table during a game is measured (not a waiting room, nor a shared table's top bar).
+  // With the market drawer closed (rulebook #shared-board) the map is limited by the window's
+  // height, so the closed market's room shows as felt beside the centred map: that state alone is
+  // not measured (at 1920x1080 an empty 568x736 area, 20% of the window).
   const tableArea = document.querySelector('.app-shell')?.getBoundingClientRect();
-  if (!phone && !modal && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, .board-stage.map-zoomed')) {
-    const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .standings-stats, .phase-stepper, .log-panel, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
+  const marketClosed = document.documentElement.classList.contains('market-drawer') && document.documentElement.classList.contains('market-closed');
+  if (!phone && !modal && !marketClosed && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, .board-stage.map-zoomed')) {
+    const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .standings-stats, .phase-stepper, .log-panel, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast, .market-full .market-sheet')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
     const cell = 8, cols = Math.ceil(innerWidth / cell), rows = Math.ceil(innerHeight / cell), heights = new Array(cols).fill(0);
     const covered = new Uint8Array(cols * rows);
     // Everything outside the table area counts as covered.
@@ -654,6 +677,13 @@ async function runCase(browser, origin, testCase, viewport) {
   // zoom) it may scroll vertically, like a phone.
   await browser.evaluate(`window.__fitMode = ${JSON.stringify(isPhone([width, height]) || (testCase.lobby && height < 700) ? 'phone' : 'fit')}; true`);
   const { problems, slack } = await browser.evaluate(MEASURE);
+  // The market drawer's state: the table's view (closed, side, full; an upright table has no
+  // whole-card view, so its Buy turn opens the band), or on a phone whether the Supply drawer is open.
+  if (testCase.marketView) {
+    const got = await browser.evaluate(`(() => { const c = document.documentElement.classList; if (c.contains('market-drawer')) return ['closed', 'side', 'full'].find(v => c.contains('market-' + v)); if (matchMedia('(max-width: 599px), (max-height: 599px)').matches) return document.body.dataset.drawer === 'supply' ? 'open' : 'closed'; return 'band'; })()`);
+    const want = isPhone([width, height]) ? (testCase.marketView === 'closed' ? 'closed' : 'open') : height >= width && testCase.marketView === 'full' ? 'side' : testCase.marketView;
+    if (got !== want) problems.push(`market drawer: ${got}, expected ${want}`);
+  }
   if (testCase.buyVisible) {
     const seen = await browser.evaluate(`(() => { const shown = e => e && e.checkVisibility() && e.getBoundingClientRect().height > 8;
       return { market: [...document.querySelectorAll('#market-row .game-card')].filter(shown).length, finish: shown([...document.querySelectorAll('#board-primary, #hand-finish-buy-button, #finish-buy-button')].find(shown)) }; })()`);
@@ -681,6 +711,23 @@ async function runCase(browser, origin, testCase, viewport) {
   }
   // Pointing at a hand card raises that card itself into the whole card, in place above the hand:
   // its effect shows at reading size and whole, inside the window; no copy opens beside the map.
+  if (testCase.expect === 'fan') problems.push(...await browser.evaluate(`(() => {
+    // Both upper corners of every resting card are on top at their own place in the hand.
+    // On a phone the hand is a scrolling row: judge the cards in view.
+    const problems = [], view = document.querySelector('#hand-row').getBoundingClientRect();
+    const cards = [...document.querySelectorAll('#hand-row > .game-card')].filter(card => { const r = card.getBoundingClientRect(); return r.left >= view.left - 1 && r.right <= Math.min(innerWidth, view.right) + 1; });
+    for (const card of cards) {
+      const parts = [card.querySelector(':scope > .card-symbols'), card.querySelector(':scope > .card-footer')].filter(e => e && e.getClientRects().length);
+      if (!parts.length) parts.push(card.querySelector('.card-name'));
+      for (const part of parts) {
+        const r = part.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+        const hit = document.elementFromPoint(x, y)?.closest('#hand-row > .game-card');
+        if (hit !== card) problems.push('fan hides ' + (part.className.split(' ')[0] || 'part') + ' of ' + (card.querySelector('.card-name')?.textContent || 'a card') + (hit ? ' under ' + hit.querySelector('.card-name')?.textContent : ''));
+        if (x < 0 || x > innerWidth || y < 0 || y > innerHeight) problems.push('fan corner outside the window: ' + card.querySelector('.card-name')?.textContent);
+      }
+    }
+    return problems.slice(0, 6);
+  })()`));
   if (testCase.expect === 'inspect') problems.push(...await browser.evaluate(`(() => {
     const card = document.querySelector('#hand-row > .game-card:hover'), problems = [];
     if (document.querySelector('#card-inspect, .card-inspect')) problems.push('a separate inspect copy opened');

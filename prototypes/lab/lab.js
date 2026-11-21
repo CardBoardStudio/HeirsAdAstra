@@ -27,7 +27,7 @@ let session,
   lobbyTimer,
   busy = false,
   pendingSeries;
-// Players see Galactic Reach only. Voidwright, the platform's example game, keeps its
+// Players see Heirs Ad Astra only. Voidwright, the platform's example game, keeps its
 // server routes and /voidwright/ page but is not offered here.
 const arenaGame = "galactic-reach";
 const returnPath = (() => {
@@ -41,7 +41,7 @@ const page = () =>
     ? location.hash.slice(1)
     : location.hash.startsWith("#invite/") ? "invite" : location.hash.startsWith("#lobby/") ? "lobby" : "library";
 const inviteToken = () => /^#invite\/([a-f0-9]{64})$/.exec(location.hash)?.[1];
-// Galactic Reach waiting room: #lobby/<table>[/<invite>].
+// Heirs Ad Astra waiting room: #lobby/<table>[/<invite>].
 const lobbyRoute = () => { const m = /^#lobby\/([a-f0-9]{32})(?:\/([a-f0-9]{64}))?$/.exec(location.hash); return m ? {id:m[1], invite:m[2] || ""} : null; };
 async function loadLobby() {
   const route = lobbyRoute();
@@ -139,40 +139,40 @@ async function action(work) {
     });
   }
 }
-const galaxy = `<svg viewBox="0 0 470 345" role="img" aria-label="Four factions exploring an orbital map"><defs><radialGradient id="planet"><stop stop-color="#79e3f2"/><stop offset=".42" stop-color="#327a99"/><stop offset="1" stop-color="#10273f"/></radialGradient><radialGradient id="halo"><stop stop-color="#4aacc7" stop-opacity=".2"/><stop offset="1" stop-color="#123044" stop-opacity="0"/></radialGradient></defs><circle cx="244" cy="174" r="170" fill="url(#halo)"/><g fill="none" stroke="#456077" stroke-width=".7"><ellipse cx="243" cy="175" rx="193" ry="90" transform="rotate(-30 243 175)"/><ellipse cx="243" cy="175" rx="151" ry="134" transform="rotate(-30 243 175)" stroke-dasharray="3 6"/><circle cx="243" cy="175" r="94"/><path d="M243 43v263M94 175h315" stroke-dasharray="2 7"/></g><g fill="#172e43" stroke="#59849c"><path d="m243 115 52 30v60l-52 30-52-30v-60z"/><path d="m151 70 27 16v32l-27 16-27-16V86z"/><path d="m349 151 27 16v32l-27 16-27-16v-32z"/><path d="m177 252 21 12v24l-21 12-21-12v-24z"/></g><circle cx="243" cy="175" r="42" fill="url(#planet)"/><path d="m215 153 13 9 8-15 17 4 7 17-5 14 15 11-23 16-12-9-10-2-6-21z" fill="#65bbc4" opacity=".55"/><g stroke="#55d9f4" fill="#102c3c"><path d="m151 89 10 20-10-5-10 5z"/><path d="m331 79 7 14-7-3-7 3z"/></g><g fill="#bc9cff"><circle cx="349" cy="183" r="7"/><circle cx="94" cy="200" r="3"/></g><g fill="#ffc95e"><circle cx="177" cy="276" r="6"/><circle cx="287" cy="57" r="3"/></g><g fill="#6ee7a8"><circle cx="321" cy="264" r="4"/></g><g fill="#d7edf8"><circle cx="87" cy="77" r="1.5"/><circle cx="383" cy="67" r="1.5"/><circle cx="404" cy="244" r="1.5"/><circle cx="267" cy="309" r="1"/><circle cx="113" cy="284" r="1"/></g><text x="289" y="128" fill="#9fbad0" font-family="monospace" font-size="9" letter-spacing="1">OUTER REACH</text></svg>`;
+const galaxy = `<svg viewBox="0 0 470 345" role="img" aria-label="Four factions exploring an orbital map"><defs><radialGradient id="planet"><stop style="stop-color:var(--cyan)"/><stop offset=".42" style="stop-color:var(--felt)"/><stop offset="1" style="stop-color:var(--felt-deep)"/></radialGradient><radialGradient id="halo"><stop style="stop-color:var(--cyan);stop-opacity:.2"/><stop offset="1" style="stop-color:var(--felt-deep);stop-opacity:0"/></radialGradient></defs><circle cx="244" cy="174" r="170" fill="url(#halo)"/><g fill="none" style="stroke:var(--line-bright)" stroke-width=".7"><ellipse cx="243" cy="175" rx="193" ry="90" transform="rotate(-30 243 175)"/><ellipse cx="243" cy="175" rx="151" ry="134" transform="rotate(-30 243 175)" stroke-dasharray="3 6"/><circle cx="243" cy="175" r="94"/><path d="M243 43v263M94 175h315" stroke-dasharray="2 7"/></g><g style="fill:var(--surface);stroke:var(--line-bright)"><path d="m243 115 52 30v60l-52 30-52-30v-60z"/><path d="m151 70 27 16v32l-27 16-27-16V86z"/><path d="m349 151 27 16v32l-27 16-27-16v-32z"/><path d="m177 252 21 12v24l-21 12-21-12v-24z"/></g><circle cx="243" cy="175" r="42" fill="url(#planet)"/><path d="m215 153 13 9 8-15 17 4 7 17-5 14 15 11-23 16-12-9-10-2-6-21z" style="fill:var(--cyan)" opacity=".55"/><g style="stroke:var(--human);fill:var(--bg)"><path d="m151 89 10 20-10-5-10 5z"/><path d="m331 79 7 14-7-3-7 3z"/></g><g style="fill:var(--ai-2)"><circle cx="349" cy="183" r="7"/><circle cx="94" cy="200" r="3"/></g><g style="fill:var(--ai-3)"><circle cx="177" cy="276" r="6"/><circle cx="287" cy="57" r="3"/></g><g style="fill:var(--ai-1)"><circle cx="321" cy="264" r="4"/></g><g style="fill:var(--text)"><circle cx="87" cy="77" r="1.5"/><circle cx="383" cy="67" r="1.5"/><circle cx="404" cy="244" r="1.5"/><circle cx="267" cy="309" r="1"/><circle cx="113" cy="284" r="1"/></g><text x="289" y="128" style="fill:var(--muted)" font-family="monospace" font-size="9" letter-spacing="1">OUTER REACH</text></svg>`;
 function head(kicker, title, description, badge = "") {
   return `<div class="page-head"><div><div class="eyebrow">${kicker}</div><h1>${title}</h1><p>${description}</p></div>${badge ? `<span class="badge">${badge}</span>` : ""}</div>`;
 }
 function libraryView() {
   return (
     head(
-      "GALACTIC REACH",
+      "HEIRS AD ASTRA",
       "Your next expedition starts here.",
       "Explore a new world. Build a better rival. Make yourself at home.",
       '<span class="live-dot"></span> PLAYTEST',
     ) +
     `
-  <section class="hero"><div class="hero-copy"><span class="badge cyan">NOW IN PLAYTEST</span><h2>Galactic Reach</h2><p>A galaxy of possibilities. Command your faction, build your fleet, and chart a path to the stars.</p><div class="meta"><span>1 player + 3 AI</span><span>4X strategy</span><span>Saved tables</span></div><div class="hero-actions"><a class="primary" href="/?game=galactic-reach#tables">Create a table <span>↗</span></a><a class="secondary learn-to-play" href="/galactic-reach/?tutorial=1">New here? Learn to play <span>→</span></a></div><p class="learn-note">A guided first game on the real table, one step at a time.</p><a class="text-link guest-link" href="/galactic-reach/">Play as a guest · saved in this browser →</a></div><div class="hero-art">${galaxy}<span class="art-label">EXPLORE / BUILD / OUTMANEUVER</span></div></section>
-  <div class="cards"><section class="panel game-card"><div class="card-icon" aria-hidden="true">⟁</div><div><small style="color:var(--gold)">LEARN THE GAME</small><h3>Rules and cards</h3><p>Read the rulebook, then browse every market card before your first expedition.</p><a class="text-link" href="/galactic-reach/?tutorial=1">Learn to play →</a> <a class="text-link" href="/galactic-reach/rulebook.html">Read the rulebook →</a> <a class="text-link" href="/galactic-reach/cards.html">Card gallery →</a></div></section><section class="panel game-card"><span class="arena-icon" aria-hidden="true">◇</span><div><small style="color:var(--purple)">A DIFFERENT KIND OF PLAYTEST</small><h3>Meet your next challenger.</h3><p>Create AI players, run matches, and discover how their strategies compare.</p><a class="text-link" href="#arena">Explore the AI arena →</a></div></section></div>
+  <section class="hero"><div class="hero-copy"><span class="badge cyan">NOW IN PLAYTEST</span><h2>Heirs Ad Astra</h2><p>A galaxy of possibilities. Command your faction, build your fleet, and chart a path to the stars.</p><div class="meta"><span>1 player + 3 AI</span><span>4X strategy</span><span>Saved tables</span></div><div class="hero-actions"><a class="primary" href="/?game=galactic-reach#tables">Create a table <span>↗</span></a><a class="secondary learn-to-play" href="/galactic-reach/?tutorial=1">New here? Learn to play <span>→</span></a></div><p class="learn-note">A guided first game on the real table, one step at a time.</p><a class="text-link guest-link" href="/galactic-reach/">Play as a guest · saved in this browser →</a></div><div class="hero-art">${galaxy}<span class="art-label">EXPLORE / BUILD / OUTMANEUVER</span></div></section>
+  <div class="cards"><section class="panel game-card"><div class="card-icon" aria-hidden="true">⟁</div><div><small>LEARN THE GAME</small><h3>Rules and cards</h3><p>Read the rulebook, then browse every market card before your first expedition.</p><a class="text-link" href="/galactic-reach/?tutorial=1">Learn to play →</a> <a class="text-link" href="/galactic-reach/rulebook.html">Read the rulebook →</a> <a class="text-link" href="/galactic-reach/cards.html">Card gallery →</a></div></section><section class="panel game-card"><span class="arena-icon" aria-hidden="true">◇</span><div><small>A DIFFERENT KIND OF PLAYTEST</small><h3>Meet your next challenger.</h3><p>Create AI players, run matches, and discover how their strategies compare.</p><a class="text-link" href="#arena">Explore the AI arena →</a></div></section></div>
   <div class="section-head"><h2>Your tables</h2><a class="text-link" href="#tables">View all / create new →</a></div><section class="panel">${tableList()}</section>`
   );
 }
 function tableList() {
   if (!profile) return `<div class="empty"><span aria-hidden="true">◎</span><h3>A seat with your name on it.</h3><p>Sign in to save named tables and return from another browser.</p><a class="secondary" href="#account">Sign in or create an account</a></div>`;
   const shown = tables.filter(g => g.game === arenaGame);
-  if (!shown.length) return '<div class="empty"><h3>Your first table is waiting.</h3><p>Create a named game of Galactic Reach. It will be waiting here when you return.</p></div>';
-  return shown.map(g => `<a class="table-link" href="${esc(g.url)}"><div><strong>${esc(g.name)}</strong><small>${g.guest ? `Galactic Reach · invited · ${g.players} at the table` : "Galactic Reach · Solo + 3 AI"} · Rules ${esc((g.rules_version || "unknown").split("/").pop())} · ${g.status === "waiting" ? "Waiting room" : `Round ${g.round} · ${esc(g.status)}`}</small></div><span>${g.status === "waiting" ? "Open waiting room" : g.status === "new" ? "Start table" : "Open table"} ↗</span></a>`).join("");
+  if (!shown.length) return '<div class="empty"><h3>Your first table is waiting.</h3><p>Create a named game of Heirs Ad Astra. It will be waiting here when you return.</p></div>';
+  return shown.map(g => `<a class="table-link" href="${esc(g.url)}"><div><strong>${esc(g.name)}</strong><small>${g.guest ? `Heirs Ad Astra · invited · ${g.players} at the table` : "Heirs Ad Astra · Solo + 3 AI"} · Rules ${esc((g.rules_version || "unknown").split("/").pop())} · ${g.status === "waiting" ? "Waiting room" : `Round ${g.round} · ${esc(g.status)}`}</small></div><span>${g.status === "waiting" ? "Open waiting room" : g.status === "new" ? "Start table" : "Open table"} ↗</span></a>`).join("");
 }
 function tablesView() {
   return head("A PLACE TO PICK UP WHERE YOU LEFT OFF", "Your tables.", "Name a game and return whenever you’re ready. Each table keeps the rules version it started with.") +
-    `<div class="split"><section class="panel"><h2>Saved games</h2>${tableList()}</section><section class="panel"><h2>Create a table</h2>${profile ? `<form id="table-form"><p class="hint">${rulesHint()}</p><label for="table-name">Table name</label><input id="table-name" name="name" required maxlength="60" placeholder="Friday expedition"><p class="form-note">Opens a waiting room first: share the invite link, watch seats fill, then Start. Standard AI rivals fill the remaining seats. Unrated and saved to your account. Your guest game stays separate.</p><button class="primary">Create and open table →</button></form>` : '<p>Sign in to create a table saved to your account.</p><a class="primary" href="#account">Sign in →</a><hr class="divider"><a class="text-link" href="/galactic-reach/">Play Galactic Reach as a guest →</a>'}</section></div>`;
+    `<div class="split"><section class="panel"><h2>Saved games</h2>${tableList()}</section><section class="panel"><h2>Create a table</h2>${profile ? `<form id="table-form"><p class="hint">${rulesHint()}</p><label for="table-name">Table name</label><input id="table-name" name="name" required maxlength="60" placeholder="Friday expedition"><p class="form-note">Opens Table setup: invite players, approve their seats, then Start. Play here or add an optional public board. Standard AI rivals fill the remaining seats. Unrated and saved to your account. Your guest game stays separate.</p><button class="primary">Create and open table →</button></form>` : '<p>Sign in to create a table saved to your account.</p><a class="primary" href="#account">Sign in →</a><hr class="divider"><a class="text-link" href="/galactic-reach/">Play Heirs Ad Astra as a guest →</a>'}</section></div>`;
 }
 // Read the current rules from the server's engine, never a hard-coded label.
 function rulesHint() {
   const info = arenaInfo();
   if (!info) return "";
   const version = (info.rules_version || "").split("/").pop();
-  return `New Galactic Reach tables use rules ${esc(version)} · ${esc(info.experiment || "")}. Start a new game.`;
+  return `New Heirs Ad Astra tables use rules ${esc(version)} · ${esc(info.experiment || "")}. Start a new game.`;
 }
 const seatLabel = seat => seat.kind === "host" ? `${esc(seat.name)}${seat.you ? " (you)" : ""}<small>Host</small>`
   : seat.kind === "friend" ? `${esc(seat.name)}${seat.you ? " (you)" : ""}<small>Friend · signed in</small>`
@@ -180,8 +180,8 @@ const seatLabel = seat => seat.kind === "host" ? `${esc(seat.name)}${seat.you ? 
   : `Open seat<small>Waiting for a friend</small>`;
 function lobbyView() {
   const route = lobbyRoute();
-  if (!session?.user) return head("GALACTIC REACH · WAITING ROOM", "You’re invited to a table.", "Sign in to take a seat. Nido or your recovery key both work.") + `<section class="panel"><a class="primary" href="/?return_to=${encodeURIComponent("/?game=galactic-reach" + location.hash)}#account">Sign in to join →</a></section>`;
-  if (!lobby) return head("GALACTIC REACH · WAITING ROOM", "This waiting room isn’t available.", esc(lobbyError || "Check the link with the host.")) + `<a class="text-link" href="#tables">← Your tables</a>`;
+  if (!session?.user) return head("HEIRS AD ASTRA · WAITING ROOM", "You’re invited to a table.", "Sign in to take a seat. Nido or your recovery key both work.") + `<section class="panel"><a class="primary" href="/?return_to=${encodeURIComponent("/?game=galactic-reach" + location.hash)}#account">Sign in to join →</a></section>`;
+  if (!lobby) return head("HEIRS AD ASTRA · WAITING ROOM", "This waiting room isn’t available.", esc(lobbyError || "Check the link with the host.")) + `<a class="text-link" href="#tables">← Your tables</a>`;
   const started = lobby.status !== "waiting";
   // Rivals are fixed for now (captain, 2026-11-14): Standard AI rivals fill every seat not taken by a player.
   const settings = `<p class="form-note">${lobby.ai_rivals} Standard AI rival${lobby.ai_rivals === 1 ? "" : "s"} (Vanguard, Architect, Pathfinder) fill the seat${lobby.ai_rivals === 1 ? "" : "s"} not taken by players. Friends who join take an AI seat.</p>`;
@@ -190,13 +190,13 @@ function lobbyView() {
     ? `<form id="lobby-settings" class="lobby-settings"><label for="lobby-target">Prestige target</label><select id="lobby-target" name="victory_target">${lobby.victory_targets.map(n => `<option value="${n}" ${n === lobby.victory_target ? "selected" : ""}>${n} Prestige${n === 30 ? " (default)" : ""}</option>`).join("")}</select><p class="form-note">The first faction at or above the target when a round ends wins.</p></form>`
     : lobby.victory_target ? `<p class="form-note">Race to ${lobby.victory_target} Prestige.</p>` : "";
   const invite = lobby.host && !started ? `<div class="lobby-invite"><label for="lobby-invite-link">Invite link</label><div class="lobby-invite-row"><input id="lobby-invite-link" readonly value="${esc(lobby.invite_url)}"><button class="secondary" id="copy-lobby-invite" type="button">Copy link</button></div><p class="form-note">Anyone with this link can take a seat after signing in. Share it privately.</p></div>` : "";
-  const phonePairing = lobby.host ? `<a class="secondary" href="/tabletop/host.html?table=${lobby.id}">Pair phones / public tablet</a>` : "";
+  const phonePairing = lobby.host ? `<a class="secondary" href="/tabletop/host.html?table=${lobby.id}">Table setup · players & public board</a>` : "";
   const start = started
     ? (lobby.table_url && (lobby.host || lobby.shared) ? `<a class="primary" href="${esc(lobby.table_url)}">Open the game →</a>` : `<p class="form-note">The host started this table solo before you joined.</p>`)
     : lobby.host ? `<button class="primary" id="lobby-start" ${lobby.blocked ? "disabled" : ""}>Start the game →</button>${lobby.blocked ? `<p class="form-note lobby-blocked" role="status">${esc(lobby.blocked)}</p>` : ""}`
     : lobby.member ? `<p class="form-note" role="status">You have a seat. Waiting for the host to start.${lobby.blocked ? ` ${esc(lobby.blocked)}` : ""}</p><button class="secondary" id="lobby-leave">Leave this table</button>`
     : `<button class="primary" id="lobby-join">Take a seat →</button>`;
-  return head("GALACTIC REACH · WAITING ROOM", esc(lobby.name), started ? "This table has started." : "Seats fill as friends join. The host starts the game.", `Rules ${esc(lobby.rules_version.split("/").pop())}`) +
+  return head("HEIRS AD ASTRA · WAITING ROOM", esc(lobby.name), started ? "This table has started." : "Seats fill as friends join. The host starts the game.", `Rules ${esc(lobby.rules_version.split("/").pop())}`) +
     `<div class="split"><section class="panel"><h2>Seats</h2><ol class="lobby-seats">${lobby.seats.map(seat => `<li class="lobby-seat ${seat.kind}">${seatLabel(seat)}</li>`).join("")}</ol></section><section class="panel"><h2>${lobby.host ? "Host controls" : "Table"}</h2>${invite}${settings}${target}${start}${phonePairing}</section></div><p><a class="text-link" href="#tables">← Your tables</a></p>`;
 }
 function roster() {
@@ -233,7 +233,7 @@ function arenaView() {
   return (
     intro +
     `<p class="hint">Active rules: ${esc(arenaInfo().rules_version)} · Placement Elo · policies v3</p><div class="stat-grid"><div class="stat"><span>YOUR AI PLAYERS</span><strong>${arena.bots.length.toString().padStart(2, "0")}</strong><small>${12 - arena.bots.length} seats available</small></div><div class="stat"><span>COMPLETED MATCHES</span><strong>${games.toString().padStart(2, "0")}</strong><small>Rotated starting seats</small></div><div class="stat"><span>HIGHEST RATING</span><strong>${top ? Math.round(top.elo) : "—"}</strong><small>${top ? "In your lab" : "Awaiting matches"}</small></div></div>
-  <div class="split"><div><section class="panel"><div class="panel-heading"><h2>Your AI ladder</h2><span class="badge cyan">Elo · K 32</span></div>${roster()}<p class="hint"><strong>Difficulty is measured, not assigned.</strong><br>Everyone starts at 1200. Ratings compare players in your lab using four-faction Galactic Reach matches to 10 Prestige. The first 20 games are provisional; a rating is not a universal difficulty level. Elo compares every pair by final placement: Prestige, then colonies, then resources. Exact ties split the result. Earlier win/loss pools stay separate. Browser tables are unrated.</p></section><section class="panel" style="margin-top:20px"><div class="panel-heading"><h2>Recent series</h2><small>LAST 10</small></div>${history()}</section></div><div><section class="panel"><div class="eyebrow">PUT THEM TO THE TEST</div><h2>Run a series</h2><p>Each group of ${arenaInfo().seats} matches uses the same game seed and rotates every AI through every starting seat.</p>${arena.bots.length >= arenaInfo().seats ? `<form id="series-form">${Array.from({length: arenaInfo().seats}, (_, i) => `<label for="bot-${i}">Challenger ${i + 1}</label><select id="bot-${i}" name="seat${i}">${arena.bots.map((b, j) => `<option value="${esc(b.id)}" ${j === i ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>`).join("")}<label for="series-games">Games in series</label><select id="series-games" name="games">${(arenaInfo().seats === 2 ? [2,10,20] : [4,8,12,20]).map(n => `<option value="${n}">${n} games · ${n / arenaInfo().seats} full seat rotation${n > arenaInfo().seats ? "s" : ""}</option>`).join("")}</select><button class="primary">Run matches →</button><p class="form-note">Ratings update only after the whole series completes. Long Reach series may take several minutes.</p></form>` : `<p class="hint">Create at least ${arenaInfo().seats} AI accounts to start a series.</p>`}</section><section class="panel" style="margin-top:20px"><h2>Create an AI player</h2><form id="bot-form"><label for="bot-name">Player name</label><input id="bot-name" name="name" required maxlength="32" placeholder="Name your new challenger"><label for="bot-strategy">Strategy</label><select id="bot-strategy" name="strategy">${arenaPolicies().map((p) => `<option value="${p.id}">${esc(p.name)} · ${esc(p.version)}</option>`).join("")}</select><p id="policy-description" class="form-note">${esc(arenaPolicies()[0].description)}</p><button class="primary" ${arena.bots.length >= 12 ? "disabled" : ""}>Create AI account +</button></form></section></div></div>` + matchList(matches)
+  <div class="split"><div><section class="panel"><div class="panel-heading"><h2>Your AI ladder</h2><span class="badge cyan">Elo · K 32</span></div>${roster()}<p class="hint"><strong>Difficulty is measured, not assigned.</strong><br>Everyone starts at 1200. Ratings compare players in your lab using four-faction Heirs Ad Astra matches to 10 Prestige. The first 20 games are provisional; a rating is not a universal difficulty level. Elo compares every pair by final placement: Prestige, then colonies, then resources. Exact ties split the result. Earlier win/loss pools stay separate. Browser tables are unrated.</p></section><section class="panel" style="margin-top:20px"><div class="panel-heading"><h2>Recent series</h2><small>LAST 10</small></div>${history()}</section></div><div><section class="panel"><div class="eyebrow">PUT THEM TO THE TEST</div><h2>Run a series</h2><p>Each group of ${arenaInfo().seats} matches uses the same game seed and rotates every AI through every starting seat.</p>${arena.bots.length >= arenaInfo().seats ? `<form id="series-form">${Array.from({length: arenaInfo().seats}, (_, i) => `<label for="bot-${i}">Challenger ${i + 1}</label><select id="bot-${i}" name="seat${i}">${arena.bots.map((b, j) => `<option value="${esc(b.id)}" ${j === i ? "selected" : ""}>${esc(b.name)}</option>`).join("")}</select>`).join("")}<label for="series-games">Games in series</label><select id="series-games" name="games">${(arenaInfo().seats === 2 ? [2,10,20] : [4,8,12,20]).map(n => `<option value="${n}">${n} games · ${n / arenaInfo().seats} full seat rotation${n > arenaInfo().seats ? "s" : ""}</option>`).join("")}</select><button class="primary">Run matches →</button><p class="form-note">Ratings update only after the whole series completes. Long Reach series may take several minutes.</p></form>` : `<p class="hint">Create at least ${arenaInfo().seats} AI accounts to start a series.</p>`}</section><section class="panel" style="margin-top:20px"><h2>Create an AI player</h2><form id="bot-form"><label for="bot-name">Player name</label><input id="bot-name" name="name" required maxlength="32" placeholder="Name your new challenger"><label for="bot-strategy">Strategy</label><select id="bot-strategy" name="strategy">${arenaPolicies().map((p) => `<option value="${p.id}">${esc(p.name)} · ${esc(p.version)}</option>`).join("")}</select><p id="policy-description" class="form-note">${esc(arenaPolicies()[0].description)}</p><button class="primary" ${arena.bots.length >= 12 ? "disabled" : ""}>Create AI account +</button></form></section></div></div>` + matchList(matches)
   );
 }
 function accountView() {
@@ -250,7 +250,7 @@ function accountView() {
   return (
     head(
       "YOUR NEXT CHAPTER.",
-      "Your seat in Galactic Reach.",
+      "Your seat in Heirs Ad Astra.",
       "Create an account once. Return to your tables and AI players from any browser.",
     ) +
     (session.nido_available ? `<section class="panel nido-signin"><div><div class="eyebrow">SIGN IN WITH A PASSKEY</div><h2>Your Nido. Your seat.</h2><p>Use your Nido wallet to create an account or return to it. No enrollment code or recovery key needed.</p><p class="form-note">Current Nido testnet wallets with a single admin passkey. You’ll approve a sign-in message in Nido.</p></div><a class="primary" href="/api/auth/nido?return_to=${encodeURIComponent(returnPath || '/?game=galactic-reach#account')}">Continue with Nido ↗</a></section>` : "") +
@@ -415,7 +415,7 @@ function bind() {
   bindReplays(api,async()=>{matches=await api("/api/arena/matches");});
   onForm("#table-form", async body => {
     const table = await api("/api/tables", {game:arenaGame,name:body.name,practice:false,round_limit:20,lobby:true});
-    location.assign(table.url);
+    location.assign(arenaGame === "galactic-reach" ? `/tabletop/host.html?table=${table.id}` : table.url);
   });
   const room = route => `/api/tables/${lobbyRoute()?.id}/lobby${route}`;
   onClick("#lobby-join", async () => { lobby = await api(room("/join"), {invite:lobbyRoute().invite}); location.hash = `#lobby/${lobbyRoute().id}`; });
@@ -447,7 +447,7 @@ function bind() {
     await api("/api/invites/accept",{token:inviteToken()});
     if (resume()) return;
     location.hash = invitation.role === "admin" ? "admin" : "tables";
-    notice("Invitation accepted. Welcome to Galactic Reach.");
+    notice("Invitation accepted. Welcome to Heirs Ad Astra.");
   });
   document.querySelectorAll("[data-revoke-invite]").forEach(b => b.addEventListener("click",()=>action(async()=>{
     await api(`/api/admin/invites/${encodeURIComponent(b.dataset.revokeInvite)}/revoke`,{});
@@ -539,7 +539,7 @@ $("#download-key").addEventListener("click", () => {
   const url = URL.createObjectURL(
     new Blob(
       [
-        "Galactic Reach recovery key\nKeep private. Anyone with this key can sign in.\n\n" +
+        "Heirs Ad Astra recovery key\nKeep private. Anyone with this key can sign in.\n\n" +
           $("#new-key").value +
           "\n",
       ],
@@ -577,7 +577,7 @@ refresh().then(() => {
   if (nidoError) notice(nidoError.slice(0, 400), true);
 }).catch((e) => {
   $("#main").innerHTML =
-    "<h1>Galactic Reach is unavailable.</h1><p>Check your connection and reload to try again.</p>";
+    "<h1>Heirs Ad Astra is unavailable.</h1><p>Check your connection and reload to try again.</p>";
   notice(e.message, true);
 });
 

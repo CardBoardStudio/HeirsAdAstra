@@ -1,7 +1,7 @@
 // Exercise the authoritative combat continuation and private transport, not a mock.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const root=path.join(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8'),plain=v=>JSON.parse(JSON.stringify(v));
-const V30='crates/galactic-reach/rules/v30-';
+const V30='crates/galactic-reach/rules/v30-', V37='crates/galactic-reach/rules/v37-';
 function fixture({attacker=0,a={fleet:1},d={fleet:1},tag=null,card=false,prefix='prototypes/galactic-reach/'}={}) {
   const c=vm.createContext({});vm.runInContext(read(prefix+'adapter.js')+read(prefix+'app.js'),c);
   let e,seed=1729,calls=0;const factory=c.createGalacticAdapter;c.createGalacticAdapter=x=>{e=x;return factory(x);};
@@ -95,12 +95,12 @@ for(const attacker of [0,1]){
 }
 // Relic/regular reactions and Fleet-only offensive bonuses are consumed at reveal.
 // Targeting Algorithms and Ablative Plating left the market in 31.36; they remain in the 30.35 archive.
-for(const [key,bonus,shield,prefix] of [['targetingAlgorithms',2,0,V30],['warSongOfHollowStars',4,0],['aegisOfSilentArchitects',1,4],['ablativePlating',1,2,V30]]){
+for(const [key,bonus,shield,prefix] of [['targetingAlgorithms',2,0,V30],['warSongOfHollowStars',4,0,V37],['aegisOfSilentArchitects',1,4,V37],['ablativePlating',1,2,V30]]){
  const g=fixture({prefix});g.s.players[0].hand=[{key,id:'reaction'}];g.start();stays(g);choose(g,{type:'combat_tactic',tactic:'concentratedFire'});assert(g.s.players[0].hand.length);choose(g,{type:'combat_tactic',tactic:'concentratedFire'});
  assert.equal(g.s.pendingCombat?.volleys[0].attacker.bonus ?? g.s.lastCombat.volleys[0].attacker.bonus,bonus);assert.equal((g.s.pendingCombat||g.s.lastCombat).volleys[0].attacker.shields,shield);assert(g.s.players[0].inPlay.some(c=>c.id==='reaction'));
 }
 for(const [units,bonus] of [[{settler:1},1],[{fleet:1},3]]){
- const g=fixture({a:units,tag:'alienAssault'});g.s.players[0].hand=[{key:'warSongOfHollowStars',id:'song'}];g.start();stays(g);volley(g);const battle=g.s.pendingCombat||g.s.lastCombat;
+ const g=fixture({a:units,tag:'alienAssault',prefix:V37});g.s.players[0].hand=[{key:'warSongOfHollowStars',id:'song'}];g.start();stays(g);volley(g);const battle=g.s.pendingCombat||g.s.lastCombat;
  assert.equal(battle.volleys[0].attacker.bonus,bonus+(units.fleet?3:0));assert.equal(g.s.players[0].hand.some(c=>c.id==='song'),!units.fleet);
 }
 // Salvage caps both sides automatically and completes the original move once.

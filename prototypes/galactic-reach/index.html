@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101d22">
-  <title>Galactic Reach · 38.43 · Construct III Playtest</title>
-  <meta name="description" content="Play Galactic Reach against three computer-controlled rival factions.">
+  <title>Heirs Ad Astra · 38.43 · Construct III Playtest</title>
+  <meta name="description" content="Play Heirs Ad Astra against three computer-controlled rival factions.">
   <script type="importmap">{"imports":{
     "@aztec/bb.js":"/galactic-reach/zk/vendor/bb.js/index.js",
     "@noir-lang/noir_js":"/galactic-reach/zk/vendor/noir_js/index.mjs",
@@ -18,8 +18,9 @@
   <link rel="stylesheet" href="card-feel.css?v=3">
   <link rel="stylesheet" href="playtest-notes.css?v=1">
   <link rel="stylesheet" href="change-queue.css?v=1">
-  <link rel="stylesheet" href="guide.css?v=2">
+  <link rel="stylesheet" href="guide.css?v=3">
   <link rel="stylesheet" href="tabletop-controls.css">
+  <link rel="stylesheet" href="market-drawer.css?v=1">
 </head>
 <body>
   <a class="skip-link" href="#console">Skip to player controls</a>
@@ -29,7 +30,7 @@
       <div class="brand-block">
         <div class="brand-seal" aria-hidden="true">✦</div>
         <div><div class="eyebrow">A GAME OF EXPLORATION &amp; EMPIRE</div>
-        <h1>Galactic Reach</h1></div>
+        <h1>Heirs Ad Astra</h1></div>
         <small class="rules-badge">38.43 · playtest</small>
       </div>
       <div class="header-actions">
@@ -43,8 +44,8 @@
         <a class="button button-ghost" id="card-gallery-link" href="cards.html" target="_blank" rel="noopener" style="text-decoration:none">Card gallery</a>
         <button class="button button-ghost" id="new-game-button" type="button">New game</button>
       </div>
-      <p class="site-footer" id="site-footer"><span id="site-footer-version">Galactic Reach</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="cards.html#card-art-credits" target="_blank" rel="noopener">Credits</a></p>
-      <script>document.querySelector('#site-footer-version').textContent = `Galactic Reach ${document.querySelector('.rules-badge').textContent.trim()}`;</script>
+      <p class="site-footer" id="site-footer"><span id="site-footer-version">Heirs Ad Astra</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="cards.html#card-art-credits" target="_blank" rel="noopener">Credits</a></p>
+      <script>document.querySelector('#site-footer-version').textContent = `Heirs Ad Astra ${document.querySelector('.rules-badge').textContent.trim()}`;</script>
     </header>
     <button class="table-menu-button" id="table-menu-button" type="button" aria-expanded="false" aria-controls="table-menu" aria-label="Game menu"><span aria-hidden="true"></span></button>
     <details class="playtest-changes" id="playtest-changes">
@@ -132,11 +133,17 @@
             <div class="prestige-track" id="prestige-track" role="group" aria-label="Faction standings: the race to the Prestige goal"></div>
             <div class="board-map-region">
               <div class="galaxy-board" id="galaxy-board" role="group" aria-label="Interactive galaxy map" aria-describedby="resource-legend symbol-legend"></div>
+              <div class="max-resource-legend" role="group" aria-label="Board resource colours">
+                <span><i class="resource-swatch matter" aria-hidden="true"></i>Matter</span>
+                <span><i class="resource-swatch energy" aria-hidden="true"></i>Energy</span>
+                <span><i class="resource-swatch biomass" aria-hidden="true"></i>Life</span>
+                <span><i class="resource-swatch data" aria-hidden="true"></i>Data</span>
+              </div>
             </div>
             <div class="map-legend-corner" id="map-legend-corner" aria-hidden="true"></div>
           </div>
         </div>
-        <div class="map-tools"><span class="map-pan-hint">Scroll or swipe to explore the board</span><label id="development-tools" hidden><input type="checkbox" id="reveal-entire-map"> Reveal entire map <small>Development</small></label><button class="button button-ghost" type="button" id="open-map-key" aria-label="Map key: resources, units and costs" title="Resources, units and costs">Map key</button><button class="button button-ghost" type="button" id="map-zoom" aria-pressed="false">Zoom map</button></div>
+        <div class="map-tools"><span class="map-pan-hint">Scroll or swipe to explore the board</span><button class="button button-ghost guide-switch" type="button" id="guide-switch" data-guide-switch aria-pressed="true" aria-label="Guidance"><svg class="guide-switch-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="guide-switch-bubble" d="M3 2.5h10A1.5 1.5 0 0 1 14.5 4v6a1.5 1.5 0 0 1-1.5 1.5H8.2L5 14v-2.5H3A1.5 1.5 0 0 1 1.5 10V4A1.5 1.5 0 0 1 3 2.5z"/><path class="guide-switch-lines" d="M4.5 5.5h7M4.5 8.2h4.5"/><path class="guide-switch-slash" d="M1.8 1.8l12.4 12.4"/></svg><span class="guide-switch-text" aria-hidden="true">Guidance <span class="guide-switch-state"><span class="guide-switch-on">on</span><span class="guide-switch-off">off</span></span></span></button><label id="development-tools" hidden><input type="checkbox" id="reveal-entire-map"> Reveal entire map <small>Development</small></label><button class="button button-ghost" type="button" id="open-map-key" aria-label="Map key: resources, units and costs" title="Resources, units and costs">Map key</button><button class="button button-ghost" type="button" id="map-zoom" aria-pressed="false">Zoom map</button></div>
       </div>
 
 
@@ -195,6 +202,13 @@
             <button class="console-tab" id="relics-tab" type="button" data-tab="relics" role="tab" aria-selected="false" aria-controls="relics-panel" tabindex="-1">Relics</button>
           </div>
         </div>
+        <!-- The market drawer (rules #shared-board): the supply's handle on the table's right edge
+             opens and closes it; the size button switches between the side panel and whole cards. -->
+        <div class="market-sheet" aria-hidden="true"></div>
+        <div class="market-handles" id="market-handles" hidden>
+          <button class="market-handle" id="market-handle" type="button" aria-expanded="false" aria-controls="relics-panel market-panel upgrade-group"><span>Market</span></button>
+          <button class="market-size" id="market-size" type="button" aria-controls="relics-panel market-panel upgrade-group" hidden><span>Larger</span></button>
+        </div>
         <div class="console-body">
           <div class="tab-panel chain-panel" id="chain-panel" data-panel="chain" aria-label="Testnet seat" hidden>
             <div class="panel-heading"><div><div class="eyebrow">STELLAR TESTNET · PROTOTYPE</div><h2>Play this seat on chain</h2><p>Your hand stays private. The table checks every draw, so nobody can stack a deck, including you.</p></div>
@@ -207,7 +221,7 @@
           <div class="hand-panel" id="hand-panel" role="region" aria-labelledby="hand-title">
             <div class="section-intro">
               <div><div class="eyebrow">YOUR NEXT MOVE</div><h2 id="hand-title">Your hand</h2><p id="hand-help">Convert cards during Operations or Buy, including off turn. Play orders on your Operations turn.</p><p class="turn-notice" id="turn-notice" role="status" hidden></p></div>
-              <div class="hand-tools"><button class="button button-danger" id="pass-button" type="button" hidden>Pass &amp; buy</button><button class="button button-primary" id="hand-finish-buy-button" type="button" hidden>Finish Buy</button><a class="table-jump" href="#table-board">Board ↑</a><button class="button" id="convert-all-button" type="button" title="Converts cards from left to right and automatically discards excess above each resource’s limit. Includes Buy and reaction cards.">Convert level I starters</button><button class="button" id="finish-construct" hidden>Finish after one build</button><button class="button" id="skip-colony-build" hidden>Finish without building</button><button class="button board-primary" id="board-primary" type="button" hidden>Pass &amp; buy</button>
+              <div class="hand-tools"><button class="button guide-switch guide-switch-phone" type="button" id="guide-switch-phone" data-guide-switch aria-pressed="true" aria-label="Guidance"><svg class="guide-switch-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="guide-switch-bubble" d="M3 2.5h10A1.5 1.5 0 0 1 14.5 4v6a1.5 1.5 0 0 1-1.5 1.5H8.2L5 14v-2.5H3A1.5 1.5 0 0 1 1.5 10V4A1.5 1.5 0 0 1 3 2.5z"/><path class="guide-switch-lines" d="M4.5 5.5h7M4.5 8.2h4.5"/><path class="guide-switch-slash" d="M1.8 1.8l12.4 12.4"/></svg><span class="guide-switch-text" aria-hidden="true">Guidance <span class="guide-switch-state"><span class="guide-switch-on">on</span><span class="guide-switch-off">off</span></span></span></button><button class="button button-danger" id="pass-button" type="button" hidden>Pass &amp; buy</button><button class="button button-primary" id="hand-finish-buy-button" type="button" hidden>Finish Buy</button><a class="table-jump" href="#table-board">Board ↑</a><button class="button" id="convert-all-button" type="button" title="Converts cards from left to right and automatically discards excess above each resource’s limit. Includes Buy and reaction cards.">Convert level I starters</button><button class="button" id="finish-construct" hidden>Finish after one build</button><button class="button" id="skip-colony-build" hidden>Finish without building</button><button class="button board-primary" id="board-primary" type="button" hidden>Pass &amp; buy</button>
               </div>
             </div>
             <div class="card-row" id="hand-row"></div>
@@ -257,6 +271,7 @@
       <label for="new-game-target">Prestige target</label>
       <select id="new-game-target"></select>
       <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 30.</p>
+      <label><input type="checkbox" id="new-game-maxbot"> Play against MaxBot instead of the Economy rival</label>
       <p id="new-game-neighbor" class="new-game-neighbor"></p>
       <div class="dialog-actions"><button class="button button-ghost" value="cancel" type="submit">Cancel</button><button class="button button-primary" value="start" type="submit" id="new-game-start">Start new game</button></div>
     </form>
@@ -422,7 +437,7 @@
         </section>
 
   <dialog id="map-key-dialog" class="map-key-dialog" aria-labelledby="map-key-title">
-    <div class="dialog-heading"><div><div class="eyebrow">GALACTIC REACH</div><h2 id="map-key-title">Map key</h2></div><button class="button button-ghost dialog-close" id="close-map-key" type="button" aria-label="Close map key">Close</button></div>
+    <div class="dialog-heading"><div><div class="eyebrow">HEIRS AD ASTRA</div><h2 id="map-key-title">Map key</h2></div><button class="button button-ghost dialog-close" id="close-map-key" type="button" aria-label="Close map key">Close</button></div>
         <div class="map-legend" id="resource-legend" role="group" aria-label="Map legend">
           <span><i class="resource-swatch matter"></i>Matter</span>
           <span><i class="resource-swatch energy"></i>Energy</span>
@@ -443,8 +458,28 @@
   </dialog>
 
   <dialog id="relic-catalog-dialog" class="relic-catalog-dialog" aria-labelledby="relic-catalog-title">
-    <div class="dialog-heading"><div><div class="eyebrow">TECHNOLOGY FROM LOST CIVILIZATIONS</div><h2 id="relic-catalog-title">Alien relic deck</h2><p>23 unique cards, one of each. Use Excavate at a relic to choose one of the three face-up cards for your discard pile.</p></div><button class="button button-ghost" id="close-relic-catalog" type="button">Close relic preview</button></div>
+    <div class="dialog-heading"><div><div class="eyebrow">TECHNOLOGY FROM LOST CIVILIZATIONS</div><h2 id="relic-catalog-title">Alien relic deck</h2><p>16 unique cards, one of each. Use Excavate at a relic to choose one of the three face-up cards for your discard pile.</p></div><button class="button button-ghost" id="close-relic-catalog" type="button">Close relic preview</button></div>
     <div class="relic-catalog-grid" id="relic-catalog-grid"></div>
+  </dialog>
+
+  <dialog id="relic-action-dialog" class="choice-dialog relic-choice-dialog" aria-labelledby="relic-choice-title">
+    <h2 id="relic-choice-title">Choose a relic action</h2>
+    <p id="relic-choice-help"></p>
+    <label for="relic-choice-filter">Find a card or location<input type="search" id="relic-choice-filter" autocomplete="off"></label>
+    <label for="relic-choice-options">Available choices<select id="relic-choice-options" size="7"></select></label>
+    <p id="relic-choice-detail" aria-live="polite" hidden></p>
+    <div class="dialog-actions"><button class="button button-primary" id="relic-choice-confirm" type="button">Play relic</button><button class="button" id="relic-choice-cancel" type="button">Cancel</button></div>
+  </dialog>
+
+  <dialog id="relic-card-dialog" class="market-choice-dialog" aria-labelledby="relic-card-title" aria-describedby="relic-card-help">
+    <div class="max-bank-heading"><div><div class="eyebrow">CHOOSE YOUR CARDS</div><h2 id="relic-card-title"></h2></div><button class="button button-ghost" id="relic-card-close" type="button">Cancel</button></div>
+    <p id="relic-card-help"></p>
+    <div id="relic-card-options" class="market-choice-content"></div>
+    <div class="card-choice-footer">
+      <p id="relic-card-status" role="status" aria-live="polite"></p>
+      <label id="relic-card-payment-label" hidden>Discounted payment<select id="relic-card-payment"></select></label>
+      <button class="button button-primary" id="relic-card-confirm" type="button" disabled>Choose a card</button>
+    </div>
   </dialog>
 
   <script src="channel.js"></script>
@@ -453,11 +488,11 @@
   <script src="shared.js?v=construct-iii-38-43"></script>
   <script src="replay.js?v=construct-iii-38-43"></script>
   <script src="card-feel.js?v=2"></script>
-  <script src="tutorial.js?v=1"></script>
-  <script src="guide.js?v=2"></script>
+  <script src="tutorial.js?v=2"></script>
+  <script src="guide.js?v=4"></script>
   <script src="app.js?v=construct-iii-38-43"></script>
   <script type="module" src="/galactic-reach/zk/seat.js"></script>
-  <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="38.43"></script>
+  <script src="playtest-notes.js?v=2" data-game="Heirs Ad Astra" data-rules="38.43"></script>
   <script src="change-queue.js?v=1"></script>
 </body>
 </html>

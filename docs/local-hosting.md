@@ -41,7 +41,7 @@ tailscale serve --https=10000 off
 
 The launchd job runs as your user and restarts the server after failure during the current login session. It is loaded from the repository's `.local/` directory, so it is not installed for automatic loading on future logins: run `start` again after logging in. The checkout must remain at its current path. Logs are `.local/server.log` and `.local/server-error.log`.
 
-For release updates, run the build steps, stop, then start the local job. Do not delete `.local/` when updating. Back up its database using SQLite-aware backup tooling, including account credentials and ratings. Run one server process per database. Named Galactic Reach tables are stored in this database; guest saves remain in each tester's browser.
+For release updates, run the build steps, stop, then start the local job. Do not delete `.local/` when updating. Back up its database using SQLite-aware backup tooling, including account credentials and ratings. Run one server process per database. Named Heirs Ad Astra tables are stored in this database; guest saves remain in each tester's browser.
 
 ## Set up the administrator
 

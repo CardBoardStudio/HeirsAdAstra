@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Galactic Reach releases (docs/release.md).
+// Heirs Ad Astra releases (docs/release.md).
 //
 //   node scripts/release.cjs status [--released origin/stable]
 //   node scripts/release.cjs cut [--name "Harbor Ships playtest"] [--released origin/stable]
@@ -17,6 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
+const { inlinePalette } = require('./lib/palette.cjs');
 
 const ROOT = path.resolve(process.env.RELEASE_ROOT || path.join(__dirname, '..'));
 const CHANGES = 'changes';
@@ -105,11 +106,13 @@ function replaceIn(rel, edits) {
 function bump(ref, from, to) {
   const prev = `galactic-reach/${from.save - 1}.${from.rev - 1}`;
   const v = n => `v${n}-`;
-  // 1. Archive the released files exactly as the stable branch has them.
+  // 1. Archive the released files exactly as the stable branch has them, except that
+  //    styles.css takes its palette.css inline (scripts/lib/palette.cjs).
   const hashes = {};
   for (const asset of ARCHIVED) {
     const rel = `crates/galactic-reach/rules/v${from.save}-${asset}`;
-    write(rel, show(ref, `${GAME}/${asset}`));
+    const text = show(ref, `${GAME}/${asset}`);
+    write(rel, asset === 'styles.css' ? inlinePalette(text, () => show(ref, `${GAME}/palette.css`)) : text);
     hashes[rel] = sha256(fs.readFileSync(file(rel)));
   }
   write(`scripts/archive-hashes/v${from.save}.json`, `${JSON.stringify(hashes, null, 2)}\n`);
@@ -188,7 +191,7 @@ ${marker}`);
     }
     write(rel, text);
   }
-  replaceIn('docs/rules/README.md', [[/\*\*Galactic Reach [\d.]+ \/ [^*]+\*\*/, `**Galactic Reach ${to.label} / ${to.name}**`]]);
+  replaceIn('docs/rules/README.md', [[/\*\*Heirs Ad Astra [\d.]+ \/ [^*]+\*\*/, `**Heirs Ad Astra ${to.label} / ${to.name}**`]]);
 }
 
 /** Adds this cycle's entries to docs/releases.md and the game's panel. */
@@ -199,7 +202,7 @@ function notes(from, to, entries, bumped) {
     ? `Rules-changing release: start a new game. Unfinished ${from.label} games and tables keep the archived ${from.label} ${from.name} engine.`
     : 'Save-compatible release: games in progress continue.';
   const line = e => `- **${e.title}**${e.compat === 'breaking' ? ' (rules change)' : ''}${e.pr ? ` (#${e.pr})` : ''}: ${e.body.replace(/\s*\n\s*/g, ' ')}`;
-  let doc = exists(NOTES) ? read(NOTES) : '# Galactic Reach releases\n\nNewest first. Each section is written by `node scripts/release.cjs cut` from the `changes/` entries merged since the previous release ([release process](release.md)).\n';
+  let doc = exists(NOTES) ? read(NOTES) : '# Heirs Ad Astra releases\n\nNewest first. Each section is written by `node scripts/release.cjs cut` from the `changes/` entries merged since the previous release ([release process](release.md)).\n';
   const first = !doc.includes(key);
   if (first) {
     const start = doc.indexOf('\n## ');

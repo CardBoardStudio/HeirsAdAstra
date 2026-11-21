@@ -1,4 +1,4 @@
-// Runs the unmodified Galactic Reach app.js against a minimal fake DOM, so the real startup,
+// Runs the unmodified Heirs Ad Astra app.js against a minimal fake DOM, so the real startup,
 // save-migration, and round-end dialog paths execute exactly as they do in the browser.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -444,6 +444,17 @@ test('battle table keeps damaged units separate and counts identical healthy shi
   assert.match(html,/Defensive Screen: 1 available, 1 used/);
 });
 
+test('Max UI battle table shows every ship individually without changing combat',()=>{
+  const storage=combatStorage(1,'committed'),state=JSON.parse(storage.getItem(SAVE_KEY)),piece=state.pendingCombat.attackerPieces[0];
+  state.pendingCombat.attackerPieces=Array.from({length:5},(_,i)=>({...piece,damage:i===0?2:0}));state.fleets['9,-10'][1].fleet=5;writeSave(storage,state);
+  const game=boot(storage),before=game.saved();game.dom.document.body.classList.contains=name=>name==='background-stars';
+  game.dom.lastQuery('[data-combat-inspect]')[0].click();
+  const html=game.dom.element('combat-forces').innerHTML;
+  assert.equal((html.match(/<figure class="combat-unit/g)||[]).length,6,'Five enemy Fleets and one own Fleet are separate pieces');
+  assert.doesNotMatch(html,/×5|5 × Fleet/);assert.match(html,/Fleet: 3 attack, 5\/7 hull/);assert.equal((html.match(/Fleet: 3 attack, 7\/7 hull/g)||[]).length,5);
+  assert.deepEqual(game.saved(),before,'The view never changes pieces, commitments or damage');
+});
+
 test('a shared battle at seat two selects locally and sends one explicit commit',()=>{
   const state=JSON.parse(combatStorage(0,'tactic').getItem(SAVE_KEY)),sent=[];
   state.activePlayer=2;state.pendingCombat.attackerId=2;
@@ -806,6 +817,27 @@ test('Resource counters show starting production separately from available stock
   assert.equal(pips.filter(p=>p.includes('full')).length,resource==='energy'?0:1);
  }
 
+});
+test('Green mat shows one Now piece and one Rate piece on the slot for each value',()=>{
+ const storage=createStorage(),state=boot(storage).saved();
+ state.players[0].resources={matter:0,energy:2,biomass:4,data:6};writeSave(storage,state);
+ const game=boot(storage),html=game.dom.element('resource-grid').innerHTML,production=productionNumbers(game);
+ const slots=(article,open)=>[...article.split(open)[1].split('</span>')[0].matchAll(/<i class="([^"]*)"><\/i>/g)].map(m=>m[1].trim().split(/\s+/));
+ for(const [resource,have] of Object.entries({matter:0,energy:2,biomass:4,data:6})){
+  const article=html.match(new RegExp('<article class="resource-box '+resource+'[^"]*"[\\s\\S]*?</article>'))[0];
+  const now=slots(article,'<span class="mat-classic mat-stock" aria-hidden="true">'),rate=slots(article,'<span class="mat-pips rate mat-classic" aria-hidden="true">');
+  for(const row of [now,rate]){
+   assert.equal(row.length,21,'Slots for the values 0 to 20');
+   assert.deepEqual(row.flatMap((c,i)=>c.includes('five')?[i]:[]),[5,10,15,20],'Rimmed slots mark 5, 10, 15 and 20');
+  }
+  assert.deepEqual(now.flatMap((c,i)=>c.includes('full')?[i]:[]),[have],'One Now piece on the slot for the stock, 0 included');
+  assert.deepEqual(rate.flatMap((c,i)=>c.includes('full')?[i]:[]),[production[resource]],'One Rate piece on the slot for production, 0 included');
+  assert.deepEqual(now.flatMap((c,i)=>c.includes('cap')?[i]:[]),[4],'The capacity marker keeps its slot');
+  assert.equal(now[4].includes('full'),have===4,'Stock at its limit stands on the capacity marker');
+  assert.deepEqual(now.flatMap((c,i)=>c.includes('over')?[i]:[]),have>4?[have]:[],'Stock past the limit is marked beyond the marker');
+  assert.equal(now.filter(c=>c.includes('shut')).length,have>4?15:16,'Slots past the limit are closed');
+  assert(article.includes(`${have} of 4, +${production[resource]} per round`),'Accessible name still states the values');
+ }
 });
 test('Production readout includes Harvesters and per-group collection and reacts to control changes',()=>{
  const storage=createStorage(),state=boot(storage).saved();
@@ -1282,6 +1314,86 @@ test('30.35 archive: Trade Consortium commits into play on its first exchange ac
 }));
 
 
+function cardChooserSave(kind='oracle',key='signalRelay') {
+ const storage=createStorage(),state=boot(storage).saved(),p=state.players[0];
+ Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ p.hand=[{id:'chooser',key:{oracle:'oracleOfTheUnmade',keepers:'keepersArchive',echoes:'firstDawnEchoes'}[kind]},{id:'keep-moving',key:'move',starter:true}];
+ p.resources={matter:4,energy:4,biomass:4,data:4};p.resourceLimits={matter:4,energy:4,biomass:4,data:4};
+ if(kind==='oracle'){state.marketDecks={expensive:[],medium:[],cheap:[{id:'oracle-copy',key}]};if(key==='phaseLance'){state.marketDecks.expensive=state.marketDecks.cheap;state.marketDecks.cheap=[];for(const r of ['matter','energy','biomass','data'])p.resources[r]=p.resourceLimits[r]=20;}}
+ if(kind==='keepers'){state.market=[{id:'keeper-copy',key:'worldEngine'}];for(const r of ['matter','energy','biomass','data'])p.resources[r]=p.resourceLimits[r]=20;}
+ if(kind==='echoes')p.inPlay=[{id:'return-one',key:'construct',starter:true,upgraded:true,level:3},{id:'return-two',key:'foldedWarehouse'},{id:'return-three',key:'move',starter:true}];
+ writeSave(storage,state);return storage;
+}
+function maxCardChooser(storage){const game=boot(storage);game.dom.document.body.classList.contains=name=>name==='background-stars';game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();game.settle();assert(game.dialog('relic-card').open);return game;}
+test('Max UI Oracle shows every design, guards unavailable cards and purchases the selected real copy',()=>{
+ const storage=cardChooserSave(),state=JSON.parse(storage.getItem(SAVE_KEY));
+ // Leave the face-up row full, so restoring the fixture does not consume its hidden offer.
+ state.marketDecks.cheap.push({id:'spare-one',key:'barterNetwork'},{id:'spare-two',key:'clearingHouse'},{id:'spare-three',key:'exchangeProtocol'});writeSave(storage,state);
+ const game=maxCardChooser(storage),before=game.saved(),cards=game.dom.lastQuery('[data-relic-card]');
+ assert.equal(cards.length,27);assert(cards.some(b=>b.disabled));const unavailable=cards.find(b=>b.dataset.relicCard==='worldEngine');assert(unavailable.disabled);unavailable.click();assert.deepEqual(game.saved(),before);
+ const offer=cards.find(b=>b.dataset.relicCard==='signalRelay');assert(!offer.disabled);offer.click();assert.deepEqual(game.saved(),before,'Selecting spends nothing');game.click('relic-card-confirm');
+ assert(game.saved().players[0].hand.some(c=>c.id==='oracle-copy'));assert(!game.saved().marketDecks.cheap.some(c=>c.id==='oracle-copy'));assert.equal(game.saved().players[0].resources.energy,2);assert.equal(game.saved().players[0].resources.data,3);
+});
+test('Max UI Echoes selects individual used cards, keeps the two-card limit and cancels freely',()=>{
+ const storage=cardChooserSave('echoes'),state=JSON.parse(storage.getItem(SAVE_KEY));
+ state.players[0].inPlay.reverse();writeSave(storage,state);
+ const game=maxCardChooser(storage),before=game.saved();
+ const cards=game.dom.lastQuery('[data-relic-card]');assert.equal(cards.length,3);cards.forEach(b=>b.click());assert.match(game.dom.element('relic-card-status').textContent,/2 of 2/);assert.deepEqual(game.saved(),before);
+ game.pressEscape('relic-card');assert.deepEqual(game.saved(),before);
+ game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();const again=game.dom.lastQuery('[data-relic-card]');again.find(b=>b.dataset.relicCard==='return-two').click();again.find(b=>b.dataset.relicCard==='return-one').click();game.click('relic-card-confirm');
+ const p=game.saved().players[0];assert(p.hand.some(c=>c.id==='return-one'&&c.level===3));assert(p.hand.some(c=>c.id==='return-two'));assert(p.inPlay.some(c=>c.id==='return-three'));assert(p.inPlay.some(c=>c.id==='chooser'));
+});
+test('Shared Max UI Oracle renders the public catalog with redacted decks and sends only a legal purchase',()=>{
+ const context=vm.createContext({});vm.runInContext(adapterSource+source,context);let engine;const factory=context.createGalacticAdapter;context.createGalacticAdapter=e=>{engine=e;return factory(e);};const authority=context.createGalacticReach({headless:true});
+ const state=JSON.parse(cardChooserSave('oracle','phaseLance').getItem(SAVE_KEY));Object.assign(engine.state,state);
+ const sent=[],view={seq:1,state:authority.privateState(0),hints:authority.hints(0)};
+ assert(view.state.marketDecks.expensive.every(c=>c.hidden&&!c.key));const network={seat:0,rules:authority.rulesVersion,initial:view,busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});game.dom.document.body.classList.contains=name=>name==='background-stars';game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();
+ const cards=game.dom.lastQuery('[data-relic-card]');assert.equal(cards.length,27);cards.find(b=>b.dataset.relicCard==='phaseLance').click();assert.deepEqual(sent,[]);game.click('relic-card-confirm');assert.equal(sent.length,1);assert.equal(sent[0].length,1);assert.equal(sent[0][0].purchase,'oracle-copy');authority.applyAction(0,sent[0][0]);assert(engine.state.players[0].military.some(c=>c.id==='oracle-copy'));
+});
+
+function reservoirSave(pending=false) {
+ const storage=createStorage(),state=boot(storage).saved(),p=state.players[0];
+ Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep'});
+ p.hand=[{id:'reservoir',key:'prismaticReservoir'},{id:'keep-moving',key:'move',starter:true}];
+ p.resourceLimits={matter:4,energy:4,biomass:4,data:8};p.resources={matter:0,energy:0,biomass:0,data:5};
+ p.storage=[{id:'stored',key:'capacityModule',allocation:{matter:0,energy:0,biomass:0,data:4}}];
+ if(pending)state.pendingRelic={playerId:0,card:'reservoir',limits:{matter:5,energy:4,biomass:4,data:7}};
+ writeSave(storage,state);return storage;
+}
+function reservoirInput(game,resource,value) {const input=game.dom.element('storage-points-'+resource);input.value=String(value);fire(input,'input');}
+test('Max UI Reservoir uses capacity controls and requires a zero-sum legal draft',()=>{
+ const storage=reservoirSave(),game=boot(storage),before=game.saved();game.dom.document.body.classList.contains=name=>name==='background-stars';
+ const play=()=>game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='reservoir').click();
+ play();game.settle();assert(game.dialog('storage-allocation').open);assert(!game.dialog('relic-action').open);
+ for(const r of ['matter','energy','biomass','data'])assert.equal(game.dom.element('storage-points-'+r).value,'0');
+ reservoirInput(game,'matter',3);assert(game.dom.element('storage-allocation-confirm').disabled);assert.match(game.dom.element('storage-allocation-status').textContent,/Net change: \+3/);
+ fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});assert.deepEqual(game.saved(),before);
+ reservoirInput(game,'data',-3);assert(!game.dom.element('storage-allocation-confirm').disabled);assert.match(game.dom.element('storage-limit-data').textContent,/Current 8 → 5/);
+ reservoirInput(game,'matter',4);reservoirInput(game,'data',-4);assert(game.dom.element('storage-allocation-confirm').disabled,'Held Data forbids reducing its limit to 4');
+ reservoirInput(game,'matter',3.5);reservoirInput(game,'data',-3.5);assert(game.dom.element('storage-allocation-confirm').disabled,'Fractional changes cannot confirm');
+ game.click('storage-allocation-cancel');assert.deepEqual(game.saved(),before,'Cancel spends no card or action');
+ play();reservoirInput(game,'matter',3);reservoirInput(game,'data',-3);fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();
+ const after=game.saved();assert.deepEqual(after.players[0].resourceLimits,{matter:7,energy:4,biomass:4,data:5});assert.deepEqual(after.players[0].resources,before.players[0].resources);assert.deepEqual(after.players[0].storage,before.players[0].storage);assert(!after.pendingRelic);assert(after.players[0].inPlay.some(c=>c.id==='reservoir'));assert(!game.dialog('storage-allocation').open);
+});
+test('Max UI Reservoir restores an existing saved redistribution and Escape cancels it',()=>{
+ const storage=reservoirSave(true),game=boot(storage);game.dom.document.body.classList.contains=name=>name==='background-stars';fire(game.dom.element('relic-choice-filter'),'input');game.settle();
+ assert(game.dialog('storage-allocation').open);assert.equal(game.dom.element('storage-points-matter').value,'1');assert.equal(game.dom.element('storage-points-data').value,'-1');
+ game.pressEscape('storage-allocation');assert(!game.saved().pendingRelic);assert.deepEqual(game.saved().players[0].resourceLimits,{matter:4,energy:4,biomass:4,data:8});assert(game.saved().players[0].hand.some(c=>c.id==='reservoir'));
+});
+test('Shared Max UI Reservoir sends one batch of existing legal commands only on confirmation',()=>{
+ const state=JSON.parse(reservoirSave().getItem(SAVE_KEY)),sent=[];
+ const network={seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state,hints:{relics:[{type:'relic',card:'reservoir',ability:'reservoir'}]}},busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});game.dom.document.body.classList.contains=name=>name==='background-stars';
+ game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='reservoir').click();reservoirInput(game,'matter',3);assert.deepEqual(sent,[]);reservoirInput(game,'data',-3);assert.deepEqual(sent,[]);
+ fire(game.dom.element('storage-allocation-form'),'submit',{cancelable:true});game.settle();assert.deepEqual(sent,[[{type:'relic',card:'reservoir',ability:'reservoir'},{type:'relic_shift',giveType:'data',getType:'matter',amount:3},{type:'relic_confirm'}]]);
+ // Run the submitted batch through the unchanged authoritative adapter as well.
+ const context=vm.createContext({});vm.runInContext(adapterSource+source,context);let engine;const factory=context.createGalacticAdapter;context.createGalacticAdapter=e=>{engine=e;return factory(e);};
+ const authority=context.createGalacticReach({headless:true});Object.assign(engine.state,JSON.parse(JSON.stringify(state)));
+ for(const command of sent[0])authority.applyAction(0,command);
+ assert.deepEqual(JSON.parse(JSON.stringify(engine.state.players[0].resourceLimits)),{matter:7,energy:4,biomass:4,data:5});assert(!engine.state.pendingRelic);
+});
+
 // A Capacity Module in hand: choosing its order opens the split; cancelling plays nothing.
 const playModule=game=>game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='module').click();
 const moduleSave=()=>{const storage=createStorage(),state=boot(storage).saved();state.players[0].resources={matter:2,energy:2,biomass:2,data:2};state.players[0].hand.push({id:'module',key:'capacityModule',starter:false,upgraded:false});writeSave(storage,state);return storage;};
@@ -1449,6 +1561,17 @@ test('Shared Buy exchange sends its resource choice without finishing Buy',()=>{
 test('Retained Seed Ark has no unadopted draw alternative',()=>{
  const storage=createStorage(),state=boot(storage).saved();state.players[0].hand=[{id:'retained-seed',key:'seedArk'}];writeSave(storage,state);const game=boot(storage);assert.equal(game.dom.lastQuery('[data-order-draw]').length,0);
 });
+test('MaxBot is optional, previewed by name and retained through reload',()=>{
+ const storage=createStorage(),game=boot(storage);assert(!game.saved().players.some(p=>p.strategy==='maxbot'));
+ game.click('new-game-button');game.dom.element('new-game-maxbot').checked=true;
+ game.dom.element('new-game-maxbot').listeners.change.forEach(fn=>fn({type:'change'}));
+ assert(game.dom.element('new-game-neighbor').textContent.includes('MaxBot'));
+ game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();assert(!game.saved().players.some(p=>p.strategy==='maxbot'));
+ game.click('new-game-button');game.dom.element('new-game-maxbot').checked=true;game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
+ const max=game.saved().players.find(p=>p.strategy==='maxbot');assert(max);assert.equal(max.name,'MaxBot');assert.equal(game.saved().players.filter(p=>p.strategy==='maxbot').length,1);
+ const reload=boot(storage);assert.equal(reload.saved().players[max.id].name,'MaxBot');reload.click('new-game-button');assert(reload.dom.element('new-game-maxbot').checked);
+ reload.dom.element('new-game-maxbot').checked=false;reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();assert(!reload.saved().players.some(p=>p.strategy==='maxbot'));
+});
 for (const { name, body } of tests) {
   try {
     body();
@@ -1459,5 +1582,5 @@ for (const { name, body } of tests) {
     console.log(error.stack.split('\n').map(line => `  ${line}`).join('\n'));
   }
 }
-console.log(`${tests.length - failed}/${tests.length} Galactic Reach checks passed.`);
+console.log(`${tests.length - failed}/${tests.length} Heirs Ad Astra checks passed.`);
 process.exitCode = failed ? 1 : 0;

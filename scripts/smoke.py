@@ -55,13 +55,13 @@ for attempt in range(60):
 else:
     raise RuntimeError("The container never became healthy")
 
-for path, content_type in [("/", "text/html"), ("/galactic-reach/styles.css", "text/css"), ("/galactic-reach/app.js", "javascript"), ("/lab/lab.js", "javascript"), ("/voidwright/", "text/html"), ("/pkg/web.js", "javascript"), ("/pkg/web_bg.wasm", "application/wasm")]:
+for path, content_type in [("/", "text/html"), ("/galactic-reach/styles.css", "text/css"), ("/galactic-reach/palette.css", "text/css"), ("/galactic-reach/app.js", "javascript"), ("/lab/lab.js", "javascript"), ("/voidwright/", "text/html"), ("/pkg/web.js", "javascript"), ("/pkg/web_bg.wasm", "application/wasm")]:
     status, headers, body = request(path)
     assert status == 200 and content_type in headers["Content-Type"] and len(body) > 100, path
 
 home = request("/")[2]
-assert b"<title>Galactic Reach" in home and b"Drawing Board" not in home
-assert b"Galactic Reach" in request("/galactic-reach/")[2]
+assert b"<title>Heirs Ad Astra" in home and b"Drawing Board" not in home
+assert b"Heirs Ad Astra" in request("/galactic-reach/")[2]
 status, headers, rulebook = request("/galactic-reach/rulebook.html")
 assert status == 200 and "text/html" in headers["Content-Type"]
 assert b'<meta name="rules-version" content="galactic-reach/38.43">' in rulebook
@@ -146,8 +146,10 @@ assert len(ladder['series']) == 1
 print('Platform smoke passed: account recovery, AI accounts, paired matches, persisted Elo, duplicate-safe retry.')
 
 # The packaged binary embeds the exact browser rules; no Node runtime is needed.
+status, _, retired = request('/api/arena/bots', {'name': 'Retired', 'strategy': 'gr-wanderer', 'game': 'galactic-reach'}, account_cookie)
+assert status == 400, retired
 gr_bots = []
-for policy in ['gr-military', 'gr-economy', 'gr-expansion', 'gr-wanderer']:
+for policy in ['gr-military', 'gr-economy', 'gr-expansion', 'gr-market']:
     status, _, bot = request('/api/arena/bots', {'name': policy, 'strategy': policy, 'game': 'galactic-reach'}, account_cookie)
     assert status == 200, bot
     gr_bots.append(bot['id'])
@@ -166,9 +168,11 @@ else:
     assert status == 200, gr_result
     assert len(gr_result['matches']) == 4
     assert all(m['result']['rules_version'] == 'galactic-reach/38.43' for m in gr_result['matches'])
+    assert all(policy.startswith('gr-browser-') for m in gr_result['matches'] for policy in m['result']['policies'])
+    assert 'browser-v1' in gr_result['pool']
     assert request('/api/arena/series', gr_series, account_cookie)[2] == gr_result
     gr_ladder = request('/api/arena?game=galactic-reach', cookie=account_cookie)[2]
     assert len(gr_ladder['bots']) == 4 and all(b['games'] == 4 for b in gr_ladder['bots'])
     assert abs(sum(b['elo'] for b in gr_ladder['bots']) - 4800) < 1e-8
-    print('Second adapter smoke passed: four-player Galactic Reach, seat rotation, separate Elo, exact-once retry.')
+    print('Second adapter smoke passed: four-player Heirs Ad Astra, seat rotation, separate Elo, exact-once retry.')
 assert request('/api/arena', cookie=account_cookie)[2] == ladder

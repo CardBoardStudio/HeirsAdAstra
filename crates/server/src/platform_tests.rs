@@ -428,7 +428,7 @@ async fn heavy_galactic_reach_arena_series_rotations_and_ratings() {
     let (owner, _) = register_account(&a, "Four factions").await;
     let (other, _) = register_account(&a, "Other lab").await;
     let mut bots = vec![];
-    for strategy in ["gr-military", "gr-economy", "gr-expansion", "gr-wanderer"] {
+    for strategy in ["gr-military", "gr-economy", "gr-expansion", "gr-market"] {
         let (status, _, result) = call(
             &a,
             "POST",
@@ -596,7 +596,7 @@ async fn heavy_galactic_reach_arena_series_rotations_and_ratings() {
             .is_empty()
     );
     // Replay the second adapter from the exact same stored data used by Voidwright.
-    use galactic_reach::{BuiltinAgent, GalacticReach, Strategy};
+    use galactic_reach::{BrowserProfile, GalacticReach};
     use game_core::{PlayerAgent, run_match};
     let m = &result["matches"][0];
     let mut game = GalacticReach::new(
@@ -606,15 +606,20 @@ async fn heavy_galactic_reach_arena_series_rotations_and_ratings() {
             .unwrap(),
     )
     .unwrap();
+    game.set_browser_profiles(std::array::from_fn(|i| {
+        BrowserProfile::parse(m["result"]["policies"][i].as_str().unwrap())
+    }))
+    .unwrap();
     let mut agents: Vec<Box<dyn PlayerAgent<GalacticReach>>> = (0..4)
         .map(|i| {
-            Box::new(BuiltinAgent::new(
-                Strategy::parse(m["result"]["policies"][i].as_str().unwrap()).unwrap(),
+            galactic_reach::agent(
+                m["result"]["policies"][i].as_str().unwrap(),
                 hex::decode(m["agent_seeds"][i].as_str().unwrap())
                     .unwrap()
                     .try_into()
                     .unwrap(),
-            )) as Box<dyn PlayerAgent<GalacticReach>>
+            )
+            .unwrap()
         })
         .collect();
     assert_eq!(

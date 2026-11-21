@@ -211,7 +211,7 @@ async fn private_views_never_hold_another_seats_hand_or_deck_order() {
             .map(|deck| deck.as_array().unwrap().len())
             .sum::<usize>()
             + bo["state"]["market"].as_array().unwrap().len(),
-        56
+        54
     );
     // A seat's own deck is listed without its order.
     let deck: Vec<&str> = bo["state"]["players"][1]["deck"]
@@ -347,8 +347,8 @@ async fn heavy_two_accounts_play_a_shared_game_to_the_end_over_http() {
 
     let cookies = [host.clone(), friend.clone()];
     let mut agents = [
-        BuiltinAgent::new(Strategy::Economy, [1; 32]),
-        BuiltinAgent::new(Strategy::Expansion, [2; 32]),
+        historical_fixture(Strategy::Economy, [1; 32]),
+        historical_fixture(Strategy::Expansion, [2; 32]),
     ];
     let mut human_moves = 0;
     let (mut undid, mut refused_after_reveal) = (false, false);
@@ -1176,7 +1176,12 @@ fn start_deals_people_to_random_seats_and_rivals_fill_the_rest() {
                 seat.name, rivals[seat.seat],
                 "rivals keep their seat's faction"
             );
-            assert!(seat.policy.is_some());
+            assert!(
+                seat.policy
+                    .as_deref()
+                    .and_then(BrowserProfile::parse)
+                    .is_some()
+            );
         }
         host_seats.insert(ada);
         split += usize::from(ada / 2 != bo / 2);
@@ -1856,7 +1861,7 @@ async fn a_private_dev_table_keeps_its_engine_until_it_finishes() {
 fn reference_rivals_open_a_match_legally_and_reproducibly() {
     let play = || {
         let mut game = GalacticReach::new([8; 32]).unwrap();
-        let mut agents: Vec<BuiltinAgent> = [
+        let mut agents: Vec<Box<dyn PlayerAgent<GalacticReach>>> = [
             Strategy::Military,
             Strategy::Economy,
             Strategy::Expansion,
@@ -1864,7 +1869,7 @@ fn reference_rivals_open_a_match_legally_and_reproducibly() {
         ]
         .into_iter()
         .enumerate()
-        .map(|(i, s)| BuiltinAgent::new(s, [i as u8; 32]))
+        .map(|(i, s)| historical_fixture(s, [i as u8; 32]))
         .collect();
         let mut trace = vec![];
         for _ in 0..300 {
@@ -1900,8 +1905,8 @@ fn shared_tables_resume_exactly_on_current_rules() {
     })
     .unwrap();
     assert_eq!(game.rules_version(), rules);
-    let mut agents: Vec<BuiltinAgent> = (0..4)
-        .map(|i| BuiltinAgent::new(Strategy::Economy, [i; 32]))
+    let mut agents: Vec<Box<dyn PlayerAgent<GalacticReach>>> = (0..4)
+        .map(|i| historical_fixture(Strategy::Economy, [i; 32]))
         .collect();
     let mut step = |g: &mut GalacticReach| {
         let seat = g.active_seat().unwrap();
@@ -1938,4 +1943,60 @@ fn shared_tables_resume_exactly_on_current_rules() {
         game.snapshot().unwrap(),
         "plays on identically"
     );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn new_browser_rivals_are_logged_and_refold_exactly() {
+    let store = store_with(&["a"]);
+    let log = Arc::new(SqliteTableLog(store));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    let mut t = table("browser-policy", &[("a", "Ada")]);
+    t.seats = seats_at(&[("a".into(), "Ada".into())], &[0, 1, 2, 3]);
+    service.open(t).await.unwrap();
+    let seq = service.view("browser-policy", "a").await.unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    assert!(
+        service
+            .act(
+                "browser-policy",
+                "a",
+                seq,
+                vec![json!({"type":"browser_policy","profile":"military"})]
+            )
+            .await
+            .is_err()
+    );
+    service
+        .act(
+            "browser-policy",
+            "a",
+            seq,
+            vec![json!({"type":"pass"}), json!({"type":"finish_buy"})],
+        )
+        .await
+        .unwrap();
+    let mut moved = false;
+    for _ in 0..400 {
+        let events = log.read("browser-policy").unwrap();
+        if [1, 2, 3].iter().all(|seat| {
+            events.iter().any(|e| {
+                e.seat == Some(*seat)
+                    && e.kind == "action"
+                    && e.public["action"]["type"] == "browser_policy"
+            })
+        }) {
+            moved = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    assert!(moved, "Every new rival must use the browser decision path");
+    assert!(service.view("browser-policy", "a").await.unwrap()["ai_error"].is_null());
+    service.refolded("browser-policy", 0).await;
+}
+
+// Frozen legacy drivers for archived-table and human-command compatibility fixtures.
+fn historical_fixture(strategy: Strategy, seed: [u8; 32]) -> Box<dyn PlayerAgent<GalacticReach>> {
+    galactic_reach::historical_agent(strategy.version(), seed).unwrap()
 }

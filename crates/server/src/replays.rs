@@ -1,4 +1,4 @@
-//! Owner-scoped, completed Galactic Reach matches. Replaying never updates ratings.
+//! Owner-scoped, completed Heirs Ad Astra matches. Replaying never updates ratings.
 use super::*;
 use serde_json::Value;
 pub(super) fn simulate(
@@ -11,8 +11,19 @@ pub(super) fn simulate(
     let mut agents: Vec<_> = policies
         .iter()
         .zip(agent_seeds)
-        .map(|(policy, seed)| galactic_reach::agent(policy, *seed))
+        .map(|(policy, seed)| {
+            if galactic_reach::BrowserProfile::parse(policy).is_some() {
+                galactic_reach::agent(policy, *seed)
+            } else {
+                galactic_reach::historical_agent(policy, *seed)
+            }
+        })
         .collect::<Result<_, _>>()?;
+    game.set_browser_profiles(std::array::from_fn(|seat| {
+        policies
+            .get(seat)
+            .and_then(|p| galactic_reach::BrowserProfile::parse(p))
+    }))?;
     game.start_trace()?;
     let result = run_match(&mut game, &mut agents, 10000)?;
     Ok((result, game.take_trace().unwrap().finish()))
