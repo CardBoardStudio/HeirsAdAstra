@@ -311,10 +311,13 @@ pub async fn requests(
     let owner = user(&app, &headers)?;
     let db = app.store.0.lock().map_err(internal)?;
     let host_device_ready: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM tabletop_grants WHERE table_id=? AND participant=? AND role='player' AND kind='session' AND expires>?)", params![id, owner.id, now()], |r| r.get(0)).map_err(internal)?;
+    // Whether a player invitation is still valid, so the waiting screen shows the
+    // link it already holds instead of rotating one already sent. Never the token.
+    let invite_live: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM tabletop_rooms WHERE table_id=? AND invite_hash IS NOT NULL AND invite_expires>?)", params![id, now()], |r| r.get(0)).map_err(internal)?;
     let mut q=db.prepare("SELECT r.participant,a.name,r.status FROM tabletop_requests r JOIN accounts a ON a.id=r.participant WHERE table_id=? ORDER BY r.created,r.rowid").map_err(internal)?;
     let rows=q.query_map([id],|r|{let id:String=r.get(0)?;Ok(json!({"participant":id,"code":short_code(&id),"name":r.get::<_,String>(1)?,"status":r.get::<_,String>(2)?}))}).map_err(internal)?.collect::<Result<Vec<_>,_>>().map_err(internal)?;
     Ok(Json(
-        json!({"requests":rows,"host_device_ready":host_device_ready}),
+        json!({"requests":rows,"host_device_ready":host_device_ready,"invite_live":invite_live}),
     ))
 }
 /// The existing lobby start endpoint still owns random seating and AI fill.

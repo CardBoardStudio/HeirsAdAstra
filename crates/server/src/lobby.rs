@@ -53,15 +53,18 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
-/// Settings a started table hands to the browser engine for its new game.
+/// Settings a started table hands to the browser engine for its new game: the
+/// waiting room's choice, or the one made when the game was started alone.
 pub fn table_settings(db: &Connection, table_id: &str) -> ApiResult<Option<serde_json::Value>> {
     db.query_row(
-        "SELECT victory_target FROM gr_lobbies WHERE table_id=?",
+        "SELECT coalesce((SELECT victory_target FROM gr_lobbies WHERE table_id=t.id),t.victory_target)
+         FROM solo_tables t WHERE t.id=?",
         [table_id],
-        |r| Ok(json!({"victory_target":r.get::<_, u32>(0)?})),
+        |r| r.get::<_, Option<u32>>(0),
     )
     .optional()
     .map_err(internal)
+    .map(|target| target.flatten().map(|n| json!({"victory_target":n})))
 }
 
 /// Opens a waiting room for a freshly created table and returns its invite token.

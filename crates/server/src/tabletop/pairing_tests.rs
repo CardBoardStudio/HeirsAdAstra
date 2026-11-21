@@ -668,3 +668,43 @@ async fn invitation_details_are_scoped_and_host_phone_readiness_tracks_redemptio
         false
     );
 }
+
+#[tokio::test]
+async fn waiting_screen_learns_whether_its_invitation_is_live_but_never_the_link() {
+    let (app, host, id) = setup().await;
+    assert_eq!(requests(&app, &id, &host).await["invite_live"], false);
+    let (_, _, invite) = scoped(&app, &id, "phone-invite", &host, json!({})).await;
+    let token = secret(&invite, "invite");
+    let rows = requests(&app, &id, &host).await;
+    assert_eq!(rows["invite_live"], true);
+    assert!(!rows.to_string().contains(&token), "{rows}");
+    app.store
+        .0
+        .lock()
+        .unwrap()
+        .execute("UPDATE tabletop_rooms SET invite_expires=0", [])
+        .unwrap();
+    assert_eq!(requests(&app, &id, &host).await["invite_live"], false);
+    let (_, _, invite) = scoped(&app, &id, "phone-invite", &host, json!({})).await;
+    assert_eq!(requests(&app, &id, &host).await["invite_live"], true);
+    let (_, _) = join_phone(&app, &id, &invite, "Bea").await;
+    let participant = requests(&app, &id, &host).await["requests"][0]["participant"].clone();
+    scoped(
+        &app,
+        &id,
+        "approve",
+        &host,
+        json!({"participant":participant,"approve":true}),
+    )
+    .await;
+    let (code, _, started) = call(
+        &app,
+        "POST",
+        &format!("/api/tables/{id}/lobby/start"),
+        &host,
+        json!({}),
+    )
+    .await;
+    assert_eq!(code, StatusCode::OK, "{started}");
+    assert_eq!(requests(&app, &id, &host).await["invite_live"], false);
+}
