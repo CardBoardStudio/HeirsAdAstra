@@ -3152,25 +3152,31 @@ body.background-stars .galaxy-board::before {
 /* Each resource symbol is one unit of the printed price, each resource's symbols one cluster (see
    costClusters): one alone, two side by side, three as a triangle (one above two), four or more once
    with their number. Clusters sit in a row in resource order. Symbols are sized by --cost-symbol. */
-.cost-clusters { --cost-symbol: 1em; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px calc(var(--cost-symbol) * .7); }
-.cost-cluster { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 1px; }
+span.cost-clusters { --cost-symbol: 1em; display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px calc(var(--cost-symbol) * .7); }
+.cost-clusters > .cost-cluster { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 1px; }
 .cost-cluster > .resource-symbol { width: var(--cost-symbol); height: var(--cost-symbol); }
-.cost-cluster[data-count="3"] { display: inline-grid; grid-template-columns: repeat(2, var(--cost-symbol)); justify-items: center; gap: 0 1px; }
+.cost-clusters > .cost-cluster[data-count="3"] { display: inline-grid; grid-template-columns: repeat(2, var(--cost-symbol)); justify-items: center; gap: 0 1px; }
 .cost-cluster[data-count="3"] > :first-child { grid-column: 1 / -1; margin-bottom: calc(var(--cost-symbol) * -.12); }
-.symbol-legend-cost .cost-clusters { --cost-symbol: 18px; }
 .map-key-dialog .symbol-vocab { display: grid; }
-/* The map key's costs: each name with its price beside it in a second column, rows parted by a
-   faint rule in the key's line colour. */
-@media (min-width: 600px) and (min-height: 600px) {
-  #map-legend-corner .legend-cost-list { grid-column: 1 / -1; display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 14px; margin: 0; padding: 0; font-size: 16px; line-height: 1.15; }
-  #map-legend-corner .legend-cost-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 1.75em; padding: 3px 0; }
-  #map-legend-corner .legend-cost-row + .legend-cost-row { border-top: 1px solid #d9bd8030; }
-  #map-legend-corner .legend-cost-row dd { margin: 0; }
-  #map-legend-corner .legend-cost-name { gap: 7px; }
-  #map-legend-corner .legend-cost-name :is(.board-glyph, .legend-icon) { width: 1.05em; height: 1.05em; font-size: inherit; text-align: center; }
-  #map-legend-corner .cost-clusters { --cost-symbol: .95em; flex-wrap: nowrap; }
-  /* Over the older key's tighter symbol sizes: the symbols keep the names' scale. */
-  #map-legend-corner .cost-clusters .cost-cluster > .resource-symbol { width: var(--cost-symbol) !important; height: var(--cost-symbol) !important; }
+/* The costs, beside the map and atop the Map key dialog: each name with its price beside it in a
+   second column, rows parted by a faint rule in the key's line colour. */
+:is(#map-legend-corner, #symbol-legend) .legend-cost-list { grid-column: 1 / -1; display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 14px; margin: 0; padding: 0; font-size: 16px; line-height: 1.15; }
+:is(#map-legend-corner, #symbol-legend) .legend-cost-row { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 1.75em; padding: 3px 0; }
+:is(#map-legend-corner, #symbol-legend) .legend-cost-row + .legend-cost-row { border-top: 1px solid #d9bd8030; }
+:is(#map-legend-corner, #symbol-legend) .legend-cost-row dd { margin: 0; }
+:is(#map-legend-corner, #symbol-legend) .legend-cost-name { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+:is(#map-legend-corner, #symbol-legend) .legend-cost-name :is(.board-glyph, .legend-icon) { flex: none; width: 1.05em; height: 1.05em; font-size: inherit; text-align: center; }
+:is(#map-legend-corner, #symbol-legend) .legend-cost-name .legend-icon { color: var(--gold); line-height: 1.05em; }
+:is(#map-legend-corner, #symbol-legend) .cost-clusters { --cost-symbol: .95em; flex-wrap: nowrap; }
+/* Over the older key's tighter symbol sizes: the symbols keep the names' scale. */
+#map-legend-corner .cost-clusters .cost-cluster > .resource-symbol { width: var(--cost-symbol) !important; height: var(--cost-symbol) !important; }
+/* In the dialog the list keeps a reading width, so its rules span the rows and no further. */
+.map-key-dialog #symbol-legend .legend-cost-list { width: min(100%, 420px); font-size: 17px; }
+.map-key-dialog #symbol-legend .legend-cost-row { padding: 5px 0; }
+/* An upright tablet's map fills its width, and the key would lie over the hexes in its corner:
+   there the costs are in the Map key dialog. Max's UI keeps its key in the left column. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  body:not(.background-stars) .map-legend-corner { display: none; }
 }
 /* Retained engines still render their original cost table against these shared styles. */
 @media (min-width: 600px) and (min-height: 600px) {

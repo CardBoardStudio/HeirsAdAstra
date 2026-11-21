@@ -4597,19 +4597,19 @@ function createGalacticReach(options = {}) {
       ['colony','Colony'],['harvester','Harvester'],['starbase','Shipyard']
     ];
     // A short key beside the map, with each piece's price and the Excavate cost, so the board
-    // teaches itself without opening the Map key (which keeps the full descriptions).
+    // teaches itself without opening the Map key. The Map key dialog opens with the same list (an
+    // upright tablet has no corner key), then the full descriptions.
     const corner = $('#map-legend-corner');
     const pieceCost = type => type === 'colony' ? { biomass: COLONY_LIFE_COST } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
     // One printed resource symbol per unit paid, by the card corners' rule (rules #card-corners).
     const costRow = (kind, icon, label, cost) => `<div class="legend-cost-row" data-cost-kind="${kind}"><dt class="legend-cost-name">${icon}<b>${label}</b></dt><dd>${costClusters(cost)}</dd></div>`;
-    if (corner) corner.innerHTML = `<dl class="legend-cost-list" aria-label="Resource costs">`
+    const costList = `<dl class="legend-cost-list" aria-label="Resource costs">`
       + entries.map(([type,label]) => costRow(type, BOARD_ICONS[type], label, pieceCost(type))).join('')
-      + costRow('excavate', '<span class="legend-icon">◈</span>', 'Excavate', EXCAVATION_COST)
-      + `</dl><span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
-    $('#symbol-legend').innerHTML = `<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) => {
-      const cost = type === 'colony' ? { biomass: COLONY_LIFE_COST } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
-      return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-cost">${costClusters(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
-    }).join('')}<strong class="legend-heading">Card icons</strong><span class="legend-vocab symbol-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
+      + costRow('excavate', '<span class="legend-icon">◈</span>', 'Excavate', EXCAVATION_COST) + '</dl>';
+    if (corner) corner.innerHTML = costList + `<span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
+    $('#symbol-legend').innerHTML = `<strong class="legend-heading">Costs</strong>${costList}<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) =>
+      `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`
+    ).join('')}<strong class="legend-heading">Card icons</strong><span class="legend-vocab symbol-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
   }
 
   // Replays reveal every faction's information, so fog never applies there.
