@@ -50,7 +50,7 @@ test('tailnet HTTP access works without a game account and preserves POST origin
   await new Promise(resolve => reservation.close(resolve));
   const origin = `https://mixer.example.ts.net:${port}`, base = `http://127.0.0.1:${port}`;
   const child = spawn(process.execPath, [fileURLToPath(new URL('./pr-mixer.mjs', import.meta.url))], {
-    env: { PATH: process.env.PATH, HOME: root, MIXER_AUTH: 'tailnet', MIXER_ORIGIN: origin, MIXER_PORT: String(port), MIXER_DATA: root },
+    env: { PATH: process.env.PATH, HOME: root, MIXER_AUTH: 'tailnet', MIXER_MANAGERS: 'tester@example.com', MIXER_ORIGIN: origin, MIXER_PORT: String(port), MIXER_DATA: root },
     stdio: ['ignore', 'pipe', 'pipe'],
   });
   t.after(async () => {
@@ -63,6 +63,10 @@ test('tailnet HTTP access works without a game account and preserves POST origin
   };
   assert.equal(await request('/__mixer/'), 403);
   assert.equal(await request('/__mixer/', { headers: { cookie: 'drawing_board_alien_v11_session=ordinary' } }), 403);
+  const guest = { 'tailscale-user-login': 'guest@example.com', cookie: 'drawing_board_tabletop_fake=paired' };
+  assert.equal(await request('/__mixer/', { headers: guest }), 403);
+  assert.equal(await request('/__mixer/api/mixes', { headers: guest }), 403);
+  assert.equal(await request('/__mixer/api/apply', { method: 'POST', headers: {...guest, origin}, body: '{}' }), 403);
   const identity = { 'tailscale-user-login': 'tester@example.com' };
   assert.equal(await request('/__mixer/', { headers: identity }), 200);
   assert.equal(await request('/__mixer/api/mixes', { headers: identity }), 200);
@@ -122,59 +126,42 @@ test('cookies: a mix sees only its own, renamed back; the dev session never pass
   assert.equal(lib.cookieValue(header, 'missing'), null);
 });
 
-test('table routing accepts only successful link issuance and exact bootstrap pages', () => {
-  const key = 'abcdef012345', table = '1'.repeat(32), now = 1000;
-  const state = { mixes: { [key]: { status: 'running' } } };
+test('table routing pins pages, commands, streams and assets independently of browser selection', () => {
+  const key = 'abcdef012345', other = '000000000000', table = '1'.repeat(32);
+  const state = { mixes: { [key]: { status: 'running' }, [other]: {status:'built'} } };
   for (const [method, path, status] of [
-    ['GET', `/api/tabletop/${table}/host-phone`, 200],
-    ['POST', `/api/tabletop/${table}/host-phone`, 403],
-    ['POST', `/api/tabletop/${table}/host-phone`, 302],
-    ['POST', `/api/tabletop/${table}/approve`, 200],
-    ['POST', '/api/tabletop/invalid/host-phone', 200],
-    ['POST', `/api/tabletop/${table}/host-phone/extra`, 200],
-  ]) assert.equal(lib.recordTableRoute(state, method, path, status, key, now), false);
-  assert.equal(state.tableRoutes, undefined);
-  for (const endpoint of ['host-phone', 'phone-invite', 'board-grant', 'repair'])
-    assert.equal(lib.recordTableRoute(state, 'POST', `/api/tabletop/${table}/${endpoint}`, 200, key, now), true);
-  const route = (path, selected = null, method = 'GET') => lib.tabletopRoute(state, method, new URL(path, 'https://test.example'), selected, now);
-  for (const page of ['phone', 'board']) {
-    const path = `/tabletop/${page}.html?table=${table}`;
-    assert.deepEqual(route(path), { key });
-    assert.deepEqual(route(path, '000000000000'), { key }, 'wrong browser selection is corrected');
-    assert.equal(route(path, null, 'POST'), null);
-    assert.equal(route(path + `&table=${table}`), null);
-  }
-  for (const path of [`/tabletop/host.html?table=${table}`, `/api/tabletop/${table}/seat`, `/tabletop/phone.html?table=bad`, '/tabletop/phone.html'])
-    assert.equal(route(path), null);
-});
-
-test('table routing preserves ambiguity and prunes expired or deleted mixes as whole table groups', () => {
-  const a = 'abcdef012345', b = '000000000000', table = '1'.repeat(32), now = 1000;
-  const state = { mixes: { [a]: { status: 'running' }, [b]: { status: 'built' } } };
-  for (const key of [a, b]) lib.recordTableRoute(state, 'POST', `/api/tabletop/${table}/host-phone`, 200, key, now);
-  const url = new URL(`https://test.example/tabletop/phone.html?table=${table}`);
-  assert.deepEqual(lib.tabletopRoute(state, 'GET', url, null, now), { ambiguous: true });
-  assert.deepEqual(lib.tabletopRoute(state, 'GET', url, b, now), { key: b });
-  const afterExpiry = now + 30 * 24 * 60 * 60_000;
-  assert.equal(lib.tabletopRoute(state, 'GET', url, a, afterExpiry), null);
-  assert.deepEqual(lib.pruneTableRoutes(state.tableRoutes, state.mixes, afterExpiry), {});
-  delete state.mixes[b];
-  assert.deepEqual(lib.pruneTableRoutes(state.tableRoutes, state.mixes, now), { [table]: { [a]: afterExpiry } });
-  const many = Object.fromEntries(Array.from({ length: 4097 }, (_, i) => [i.toString(16).padStart(32, '0'), { [a]: now + i + 1, [b]: now + i + 2 }]));
-  const bounded = lib.pruneTableRoutes(many, { [a]: {}, [b]: {} }, now);
-  assert.equal(Object.keys(bounded).length, 4096);
-  assert.equal(bounded['0'.repeat(32)], undefined);
-  assert.equal(Object.keys(bounded['1'.padStart(32, '0')]).length, 2);
+    ['GET', `/api/tabletop/${table}/host-phone`, 200], ['POST', `/api/tabletop/${table}/host-phone`, 403],
+    ['POST', `/api/tabletop/${table}/approve`, 200], ['POST', '/api/tabletop/invalid/host-phone', 200],
+  ]) assert.equal(lib.recordTableRoute(state, method, path, status, key), false);
+  assert.equal(lib.recordTableRoute(state, 'POST', `/api/tabletop/${table}/phone-invite`, 200, key), true);
+  const route = (path, method = 'GET', ref) => lib.tabletopRoute(state, method, new URL(path, 'https://test.example'), other, Date.now(), ref);
+  for (const path of [`/tabletop/phone.html?table=${table}`, `/tabletop/board.html?table=${table}`, `/tabletop/host.html?table=${table}`,
+    `/api/tabletop/${table}/seat`, `/api/tabletop/${table}/client/app.js`, `/api/tabletop/${table}/player-stream`, `/api/tables/${table}/lobby`])
+    assert.deepEqual(route(path), {key});
+  assert.deepEqual(route(`/api/tabletop/${table}/act`, 'POST'), {key});
+  assert.deepEqual(route('/tabletop/pairing.js', 'GET', `https://test.example/tabletop/phone.html?table=${table}`), {key});
+  assert.equal(route('/tabletop/pairing.js', 'GET', `https://foreign.example/tabletop/phone.html?table=${table}`), null);
+  assert.deepEqual(route(`/tabletop/phone.html?table=${table}&table=${table}`), {missing:true});
+  assert.deepEqual(route('/tabletop/phone.html?table=bad'), {missing:true});
+  assert.deepEqual(route(`/tabletop/phone.html?table=${'2'.repeat(32)}`), {missing:true});
+  // No timeout or size eviction of live table routes. Deleted builds are pruned.
+  assert.deepEqual(lib.pruneTableRoutes(state.tableRoutes, state.mixes, Number.MAX_SAFE_INTEGER), state.tableRoutes);
+  lib.recordTableRoute(state, 'POST', `/api/tabletop/${table}/phone-invite`, 200, other);
+  assert.deepEqual(route(`/tabletop/phone.html?table=${table}`), {ambiguous:true}, 'selection cannot resolve a cloned table');
+  delete state.mixes[other];
+  assert.deepEqual(Object.keys(lib.pruneTableRoutes(state.tableRoutes, state.mixes)[table]), [key]);
 });
 
 test('fresh phone links select their mix through the proxy and survive a mixer restart', async (t) => {
   const root = mkdtempSync(`${tmpdir()}/pr-mixer-pairing-`);
   const key = 'abcdef012345', table = '1'.repeat(32), other = '2'.repeat(32);
   const received = [];
-  let status = 200, child;
+  let status = 200, child, html = false;
   const upstream = http.createServer((req, res) => {
     received.push({ url: req.url, cookie: req.headers.cookie, identity: req.headers['tailscale-user-login'] });
     req.resume();
+    if (req.url === '/api/tables') {res.writeHead(200, {'content-type':'application/json'});res.end(JSON.stringify({id:other}));return;}
+    if (html) { res.writeHead(status, {'content-type':'text/html'}); res.end('<html><body><h1>Your game</h1></body></html>'); return; }
     res.writeHead(status, { 'content-type': 'application/json', 'set-cookie': 'seat=fixture; Path=/' });
     res.end(JSON.stringify({ url: `/tabletop/phone.html?table=${table}#pair=TEST_SECRET` }));
   }).listen(0, '127.0.0.1');
@@ -190,7 +177,7 @@ test('fresh phone links select their mix through the proxy and survive a mixer r
   const stop = async () => { if (child?.exitCode === null) { const exited = once(child, 'exit'); child.kill('SIGTERM'); await exited; } };
   const start = async () => {
     child = spawn(process.execPath, [fileURLToPath(new URL('./pr-mixer.mjs', import.meta.url))], {
-      env: { PATH: `${root}:${process.env.PATH}`, HOME: root, MIXER_AUTH: 'tailnet', MIXER_ORIGIN: origin, MIXER_PORT: String(port), MIXER_DATA: root },
+      env: { PATH: `${root}:${process.env.PATH}`, HOME: root, MIXER_AUTH: 'tailnet', MIXER_MANAGERS: 'tester@example.com', MIXER_ORIGIN: origin, MIXER_PORT: String(port), MIXER_DATA: root },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     await once(child.stdout, 'data', { signal: AbortSignal.timeout(5000) });
@@ -204,40 +191,76 @@ test('fresh phone links select their mix through the proxy and survive a mixer r
     await r.text(); return r;
   };
   const phone = `/tabletop/phone.html?table=${table}`;
-  assert.equal((await request(phone)).headers.get('location'), '/__mixer/', 'legacy state starts without table routes');
+  assert.equal((await request(phone)).status, 404, 'a missing route stays in game recovery');
   const issued = await request(`/api/tabletop/${table}/host-phone`, { method: 'POST', headers: { cookie } });
   assert.equal(issued.status, 200);
   assert.equal(issued.headers.get('set-cookie'), `mx${key}_seat=fixture; Path=/`);
   assert.deepEqual(received.at(-1), { url: `/api/tabletop/${table}/host-phone`, cookie: 'seat=RIGHT', identity: undefined });
   const persisted = readFileSync(`${root}/state.json`, 'utf8');
   assert(!persisted.includes('TEST_SECRET'));
-  assert(JSON.parse(persisted).tableRoutes[table][key] > Date.now());
+  assert(JSON.parse(persisted).tableRoutes[table][key] > 0);
   status = 403;
   await request(`/api/tabletop/${other}/phone-invite`, { method: 'POST', headers: { cookie } });
-  assert.equal((await request(`/tabletop/phone.html?table=${other}`)).headers.get('location'), '/__mixer/');
+  assert.equal((await request(`/tabletop/phone.html?table=${other}`)).status, 404);
   status = 200;
   await stop(); await start();
   for (const headers of [{}, { cookie: 'pr_mixer_mix=000000000000' }]) {
     const r = await request(phone, { headers });
-    assert.equal(r.status, 302);
-    assert.equal(r.headers.get('location'), phone, 'redirect contains no fragment or pairing secret');
-    assert.equal(r.headers.get('set-cookie'), `pr_mixer_mix=${key}; Path=/; HttpOnly; SameSite=Lax; Secure`);
+    assert.equal(r.status, 200);
+    assert.equal(r.headers.get('location'), null, 'guest never leaves the requested game');
+    assert(r.headers.getSetCookie().includes(`pr_mixer_mix=${key}; Path=/; HttpOnly; SameSite=Lax; Secure`));
     assert.equal(r.headers.get('cache-control'), 'no-store');
   }
   assert.equal((await request(phone, { headers: { cookie } })).status, 200);
   assert.equal(received.at(-1).url, phone);
-  assert.equal((await request(`/api/tabletop/${table}/seat`)).headers.get('location'), '/__mixer/', 'table routing never bypasses API cookie selection');
+  assert.equal((await request(`/api/tabletop/${table}/seat`)).status, 200, 'API uses the table route, upstream still checks credentials');
+  assert.equal(received.at(-1).cookie, undefined, 'routing does not manufacture credentials');
+  await request('/api/tables', {method:'POST',headers:{cookie},body:'{}'});
+  assert.equal((await request(`/tabletop/host.html?table=${other}`)).status,200,'created table is routable before any lobby fetch');
+  assert.equal((await request('/tabletop/pairing.js',{headers:{referer:`${origin}/tabletop/host.html?table=${other}`}})).status,200,'first setup script has the table route');
+  html = true;
+  const page = await fetch(base + phone, {headers:{'tailscale-user-login':'guest@example.com',cookie:'pr_mixer_mix=000000000000'}});
+  assert.equal(page.status, 200);
+  assert.equal(await page.text(), '<html><body><h1>Your game</h1></body></html>', 'no banner or developer links injected');
+  const missing = await fetch(base + '/tabletop/phone.html?table=bad', {headers:identity});
+  assert.equal(missing.status,404);
+  const recovery = await missing.text(); assert(!recovery.includes('/__mixer')); assert.match(recovery,/fresh invitation/);
   const denied = await fetch(base + phone, { redirect: 'manual' });
   assert.equal(denied.status, 403); await denied.text();
 });
 
-test('banner names every PR, escaped, before </body>', () => {
-  const mix = { key: 'k', repo: 'o/r', mainSha: '1234567890', prs: [{ number: 7, title: '<script>x</script>' }] };
-  const html = lib.injectBanner('<html><body>game</body></html>', mix);
-  assert.match(html, /game<div id="pr-mixer-banner".*<\/div><\/body>/s);
-  assert.match(html, /#7<\/a> &#60;script&#62;/);
-  assert.ok(!html.includes('<script>x'));
-  assert.match(lib.injectBanner('no body', { ...mix, prs: [] }), /main only/);
+test('authorized launch signs in server-side, preserves an existing identity, and excludes guests', async t => {
+  const root = mkdtempSync(`${tmpdir()}/pr-mixer-launch-`), key = '123456abcdef';
+  let logins = 0;
+  const upstream = http.createServer((req,res) => {
+    if (req.url === '/api/account') { res.writeHead(req.headers.cookie === 'session=existing' ? 200 : 401, {'content-type':'application/json'}); res.end('{}'); return; }
+    assert.equal(req.url, '/api/auth/preview');
+    assert.equal(req.headers['x-drawing-board'], '1');
+    let body=''; req.on('data', b=>body+=b); req.on('end',()=>{
+      assert.deepEqual(JSON.parse(body), {name:'Host',code:'fixture-only-code'}); logins++;
+      res.writeHead(200, {'content-type':'application/json','set-cookie':'session=new; HttpOnly; Path=/; Secure'}); res.end('{}');
+    });
+  }).listen(0,'127.0.0.1');
+  await once(upstream,'listening');
+  const portServer=net.createServer().listen(0,'127.0.0.1'); await once(portServer,'listening'); const port=portServer.address().port; await new Promise(r=>portServer.close(r));
+  const origin=`https://mixer.example.ts.net:${port}`, base=`http://127.0.0.1:${port}`;
+  writeFileSync(`${root}/docker`, '#!/bin/sh\necho true\n',{mode:0o700});
+  writeFileSync(`${root}/state.json`,JSON.stringify({mixes:{[key]:{key,status:'running',port:upstream.address().port,accessCode:'fixture-only-code'}}}));
+  const child=spawn(process.execPath,[fileURLToPath(new URL('./pr-mixer.mjs',import.meta.url))],{env:{PATH:`${root}:${process.env.PATH}`,HOME:root,MIXER_AUTH:'tailnet',MIXER_MANAGERS:'operator@example.com',MIXER_ORIGIN:origin,MIXER_PORT:String(port),MIXER_DATA:root},stdio:['ignore','pipe','pipe']});
+  t.after(async()=>{if(child.exitCode===null){const exited=once(child,'exit');child.kill('SIGTERM');await exited;} await new Promise(r=>upstream.close(r));rmSync(root,{recursive:true,force:true});});
+  await once(child.stdout,'data',{signal:AbortSignal.timeout(5000)});
+  const launch=async(login,cookie='')=>fetch(`${base}/__mixer/api/mixes/${key}/open`,{method:'POST',headers:{'tailscale-user-login':login,origin,cookie}});
+  const guest=await launch('guest@example.com');assert.equal(guest.status,403);await guest.text();assert.equal(logins,0);
+  const first=await launch('operator@example.com');assert.equal(first.status,200);assert(first.headers.getSetCookie().some(c=>c.startsWith(`mx${key}_session=new`)));
+  assert.deepEqual(await first.json(),{url:'/?game=galactic-reach#tables'});assert.equal(logins,1);
+  const again=await launch('operator@example.com',`mx${key}_session=existing`);assert.equal(again.status,200);await again.text();assert.equal(logins,1,'reopening preserves table ownership');
+});
+
+test('game recovery contains no developer destinations or raw HTML', () => {
+  const html = lib.gameError('Connection <script>lost</script>');
+  assert(!html.includes('/__mixer/'));
+  assert(!html.includes('<script>'));
+  assert.match(html, /Try again/);
 });
 
 test('POST origin check', () => {
