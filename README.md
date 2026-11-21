@@ -37,7 +37,7 @@ For two human players on one computer, use separate browser profiles or a privat
 
 Heirs Ad Astra has a [canonical 12.17 rulebook](prototypes/galactic-reach/rulebook.html), served at `/galactic-reach/rulebook.html` on the live site and each PR preview. Read the [maintenance guide](docs/rules/README.md) before making changes; every gameplay-logic change must update the rulebook in the same PR. The [interactive tutorial](docs/rules/tutorial.md) is planned after rules review.
 
-The player docs site at <https://heirsadastra.com> publishes the same rulebook with the [release notes](docs/releases.md) and a landing page. `node scripts/build-site.cjs` builds it into `_site/` from those files and `site/`; the [Docs site workflow](.github/workflows/pages.yml) builds it on PRs that touch them and deploys it to GitHub Pages from `main`.
+The player docs site at <https://heirsadastra.com> publishes the same rulebook with the [release notes](docs/releases.md) and a landing page. `node scripts/build-site.cjs` builds it into `_site/` from those files, the game's emblem (`prototypes/lab/heirs-emblem*.svg`) and `site/`; the [Docs site workflow](.github/workflows/pages.yml) builds it on PRs that touch them and deploys it to GitHub Pages from `main`.
 
 ## Build and verify
 
