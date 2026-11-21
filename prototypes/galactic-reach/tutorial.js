@@ -19,9 +19,24 @@
   const costText = cost => RES.filter(r => cost[r]).map(r => `${cost[r]} ${NAMES[r]}`).join(', ');
 
   function seeded(seed) { let v = seed >>> 0; return () => { v = (v * 1664525 + 1013904223) >>> 0; return v / 0x100000000; }; }
+  // Choosing Learn to play resumes only a walkthrough left part-way: past its first step and not
+  // finished, which is when the menu and welcome note offer "Continue Learn to play". Otherwise it
+  // deals the practice game again, before app.js reads it, so a fresh Lesson 1 never sits on an
+  // earlier practice table. A reload or Back/Forward stays in the same walkthrough. Unreadable
+  // progress cannot be resumed and counts as not part-way; the guest save is never touched.
+  function partWay() {
+    try { const saved = JSON.parse(localStorage.getItem(PROGRESS) || 'null'); return Number.isInteger(saved?.step) && saved.step > 0 && saved.stepId !== 'finished'; } catch { return false; }
+  }
+  function entered() {
+    try { return (globalThis.performance?.getEntriesByType?.('navigation')[0]?.type || 'navigate') === 'navigate'; } catch { return true; }
+  }
+  if (entered() && !partWay()) clearTutorial();
+  // Another tab restarted the walkthrough or began a new one: follow it here, so this tab never
+  // writes the earlier practice game or place back over it.
+  globalThis.addEventListener?.('storage', event => { if (event.key === PROGRESS && event.newValue === null) location.reload(); });
   function loadProgress() {
     try { const saved = JSON.parse(localStorage.getItem(PROGRESS) || 'null'); if (saved && saved.rules === RULES && Number.isInteger(saved.step)) return saved; } catch { /* fresh */ }
-    return { rules: RULES, step: 0, view: 0, base: null, staged: {} };
+    return { rules: RULES, step: 0, view: 0, base: null, staged: {}, cardFirst: true };
   }
   let progress = loadProgress();
   function saveProgress() { try { localStorage.setItem(PROGRESS, JSON.stringify(progress)); } catch { /* not saved */ } }
@@ -108,7 +123,7 @@
     s.ensureFleet(to, 0)[type] += 1;
   }
 
-  // ---- The lessons, in rulebook order. ----
+  // ---- Begin with the opening cards, then explain the table the player has used. ----
   const hand = key => state => globalThis.galacticReachGuide.handCard(handHas(state, key)?.id || '');
   const lastHand = key => state => { const cards = me(state).hand.filter(c => c.key === key); return globalThis.galacticReachGuide.handCard(cards.at(-1)?.id || ''); };
   // Only an open Sector Scan offers a choice (a closed one keeps its last buttons in the page).
@@ -116,32 +131,13 @@
   const hexAt = coord => coord && globalThis.galacticReachGuide.hex(coord);
 
   const LESSONS = [
-    { id: 'table', title: 'Read the table', steps: [
-      { id: 'track', title: 'The score track', rule: 'shared-board', info: true, followCallouts: true,
-        text: s => `Race to ${s.victoryTarget || 40}★ on the score track. Your Colony already scores 3★.`,
-        show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'You: 3★', side: 'right' }, { el: $('.prestige-track-goal'), label: 'First to the goal wins', side: 'bottom' }] }),
-        anchor: () => $('[data-score-player="0"]') },
-      { id: 'home', title: 'Your home world', rule: 'shared-board', info: true, followCallouts: true,
-        text: () => 'Your home world. Select any hex to see what is on it.',
-        show: state => ({ spotlight: homeHexes(state), callouts: [{ el: hexAt(colony(state)), label: 'Your Colony (3★)' }] }),
-        anchor: state => hexAt(colony(state)) },
-    ] },
     { id: 'resources', title: 'Resources', steps: [
-      { id: 'mat', title: 'Your mat', rule: 'player-mat', info: true, followCallouts: true,
+      // The first thing to do is convert the Move, so the Move is the card that glows.
+      { id: 'first-construct', title: 'Your first build', rule: 'resources',
         prepare: s => { ensureHand(s, ['move', 'move', 'construct', 'construct', 'construct'], true); },
-        text: () => 'Your mat has one row per resource.',
-        show: state => ({ spotlight: [$('#resource-grid'), hexAt(colony(state))], callouts: [{ el: matPart('matter', '.mat-pips.now'), label: 'Now: the Matter you hold' }, { el: matPart('matter', '.mat-pips.rate'), label: 'Rate: Matter made each round' }, { el: matPart('matter', '.mat-pips.now i.cap'), label: 'Limit: 4 at most' }, { el: hexAt(colony(state)), label: 'Your Colony makes that +1' }] }),
-        anchor: () => $('#resource-grid') },
-      { id: 'convert-construct', title: 'Convert a card', rule: 'resources',
-        text: () => 'Drag the marked Construct card onto your mat: +1 Matter.',
-        show: state => ({ spotlight: [$('#resource-grid'), lastHand('construct')(state)], ghost: { from: lastHand('construct')(state), to: matRow('matter') }, callouts: [{ el: matPart('matter', '.mat-pips.now'), label: 'Lands here' }] }),
-        anchor: lastHand('construct'), start: state => ({ matter: me(state).resources.matter }),
-        done: (state, base) => me(state).resources.matter > base.matter },
-      { id: 'convert-move', title: 'Convert a Move', rule: 'resources',
-        text: () => 'Now drag the marked Move card onto the mat: +1 Energy.',
+        text: () => 'A Construct card can build a Data Harvester. You have the Matter and Data; first convert this Move for 1 Energy.',
         show: state => ({ spotlight: [$('#resource-grid'), hand('move')(state)], ghost: { from: hand('move')(state), to: matRow('energy') }, callouts: [{ el: matPart('energy', '.mat-pips.now'), label: 'Energy: +1' }] }),
-        anchor: hand('move'), start: state => ({ energy: me(state).resources.energy }),
-        done: (state, base) => me(state).resources.energy > base.energy },
+        anchor: hand('move'), done: (state, base, port) => me(state).resources.energy >= port.structures.harvester.cost.energy },
     ] },
     { id: 'orders', title: 'Orders', steps: [
       { id: 'harvester-aim', title: 'Use an order', rule: 'orders', aimAt: state => dataSite(state),
@@ -157,6 +153,25 @@
         text: () => 'Choose Build Harvester. Data pays for Explorers, relics and upgrades.',
         show: () => ({ callouts: [{ el: scanButton(/Harvester/)(), label: 'This one' }] }),
         anchor: scanButton(/Harvester/), done: state => Boolean(harvester(state)) },
+    ] },
+    { id: 'table', title: 'Read the table', steps: [
+      { id: 'track', title: 'The score track', rule: 'shared-board', info: true, followCallouts: true,
+        text: s => `Race to ${s.victoryTarget || 40}★ on the score track. Your Colony already scores 3★.`,
+        show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'You: 3★', side: 'right' }, { el: $('.prestige-track-goal'), label: 'First to the goal wins', side: 'bottom' }] }),
+        anchor: () => $('[data-score-player="0"]') },
+      { id: 'home', title: 'Your home world', rule: 'shared-board', info: true, followCallouts: true,
+        text: () => 'Your home world. Select any hex to see what is on it.',
+        show: state => ({ spotlight: homeHexes(state), callouts: [{ el: hexAt(colony(state)), label: 'Your Colony (3★)' }] }),
+        anchor: state => hexAt(colony(state)) },
+      { id: 'mat', title: 'Your mat', rule: 'player-mat', info: true, followCallouts: true,
+        text: () => 'Your mat has one row per resource.',
+        show: state => ({ spotlight: [$('#resource-grid'), hexAt(colony(state))], callouts: [{ el: matPart('matter', '.mat-pips.now'), label: 'Now: the Matter you hold' }, { el: matPart('matter', '.mat-pips.rate'), label: 'Rate: Matter made each round' }, { el: matPart('matter', '.mat-pips.now i.cap'), label: 'Limit: 4 at most' }, { el: hexAt(colony(state)), label: 'Your Colony makes that +1' }] }),
+        anchor: () => $('#resource-grid') },
+      { id: 'convert-construct', title: 'Convert a card', rule: 'resources',
+        text: () => 'Drag the marked Construct card onto your mat: +1 Matter.',
+        show: state => ({ spotlight: [$('#resource-grid'), lastHand('construct')(state)], ghost: { from: lastHand('construct')(state), to: matRow('matter') }, callouts: [{ el: matPart('matter', '.mat-pips.now'), label: 'Lands here' }] }),
+        anchor: lastHand('construct'), start: state => ({ matter: me(state).resources.matter }),
+        done: (state, base) => me(state).resources.matter > base.matter },
     ] },
     { id: 'round', title: 'The round', steps: [
       { id: 'convert-rest', title: 'Convert first', rule: 'resources',
@@ -392,6 +407,14 @@
 
   // Progress names its step, so a later edit to the lesson list resumes at the same step.
   function resolveProgress() {
+    // Old opening saves have not built the Harvester yet. Resume them at the new opening;
+    // later saved lessons retain their named step. This never touches the guest game's save.
+    if (!progress.cardFirst) {
+      if (progress.step <= 4) { progress.stepId = 'first-construct'; progress.step = 0; progress.view = 0; progress.base = null; }
+      progress.cardFirst = true; saveProgress();
+    }
+    // Lesson 1's Move conversion is now part of its first step.
+    if (progress.stepId === 'convert-move') progress.stepId = 'first-construct';
     if (!progress.stepId) return;
     const index = progress.stepId === 'finished' ? STEPS.length : STEPS.findIndex(s => s.id === progress.stepId);
     if (index >= 0 && index !== progress.step) { progress.step = index; progress.view = index; progress.base = null; }
@@ -435,7 +458,7 @@
     const state = port.state;
     // A new tutorial game (first visit, or its save was cleared) starts the lessons from the top.
     if (state.tutorialRules !== RULES && !state.pendingCombat) {
-      if (progress.step > 0 || Object.keys(progress.staged).length) { progress = { rules: RULES, step: 0, view: 0, base: null, staged: {} }; saveProgress(); }
+      if (progress.step > 0 || Object.keys(progress.staged).length) { progress = { rules: RULES, step: 0, view: 0, base: null, staged: {}, cardFirst: true }; saveProgress(); }
       port.stage(s => { s.state.tutorialRules = RULES; }, null);
     }
     if (progress.view === progress.step) advance();
@@ -479,11 +502,14 @@
     if (aimed) { anchor = aimed; text = `${state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.) ${text}`; }
     return {
       id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: step.title, text, rule: step.rule, aside: !reviewing && !openDialog ? note : '',
+      revealOnInspect: !reviewing && !openDialog && !step.dialog && Boolean(anchor?.matches?.('#hand-row > .game-card')),
+      bringIntoView: !reviewing,
       inDialog: openDialog || step.dialog || null, anchor, followCallouts: Boolean(step.followCallouts) && !reviewing, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return step.marks?.(state, port) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
       buttons: [
         { action: 'back', label: 'Back', disabled: progress.view === 0 },
-        // Reading steps go on with Next; a "do it yourself" step goes on once you have done it.
-        { action: 'next', label: 'Next', primary: true, disabled: !(reviewing || step.info), title: reviewing || step.info ? '' : 'Do this step on the table first' },
+        // Reading steps go on with Next. A "do it yourself" step has no button that goes on or
+        // finds the target for you: the lit card or control is the way forward, and doing it advances.
+        ...(reviewing || step.info ? [{ action: 'next', label: 'Next', primary: true }] : []),
         { action: 'exit', label: 'Exit tutorial', quiet: true },
         ...(step.lessonIndex < LESSONS.length - 1 || reviewing ? [{ action: 'skip', label: 'Skip lesson', link: true }] : []),
       ]

@@ -36,6 +36,7 @@
 
   const shownAt = {};
   let port = null, frame = 0, coach = null, targeted = [], lastKey = '', lastAnnounced = '', raisedOver = null, currentAnchor = null, currentAvoid = [];
+  let cueCard = null, cueKey = '', inspectedKey = '';
 
   // ---- Reading the table: what the player can do right now. ----
   function context() {
@@ -93,9 +94,9 @@
     { id: 'cleanup', when: c => c.ops && c.state.round >= 2, title: 'A new hand', rule: 'cleanup-draw',
       text: () => 'Last round’s cards went to your discard pile; you drew five new ones.',
       anchor: () => firstShown('#discard-button'), show: () => ({ ghost: { from: firstShown('#hand-row'), to: firstShown('#discard-button') }, callouts: [{ el: firstShown('#discard-button'), label: 'Last round’s cards', side: 'left' }, { el: firstShown('#hand-row'), label: 'Five new cards' }] }) },
-    // Production, the moment the mat has filled: the hexes that paid flash.
+    // Production, the moment the mat's pieces have moved: the hexes that paid flash.
     { id: 'production', when: c => c.ops && c.state.round >= 2 && prefs.seen.cleanup, title: 'Production', rule: 'resources',
-      text: () => 'Each hex you own paid out: your mat filled up.',
+      text: () => 'Each hex you own paid out: the pieces on your mat moved up.',
       anchor: () => firstShown('#resource-grid'), show: c => ({ callouts: [{ el: firstShown('#resource-grid'), label: 'New resources', side: 'left' }, ...producers(c).slice(0, 3).map(coord => ({ el: hex(coord), label: `+${RESOURCE_NAMES[c.state.planets[coord].type]}` }))] }) },
     // Reshuffle, only when the deck has actually run out and the discard was shuffled in.
     { id: 'reshuffle', when: c => c.ops && reshuffled, title: 'Reshuffle', rule: 'round',
@@ -319,7 +320,7 @@
     return coach;
   }
 
-  function clearTargets() { targeted.forEach(element => element.classList.remove('gr-coach-target', 'gr-coach-goal')); targeted = []; }
+  function clearTargets() { targeted.forEach(element => element.classList.remove('gr-coach-target', 'gr-coach-goal', 'gr-coach-card-cue')); targeted = []; }
 
   // Where to aim at an element: a fanned hand card shows only a strip before the next card
   // covers it, so aim at the middle of that strip (the pointer and a note's tail agree).
@@ -631,7 +632,7 @@
     }
     // Of the sides that fit, prefer the one that hides least of what you may need next: the lit
     // hexes of an aimed order and an open Sector Scan.
-    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...extraAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden]), #resource-grid, #open-trade, #convert-all-button:not([hidden]), #prestige-track')].filter((el, i) => el && el !== box && (i === 0 || (el !== around && !around.contains(el)))).map(el => el.getBoundingClientRect());
+    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...extraAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden]), #resource-grid, #open-trade, #convert-all-button:not([hidden]), #prestige-track, [data-guide-switch]')].filter((el, i) => el && el !== box && (i === 0 || (el !== around && !around.contains(el)))).map(el => el.getBoundingClientRect());
     const covered = o => avoid.reduce((sum, r) => sum + Math.max(0, Math.min(o.left + width, r.right) - Math.max(o.left, r.left)) * Math.max(0, Math.min(o.top + height, r.bottom) - Math.max(o.top, r.top)), 0);
     const raised = $$(':is(#hand-row, .market-cards, .relic-row) .game-card:is(:hover, :focus-within), .toast').map(el => el.getBoundingClientRect());
     const texty = $$(TEXTY).filter(el => el !== around && !el.contains(around) && !around.contains(el) && shown(el)).map(el => el.getBoundingClientRect());
@@ -651,6 +652,23 @@
         ? Math.max(14, Math.min(width - 14, aimX(anchor) - choice.left))
         : Math.max(14, Math.min(height - 14, b.top + b.height / 2 - choice.top));
       arrow.style.setProperty('--along', `${Math.round(along)}px`);
+    }
+  }
+
+  // A walkthrough step brings what it lights into view once, as the step starts: a hand card past
+  // the edge of a narrow screen's scrolling hand. Only the scrolling row that holds it moves (at
+  // once, before the note is placed), never the table, so the note does not chase a scroll.
+  let broughtKey = '';
+  function bringIntoView(element) {
+    for (let box = element.parentElement; box && box !== document.body; box = box.parentElement) {
+      const style = getComputedStyle(box);
+      const across = /auto|scroll/.test(style.overflowX) && box.scrollWidth > box.clientWidth;
+      const down = /auto|scroll/.test(style.overflowY) && box.scrollHeight > box.clientHeight;
+      if (!across && !down) continue;
+      const b = box.getBoundingClientRect(), r = element.getBoundingClientRect();
+      const left = across && (r.left < b.left || r.right > b.right) ? box.scrollLeft + (r.left + r.right - b.left - b.right) / 2 : box.scrollLeft;
+      const top = down && (r.top < b.top || r.bottom > b.bottom) ? box.scrollTop + (r.top + r.bottom - b.top - b.bottom) / 2 : box.scrollTop;
+      if (left !== box.scrollLeft || top !== box.scrollTop) box.scrollTo({ left, top, behavior: 'instant' });
     }
   }
 
@@ -691,13 +709,25 @@
         }
       }
     } catch (error) { console.error('Guidance could not read the table.', error); tip = null; }
+    const stepKey = tip?.bringIntoView ? JSON.stringify([tip.id, tip.step]) : '';
     if (tip?.followCallouts && tip.show?.callouts?.length) {
       const live = tip.show.callouts.filter(c => c?.el && shown(c.el));
       // The note itself names the lit part (it moves with it), so the stage draws rings without labels.
       if (live.length) { const part = live[activeCallout % live.length]; tip = { ...tip, anchor: part.el, text: `${part.label}. ${tip.text}`, step: `${tip.step}:${activeCallout % live.length}`, show: { ...tip.show, noLabels: true } }; }
     }
     following = Boolean(tip?.followCallouts);
-    if (tip) { pendingShow = null; place(tip); setShow(pendingShow); settle(); } else hide();
+    cueCard = tip?.revealOnInspect && shown(tip.anchor) ? tip.anchor : null;
+    cueKey = cueCard ? JSON.stringify([tip.id, tip.step, cueCard.dataset.cardId]) : '';
+    document.body.classList.toggle('gr-card-guidance', Boolean(cueCard));
+    const lit = cueCard || tip?.anchor;
+    if (stepKey && stepKey !== broughtKey && lit && shown(lit)) { broughtKey = stepKey; bringIntoView(lit); }
+    if (cueCard && inspectedKey !== cueKey) {
+      // Start with one real card, without a tooltip, spotlight, pointer or ghost drag.
+      // Inspection reveals the explanation; it stays available for the rest of this step.
+      hide();
+      cueCard.classList.add('gr-coach-target', 'gr-coach-card-cue');
+      targeted.push(cueCard);
+    } else if (tip) { pendingShow = null; place(tip); setShow(pendingShow); settle(); } else hide();
     syncMenu();
   }
 
@@ -720,19 +750,27 @@
   function setEnabled(enabled) {
     prefs.enabled = enabled; savePrefs();
     if (!enabled) hide();
+    syncMenu();
     schedule();
   }
 
+  // The menu entry and the switch on the table ([data-guide-switch]: beside the map tools, or at
+  // the start of a phone's turn buttons) all show prefs.enabled; Learn to play hides them all.
   function syncMenu() {
-    const toggle = $('#guide-toggle');
-    if (!toggle) return;
-    toggle.setAttribute('aria-pressed', String(prefs.enabled));
-    toggle.textContent = prefs.enabled ? 'Guidance: on' : 'Guidance: off';
-    toggle.hidden = Boolean(globalThis.galacticReachTutorial?.active);
+    const toggle = $('#guide-toggle'), tutorial = Boolean(globalThis.galacticReachTutorial?.active);
+    if (toggle) {
+      toggle.setAttribute('aria-pressed', String(prefs.enabled));
+      toggle.textContent = prefs.enabled ? 'Guidance: on' : 'Guidance: off';
+      toggle.hidden = tutorial;
+    }
+    for (const button of $$('[data-guide-switch]')) {
+      button.setAttribute('aria-pressed', String(prefs.enabled));
+      button.hidden = tutorial;
+    }
   }
 
   function init() {
-    $('#guide-toggle')?.addEventListener('click', () => setEnabled(!prefs.enabled));
+    for (const button of $$('#guide-toggle, [data-guide-switch]')) button.addEventListener('click', () => setEnabled(!prefs.enabled));
     // A walkthrough in progress: the menu offers to continue it rather than start again.
     try {
       const tutorial = JSON.parse(localStorage.getItem('galactic-reach-tutorial-progress-v1') || 'null');
@@ -744,6 +782,12 @@
     document.addEventListener('click', () => setTimeout(schedule, 0), true);
     document.addEventListener('keydown', () => setTimeout(schedule, 0), true);
     document.addEventListener('pointerup', () => setTimeout(schedule, 0), true);
+    for (const type of ['pointerover', 'focusin', 'pointerdown']) document.addEventListener(type, event => {
+      if (cueCard && cueCard.contains(event.target) && inspectedKey !== cueKey) {
+        inspectedKey = cueKey;
+        schedule();
+      }
+    }, true);
     for (const type of ['pointerover', 'pointerout', 'focusin']) document.addEventListener(type, event => {
       if (coach && !coach.hidden && event.target.closest?.('.game-card')) requestAnimationFrame(() => position(coach, currentAnchor && shown(currentAnchor) ? currentAnchor : null));
     }, true);

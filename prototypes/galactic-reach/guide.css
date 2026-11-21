@@ -48,6 +48,19 @@
 @keyframes gr-coach-bounce { 0%, 100% { translate: 0 0; } 50% { translate: 0 -6px; } }
 @keyframes gr-coach-pulse { 50% { outline-color: #6ff3ff66; outline-offset: 2px; } }
 @media (prefers-reduced-motion: reduce) { .gr-coach-target { animation: none; } }
+/* A tutorial card step invites inspection of just one card; ordinary turn cues stay unchanged. */
+body.tutorial-mode.gr-card-guidance #hand-row > .game-card:not(.gr-coach-target) {
+  outline: none !important; filter: none; animation: none; scale: 1;
+  box-shadow: 0 2px 0 #948269, 0 4px 10px #0006 !important;
+}
+body.tutorial-mode.gr-card-guidance #hand-row > .gr-coach-target {
+  filter: drop-shadow(0 0 9px #6ff3ff80); animation: gr-card-invite 1.6s ease-in-out infinite;
+  transform-origin: 50% 100%; z-index: 30;
+}
+@keyframes gr-card-invite { 0%, 100% { scale: 1.04; } 50% { scale: 1.12; } }
+@media (prefers-reduced-motion: reduce) {
+  body.tutorial-mode.gr-card-guidance #hand-row > .gr-coach-target { animation: none; scale: 1.08; }
+}
 .gr-coach-goal { outline: 2px dashed #6ff3ff !important; outline-offset: -3px; z-index: 3; }
 .gr-coach-pointer { position: fixed; z-index: 61; inset: auto; margin: 0; padding: 0; border: 0; background: none; overflow: visible; pointer-events: none;
   width: 28px; height: 30px; color: #6ff3ff; filter: drop-shadow(0 2px 3px #000c); animation: gr-pointer-bob 1.3s ease-in-out infinite; }
@@ -175,3 +188,35 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
 .gr-bubble .resource-chip { gap: 3px; min-height: 20px; padding: 1px 5px; border-color: color-mix(in srgb, var(--chip-color) 55%, #a89d83); background: #253436; }
 .gr-bubble .resource-chip strong { color: #f7f0dd; font-size: 11px; }
 .gr-bubble .resource-chip .resource-symbol { width: 12px; height: 12px; }
+
+/* The Guidance switch on the table (guide.js syncMenu), in step with Guidance in the menu. It shows
+   its state in words and in its icon (lines in the note when on, struck through when off), and is
+   the same size either way: "on" and "off" share one slot. Beside the map tools on a table; at the
+   start of the turn's buttons on a phone, where the docked note and the drawers never reach. */
+.guide-switch { display: inline-flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
+.guide-switch[hidden], .guide-switch-phone { display: none !important; }
+.guide-switch-icon { flex: none; width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.guide-switch-state { display: inline-grid; }
+.guide-switch-state > span { grid-area: 1 / 1; }
+.guide-switch[aria-pressed="true"] { color: #f3e3b6; border-color: #c9a75a99; }
+.guide-switch[aria-pressed="true"] :is(.guide-switch-off, .guide-switch-slash),
+.guide-switch[aria-pressed="false"] :is(.guide-switch-on, .guide-switch-lines) { visibility: hidden; }
+.guide-switch:focus-visible { outline: 2px solid var(--gold, #ffc95e); outline-offset: 2px; }
+/* On the table it stands just above Map key, in the map's empty top-right corner, without moving the
+   map tools; the map's fit (app.js) keeps every hex clear of it. */
+@media (min-width: 600px) and (min-height: 600px) {
+  .map-tools { position: relative; }
+  #guide-switch { position: absolute; right: 12px; bottom: calc(100% + 4px); }
+}
+@media (max-width: 599px), (max-height: 599px) {
+  #guide-switch { display: none !important; }
+  #hand-panel .hand-tools .guide-switch-phone:not([hidden]) { display: inline-flex !important; min-width: 44px; margin-right: auto; padding: 4px 10px; }
+  /* Its auto margin still pushes the turn's buttons right; a crowded row now scrolls instead of
+     pushing the switch out past the left edge. */
+  #hand-panel .hand-tools:has(> .guide-switch-phone:not([hidden])) { justify-content: flex-start; }
+  .guide-switch-phone .guide-switch-icon { width: 18px; height: 18px; }
+}
+/* A narrow phone has room for the icon alone; its name and state are still announced. */
+@media (max-width: 599px) {
+  .guide-switch-phone .guide-switch-text { display: none; }
+}
