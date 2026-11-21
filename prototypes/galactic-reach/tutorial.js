@@ -19,6 +19,21 @@
   const costText = cost => RES.filter(r => cost[r]).map(r => `${cost[r]} ${NAMES[r]}`).join(', ');
 
   function seeded(seed) { let v = seed >>> 0; return () => { v = (v * 1664525 + 1013904223) >>> 0; return v / 0x100000000; }; }
+  // Choosing Learn to play resumes only a walkthrough left part-way: past its first step and not
+  // finished, which is when the menu and welcome note offer "Continue Learn to play". Otherwise it
+  // deals the practice game again, before app.js reads it, so a fresh Lesson 1 never sits on an
+  // earlier practice table. A reload or Back/Forward stays in the same walkthrough. Unreadable
+  // progress cannot be resumed and counts as not part-way; the guest save is never touched.
+  function partWay() {
+    try { const saved = JSON.parse(localStorage.getItem(PROGRESS) || 'null'); return Number.isInteger(saved?.step) && saved.step > 0 && saved.stepId !== 'finished'; } catch { return false; }
+  }
+  function entered() {
+    try { return (globalThis.performance?.getEntriesByType?.('navigation')[0]?.type || 'navigate') === 'navigate'; } catch { return true; }
+  }
+  if (entered() && !partWay()) clearTutorial();
+  // Another tab restarted the walkthrough or began a new one: follow it here, so this tab never
+  // writes the earlier practice game or place back over it.
+  globalThis.addEventListener?.('storage', event => { if (event.key === PROGRESS && event.newValue === null) location.reload(); });
   function loadProgress() {
     try { const saved = JSON.parse(localStorage.getItem(PROGRESS) || 'null'); if (saved && saved.rules === RULES && Number.isInteger(saved.step)) return saved; } catch { /* fresh */ }
     return { rules: RULES, step: 0, view: 0, base: null, staged: {}, cardFirst: true };
