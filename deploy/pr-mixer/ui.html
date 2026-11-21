@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PR mixer</title>
+<title>Playtests · Heirs Ad Astra</title>
 <style>
   :root { --bg:#16131d; --panel:#211c2b; --line:#3a3248; --text:#ece8f3; --dim:#a69cb6; --accent:#c9a3ff; --ok:#6fd49a; --bad:#ff7d7d; --wait:#f2c46d; }
   * { box-sizing: border-box; }
@@ -12,7 +12,7 @@
   h1 { font-size:20px; margin:0 0 4px; } h2 { font-size:16px; margin:24px 0 8px; }
   p.lead { color:var(--dim); margin:0 0 16px; }
   a { color:var(--accent); }
-  button { font:inherit; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:5px 10px; cursor:pointer; }
+  button { font:inherit; color:var(--text); background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:10px 14px; min-height:44px; cursor:pointer; }
   button:hover:not(:disabled) { border-color:var(--accent); } button:disabled { opacity:.5; cursor:default; }
   button.primary { background:#5b3a8c; border-color:#7d55b8; }
   button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
@@ -30,24 +30,32 @@
   .msg { padding:8px 10px; border-radius:6px; border:1px solid var(--line); background:var(--panel); margin:8px 0; }
   .msg.bad { border-color:var(--bad); } .msg.ok { border-color:var(--ok); }
   .dim { color:var(--dim); } code { font-size:12px; }
+  .launch {border:1px solid var(--line);background:var(--panel);padding:24px;border-radius:12px;margin:24px 0}
+  .launch h2 {font-size:24px;margin:0 0 12px;overflow-wrap:anywhere}
+  .launch p {color:var(--dim)} .launch button {background:var(--accent);color:var(--bg);font-weight:650}
+  details {border:1px solid var(--line);padding:14px;border-radius:10px;margin:16px 0}
+  summary {cursor:pointer;min-height:44px;display:list-item;padding:10px;font-weight:600}
+  summary:focus-visible {outline:2px solid var(--accent)}
+  .mix-card {border-bottom:1px solid var(--line);padding:14px 0;overflow-wrap:anywhere}
+  .mix-card details {margin:8px 0} .mix-card code {overflow-wrap:anywhere}
   @media (max-width:600px) { main { padding:16px; } }
 </style>
 </head>
 <body>
 <main>
-  <h1>PR mixer</h1>
-  <p class="lead">Turn PRs on and off, apply, and play main with exactly those changes. Each mix has its own throwaway database; nothing here touches the dev site's tables. <span id="who"></span></p>
-
+  <h1>Playtests</h1>
+  <p class="lead">Open a ready game, or choose changes to try. Invite players from inside the game. <span id="who"></span></p>
+  <div id="latest" class="launch" aria-live="polite">Looking for a ready playtest…</div>
+  <div id="status" aria-live="polite"></div>
+  <details id="choose"><summary>Choose changes</summary>
   <div class="bar" role="group" aria-label="Presets">
     <button type="button" data-preset="main">Main only</button>
     <button type="button" data-preset="ready">All ready (non-draft, CI green)</button>
     <button type="button" data-preset="everything">Everything</button>
     <span class="grow"></span>
     <button type="button" id="refresh">Refresh PRs</button>
-    <button type="button" class="primary" id="apply">Apply</button>
+    <button type="button" class="primary" id="apply">Build selection</button>
   </div>
-  <div id="status" aria-live="polite"></div>
-
   <div class="scroll">
     <table aria-label="Open pull requests">
       <thead><tr><th scope="col">On</th><th scope="col">PR</th><th scope="col">Author</th><th scope="col">CI</th><th scope="col">Labels</th><th scope="col">Preview</th><th scope="col"></th></tr></thead>
@@ -55,19 +63,17 @@
     </table>
   </div>
 
-  <h2>Mixes</h2>
-  <p class="dim" id="limits"></p>
-  <div class="scroll">
-    <table aria-label="Mixes">
-      <thead><tr><th scope="col">Mix</th><th scope="col">Includes</th><th scope="col">State</th><th scope="col">Sign-in code</th><th scope="col"></th></tr></thead>
-      <tbody id="mixes"></tbody>
-    </table>
-  </div>
+  </details>
+  <details><summary>Previous playtests &amp; details</summary>
+    <p class="dim" id="limits"></p>
+    <div id="mixes"></div>
+  </details>
 </main>
 <script>
 const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-const on = new Set(JSON.parse(localStorage.getItem('pr-mixer-on') || '[]'));
+let saved = []; try { saved = JSON.parse(localStorage.getItem('pr-mixer-on') || '[]'); } catch {}
+const on = new Set(Array.isArray(saved) ? saved : []);
 let data = { prs: [], presets: {} };
 const remember = () => { try { localStorage.setItem('pr-mixer-on', JSON.stringify([...on])); } catch {} };
 
@@ -126,8 +132,8 @@ async function apply(numbers) {
     if (r.status !== 200) return say(esc(r.error || 'Apply failed'), 'bad');
     const m = r.mix;
     say(m.status === 'built' || m.status === 'running'
-      ? `Mix <b>${m.key}</b> is already built. <a href="${m.open}">Open it</a>.`
-      : `Mix <b>${m.key}</b> is ${m.status}. A full build takes several minutes; this page updates when it is ready.`, 'ok');
+      ? `Your playtest is ready. <button data-open="${m.key}">Open playtest</button>`
+      : `Your playtest is ${m.status}. This page updates when it is ready. You can keep using the last ready game meanwhile.`, 'ok');
     loadMixes();
   } finally { $('#apply').disabled = false; }
 }
@@ -136,15 +142,22 @@ async function loadMixes() {
   const r = await call('mixes');
   if (r.status !== 200) return;
   $('#limits').textContent = `At most ${r.limits.maxRunning} mixes run at once and ${r.limits.maxKept} are kept; a mix idle for ${r.limits.idleHours} h stops (it restarts when opened). Older mixes are deleted, with their tables.`;
-  $('#mixes').innerHTML = r.mixes.map((m) => {
-    const prs = m.prs.length ? m.prs.map((p) => `#${p.number}`).join(' ') : 'main only';
-    const state = m.status === 'queued' ? `queued (${m.queuePosition})` : m.status === 'failed' ? `<span class="ci-failure">failed</span> <span class="dim">${esc(m.error || '')}</span>` : esc(m.status);
-    const open = ['built', 'running'].includes(m.status) ? `<a href="${m.open}">Open</a> ` : '';
-    const stop = m.status === 'running' ? `<button type="button" data-stop="${m.key}">Stop</button> ` : '';
-    return `<tr><td><code>${m.key}</code><div class="dim">main ${m.mainSha.slice(0, 7)}</div></td><td>${prs}</td><td>${state}</td>
-      <td><code>${esc(m.accessCode)}</code></td>
-      <td>${open}<a href="/__mixer/api/mixes/${m.key}/log" target="_blank">Log</a> ${stop}<button type="button" data-delete="${m.key}">Delete</button></td></tr>`;
-  }).join('') || '<tr><td colspan="5" class="dim">No mixes yet.</td></tr>';
+  const name = m => m.prs.length ? m.prs.map(p => p.title).join(' + ') : 'Main · current development game';
+  const ready = r.mixes.find(m => ['built', 'running'].includes(m.status));
+  const building = r.mixes.find(m => ['queued', 'building'].includes(m.status));
+  $('#latest').innerHTML = ready
+    ? `<span class="ci-success">Ready to play</span><h2>${esc(name(ready))}</h2><p>Built ${esc(new Date(ready.created).toLocaleString())}. Your existing tables stay on their original playtest.</p><button data-open="${ready.key}">Open playtest</button>${building ? '<p>A new playtest is building. This one stays available.</p>' : ''}`
+    : `<h2>${building ? 'Preparing your playtest…' : 'Create your first playtest'}</h2><p>${building ? 'Building can take several minutes. This page updates automatically.' : 'Choose changes below, then Build selection. Leave all changes off to try main.'}</p>`;
+  if (!ready && !building) $('#choose').open = true;
+  $('#mixes').innerHTML = r.mixes.map(m => {
+    const state = m.status === 'queued' ? `Queued (${m.queuePosition})` : esc(m.status);
+    const open = ['built', 'running'].includes(m.status) ? `<button data-open="${m.key}">Open playtest</button>` : '';
+    const stop = m.status === 'running' ? `<button type="button" data-stop="${m.key}">Stop</button>` : '';
+    return `<article class="mix-card"><strong>${esc(name(m))}</strong><p>${state} · ${esc(new Date(m.created).toLocaleString())}</p>${open}
+      <details><summary>Build details &amp; maintenance</summary><p>Build <code>${m.key}</code> · main <code>${m.mainSha.slice(0,7)}</code></p>
+      ${m.error ? `<p class="ci-failure">${esc(m.error)}</p>` : ''}<p>Manual sign-in code: <code>${esc(m.accessCode)}</code></p>
+      <div class="bar"><a href="/__mixer/api/mixes/${m.key}/log" target="_blank" rel="noopener">Build log</a>${stop}<button type="button" data-delete="${m.key}">Delete playtest and tables</button></div></details></article>`;
+  }).join('') || '<p class="dim">No previous playtests.</p>';
   if (r.mixes.some((m) => ['queued', 'building'].includes(m.status))) setTimeout(loadMixes, 5000);
 }
 
@@ -159,12 +172,18 @@ document.addEventListener('click', async (e) => {
   if (t.dataset.preset) { on.clear(); for (const n of data.presets[t.dataset.preset] || []) on.add(n); remember(); renderPrs(); say(''); }
   if (t.dataset.alone) apply([Number(t.dataset.alone)]);
   if (t.dataset.drop) { on.delete(Number(t.dataset.drop)); remember(); renderPrs(); apply([...on]); }
+  if (t.dataset.open) {
+    t.disabled = true;
+    try { const r = await call(`mixes/${t.dataset.open}/open`, {}); if (r.status === 200) location.assign(r.url); else say(esc(r.error || 'Could not open playtest'), 'bad'); }
+    catch { say('Connection interrupted. Try opening the playtest again.', 'bad'); }
+    finally { t.disabled = false; }
+  }
   if (t.id === 'apply') apply([...on]);
   if (t.id === 'refresh') loadPrs(true);
   if (t.dataset.stop) { await call(`mixes/${t.dataset.stop}/stop`, {}); loadMixes(); }
   if (t.dataset.delete && confirm(`Delete mix ${t.dataset.delete} and its tables?`)) { await call(`mixes/${t.dataset.delete}/delete`, {}); loadMixes(); }
 });
-loadPrs(); loadMixes();
+loadPrs().catch(() => say('Could not load changes. Try Refresh PRs.', 'bad')); loadMixes().catch(() => say('Could not load playtests. Reload to try again.', 'bad'));
 </script>
 </body>
 </html>

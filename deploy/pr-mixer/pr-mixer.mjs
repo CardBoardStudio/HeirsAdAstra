@@ -318,7 +318,7 @@ async function whoIsAdmin(req) {
   for (const mode of cfg.auth) {
     if (mode === 'local') return 'local';
     if (mode === 'tailnet') {
-      const identity = lib.tailnetIdentity(req.headers);
+      const identity = lib.isTailnetManager(req.headers, cfg);
       if (identity) return identity;
     }
     if (mode === 'dev-site') {
@@ -360,13 +360,16 @@ const publicMix = (m) => ({ ...m, open: `/mix/${m.key}/`, queuePosition: queue.i
 let ui = '';
 async function handle(req, res) {
   const url = new URL(req.url, cfg.origin);
-  const admin = await whoIsAdmin(req);
-  if (!admin) {
-    const signIn = cfg.auth.includes('dev-site') ? `<p>Sign in with Nido as an administrator at <a href="${lib.escapeHtml(cfg.devSitePublic)}">${lib.escapeHtml(cfg.devSitePublic)}</a> (same host name, so the session reaches this page), then reload.</p>` : '';
-    const tailnet = cfg.auth.includes('tailnet') ? '<p>Connect a device signed in to Tailscale and open this mixer through its private HTTPS address. No Nido administrator account is needed.</p>' : '';
-    return send(res, 403, `<!doctype html><meta charset="utf-8"><title>PR mixer</title><h1>PR mixer: access required</h1>${signIn}${tailnet}`, 'text/html; charset=utf-8');
-  }
   const p = url.pathname;
+  const management = p.startsWith('/__mixer') || /^\/mix\//.test(p);
+  // Management never follows from a player cookie or from tailnet membership.
+  const admin = management ? await whoIsAdmin(req) : null;
+  if (management && !admin) {
+    if (p.startsWith('/__mixer/api/')) return send(res, 403, { error: 'Playtest management requires operator access.' });
+    return send(res, 403, '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Playtests · Access required</title><h1>Playtest management requires operator access</h1><p>Players should open the invitation from their host. Operators: configure MIXER_MANAGERS for your Tailscale login, or use the configured Nido administrator session.</p>', 'text/html; charset=utf-8');
+  }
+  if (!management && cfg.auth.includes('tailnet') && !lib.tailnetIdentity(req.headers))
+    return gameFailure(req, res, 403, 'Connect to Tailscale on this device, then try your invitation again.');
   if (p === '/__mixer' || p === '/__mixer/') return send(res, 200, ui, 'text/html; charset=utf-8');
   if (p.startsWith('/__mixer/api/')) {
     if (req.method !== 'GET' && !lib.sameOrigin(req.headers, cfg.origin)) return send(res, 403, { error: 'cross-origin request refused' });
@@ -386,36 +389,37 @@ async function handle(req, res) {
     return res.end();
   }
   const selected = lib.cookieValue(req.headers.cookie, MIX_COOKIE);
-  const route = lib.tabletopRoute(state, req.method, url, selected);
-  if (route?.ambiguous) return send(res, 409, '<!doctype html><meta charset="utf-8"><p>This table exists in more than one mix. Open the intended mix on this device, then scan the pairing link again.</p><p><a href="/__mixer/">Choose a mix</a></p>', 'text/html; charset=utf-8');
-  if (route && route.key !== selected) {
-    // No fragment in Location: browsers preserve the QR's secret fragment.
-    // It never reaches this server; the game redeems it after this redirect.
-    res.writeHead(302, { location: url.pathname + url.search, 'set-cookie': `${MIX_COOKIE}=${route.key}; Path=/; HttpOnly; SameSite=Lax${cfg.https ? '; Secure' : ''}`, 'cache-control': 'no-store' });
-    return res.end();
-  }
-  const mix = state.mixes[selected];
-  if (!mix || !['built', 'running'].includes(mix.status)) {
-    res.writeHead(302, { location: '/__mixer/', 'cache-control': 'no-store' });
-    return res.end();
-  }
+  const route = lib.tabletopRoute(state, req.method, url, selected, Date.now(), req.headers.referer);
+  if (route?.ambiguous || route?.missing)
+    return gameFailure(req, res, 404, 'This game link is no longer available. Ask your host for a fresh invitation.');
+  const mix = state.mixes[route?.key ?? selected];
+  if (!mix || !['built', 'running'].includes(mix.status))
+    return gameFailure(req, res, 503, 'This game is temporarily unavailable. Your host can bring it back online.');
   try {
     mix.lastUsed = Date.now();
     await ensureRunning(mix);
   } catch (e) {
-    return send(res, 502, `<!doctype html><meta charset="utf-8"><p>Mix ${mix.key} could not start: ${lib.escapeHtml(e.message)}</p><p><a href="/__mixer/">Back to the mixer</a></p>`, 'text/html; charset=utf-8');
+    log('game unavailable', mix.key, e.message);
+    return gameFailure(req, res, 503, 'This game is temporarily unavailable. Please try again shortly.');
   }
-  proxy(req, res, mix);
+  // Only a fallback for pages without a table ID (for example the manual).
+  // A table-specific request always uses the durable route above.
+  proxy(req, res, mix, route && route.key !== selected);
 }
 
-function proxy(req, res, mix) {
+function gameFailure(req, res, status, message) {
+  return req.url.startsWith('/api/')
+    ? send(res, status, { error: message })
+    : send(res, status, lib.gameError(message), 'text/html; charset=utf-8');
+}
+
+function proxy(req, res, mix, remember = false) {
   const headers = { ...req.headers };
   // Strip what the mix must not see: other cookies (the sign-in session among them) and Tailscale's identity headers.
   delete headers.cookie;
   for (const h of Object.keys(headers)) if (h.startsWith('tailscale-')) delete headers[h];
   const cookies = lib.inboundCookies(req.headers.cookie, mix.key);
   if (cookies) headers.cookie = cookies;
-  headers['accept-encoding'] = 'identity'; // the banner is injected into plain HTML
   const up = http.request({ host: '127.0.0.1', port: mix.port, method: req.method, path: req.url, headers }, async (upRes) => {
     if (lib.recordTableRoute(state, req.method, new URL(req.url, cfg.origin).pathname, upRes.statusCode, mix.key)) await save();
     const out = { ...upRes.headers };
@@ -424,19 +428,33 @@ function proxy(req, res, mix) {
     // one mix's file for another.
     out['cache-control'] = 'no-store';
     delete out.etag; delete out['last-modified'];
-    const html = (out['content-type'] ?? '').startsWith('text/html') && req.method === 'GET';
-    if (!html) { res.writeHead(upRes.statusCode, out); return upRes.pipe(res); }
-    const chunks = [];
-    upRes.on('data', (c) => chunks.push(c));
-    upRes.on('end', () => {
-      const body = Buffer.from(lib.injectBanner(Buffer.concat(chunks).toString('utf8'), mix));
-      delete out['transfer-encoding'];
-      out['content-length'] = body.length;
-      res.writeHead(upRes.statusCode, out);
-      res.end(body);
-    });
+    // The game is a player surface, even in the organizer's browser. Never
+    // inject build navigation or PR details into any upstream HTML.
+    if (remember) out['set-cookie'] = [...(out['set-cookie'] ?? []), `${MIX_COOKIE}=${mix.key}; Path=/; HttpOnly; SameSite=Lax${cfg.https ? '; Secure' : ''}`];
+    // A fresh table must be routable before its setup document loads scripts.
+    // Record only the server-returned ID; never persist request bodies/secrets.
+    if (req.method === 'POST' && new URL(req.url, cfg.origin).pathname === '/api/tables' && upRes.statusCode >= 200 && upRes.statusCode < 300) {
+      const chunks = [];
+      upRes.on('data', chunk => chunks.push(chunk));
+      upRes.on('end', async () => {
+        const body = Buffer.concat(chunks);
+        try {
+          const {id} = JSON.parse(body.toString('utf8'));
+          if (typeof id === 'string' && /^[0-9a-f]{32}$/.test(id)
+              && lib.recordTableRoute(state, 'GET', `/api/tables/${id}/lobby`, 200, mix.key)) await save();
+        } catch { /* unknown upstream response: preserve it unchanged */ }
+        res.writeHead(upRes.statusCode, out); res.end(body);
+      });
+      return;
+    }
+    res.writeHead(upRes.statusCode, out);
+    upRes.pipe(res);
   });
-  up.on('error', (e) => { if (!res.headersSent) send(res, 502, { error: `mix ${mix.key}: ${e.message}` }); else res.destroy(); });
+  up.on('error', (e) => {
+    log('game connection failed', mix.key, e.message);
+    if (!res.headersSent) gameFailure(req, res, 503, 'Connection interrupted. Try again to return to the same game.');
+    else res.destroy();
+  });
   req.pipe(up);
   res.on('close', () => up.destroy());
 }
@@ -456,8 +474,30 @@ async function api(req, res, route, url, admin) {
     log(`${admin} applied`, plan.key, plan.prs.map((p) => `#${p.number}`).join(' ') || 'main only');
     return send(res, 200, { plan, mix: publicMix(enqueue(plan)) });
   }
-  const m = route.match(/^mixes\/([0-9a-f]{12})\/(log|stop|delete)$/);
+  const m = route.match(/^mixes\/([0-9a-f]{12})\/(log|stop|delete|open)$/);
   const mix = m && state.mixes[m[1]];
+  if (mix && m[2] === 'open' && req.method === 'POST') {
+    if (!['built', 'running'].includes(mix.status)) return send(res, 409, { error: 'This playtest is not ready yet.' });
+    await ensureRunning(mix);
+    mix.lastUsed = Date.now();
+    const cookies = [`${MIX_COOKIE}=${mix.key}; Path=/; HttpOnly; SameSite=Lax${cfg.https ? '; Secure' : ''}`];
+    const upstream = `http://127.0.0.1:${mix.port}`;
+    const existing = lib.inboundCookies(req.headers.cookie, mix.key);
+    const account = await fetch(`${upstream}/api/account`, { headers: existing ? { cookie: existing } : {}, signal: AbortSignal.timeout(5000) });
+    await account.body?.cancel();
+    if (!account.ok && account.status !== 401) return send(res, 502, { error: 'Could not check your game session. Try again shortly.' });
+    if (account.status === 401 && cfg.https) {
+      const signed = await fetch(`${upstream}/api/auth/preview`, {
+        method: 'POST', headers: { 'content-type': 'application/json', origin: cfg.origin, 'x-drawing-board': '1' },
+        body: JSON.stringify({ name: 'Host', code: mix.accessCode }), signal: AbortSignal.timeout(5000),
+      });
+      if (!signed.ok) return send(res, 502, { error: 'Could not open this playtest. Check its sign-in settings in Details.' });
+      cookies.push(...signed.headers.getSetCookie().map(c => lib.outboundCookie(c, mix.key)));
+      await signed.body?.cancel();
+    }
+    res.setHeader('set-cookie', cookies);
+    return send(res, 200, { url: '/?game=galactic-reach#tables' });
+  }
   if (mix && m[2] === 'log' && req.method === 'GET') {
     const text = await readFile(`${cfg.data}/builds/${mix.key}/build.log`, 'utf8').catch(() => 'No build log.');
     return send(res, 200, text.slice(-200_000), 'text/plain; charset=utf-8');

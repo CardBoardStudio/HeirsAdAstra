@@ -30,6 +30,8 @@ cp prototypes/galactic-reach/replay.js dist/galactic-reach/replay.js
 cp prototypes/lab/index.html dist/index.html
 cp prototypes/lab/index.html dist/lab/index.html
 cp prototypes/lab/lab.css prototypes/lab/lab.js prototypes/lab/replay.js dist/lab/
+# The emblem: the hanging astrolabe, its round version, and its reductions for the header (mark) and the favicon.
+cp prototypes/lab/heirs-emblem.svg prototypes/lab/heirs-emblem-round.svg prototypes/lab/heirs-emblem-mark.svg prototypes/lab/heirs-emblem-favicon.svg dist/lab/
 
 # Preserve the complete v4 through v10 browsers alongside v11; tables never upgrade implicitly.
 mkdir -p dist/galactic-reach/rules/4.9
