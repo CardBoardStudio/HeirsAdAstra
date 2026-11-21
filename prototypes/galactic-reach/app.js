@@ -6101,7 +6101,7 @@ function createGalacticReach(options = {}) {
     // The bottom band's pieces too: the map reaches down between your hand, piles, buttons and mat.
     const band = [...document.querySelectorAll('#hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].map(e => rect(e));
     // The race line and its goal stick out past the track's box on the right (the counts sit before them).
-    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('#max-bank-nav')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
+    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('#max-bank-nav')), rect($('.map-tools')), rect($('#guide-switch')), rect($('#map-legend-corner')), ...band].filter(Boolean);
     const clear = (width, top) => {
       const left = document.body.classList.contains('background-stars') ? box.left + (box.width - width) / 2 : box.right - width;
       return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
