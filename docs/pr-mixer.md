@@ -37,7 +37,7 @@ survives restarts and stopped containers and lasts until its build is deleted.
 Old route timestamps are retained as metadata, not treated as authorization or
 expiry. Missing or ambiguous routes fail closed with a request for a fresh
 invitation; a browser cookie cannot resolve a table cloned into two builds.
-After upgrading an older installation, open Table setup or reissue its invitation
+After upgrading an older installation, open the waiting screen or reissue its invitation
 to establish any missing route. Pairing secrets stay in URL fragments; the mixer
 never reads or stores them. The game still validates the table/role credential on
 every protected request. Routing itself grants no access.

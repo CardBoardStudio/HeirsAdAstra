@@ -17,8 +17,8 @@ async function wait(browser,expression){await browser.evaluate(`new Promise((res
     await phone.send('Emulation.setTouchEmulationEnabled',{enabled:true});
     await phone.navigate(invite.url);
     await wait(phone,"!document.querySelector('#join').hidden");
-    await phone.evaluate(`document.querySelector('#name').value='Phone guest';document.querySelector('#join').requestSubmit()`);
-    await wait(phone,"document.querySelector('#status').textContent.includes('Waiting for your host')");
+    await phone.evaluate(`document.querySelector('#name').value='Phone guest';document.querySelector('input[name=device][value=hand]').checked=true;document.querySelector('#join').requestSubmit()`);
+    await wait(phone,"document.querySelector('#status').textContent.includes('Waiting for the host')");
     const {data:requests}=await api(`/api/tabletop/${id}/requests`,host);
     assert.equal(requests.requests.length,1);
     await api(`/api/tabletop/${id}/approve`,host,{participant:requests.requests[0].participant,approve:true});

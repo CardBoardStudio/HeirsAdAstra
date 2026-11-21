@@ -1,6 +1,25 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Your table · Heirs Ad Astra</title><link rel="stylesheet" href="board.css"><script defer src="pairing.js"></script></head>
-<body data-role="host"><main class="pairing"><p class="eyebrow">HEIRS AD ASTRA</p><h1 id="title">Your table</h1><p id="status" role="status" aria-live="polite">Opening your table…</p><button id="retry" hidden>Try again</button>
-<section id="choose-role" hidden><h2>How will you use this screen?</h2><div class="device-options"><article><h3>My personal game</h3><p>Your map, private hand and every action, on any device.</p><button id="choose-player" class="primary">Play on this device</button></article><article><h3>A board for everyone</h3><p>Public information on this screen. Connect your phone for your private hand.</p><button id="choose-board">Use as shared board</button></article></div></section>
-<section id="room" hidden><div class="lobby-grid"><section id="link-box" hidden><h2 id="link-title">Invite players</h2><p id="link-note"></p><img id="qr" alt="Scan to join this game"><p><button id="copy">Copy invite</button> <a id="link" rel="noopener" target="_blank">Open link</a></p><details><summary>Show invitation link</summary><label>Invitation link<input id="manual-link" readonly></label></details></section><section><h2>Players</h2><ul id="roster" class="roster"></ul><div id="requests" aria-live="polite"></div><button id="connect-phone" hidden>Connect your phone</button><button id="start" class="primary" disabled>Waiting for another player</button><button id="continue" hidden>Open game</button><button id="invite" hidden>Show player invitation</button></section></div></section>
-<details id="settings" hidden><summary>Table settings &amp; devices</summary><p id="screen-role"></p><div class="pairing-actions"><button id="play-here">Play on this device</button><button id="board">Show public board here</button><button id="host-phone">Move my hand to another device</button><button id="board-link">Add a shared display</button><button id="revoke-board">Revoke shared display access</button><button id="refresh-invite">Create a fresh player invitation</button><a id="lobby" href="/">Game settings</a></div><div id="devices"></div></details>
-<p class="privacy">Your host starts the game. Personal screens open automatically. A shared display is optional.</p><p><a href="/galactic-reach/rulebook.html#phone-pairing" target="_blank" rel="noopener">Playing with friends</a></p></main></body></html>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Playing with others · Heirs Ad Astra</title><link rel="stylesheet" href="board.css"><script defer src="pairing.js"></script></head>
+<body data-role="host"><main class="pairing waiting"><p class="eyebrow">HEIRS AD ASTRA · PLAYING WITH OTHERS</p><h1 id="title">Your game</h1><p id="status" role="status" aria-live="polite">Opening your game…</p><button id="retry" hidden>Try again</button>
+<div class="waiting-grid">
+<section id="link-box" class="card" aria-labelledby="link-title" hidden><h2 id="link-title">Send the link</h2><p class="note">Send it to the people you want to play with. You let each of them in.</p>
+<div id="link-ready"><div class="link-actions"><button id="share" class="primary" type="button" hidden>Share link</button><button id="copy" type="button">Copy link</button></div>
+<label class="link-text">The link<input id="manual-link" readonly></label>
+<figure class="qr"><img id="qr" alt="QR code of the link"><figcaption>For people in the room: scan with a phone camera.</figcaption></figure>
+<p class="note">The link works for 24 hours.</p></div>
+<div id="link-sent" hidden><p>The link you sent earlier still works. To show it here, make a new one; the earlier link then stops working.</p><button id="new-link" type="button">Make a new link</button></div>
+</section>
+<div class="waiting-side">
+<section class="card" aria-labelledby="players-title"><h2 id="players-title">Who’s playing</h2><ul id="roster" class="roster"></ul><div id="requests" aria-live="polite"></div>
+<label class="target" for="target">Prestige target<select id="target"></select></label><p class="note">The first faction at or above the target when a round ends wins.</p></section>
+<section class="card" id="device" aria-labelledby="device-title"><h2 id="device-title">How will you use this device?</h2>
+<div class="device-choices" role="radiogroup" aria-labelledby="device-title">
+<label class="device-choice"><input type="radio" name="device" value="hand"><span class="picture" data-picture="hand"></span><strong>My hand</strong><small>Your cards here. The board is on another screen.</small></label>
+<label class="device-choice"><input type="radio" name="device" value="game"><span class="picture" data-picture="game"></span><strong>The whole game</strong><small>The map and your hand together here.</small></label>
+<label class="device-choice"><input type="radio" name="device" value="board"><span class="picture" data-picture="board"></span><strong>The board for everyone</strong><small>The room’s shared screen. Your hand goes on your phone.</small></label>
+</div>
+<div id="phone-box" class="link-panel" hidden></div>
+<button id="start" class="primary" type="button" disabled>Waiting for someone to join</button><button id="continue" class="primary" type="button" hidden>Open my game</button>
+<p id="alone-hint" class="note" hidden>Nobody to wait for? <a href="/?game=galactic-reach#alone">Play alone instead</a></p></section>
+</div></div>
+<details id="settings"><summary>More</summary><div class="pairing-actions"><button id="board-link" type="button">Show the board on another screen</button><button id="revoke-board" type="button">Disconnect shared screens</button><button id="refresh-invite" type="button">Make a new link</button></div><div id="other-link" class="link-panel" hidden></div><div id="devices"></div></details>
+<p class="privacy">Computer rivals play every place nobody takes. Each person’s hand stays on their own device.</p><p><a href="/galactic-reach/rulebook.html#phone-pairing" target="_blank" rel="noopener">How playing with others works</a></p></main></body></html>

@@ -13,9 +13,9 @@ rustup target add wasm32-unknown-unknown
 ./scripts/dev.sh
 ```
 
-Open **http://127.0.0.1:3000** for the Heirs Ad Astra home. Play as a guest without signing in, or create an account under **Your account**, save its private recovery key, then create tables in **Your tables** or AI players in **AI arena**. The build script installs the pinned `wasm-bindgen` CLI under the ignored `.tools/` directory on first use. No Node runtime or frontend JavaScript framework is required to host the games. The server embeds QuickJS for Heirs Ad Astra’s shared JavaScript rules. Node is used only for the browser-rule regression check.
+Open **http://127.0.0.1:3000** for the Heirs Ad Astra home. Choose **Play alone** to play in this browser without signing in, or create an account under **Your account**, save its private recovery key, then choose **Play alone** or **Play with others** on the home page, or create AI players in **AI arena**. The build script installs the pinned `wasm-bindgen` CLI under the ignored `.tools/` directory on first use. No Node runtime or frontend JavaScript framework is required to host the games. The server embeds QuickJS for Heirs Ad Astra’s shared JavaScript rules. Node is used only for the browser-rule regression check.
 
-For two human players on one computer, use separate browser profiles or a private window. Share the table invitation, join before launch, then have the host launch. Recovery keys and Nido identities return to the same account across sign-ins; browser sessions expire after 24 hours. The legacy development and preview login forms still create temporary identities.
+For two human players on one computer, use separate browser profiles or a private window. The host chooses **Play with others** and shares the link; the other player joins and the host starts. Recovery keys and Nido identities return to the same account across sign-ins; browser sessions expire after 24 hours. The legacy development and preview login forms still create temporary identities.
 
 ## The game
 

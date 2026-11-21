@@ -77,6 +77,9 @@ pub async fn list(
         let shared = crate::shared::status(&db, &id)?;
         let (status, url) = if let Some(shared) = shared.as_deref() {
             (shared, crate::shared::url(&id))
+        } else if waiting && crate::tabletop::enabled(&db, &id)? {
+            // Played with others: back to the waiting screen that holds its link.
+            ("waiting", format!("/tabletop/host.html?table={id}"))
         } else if waiting {
             ("waiting", crate::lobby::url(&id))
         } else {

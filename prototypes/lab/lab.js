@@ -37,7 +37,7 @@ const returnPath = (() => {
 const arenaInfo = () => catalog?.games.find(g => g.id === arenaGame);
 const arenaPolicies = () => catalog.policies.filter(p => p.game === arenaGame);
 const page = () =>
-  ["arena", "account", "tables", "admin", "members"].includes(location.hash.slice(1))
+  ["arena", "account", "tables", "admin", "members", "alone"].includes(location.hash.slice(1))
     ? location.hash.slice(1)
     : location.hash.startsWith("#invite/") ? "invite" : location.hash.startsWith("#lobby/") ? "lobby" : "library";
 const inviteToken = () => /^#invite\/([a-f0-9]{64})$/.exec(location.hash)?.[1];
@@ -142,6 +142,39 @@ async function action(work) {
 function head(kicker, title, description, badge = "") {
   return `<div class="page-head"><div><div class="eyebrow">${kicker}</div><h1>${title}</h1><p>${description}</p></div>${badge ? `<span class="badge">${badge}</span>` : ""}</div>`;
 }
+// The start of every game (docs/tabletop.md#starting-a-game): two choices, the
+// same words everywhere. Alone never opens a waiting room; with others goes
+// straight to the waiting screen, where the link is sent.
+function startChoices({resume = true} = {}) {
+  const alone = profile
+    ? `<a class="start-choice alone" href="#alone"><strong>Play alone</strong><small>You against three computer rivals.</small></a>`
+    : `<a class="start-choice alone" href="/galactic-reach/?new=1"><strong>Play alone</strong><small>You against three computer rivals, saved in this browser.</small></a>`;
+  const others = profile
+    ? `<button class="start-choice others" id="play-with-others" type="button"><strong>Play with others</strong><small>Send a link. Computer rivals play any empty places.</small></button>`
+    : `<a class="start-choice others" href="#account"><strong>Play with others</strong><small>Sign in first, then send a link.</small></a>`;
+  return `<div class="start-choices">${alone}${others}</div>${resume ? resumeLinks() : ""}`;
+}
+// A guest game in progress in this browser, saved by the current engine.
+function guestGameInProgress() {
+  const format = (arenaInfo()?.rules_version || "").split("/").pop().split(".")[0];
+  if (!/^\d+$/.test(format)) return false;
+  try {
+    return Object.keys(localStorage).some(key => {
+      if (key !== `galactic-reach-save-v${format}` && !key.startsWith(`galactic-reach-save-v${format}-`)) return false;
+      const save = JSON.parse(localStorage.getItem(key) || "null");
+      return !!save && save.winner == null;
+    });
+  } catch { return false; }
+}
+// Picking up a game is secondary to starting one.
+function resumeLinks() {
+  const latest = profile && tables.find(g => g.game === arenaGame && g.status !== "finished");
+  const links = [
+    latest && `<a class="text-link" href="${esc(latest.url)}">Continue ${esc(latest.name)} →</a>`,
+    guestGameInProgress() && `<a class="text-link" href="/galactic-reach/">Continue the game saved in this browser →</a>`,
+  ].filter(Boolean);
+  return links.length ? `<p class="resume">${links.join("")}</p>` : "";
+}
 function libraryView() {
   return (
     head(
@@ -151,27 +184,36 @@ function libraryView() {
       '<span class="live-dot"></span> PLAYTEST',
     ) +
     `
-  <section class="hero"><div class="hero-copy"><span class="badge cyan">NOW IN PLAYTEST</span><h2>Heirs Ad Astra</h2><p>A galaxy of possibilities. Command your faction, build your fleet, and chart a path to the stars.</p><div class="meta"><span>1 player + 3 AI</span><span>4X strategy</span><span>Saved tables</span></div><div class="hero-actions"><a class="primary" href="/?game=galactic-reach#tables">Create a table <span>↗</span></a><a class="secondary learn-to-play" href="/galactic-reach/?tutorial=1">New here? Learn to play <span>→</span></a></div><p class="learn-note">A guided first game on the real table, one step at a time.</p><a class="text-link guest-link" href="/galactic-reach/">Play as a guest · saved in this browser →</a></div><div class="hero-art"><img class="hero-emblem" src="/lab/heirs-emblem-round.svg" alt="" width="178" height="178"></div></section>
-  <div class="cards"><section class="panel game-card"><div class="card-icon" aria-hidden="true">⟁</div><div><small>LEARN THE GAME</small><h3>Rules and cards</h3><p>Read the rulebook, then browse every market card before your first expedition.</p><a class="text-link" href="/galactic-reach/?tutorial=1">Learn to play →</a> <a class="text-link" href="/galactic-reach/rulebook.html">Read the rulebook →</a> <a class="text-link" href="/galactic-reach/cards.html">Card gallery →</a></div></section><section class="panel game-card"><span class="arena-icon" aria-hidden="true">◇</span><div><small>A DIFFERENT KIND OF PLAYTEST</small><h3>Meet your next challenger.</h3><p>Create AI players, run matches, and discover how their strategies compare.</p><a class="text-link" href="#arena">Explore the AI arena →</a></div></section></div>
-  <div class="section-head"><h2>Your tables</h2><a class="text-link" href="#tables">View all / create new →</a></div><section class="panel">${tableList()}</section>`
+  <section class="hero"><div class="hero-copy"><span class="badge cyan">NOW IN PLAYTEST</span><h2>Heirs Ad Astra</h2><p>A galaxy of possibilities. Command your faction, build your fleet, and chart a path to the stars.</p><div class="meta"><span>1 to 4 people</span><span>4X strategy</span><span>Computer rivals fill in</span></div>${startChoices()}</div><div class="hero-art"><img class="hero-emblem" src="/lab/heirs-emblem-round.svg" alt="" width="178" height="178"></div></section>
+  <div class="cards"><section class="panel game-card"><div class="card-icon" aria-hidden="true">⟁</div><div><small>LEARN THE GAME</small><h3>Rules and cards</h3><p>Play a guided first game, read the rulebook, then browse every market card before your first expedition.</p><a class="text-link" href="/galactic-reach/?tutorial=1">Learn to play →</a> <a class="text-link" href="/galactic-reach/rulebook.html">Read the rulebook →</a> <a class="text-link" href="/galactic-reach/cards.html">Card gallery →</a></div></section><section class="panel game-card"><span class="arena-icon" aria-hidden="true">◇</span><div><small>A DIFFERENT KIND OF PLAYTEST</small><h3>Meet your next challenger.</h3><p>Create AI players, run matches, and discover how their strategies compare.</p><a class="text-link" href="#arena">Explore the AI arena →</a></div></section></div>
+  <div class="section-head"><h2>Your tables</h2><a class="text-link" href="#tables">View all →</a></div><section class="panel">${tableList()}</section>`
   );
 }
 function tableList() {
-  if (!profile) return `<div class="empty"><span aria-hidden="true">◎</span><h3>A seat with your name on it.</h3><p>Sign in to save named tables and return from another browser.</p><a class="secondary" href="#account">Sign in or create an account</a></div>`;
+  if (!profile) return `<div class="empty"><span aria-hidden="true">◎</span><h3>A seat with your name on it.</h3><p>Sign in to keep your games and return from another browser.</p><a class="secondary" href="#account">Sign in or create an account</a></div>`;
   const shown = tables.filter(g => g.game === arenaGame);
-  if (!shown.length) return '<div class="empty"><h3>Your first table is waiting.</h3><p>Create a named game of Heirs Ad Astra. It will be waiting here when you return.</p></div>';
-  return shown.map(g => `<a class="table-link" href="${esc(g.url)}"><div><strong>${esc(g.name)}</strong><small>${g.guest ? `Heirs Ad Astra · invited · ${g.players} at the table` : "Heirs Ad Astra · Solo + 3 AI"} · Rules ${esc((g.rules_version || "unknown").split("/").pop())} · ${g.status === "waiting" ? "Waiting room" : `Round ${g.round} · ${esc(g.status)}`}</small></div><span>${g.status === "waiting" ? "Open waiting room" : g.status === "new" ? "Start table" : "Open table"} ↗</span></a>`).join("");
+  if (!shown.length) return '<div class="empty"><h3>Your first game is waiting.</h3><p>Play alone or with others. Your games wait here when you return.</p></div>';
+  const kind = g => g.guest ? `With others · invited · ${g.players} people` : g.status === "waiting" || /[?&]shared=/.test(g.url) || g.url.startsWith("/tabletop/") ? "With others" : "Alone + 3 computer rivals";
+  return shown.map(g => `<a class="table-link" href="${esc(g.url)}"><div><strong>${esc(g.name)}</strong><small>${kind(g)} · Rules ${esc((g.rules_version || "unknown").split("/").pop())} · ${g.status === "waiting" ? "Waiting for others" : `Round ${g.round} · ${esc(g.status)}`}</small></div><span>${g.status === "waiting" ? "Open" : g.status === "new" ? "Start" : "Continue"} ↗</span></a>`).join("");
 }
 function tablesView() {
-  return head("A PLACE TO PICK UP WHERE YOU LEFT OFF", "Your tables.", "Name a game and return whenever you’re ready. Each table keeps the rules version it started with.") +
-    `<div class="split"><section class="panel"><h2>Saved games</h2>${tableList()}</section><section class="panel"><h2>Create a table</h2>${profile ? `<form id="table-form"><p class="hint">${rulesHint()}</p><label for="table-name">Table name</label><input id="table-name" name="name" required maxlength="60" placeholder="Friday expedition"><p class="form-note">Opens Table setup: invite players, approve their seats, then Start. Play here or add an optional public board. Standard AI rivals fill the remaining seats. Unrated and saved to your account. Your guest game stays separate.</p><button class="primary">Create and open table →</button></form>` : '<p>Sign in to create a table saved to your account.</p><a class="primary" href="#account">Sign in →</a><hr class="divider"><a class="text-link" href="/galactic-reach/">Play Heirs Ad Astra as a guest →</a>'}</section></div>`;
+  return head("A PLACE TO PICK UP WHERE YOU LEFT OFF", "Your tables.", "Return whenever you’re ready. Each game keeps the rules version it started with.") +
+    `<div class="split"><section class="panel"><h2>Saved games</h2>${tableList()}</section><section class="panel"><h2>Start a new game</h2><p class="hint">${rulesHint()}</p>${startChoices({resume:false})}</section></div>`;
+}
+// Play alone: the settings a solo game already has, then the game starts.
+// Every game seats four factions (rules #setup), so three computer rivals play.
+const VICTORY_TARGETS = [20, 30, 40, 50, 60]; // rules #victory-target; the server checks the choice.
+function aloneView() {
+  const intro = head("PLAY ALONE", "You against three computer rivals.", "Every game has four factions. Ember Directorate, Violet Assembly and Helios Compact play the other three.");
+  if (!profile) return intro + `<section class="panel alone-panel"><p>Without an account, your game is saved in this browser.</p><a class="primary" href="/galactic-reach/?new=1">Choose the settings and start →</a><p class="form-note"><a class="text-link" href="#account">Sign in</a> to keep games in your account instead.</p></section>`;
+  return intro + `<section class="panel alone-panel"><form id="alone-form"><label for="alone-target">Prestige target</label><select id="alone-target" name="victory_target">${VICTORY_TARGETS.map(n => `<option value="${n}" ${n === 30 ? "selected" : ""}>${n} Prestige${n === 30 ? " (default)" : ""}</option>`).join("")}</select><p class="form-note">The first faction at or above the target when a round ends wins.</p><button class="primary">Start the game →</button><p class="form-note">Saved to your account, so you can continue from any browser.</p></form></section><p><a class="text-link" href="#library">← Back</a></p>`;
 }
 // Read the current rules from the server's engine, never a hard-coded label.
 function rulesHint() {
   const info = arenaInfo();
   if (!info) return "";
   const version = (info.rules_version || "").split("/").pop();
-  return `New Heirs Ad Astra tables use rules ${esc(version)} · ${esc(info.experiment || "")}. Start a new game.`;
+  return `New games use rules ${esc(version)} · ${esc(info.experiment || "")}.`;
 }
 const seatLabel = seat => seat.kind === "host" ? `${esc(seat.name)}${seat.you ? " (you)" : ""}<small>Host</small>`
   : seat.kind === "friend" ? `${esc(seat.name)}${seat.you ? " (you)" : ""}<small>Friend · signed in</small>`
@@ -381,6 +423,7 @@ function render() {
     tables: "Your tables",
     invite: "Your invitation",
     lobby: "Waiting room",
+    alone: "Play alone",
   }[current];
   $("#admin-nav").hidden = !profile?.is_admin;
   $("#members-nav").hidden = !profile?.is_admin;
@@ -395,7 +438,7 @@ function render() {
     bind();
     return;
   }
-  $("#main").innerHTML = ({arena:arenaView,account:accountView,library:libraryView,admin:adminView,members:membersView,invite:inviteView,tables:tablesView,lobby:lobbyView}[current])();
+  $("#main").innerHTML = ({arena:arenaView,account:accountView,library:libraryView,admin:adminView,members:membersView,invite:inviteView,tables:tablesView,lobby:lobbyView,alone:aloneView}[current])();
   bind();
   pollLobby();
 }
@@ -412,9 +455,16 @@ function onClick(id, work) {
 function bind() {
   bindMembers();
   bindReplays(api,async()=>{matches=await api("/api/arena/matches");});
-  onForm("#table-form", async body => {
-    const table = await api("/api/tables", {game:arenaGame,name:body.name,practice:false,round_limit:20,lobby:true});
-    location.assign(arenaGame === "galactic-reach" ? `/tabletop/host.html?table=${table.id}` : table.url);
+  // Alone: a game of its own, never a waiting room or an invitation.
+  onForm("#alone-form", async body => {
+    const when = new Date().toLocaleString(undefined, {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"});
+    const table = await api("/api/tables", {game:arenaGame, name:`Alone · ${when}`, victory_target:Number(body.victory_target)});
+    location.assign(table.url);
+  });
+  // With others: the game and its waiting screen, where the link is sent.
+  onClick("#play-with-others", async () => {
+    const table = await api("/api/tables", {game:arenaGame, name:`${profile.name}’s game`, lobby:true});
+    location.assign(`/tabletop/host.html?table=${table.id}`);
   });
   const room = route => `/api/tables/${lobbyRoute()?.id}/lobby${route}`;
   onClick("#lobby-join", async () => { lobby = await api(room("/join"), {invite:lobbyRoute().invite}); location.hash = `#lobby/${lobbyRoute().id}`; });

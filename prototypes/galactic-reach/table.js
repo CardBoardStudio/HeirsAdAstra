@@ -39,6 +39,11 @@
     return {path:version.path,format:version.format,label:table.rules_version.split('/')[1]};
   }
   globalThis.galacticReachTable = {engineKeys,seededStorage,tablePage};
+  // Play alone without an account (home page, ?new=1): once the game in this browser
+  // has loaded, offer the engine's own New game choices (Prestige target, rivals).
+  const query = new URLSearchParams(location.search);
+  if (query.has('new') && !query.has('table') && !query.has('shared') && !query.has('tabletop') && !query.has('tutorial'))
+    addEventListener('load', () => { history.replaceState(null, '', location.pathname); document.querySelector('#new-game-button')?.click(); });
   const id = new URLSearchParams(location.search).get('table');
   if (id === null) return;
   globalThis.drawingBoardTableBoot = true;
