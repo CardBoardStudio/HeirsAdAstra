@@ -1,33 +1,46 @@
 # PR mixer
 
-The PR mixer is a private page where an authorized tester turns open PRs on and off, presses **Apply**, and plays `main` with exactly those changes. Each combination (a *mix*) is merged, built and served on its own, with its own throwaway database. It is a separate service on its own tailnet-only port, and the dev site itself is unchanged. The default policy requires a Nido administrator; an explicit `tailnet` policy lets connected Tailscale users test without a game administrator account.
-
+The private **Playtests** launcher builds selected PRs on `main`, with a separate
+container and database for each combination. Players never need to visit it.
 Code: `deploy/pr-mixer/`. Tests: `node --test deploy/pr-mixer/pr-mixer.test.mjs`.
 
 ## Using it
 
-On `mai`, connect to Tailscale and open the mixer directly on `:3113/__mixer/`; no Nido administrator sign-in is needed. On installations using the default `dev-site` policy, first sign in with Nido as an administrator on the *sign-in server*, then open the mixer on the same host name. See [Hosting options](#hosting-options).
+1. An operator opens `/__mixer/`. The latest ready playtest and **Open playtest**
+   are the primary view. **Choose changes** contains the PR list and **Build
+   selection**. Previous builds, logs, manual sign-in details and maintenance
+   live under **Previous playtests & details**.
+2. **Open playtest** reuses the operator's existing game session. On HTTPS, if
+   signed out, the launcher exchanges the preview code on the server and gives
+   the browser only the namespaced session cookie. No code copying is needed.
+   Loopback installations retain their existing account-enrollment flow.
+3. Create or reopen a table inside the game. Share the game's invitation with
+   players. The invitation identifies the table; a guest never selects a build,
+   enters a preview code or receives playtest-management permission.
+4. Build new changes when needed. A new ready build is offered for opening, but
+   existing tables remain on their original build. A build in progress leaves
+   the last ready playtest available.
 
-1. The table lists every open PR: title, author, draft, CI state, labels (`playtest-breaking` in red), the base branch when it is not `main`, and the Render preview when one exists (only the Release PR into `stable` has one, [PR previews](pr-previews.md)).
-2. Tick PRs, or use a preset: **Main only**, **All ready** (not draft, CI green), **Everything**, or **Alone** on a row (that PR on `main`, the same thing its preview would show). The ticks are remembered in your browser.
-3. **Apply** merges the ticked PRs onto the current `main`, in ascending PR number, and builds the result. A repeat of the same PRs at the same heads on the same `main` reuses the earlier build at once.
-4. When a mix is built, **Open** it. Every page of the mix carries a purple banner at the bottom naming `main`'s commit and each included PR; **Mixer** in the banner returns here.
-5. To sign in inside a mix, use its **sign-in code** from the Mixes table. On the HTTPS host each mix uses preview sign-in ([PR previews](pr-previews.md#identity-and-isolation)): any pilot name plus the code gives a disposable **PREVIEW** identity, so two testers can share a table in the same mix. On a laptop's loopback origin the code is the mix's account enrollment code instead.
+## Player routing and recovery
 
-Phone and public-board pairing links select their table's mix automatically,
-including on a phone that has never opened the mixer. After upgrading an older
-mixer, generate the pairing link again on the host before scanning it. Each
-device still needs access under the mixer's configured policy (Tailscale on
-`mai`); guest phones need no game account. Selecting a mix applies to all tabs
-in that browser, so use separate browser profiles to test different mixes at once.
+All proxied game HTML is unchanged: no developer banner, build metadata or mixer
+link is injected, including on the organizer's game screen. Game connection
+failures render a game-branded retry screen (or JSON error for APIs), never a
+redirect to the launcher. Detailed startup diagnostics stay in operator logs.
 
-The mixer records only table IDs, mix keys and a 30-day routing expiry when a
-host successfully issues a pairing link. It persists at most 4,096 table routes;
-deleting a mix removes its routes. Pairing secrets remain in URL fragments and
-are checked by the game, with its existing expiry and host approval. Routing
-does not grant a seat. If the same table ID is found in multiple mixes, select
-the intended mix first; the mixer never guesses between them. Expired or missing
-routes need a fresh link or manual mix selection.
+The mixer persists a table-to-build destination after a successful host-owned
+lobby read or link issuance. Bootstrap pages, scoped player assets, API commands
+and event streams use this destination even if another tab changes the global
+playtest selection. Bootstrap CSS/JS uses the same-origin document referrer;
+non-table pages such as the manual use a fallback selection cookie. A route
+survives restarts and stopped containers and lasts until its build is deleted.
+Old route timestamps are retained as metadata, not treated as authorization or
+expiry. Missing or ambiguous routes fail closed with a request for a fresh
+invitation; a browser cookie cannot resolve a table cloned into two builds.
+After upgrading an older installation, open Table setup or reissue its invitation
+to establish any missing route. Pairing secrets stay in URL fragments; the mixer
+never reads or stores them. The game still validates the table/role credential on
+every protected request. Routing itself grants no access.
 
 If a PR does not merge cleanly, nothing is built and the page says why, per PR:
 
@@ -44,7 +57,7 @@ The mixer runs **beside the dev host on the same Linux machine** (the bitswell h
 - **Builds need Docker.** Giving the dev site's container the Docker socket would give it root on the host. The mixer runs on the host as the same user as `dev-host.sh`.
 - **It must survive a broken `main`.** If a merge breaks the dev server, the mixer still lists PRs and builds fixes.
 - **Access stays private.** It has its own port (3300), published only on the tailnet; the dev site and stable site get no new route, page or link.
-- **Identity follows the configured policy.** The mixer has no accounts, passwords or login list of its own. The default `dev-site` policy asks the dev site (`GET /api/account` on `127.0.0.1:3200`) about its session cookie and admits only Nido-wallet administrators, caching the answer for a minute. The optional `tailnet` policy uses the identity supplied by Tailscale Serve instead and needs no sign-in server.
+- **Identity follows the configured policy.** The mixer has no accounts, passwords or login list of its own. The default `dev-site` policy asks the dev site (`GET /api/account` on `127.0.0.1:3200`) about its session cookie and admits only Nido-wallet administrators, caching the answer for a minute. The optional `tailnet` policy uses the identity supplied by Tailscale Serve, with explicit operator logins in `MIXER_MANAGERS`, and needs no sign-in server.
 
 If the dev host lacks room, run it on the Mac behind Tailscale instead ([On the Mac](#on-the-mac)). `deploy/pr-mixer/pr-mixer.sh check` decides: at least 4 CPUs, 8 GB memory, 40 GB free for Docker, Node 20+, git 2.38+ and `docker buildx`. A mix build is a full release build (Rust server plus Wasm, roughly as long as a dev-host deploy); one runs at a time and the rest queue.
 
@@ -52,7 +65,20 @@ If the dev host lacks room, run it on the Mac behind Tailscale instead ([On the 
 
 Builds run PR code, so:
 
-- **Who:** `MIXER_AUTH=dev-site` admits only Nido-wallet administrators. `MIXER_AUTH=tailnet` admits any Tailscale user who can reach this host and port under your tailnet access rules; those users can list, apply, stop and delete mixes. It requires a loopback backend and a `https://*.ts.net` origin. Serve supplies `Tailscale-User-Login` and removes client-supplied identity headers; missing or malformed identities are refused. Funnel requests and tagged devices supply no user identity and are refused. The API also refuses cross-origin POSTs. The backend trusts the local Serve proxy, so keep the host's local processes trusted and do not put another proxy in front of it. See [Tailscale Serve identity headers](https://tailscale.com/docs/features/tailscale-serve#identity-headers).
+- **Who:** `MIXER_AUTH=dev-site` permits Nido-wallet administrators to manage
+  playtests. `MIXER_AUTH=tailnet` permits identified Tailscale users to play, but
+  only exact, case-insensitive logins in `MIXER_MANAGERS` can list, build, launch,
+  stop or delete playtests. Its default is empty (management denied). Set this
+  explicitly when upgrading; there is no automatic promotion of visitors.
+  A paired player credential never authorizes management. A person already
+  configured as an operator can still visit the launcher deliberately. No game
+  administrator account is needed with the tailnet policy.
+- **Network:** tailnet mode requires a loopback backend and HTTPS `*.ts.net`
+  origin. Serve supplies `Tailscale-User-Login`; missing/malformed identities,
+  Funnel and tagged devices are refused. Keep the local Serve proxy trusted.
+  With `dev-site`, delegated game routes rely on the game's existing capability
+  and membership checks; the management routes still require administrator
+  authentication. The management API refuses cross-origin POSTs.
 - **Which PRs:** only branches in `CardBoardStudio/drawing_board` itself (their authors already have write access) or PRs by approved authors (`MIXER_APPROVED_AUTHORS`, default `bitswell,maxhays8,willemneal`). Others are listed but cannot be ticked, with the reason.
 - **No secrets in builds:** the source is fetched over public HTTPS with no credential helper, exported with `git archive` (no `.git`, no remote), and built with only `PATH`, `HOME` and Docker's own variables in the environment: no `dev.env`, no GitHub token, no `--secret`.
 - **Separate build cache:** mixes build on their own BuildKit builder (`pr-mixer`, a `docker-container` builder), so PR code never writes to the cache mounts the dev site's own builds use. The cache is pruned to `MIXER_BUILD_CACHE` (default 30 GB) after each build.
@@ -62,7 +88,7 @@ Builds run PR code, so:
 
 Known limits:
 
-- One mix at a time per browser: **Open** sets which mix this browser sees on the mixer's origin. Opening another mix in a second tab switches both tabs; the banner shows which one is current.
+- Non-table browsing (the home screen and solo play) still uses one selection per browser. Table-scoped game requests remain pinned across tabs. Static reference pages use the fallback selection.
 - Solo saves in browser storage belong to the mixer's origin, so all mixes share them (never the dev site's, which is another origin). Shared tables are on the server and stay per mix.
 - A mix container can reach the internet (Nido sign-in and the wallet need it).
 
@@ -95,7 +121,8 @@ Sign in to the dev site at `https://<host>.<tailnet>.ts.net:3200/` (the same hos
 | Setting | Default | Meaning |
 | --- | --- | --- |
 | `MIXER_ORIGIN` | `http://127.0.0.1:3300` | The exact origin browsers use. HTTPS turns on preview sign-in in mixes. |
-| `MIXER_AUTH` | `dev-site` | `dev-site` (Nido-wallet administrators), `tailnet` (users identified by Tailscale Serve), or `local` (anyone on a loopback http origin; a laptop only). |
+| `MIXER_AUTH` | `dev-site` | `dev-site` (Nido-wallet administrators), `tailnet` (players identified by Serve; management requires `MIXER_MANAGERS`), or `local` (anyone on a loopback http origin; a laptop only). |
+| `MIXER_MANAGERS` | empty | Comma-separated Tailscale login names allowed to manage builds in tailnet mode. Empty denies management; game invitations still work. |
 | `DEV_SITE_URL` | `http://127.0.0.1:3200` | Where the mixer asks the sign-in server about a session. |
 | `DEV_SITE_PUBLIC_URL` | `https://<mixer host>:3200/` | The sign-in server's address on the mixer's host name, linked from the "administrators only" page. |
 | `MIXER_APPROVED_AUTHORS` | `bitswell,maxhays8,willemneal` | Fork authors whose PRs may be built. |
@@ -116,13 +143,14 @@ Listing needs no credential: the repository is public, and the mixer reads it th
 For a private host such as `mai`, use Tailscale identity directly:
 
 ```sh
-MIXER_AUTH=tailnet MIXER_ORIGIN=https://<mac>.<tailnet>.ts.net:3113 MIXER_PORT=3113 \
+MIXER_AUTH=tailnet MIXER_MANAGERS=you@example.com MIXER_ORIGIN=https://<mac>.<tailnet>.ts.net:3113 MIXER_PORT=3113 \
   MIXER_DATA=~/.local/share/pr-mixer deploy/pr-mixer/pr-mixer.sh run
 tailscale serve --bg --https=3113 http://127.0.0.1:3113
 ```
 
-Open the mixer from a device signed in to Tailscale. No Nido account or game
-administrator is needed to use it. The game inside a mix still has its own
+Open the launcher from a device signed in to Tailscale as a configured operator.
+Other connected users can follow game invitations, but cannot manage builds.
+No Nido account or game administrator is needed. The game inside a mix still has its own
 player identity and phone-pairing rules. Keep an existing installation's
 `MIXER_DATA` path when changing modes so its mixes remain available.
 
@@ -146,5 +174,5 @@ For just you on this Mac, `MIXER_AUTH=local deploy/pr-mixer/pr-mixer.sh run` and
 
 ## Hosting options
 
-- **Now: the Mac (`mai`), over Tailscale.** The mixer is on `https://mai.<tailnet>.ts.net:3113/__mixer/` with `MIXER_AUTH=tailnet`; it no longer needs the sign-in server on `:3112`. Nothing is installed on the dev host. It is up only while the Mac is, and builds use the Mac's Docker.
+- **Now: the Mac (`mai`), over Tailscale.** The mixer is on `https://mai.<tailnet>.ts.net:3113/__mixer/` with `MIXER_AUTH=tailnet` and an explicit `MIXER_MANAGERS` list; it does not need the sign-in server on `:3112`. Nothing is installed on the dev host. It is up only while the Mac is, and builds use the Mac's Docker.
 - **Later: beside the dev site on the dev host** ([Install on the dev host](#install-on-the-dev-host)). Admins are then the dev site's own administrators and no separate sign-in server is needed. Run `pr-mixer.sh check` there first for CPU, memory and disk. On credentials: as of 2026-11-17 the repository is public, so listing (public API) and fetching (anonymous HTTPS) need no GitHub credential on the host at all. If it becomes private, the host needs read access without a personal token: a read-only **deploy key** for `git fetch`, plus a fine-grained read-only token for the API, or an **Actions workflow** that builds each mix's image in GitHub and leaves the host only to pull and run images. Decide before installing; the mixer never passes any credential to a build.
