@@ -14,13 +14,16 @@ board receives counts, not hand/deck contents, and combat uses the nonparticipan
 projection. Finishing a game does not expand board access. Raw table events and
 full replay reports are not board APIs.
 
-The organizer uses **Table setup** to manage the room independently of any
-playing screen. **Play here** opens the organizer’s existing seat on this device;
-**Pair my other device** delegates that same seat. Guest players can use phones,
+The organizer chooses **Play on this device** or **Use as shared board** once.
+Personal play opens the invitation lobby. A shared board first shows **Connect
+your phone** for the organizer’s existing seat, then changes to **Invite players**
+after that phone redeems its link. The choice is a per-table sessionStorage
+preference, not a game rule or an inference from viewport size. Host setup remains
+accessible for management; starting navigates to the selected game/display. Guest players can use phones,
 desktops or personal tablets. Their complete game already adapts to the viewport;
 further layout controls are tracked in #155.
 
-**Show public board here** opens a public display, or **Pair another board** shares
+**Show public board here** opens a public display, or **Add a shared display** shares
 a QR/link with a separate screen, before or after Start. Waiting displays contain
 only the table name and waiting status. No display connection is required to start
 or continue. The server remains the authority when all screens close.
@@ -68,10 +71,21 @@ of which device shows the public board; this does not add a nonplaying organizer
 seat. **Play here** requires the signed-in owner and issues or reuses a scoped
 player session without revoking a paired device. Explicit replacement still
 revokes old player grants. Other host operations keep the account membership gate. Guests scan a
-room QR or follow its link, choose a local name and request approval. Match the
+room QR or follow its link, choose a local name and choose **Join game**. Their room name is shown after a POST with the
+invitation token validates it; only the room name is returned, without a roster,
+account identity or new credential. The token never enters a request URL.
+Match the
 six-character pairing code before approving. QR encoding uses the local
 [`qrcode` SVG renderer](https://docs.rs/qrcode/0.14.1/qrcode/render/svg/); no
 external QR service sees the link. The text link is the manual fallback.
+
+Approved phones automatically open their pinned player client when Start completes.
+Returning paired devices resume their existing seat rather than joining again.
+Pending and ready screens explain what the host must do next. Network failures
+retry in place; invalid/revoked invitations explain that the host must reconnect
+the device. Replacement and public-display revocation require explicit confirmation
+in **Table settings & devices**. The host-only requests response includes whether
+the host seat has a redeemed player session; it exposes no token.
 
 A guest has an internal participant row without a login credential. Its pending
 cookie gains the player role only after host approval. It cannot authenticate to

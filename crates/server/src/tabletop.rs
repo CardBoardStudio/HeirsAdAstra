@@ -118,6 +118,7 @@ pub fn delegated_path(path: &str) -> bool {
                 | "focus"
                 | "stream"
                 | "join"
+                | "invite-details"
                 | "seat"
                 | "act"
                 | "undo"

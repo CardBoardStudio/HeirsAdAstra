@@ -134,6 +134,40 @@ pub async fn play_here(
 }
 
 #[derive(Deserialize)]
+pub struct InviteDetails {
+    invite: String,
+}
+/// Show only the room name after validating the invitation. No roster, account
+/// identity, grant or private state is returned before a player joins.
+pub async fn invite_details(
+    State(app): State<App>,
+    Path(id): Path<String>,
+    Json(input): Json<InviteDetails>,
+) -> ApiResult<Json<Value>> {
+    if !valid_id(&id) || input.invite.len() != 64 {
+        return Err(refused());
+    }
+    let db = app.store.0.lock().map_err(internal)?;
+    let name: Option<String> = db.query_row(
+        "SELECT t.name FROM tabletop_rooms r JOIN solo_tables t ON t.id=r.table_id WHERE r.table_id=? AND r.invite_hash=? AND r.invite_expires>?",
+        params![id, digest(&input.invite), now()], |r| r.get(0),
+    ).optional().map_err(internal)?;
+    let name = name.ok_or_else(refused)?;
+    waiting(&db, &id)?;
+    let count: u32 = db
+        .query_row(
+            "SELECT count(*) FROM gr_lobby_seats WHERE table_id=?",
+            [&id],
+            |r| r.get(0),
+        )
+        .map_err(internal)?;
+    if count >= 3 {
+        return Err(bad("Every player seat is taken."));
+    }
+    Ok(Json(json!({"name":name})))
+}
+
+#[derive(Deserialize)]
 pub struct Join {
     invite: String,
     name: String,
@@ -274,10 +308,14 @@ pub async fn requests(
     Path(id): Path<String>,
 ) -> ApiResult<Json<Value>> {
     host(&app, &headers, &id)?;
+    let owner = user(&app, &headers)?;
     let db = app.store.0.lock().map_err(internal)?;
+    let host_device_ready: bool = db.query_row("SELECT EXISTS(SELECT 1 FROM tabletop_grants WHERE table_id=? AND participant=? AND role='player' AND kind='session' AND expires>?)", params![id, owner.id, now()], |r| r.get(0)).map_err(internal)?;
     let mut q=db.prepare("SELECT r.participant,a.name,r.status FROM tabletop_requests r JOIN accounts a ON a.id=r.participant WHERE table_id=? ORDER BY r.created,r.rowid").map_err(internal)?;
     let rows=q.query_map([id],|r|{let id:String=r.get(0)?;Ok(json!({"participant":id,"code":short_code(&id),"name":r.get::<_,String>(1)?,"status":r.get::<_,String>(2)?}))}).map_err(internal)?.collect::<Result<Vec<_>,_>>().map_err(internal)?;
-    Ok(Json(json!({"requests":rows})))
+    Ok(Json(
+        json!({"requests":rows,"host_device_ready":host_device_ready}),
+    ))
 }
 /// The existing lobby start endpoint still owns random seating and AI fill.
 /// This guard also protects starts made through the older account UI.
@@ -307,17 +345,17 @@ pub fn check_start(db: &Connection, id: &str) -> ApiResult<()> {
 }
 async fn player_view(app: &App, headers: &HeaderMap, id: &str) -> ApiResult<Value> {
     if let Ok(Some(participant)) = principal(app, headers, id, "pending") {
-        let waiting = {
+        let (name, waiting) = {
             let db = app.store.0.lock().map_err(internal)?;
             db.query_row(
-                "SELECT status='waiting' FROM gr_lobbies WHERE table_id=?",
+                "SELECT t.name,l.status='waiting' FROM gr_lobbies l JOIN solo_tables t ON t.id=l.table_id WHERE table_id=?",
                 [id],
-                |r| r.get::<_, bool>(0),
+                |r| Ok((r.get::<_, String>(0)?, r.get::<_, bool>(1)?)),
             )
             .map_err(internal)?
         };
         return Ok(
-            json!({"status":if waiting {"pending"} else {"closed"},"code":short_code(&participant)}),
+            json!({"status":if waiting {"pending"} else {"closed"},"name":name,"code":short_code(&participant)}),
         );
     }
     let participant = principal(app, headers, id, "player")?.ok_or_else(refused)?;

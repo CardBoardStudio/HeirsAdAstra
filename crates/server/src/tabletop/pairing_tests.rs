@@ -624,3 +624,47 @@ async fn waiting_display_alone_cannot_start_the_table_as_solo() {
             .contains("two to four people")
     );
 }
+
+#[tokio::test]
+async fn invitation_details_are_scoped_and_host_phone_readiness_tracks_redemption() {
+    let (app, host, id) = setup().await;
+    let (_, _, invite) = scoped(&app, &id, "phone-invite", &host, json!({})).await;
+    let details = json!({"invite":secret(&invite,"invite")});
+    let (code, headers, body) = scoped(&app, &id, "invite-details", "", details.clone()).await;
+    assert_eq!(code, StatusCode::OK);
+    assert_eq!(body, json!({"name":"Phones"}));
+    assert!(!headers.contains_key(header::SET_COOKIE));
+    let (code, _, _) = scoped(&app, &"a".repeat(32), "invite-details", "", details.clone()).await;
+    assert_eq!(code, StatusCode::UNAUTHORIZED);
+    let (code, _, _) = scoped(&app, &id, "invite-details", "", json!({"invite":"invalid"})).await;
+    assert_eq!(code, StatusCode::UNAUTHORIZED);
+    let (_, _, link) = scoped(&app, &id, "host-phone", &host, json!({})).await;
+    let requests = format!("/api/tabletop/{id}/requests");
+    assert_eq!(
+        call(&app, "GET", &requests, &host, json!({})).await.2["host_device_ready"],
+        false
+    );
+    let phone = redeem_phone(&app, &id, &link).await;
+    assert_eq!(
+        call(&app, "GET", &requests, &host, json!({})).await.2["host_device_ready"],
+        true
+    );
+    assert_eq!(
+        call(&app, "GET", &requests, &phone, json!({})).await.0,
+        StatusCode::UNAUTHORIZED
+    );
+    let (guest, _) = join_phone(&app, &id, &invite, "Alex").await;
+    let pending = view(&app, &id, &guest).await.2;
+    assert_eq!(pending["name"], "Phones");
+    assert!(pending.get("seats").is_none());
+    scoped(&app, &id, "phone-invite", &host, json!({})).await;
+    assert_eq!(
+        scoped(&app, &id, "invite-details", "", details).await.0,
+        StatusCode::UNAUTHORIZED
+    );
+    scoped(&app, &id, "host-phone", &host, json!({})).await;
+    assert_eq!(
+        call(&app, "GET", &requests, &host, json!({})).await.2["host_device_ready"],
+        false
+    );
+}
