@@ -24,6 +24,12 @@ async function click(browser, selector) {
   await wait(browser, "!document.querySelector('main[aria-busy]')");
   await browser.evaluate(`document.querySelector(${JSON.stringify(selector)}).click()`);
 }
+// How a game page uses this device, once its shared.js has booted (the page is briefly
+// interactive before the boot locks it, so wait for the view itself).
+async function deviceView(browser) {
+  await wait(browser, "!!document.body.dataset.deviceView");
+  return browser.evaluate('document.body.dataset.deviceView');
+}
 // Choose how this device is used, as a person does: tap the picture's radio.
 async function device(browser, value) { await click(browser, `input[name=device][value=${value}]`); }
 async function sized(browser, label, sizes) {
@@ -94,8 +100,8 @@ async function sized(browser, label, sizes) {
     await sized(board, 'board', [[1024,768],[768,1024],[1280,720]]);
     await wait(guest, "document.querySelector('.app-shell') && !document.querySelector('.app-shell').inert");
     // The joiner's choice reaches their game, and the game menu changes it.
-    assert.equal(await guest.evaluate('document.body.dataset.deviceView'), 'hand');
-    assert.equal(await host.evaluate('document.body.dataset.deviceView'), 'game');
+    assert.equal(await deviceView(guest), 'hand');
+    assert.equal(await deviceView(host), 'game');
     await click(guest, '#device-view-button');
     assert.equal(await guest.evaluate('document.body.dataset.deviceView'), 'game');
     await guest.send('Page.reload');
@@ -154,7 +160,7 @@ async function sized(browser, label, sizes) {
     await click(host, '#start');
     await wait(host, "document.querySelectorAll('.hex').length===331");
     for (const browser of [board, guest]) await wait(browser, "location.pathname.includes('/client/') && document.querySelector('.app-shell') && !document.querySelector('.app-shell').inert");
-    assert.equal(await board.evaluate('document.body.dataset.deviceView'), 'hand', 'the host phone is their hand');
+    assert.equal(await deviceView(board), 'hand', 'the host phone is their hand');
     assert.equal(await host.evaluate(`fetch('/api/tabletop/${fresh.id}/seat').then(r=>r.status)`), 401, 'the shared screen has no private player credential');
     await guest.navigate(`${origin}/tabletop/phone.html?table=${fresh.id}`);
     await wait(guest, "location.pathname.includes('/client/') && !!document.querySelector('.app-shell')");
