@@ -21,7 +21,7 @@ function battle(g){let n=0;while(g.s.pendingCombat&&n++<15){const a=g.a(),seat=a
  const g=game();card(g,'probe');g.s.fleets={'0,0':{0:unit(0,1)}};Object.values(g.s.planets).forEach(p=>p.special=null);const before=JSON.stringify(g.s);assert(!g.e.probeRelic(0,'0,0','probe'));assert.equal(JSON.stringify(g.s),before);
 }
 {
- const g=game(),c=card(g,'cargoExpansion');const limits=plain(g.p.resourceLimits);assert(g.e.resolveHumanSpecial(c,g.e.ALL_CARDS[c.key],0));for(const r of g.e.RESOURCES)assert.equal(g.p.resourceLimits[r],limits[r]+2);assert(!g.p.inPlay.some(x=>x.id===c.id));assert.equal(g.p.storagePurchases,0);
+ const g=game(),c=card(g,'cargoExpansion');g.p.resourceLimits={matter:13,energy:13,biomass:13,data:13};g.p.resources={matter:0,energy:0,biomass:0,data:0};const limits=plain(g.p.resourceLimits);assert(g.e.resolveHumanSpecial(c,g.e.ALL_CARDS[c.key],0));for(const r of g.e.RESOURCES)assert.equal(g.p.resourceLimits[r],limits[r]+2);assert(!g.p.inPlay.some(x=>x.id===c.id));assert.equal(g.p.storagePurchases,0);
  g.s.activePlayer=0;card(g,'cargoExpansion','convert');assert(!g.e.convertCard(0,'convert'));assert(g.p.hand.some(c=>c.id==='convert'));
 }
 {
