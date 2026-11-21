@@ -327,19 +327,12 @@ main {
   place-items: center;
   position: relative;
   min-width: 0;
+  padding: 24px;
 }
-.hero-art svg {
-  width: 100%;
+.hero-emblem {
+  display: block;
+  width: min(100%, 290px);
   height: auto;
-  max-height: 340px;
-}
-.art-label {
-  position: absolute;
-  right: 23px;
-  bottom: 22px;
-  font-size: 9px;
-  letter-spacing: 0.14em;
-  color: var(--muted);
 }
 .primary,
 .secondary {
@@ -882,12 +875,8 @@ dialog > .primary {
   .hero-copy {
     padding: 25px;
   }
-  .hero-art svg {
-    width: 160%;
-    max-width: 320px;
-  }
-  .art-label {
-    display: none;
+  .hero-art {
+    padding: 20px;
   }
   .cards {
     grid-template-columns: minmax(0, 1fr);
@@ -946,11 +935,11 @@ dialog > .primary {
   }
   .hero-art {
     position: absolute;
-    right: -130px;
-    top: 55px;
-    width: 300px;
-    opacity: 0.25;
-    pointer-events: none;
+    top: 18px;
+    right: 18px;
+    /* Beside the heading; on the narrowest phones small enough to sit above it. */
+    width: clamp(56px, 100% - 248px, 100px);
+    padding: 0;
   }
   .hero p {
     max-width: 240px;
@@ -1009,7 +998,7 @@ dialog > .primary {
   }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .hero-art svg {
+  .hero-emblem {
     animation: arrive 0.8s ease-out;
   }
   @keyframes arrive {

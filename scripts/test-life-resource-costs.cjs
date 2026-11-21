@@ -22,11 +22,18 @@ const prices={settler:{matter:1,biomass:2},explorer:{energy:1,data:2},fleet:{mat
  const book=read('prototypes/galactic-reach/rulebook.html');
  for(const [kind,cost] of Object.entries(prices)){
   const row=book.match(new RegExp('<tr data-cost-kind="'+kind+'">([\\s\\S]*?)</tr>'));assert(row,kind+' has a canonical price row');
-  assert.deepEqual([...row[1].matchAll(/<td>(.*?)<\/td>/g)].map(m=>Number(m[1]||0)),Array.from(e.RESOURCES,r=>cost[r]||0),kind+' printed price matches payment');
+  // One printed resource symbol per unit paid (rules #card-corners), and the numbers for screen readers.
+  for(const resource of e.RESOURCES)assert.equal((row[1].match(new RegExp('class="resource-symbol '+resource+' ','g'))||[]).length,cost[resource]||0,kind+' printed price repeats one '+resource+' symbol per unit paid');
+  assert(row[1].includes(`aria-label="${e.RESOURCES.filter(r=>cost[r]).map(r=>`${cost[r]} ${({matter:'Matter',energy:'Energy',biomass:'Life',data:'Data'})[r]}`).join(', ')}"`),kind+' printed price reads as numbers');
  }
  assert(e.resourceText('2 Life').includes('aria-label="Life"'));assert(e.resourceText('2 Life').includes('biomass'),'Life retains the leaf glyph and stored resource identity');
  e.renderSymbolLegend();const legend=elements.get('#map-legend-corner').innerHTML;
- assert(legend.includes('Life'));assert(/Colony<\/b>[\s\S]*?<td><\/td><td><\/td><td>3<\/td><td><\/td>/.test(legend));
+ const labels={settler:'Settler',explorer:'Explorer',fleet:'Fleet',colony:'Colony',harvester:'Harvester',starbase:'Shipyard',excavate:'Excavate'};
+ for(const [kind,cost] of Object.entries(prices)){
+  const row=legend.match(new RegExp('<b>'+labels[kind]+'</b></dt><dd>([\\s\\S]*?)</dd>'));assert(row,kind+' has a reference price');
+  for(const resource of e.RESOURCES)assert.equal((row[1].match(new RegExp('class="resource-symbol '+resource+' ', 'g'))||[]).length,cost[resource]||0,kind+' repeats one '+resource+' symbol per unit paid');
+ }
+ assert(/aria-label="3 Life"/.test(legend),'The Colony price remains readable without seeing its three leaf symbols');
 }
 function buildFixture(kind,funds){
  const g=game(),coord=g.s.clusters[0].coords[1];g.p.hand=[{id:'build',key:'construct',starter:true}];Object.assign(g.p.resources,funds);
