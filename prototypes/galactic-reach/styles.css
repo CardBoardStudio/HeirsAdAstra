@@ -4015,3 +4015,38 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 @media (max-width: 599px), (max-height: 599px) {
   body #hand-row > .game-card .card-footer.corner-button, body #hand-row > .game-card .card-footer { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
 }
+
+/* ==== The corner buttons sit flush in their corners (rules #card-corners): each shares its two
+   outer edges with the card, its outer corner follows the card's, and only its inner corner is
+   rounded, like a tab cut from the corner. Its inner padding matches the card's, so the symbol
+   still lines up with the text. Focus and hover are drawn inside the tab. ==== */
+.game-card .corner-button:focus-visible { outline-offset: -4px; }
+@media (min-width: 600px) and (min-height: 600px) {
+  #hand-row > .game-card:is(:hover, :focus-within) .corner-button { align-self: start !important; min-height: 0; padding-top: var(--pad); padding-bottom: 7px; box-shadow: none; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-symbols.corner-button {
+    margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)) !important; padding-left: var(--pad); padding-right: 9px;
+    border-width: 0 1.5px 1.5px 0; border-radius: 7px 0 9px 0;
+  }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-footer.corner-button {
+    margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0 !important; padding-right: var(--pad) !important; padding-left: 9px !important;
+    border-width: 0 0 1.5px 1.5px !important; border-style: solid !important; border-radius: 0 7px 0 9px !important;
+  }
+  /* A corner with nothing to press (converting is not possible right now) has no tab. */
+  #hand-row > .game-card:is(:hover, :focus-within) .card-footer:not(.corner-button) { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .corner-button[aria-pressed="true"] { transform: none; }
+  #hand-row > .game-card:is(:hover, :focus-within) .corner-button:active:not(:disabled) { transform: none; }
+}
+/* Upright, the price/convert corner is the header's last column and the other buttons sit under it. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  #hand-row > .game-card:is(:hover, :focus-within) { --pad: 8px;
+    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) !important; grid-template-areas: "sym name cost" "head head buttons" "effect effect buttons" "note note buttons" !important;
+    padding: var(--pad) !important;
+  }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { justify-self: end; }
+  #hand-row > .game-card:is(:hover, :focus-within):not(:has(> .card-buttons)) { grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" !important; }
+}
+/* An opened card on a phone and the plain card faces: the same tabs, the phone's at least 44 px. */
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(:has(> .card-symbols), :has(> .card-footer .corner-dots)) { --pad: 12px; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols.corner-button { align-self: start; margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)); padding: var(--pad) 10px 8px var(--pad); border-width: 0 1.5px 1.5px 0; border-radius: 8px 0 9px 0; box-shadow: none; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-footer:has(.corner-dots) { align-self: start; margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0; padding: var(--pad) var(--pad) 8px 10px; border-width: 0 0 1.5px 1.5px; border-style: solid; border-radius: 0 8px 0 9px; box-shadow: none; }
+.phone-card-sheet .game-card > .corner-button { min-height: 44px; min-width: 52px; }
