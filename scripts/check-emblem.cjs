@@ -32,6 +32,10 @@ for (const file of ['prototypes/lab/heirs-emblem-mark.svg', 'prototypes/lab/heir
 const lab = read('prototypes/lab/index.html');
 assert.match(lab, /<link rel="icon" type="image\/svg\+xml" href="\/lab\/heirs-emblem-favicon\.svg"/);
 assert.match(lab, /<img class="brand-icon" src="\/lab\/heirs-emblem-mark\.svg" alt=""/);
+// The home page hero shows the round emblem from its one file, beside the "Heirs Ad Astra" heading
+// (so the image is decorative), with its box reserved before the file loads.
+const labJs = read('prototypes/lab/lab.js');
+assert.match(labJs, /<h2>Heirs Ad Astra<\/h2>.*<div class="hero-art"><img class="hero-emblem" src="\/lab\/heirs-emblem-round\.svg" alt="" width="178" height="178"><\/div>/);
 const build = read('scripts/build-web.sh');
 assert.match(build, /cp prototypes\/lab\/heirs-emblem\.svg prototypes\/lab\/heirs-emblem-round\.svg prototypes\/lab\/heirs-emblem-mark\.svg prototypes\/lab\/heirs-emblem-favicon\.svg dist\/lab\//);
 for (const file of ['/lab/heirs-emblem.svg', '/lab/heirs-emblem-round.svg', '/lab/heirs-emblem-mark.svg', '/lab/heirs-emblem-favicon.svg'])
