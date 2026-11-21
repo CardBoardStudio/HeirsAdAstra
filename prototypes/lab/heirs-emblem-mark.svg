@@ -2,7 +2,7 @@
   <title>Heirs Ad Astra</title>
   <!-- Small-size emblem (37 px header): the round emblem with the long ticks only. Speed lines: one per resource, in the game's order (matter, energy,
        biomass, data); colours are the matter, energy, biomass and data custom
-       properties in prototypes/galactic-reach/styles.css. -->
+       properties in prototypes/galactic-reach/palette.css. -->
   <circle cx="100" cy="100" r="90.12" fill="#0d1222"/>
   <g>
     <path fill="#f2b53b" d="M101.03 24.45L101.03 100L86.84 100Z"/><path fill="#d0901f" d="M101.03 24.45L101.03 100L115.22 100Z"/>

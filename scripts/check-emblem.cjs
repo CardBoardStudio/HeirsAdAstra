@@ -1,6 +1,6 @@
 // The Heirs Ad Astra emblem leads each word with four speed lines, one per resource, in the
 // order the game lists the resources. A standalone SVG (favicon, <img>) cannot read the game's
-// CSS custom properties, so this checks its line colours against prototypes/galactic-reach/styles.css.
+// CSS custom properties, so this checks its line colours against prototypes/galactic-reach/palette.css.
 // The header mark and the favicon are the round emblem reduced: same rings, same radii, same weights.
 //   node scripts/check-emblem.cjs
 const assert = require('node:assert/strict');
@@ -10,8 +10,8 @@ const path = require('node:path');
 const read = file => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
 const resources = JSON.parse(read('prototypes/galactic-reach/app.js').match(/const RESOURCES = (\[[^\]]*\]);/)[1].replace(/'/g, '"'));
 assert.deepEqual(resources, ['matter', 'energy', 'biomass', 'data'], 'the emblem has one line per resource; redraw it if the resources change');
-const styles = read('prototypes/galactic-reach/styles.css');
-const colours = resources.map(name => styles.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})\\s*;`, 'i'))[1].toLowerCase());
+const palette = read('prototypes/galactic-reach/palette.css');
+const colours = resources.map(name => palette.match(new RegExp(`--${name}:\\s*(#[0-9a-f]{6})\\s*;`, 'i'))[1].toLowerCase());
 
 for (const [file, words] of [['prototypes/lab/heirs-emblem.svg', 3], ['prototypes/lab/heirs-emblem-round.svg', 3], ['prototypes/lab/heirs-emblem-mark.svg', 1], ['prototypes/lab/heirs-emblem-favicon.svg', 1]]) {
   const svg = read(file);
