@@ -309,3 +309,15 @@ ul.rb-ex li { margin: 4px 0; }
 .rb-mat-key i.cap { background: #f3e2a6; }
 .rb-readout { margin: 12px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 6px 18px; font-size: .9rem; line-height: 1.45; }
 .rb-readout li { margin: 0; padding: 0; }
+
+/* ---- Prices: one resource symbol per unit, four or more as one symbol and its number,
+   in the markup of the game's map key (styles.css .legend-cost-symbols, .corner-count). ---- */
+.rulebook .legend-cost-symbols { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; vertical-align: -.22em; }
+.rulebook .legend-cost-group { display: inline-flex; align-items: center; gap: 1px; white-space: nowrap; }
+.rulebook .legend-cost-symbols .resource-symbol { width: 1.15em; height: 1.15em; }
+.rulebook .rb-cost .legend-cost-symbols .resource-symbol { width: 20px; height: 20px; }
+.rulebook .rb-any { gap: 2px 4px; }
+.rb-or { margin: 0 1px; font-size: .72em; font-weight: 650; color: var(--muted); }
+.rb-market .legend-cost-symbols { font-size: .9em; }
+.rb-reskey { padding-top: 12px; border-top: 1px solid var(--line); font-size: .94rem; color: var(--muted); }
+.rb-reskey strong:first-child { color: var(--text); }
