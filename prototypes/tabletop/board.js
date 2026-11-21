@@ -4,7 +4,7 @@
   const id = new URLSearchParams(location.search).get('table');
   const $ = id => document.getElementById(id), status = $('status'), ns='http://www.w3.org/2000/svg';
   let current, selected, stream, lastMessage=0, retryTimer, wake, halted=false;
-  const colors=['#55d9f4','#ff9f6e','#a58cff','#f2cf66'];
+  const colors=['var(--human)','var(--ai-1)','var(--ai-2)','var(--ai-3)'];
   const nodes=new Map();
   function el(tag,text) { const node=document.createElement(tag); if(text!==undefined)node.textContent=text;return node; }
   async function api(path,body) {
