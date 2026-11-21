@@ -3117,8 +3117,9 @@ body.background-stars .galaxy-board::before {
   #hand-row > .game-card:is(:hover, :focus-within) {
     --near: 2px; --far: 6px; --box: 10px; --pad: 10px;
     width: var(--raise-w) !important; height: auto !important; max-height: none !important; z-index: 40;
-    /* Grow from the resting place, shifted left only as far as needed to stay inside the hand. */
-    --shift: min(0px, calc(var(--hand-w, 100000px) - var(--slot-x, 0px) - var(--raise-w)));
+    /* Grow from the resting place, shifted left only as far as needed to stay inside the hand, and
+       never past the hand's left edge (the fan centres the hand, so a middle card starts further right). */
+    --shift: max(calc(-1 * var(--slot-x, 0px)), min(0px, calc(var(--hand-w, 100000px) - var(--slot-x, 0px) - var(--raise-w))));
     margin-left: calc(var(--step) + var(--shift)) !important; margin-right: calc(var(--top-w) - var(--raise-w) - var(--shift)) !important;
     padding: var(--pad) var(--pad) calc(var(--pad) + 2px) !important;
     /* The header is one line: the effect button left, the name between, the convert button
@@ -4040,6 +4041,8 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   }
   #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { justify-self: end; }
   #hand-row > .game-card:is(:hover, :focus-within):not(:has(> .card-buttons)) { grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" !important; }
+  /* A card with text buttons keeps them in a column down the right beside every row, so it is no taller. */
+  #hand-row > .game-card:is(:hover, :focus-within):has(> .card-buttons) { grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
 }
 /* An opened card on a phone and the plain card faces: the same tabs, the phone's at least 44 px. */
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(:has(> .card-symbols), :has(> .card-footer .corner-dots)) { --pad: 12px; }

@@ -51,12 +51,19 @@
     const row = $('#hand-row'), cards = $$('#hand-row > .game-card');
     row?.style.setProperty('--max-hand-count', String(Math.max(2, cards.length)));
     if (!row) return;
-    for (const name of ['--top-w', '--step', 'padding-left']) row.style.removeProperty(name);
+    for (const name of ['--top-w', '--step', 'padding-left', 'justify-content']) row.style.removeProperty(name);
     const phone = globalThis.matchMedia?.('(max-width: 599px), (max-height: 599px)').matches;
     const n = cards.length, mid = (n - 1) / 2;
-    if (phone || !n) { row.classList.remove('fan-tight'); cards.forEach(card => ['--cf-fan', '--cf-arc'].forEach(name => card.style.removeProperty(name))); placeSlots(); return; }
+    if (phone || !n) { delete row.dataset.fanRoom; row.classList.remove('fan-tight'); cards.forEach(card => ['--cf-fan', '--cf-arc'].forEach(name => card.style.removeProperty(name))); placeSlots(); return; }
     const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
-    const room = row.getBoundingClientRect().width / zoom, styles = getComputedStyle(row);
+    // The room ends before any control that shares the hand's band (in some layouts the turn's
+    // buttons sit inside the hand's box), so no card covers one.
+    const box = row.getBoundingClientRect(), styles = getComputedStyle(row);
+    const ends = $$('#convert-all-button, #board-primary, #hand-panel .hand-tools > *').map(el => el.getBoundingClientRect())
+      .filter(r => r.width && r.left > box.left + 40 && r.left < box.right && r.bottom > box.top && r.top < box.bottom).map(r => r.left - 8);
+    const room = (Math.min(box.right, ...ends) - box.left) / zoom;
+    // A raised card stays inside this room too (placeSlots gives it to the CSS as --hand-w).
+    row.dataset.fanRoom = room.toFixed(1);
     const full = parseFloat(styles.getPropertyValue('--top-w')) || 168;
     let width = Math.min(full, (room + FAN_GAP) / n - FAN_GAP), step = FAN_GAP;
     if (width < FAN_MIN_W) { width = FAN_MIN_W; step = n > 1 ? (room - n * width) / (n - 1) : 0; }
@@ -64,7 +71,9 @@
     const lead = Math.max(0, (room - (n * width + (n - 1) * step)) / 2);
     row.style.setProperty('--top-w', `${width.toFixed(1)}px`, 'important');
     row.style.setProperty('--step', `${step.toFixed(1)}px`, 'important');
+    // The fan centres itself in its room (some layouts centre the row as well, which would count twice).
     row.style.setProperty('padding-left', `${lead.toFixed(1)}px`, 'important');
+    row.style.setProperty('justify-content', 'flex-start', 'important');
     const turn = n > 1 ? Math.min(FAN_MAX_DEG, FAN_SPREAD_DEG / (n - 1)) : 0;
     // The arc comes from each card's height, not a shift: a card further out is shorter, so its top
     // sits lower while its foot stays on the hand's floor, and the corner its turn lowers stays above it.
@@ -92,7 +101,7 @@
     const row = $('#hand-row'), box = row?.getBoundingClientRect?.();
     if (!box?.width) return;
     const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
-    row.style.setProperty('--hand-w', `${Math.round(box.width / zoom)}px`);
+    row.style.setProperty('--hand-w', `${Math.round(Number(row.dataset.fanRoom) || box.width / zoom)}px`);
     for (const card of $$('#hand-row > .game-card')) {
       if (card.matches(':hover, :focus-within')) continue;
       card.style.setProperty('--slot-x', `${Math.round((card.getBoundingClientRect().left - box.left) / zoom)}px`);
