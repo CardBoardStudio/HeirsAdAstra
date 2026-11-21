@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="change-queue.css?v=1">
   <link rel="stylesheet" href="guide.css?v=3">
   <link rel="stylesheet" href="tabletop-controls.css">
+  <link rel="stylesheet" href="market-drawer.css?v=1">
 </head>
 <body>
   <a class="skip-link" href="#console">Skip to player controls</a>
@@ -200,6 +201,13 @@
             <button class="console-tab active" id="market-tab" type="button" data-tab="market" role="tab" aria-selected="true" aria-controls="market-panel" tabindex="0">Market</button>
             <button class="console-tab" id="relics-tab" type="button" data-tab="relics" role="tab" aria-selected="false" aria-controls="relics-panel" tabindex="-1">Relics</button>
           </div>
+        </div>
+        <!-- The market drawer (rules #shared-board): the supply's handle on the table's right edge
+             opens and closes it; the size button switches between the side panel and whole cards. -->
+        <div class="market-sheet" aria-hidden="true"></div>
+        <div class="market-handles" id="market-handles" hidden>
+          <button class="market-handle" id="market-handle" type="button" aria-expanded="false" aria-controls="relics-panel market-panel upgrade-group"><span>Market</span></button>
+          <button class="market-size" id="market-size" type="button" aria-controls="relics-panel market-panel upgrade-group" hidden><span>Larger</span></button>
         </div>
         <div class="console-body">
           <div class="tab-panel chain-panel" id="chain-panel" data-panel="chain" aria-label="Testnet seat" hidden>

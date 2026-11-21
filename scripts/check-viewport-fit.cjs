@@ -221,7 +221,14 @@ const CASES = [
   // Trading with the bank on the mat: drag (mouse, and touch on iPads), and tap then tap.
   { name: 'mat: drag Matter onto Data trades 4 for 1', save: matTradeState(), matTrade: { from: 'matter', to: 'data', how: 'drag', expect: { matter: -4, data: 1 } }, devices: 'tablet' },
   { name: 'mat: tap Matter, then Data', save: matTradeState(), matTrade: { from: 'matter', to: 'data', how: 'tap', expect: { matter: -4, data: 1 } } },
-  { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab'] },
+  // The market drawer (rulebook #shared-board): closed by default, the map taking its room; the
+  // Market handle opens the side panel (the Supply drawer on phones); your Buy turn shows whole
+  // cards over the map, and Smaller returns the side panel.
+  { name: 'market closed (operations)', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), marketView: 'closed', extraSizes: true, devices: true },
+  { name: 'market side panel (operations)', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), click: ['#market-handle', '.phone-drawers [data-drawer="supply"]'], marketView: 'side', extraSizes: true, devices: true },
+  { name: 'buy, whole-card market', save: buyState(chunks[0], { matter: 8, energy: 8, biomass: 8, data: 8 }), marketView: 'full', buyVisible: true, extraSizes: true, devices: true },
+  { name: 'buy, market shrunk to the side panel', save: buyState(chunks[0]), click: ['#market-size'], marketView: 'side', buyVisible: true },
+  { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab', '#market-handle'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'], buyVisible: true, extraSizes: i === 0 })),
   // Buy with an empty hand (everything converted or played): the market and Finish Buy must show.
   { name: 'buy, held 2:1 exchange card', save: (() => { const s=buyState(chunks[0]); s.players[0].hand=[card('exchangeProtocol')]; return s; })(), focus: '[data-order-card]' },
@@ -428,7 +435,7 @@ const MEASURE = `(() => {
   if (!phone && !modal && !document.querySelector(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within)')) for (const hex of document.querySelectorAll('.hex')) {
     // The centre and both side edges of every hex must be clickable.
     const r = hex.getBoundingClientRect(), y = r.top + r.height / 2;
-    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open, .trade-drawer.open, #gr-coach, .gr-coach-pointer, .gr-stage'); });
+    const blocked = [0.06, 0.5, 0.94].map(f => [r.left + r.width * f, y]).find(([x]) => { const hit = document.elementFromPoint(x, y); return !hit || !hex.contains(hit) && !hit.closest('.sector-popover, .log-panel.open, .trade-drawer.open, #gr-coach, .gr-coach-pointer, .gr-stage, .market-full :is(.market-sheet, #market-panel, #upgrade-group, .market-handles)'); });
     if (blocked) { const hit = document.elementFromPoint(...blocked); problems.push('hex covered at ' + Math.round(blocked[0]) + ',' + Math.round(y) + ' by ' + (hit ? label(hit) : 'nothing')); break; }
   }
   // The map fills the space left to it. On a landscape table it reaches between the left-hand
@@ -442,7 +449,7 @@ const MEASURE = `(() => {
     if (matchMedia('(orientation: landscape)').matches) {
       if (!document.querySelector('.log-panel.open')) {
         const hexes = [...board.querySelectorAll('.hex')].map(hex => hex.getBoundingClientRect());
-        const panels = [...document.querySelectorAll('#prestige-track, .standings-stats, .phase-stepper, .log-panel, .map-tools, #map-legend-corner, #hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].filter(shown);
+        const panels = [...document.querySelectorAll('#prestige-track, .standings-stats, .phase-stepper, .log-panel, .map-tools, #map-legend-corner, #hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, #market-handles')].filter(shown);
         const apart = (h, o) => Math.max(o.left - h.right, h.left - o.right, o.top - h.bottom, h.top - o.bottom, 0);
         const gaps = [['region left', Math.min(...hexes.map(h => h.left)) - r.left], ['region top', Math.min(...hexes.map(h => h.top)) - r.top], ['region bottom', r.bottom - Math.max(...hexes.map(h => h.bottom))],
           ...panels.map(e => { const o = e.getBoundingClientRect(); return [label(e).slice(0, 40), Math.min(...hexes.map(h => apart(h, o)))]; })];
@@ -457,9 +464,13 @@ const MEASURE = `(() => {
   // No wasted felt on a wide desktop table: the largest rectangle of table not covered by any piece
   // or hex stays under 4% of the window (measured on an 8px grid).
   // Only the table during a game is measured (not a waiting room, nor a shared table's top bar).
+  // With the market drawer closed (rulebook #shared-board) the map is limited by the window's
+  // height, so the closed market's room shows as felt beside the centred map: that state alone is
+  // not measured (at 1920x1080 an empty 568x736 area, 20% of the window).
   const tableArea = document.querySelector('.app-shell')?.getBoundingClientRect();
-  if (!phone && !modal && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, .board-stage.map-zoomed')) {
-    const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .standings-stats, .phase-stepper, .log-panel, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
+  const marketClosed = document.documentElement.classList.contains('market-drawer') && document.documentElement.classList.contains('market-closed');
+  if (!phone && !modal && !marketClosed && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, .board-stage.map-zoomed')) {
+    const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .standings-stats, .phase-stepper, .log-panel, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast, .market-full .market-sheet')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
     const cell = 8, cols = Math.ceil(innerWidth / cell), rows = Math.ceil(innerHeight / cell), heights = new Array(cols).fill(0);
     const covered = new Uint8Array(cols * rows);
     // Everything outside the table area counts as covered.
@@ -654,6 +665,13 @@ async function runCase(browser, origin, testCase, viewport) {
   // zoom) it may scroll vertically, like a phone.
   await browser.evaluate(`window.__fitMode = ${JSON.stringify(isPhone([width, height]) || (testCase.lobby && height < 700) ? 'phone' : 'fit')}; true`);
   const { problems, slack } = await browser.evaluate(MEASURE);
+  // The market drawer's state: the table's view (closed, side, full; an upright table has no
+  // whole-card view, so its Buy turn opens the band), or on a phone whether the Supply drawer is open.
+  if (testCase.marketView) {
+    const got = await browser.evaluate(`(() => { const c = document.documentElement.classList; if (c.contains('market-drawer')) return ['closed', 'side', 'full'].find(v => c.contains('market-' + v)); if (matchMedia('(max-width: 599px), (max-height: 599px)').matches) return document.body.dataset.drawer === 'supply' ? 'open' : 'closed'; return 'band'; })()`);
+    const want = isPhone([width, height]) ? (testCase.marketView === 'closed' ? 'closed' : 'open') : height >= width && testCase.marketView === 'full' ? 'side' : testCase.marketView;
+    if (got !== want) problems.push(`market drawer: ${got}, expected ${want}`);
+  }
   if (testCase.buyVisible) {
     const seen = await browser.evaluate(`(() => { const shown = e => e && e.checkVisibility() && e.getBoundingClientRect().height > 8;
       return { market: [...document.querySelectorAll('#market-row .game-card')].filter(shown).length, finish: shown([...document.querySelectorAll('#board-primary, #hand-finish-buy-button, #finish-buy-button')].find(shown)) }; })()`);
