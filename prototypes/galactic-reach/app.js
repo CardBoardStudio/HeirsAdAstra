@@ -631,6 +631,14 @@ function createGalacticReach(options = {}) {
   function cornerRepeat(symbol, count) {
     return count <= CORNER_REPEAT_MAX ? symbol.repeat(count) : `${symbol}<b class="corner-count">${count}</b>`;
   }
+  // A price as one cluster of symbols per resource, in resource order: one symbol alone, two side
+  // by side, three as a triangle (one above two), four or more once with their number. The amounts
+  // are the accessible name. Markup only; styles.css shapes each cluster by its data-count.
+  function costClusters(cost) {
+    const present = RESOURCES.filter(resource => cost?.[resource] > 0);
+    const label = present.map(resource => `${cost[resource]} ${RESOURCE_NAMES[resource]}`).join(', ');
+    return `<span class="cost-clusters" role="img" aria-label="${label}">${present.map(resource => `<span class="cost-cluster ${resource}" data-count="${Math.min(cost[resource], CORNER_REPEAT_MAX + 1)}" title="${cost[resource]} ${RESOURCE_NAMES[resource]}">${cornerRepeat(resourceDot(resource), cost[resource])}</span>`).join('')}</span>`;
+  }
   // The card's effect values, read from its data (never from its text): the order first, then
   // what comes with it. A card with no value that has a symbol returns none.
   function cardEffectParts(definition, card = {}) {
@@ -677,7 +685,7 @@ function createGalacticReach(options = {}) {
     rulesVersion: `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`, MARKET_CARDS, ADVANCED_CARDS, MARKET_MILITARY, BASIC_TACTICS, BASIC_CARDS, RELIC_CARDS,
     MARKET_SIZE, MARKET_COPIES, MARKET_TIERS, MARKET_TIER_SLOTS, marketTier, STARTING_LIMIT, DEFAULT_VICTORY_TARGET, VICTORY_TARGET_CHOICES, RESOURCES, RESOURCE_NAMES,
     // Shared, state-free presentation for the gallery's costs and card descriptions.
-    resourceDots, iconText, BOARD_ICONS, cardSymbols, cornerDots, cardEffectParts, cardEffectLabel
+    resourceDots, iconText, BOARD_ICONS, cardSymbols, cornerDots, costClusters, cardEffectParts, cardEffectLabel
   };
 
 
@@ -4589,24 +4597,19 @@ function createGalacticReach(options = {}) {
       ['colony','Colony'],['harvester','Harvester'],['starbase','Shipyard']
     ];
     // A short key beside the map, with each piece's price and the Excavate cost, so the board
-    // teaches itself without opening the Map key (which keeps the full descriptions).
+    // teaches itself without opening the Map key. The Map key dialog opens with the same list (an
+    // upright tablet has no corner key), then the full descriptions.
     const corner = $('#map-legend-corner');
     const pieceCost = type => type === 'colony' ? { biomass: COLONY_LIFE_COST } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
     // One printed resource symbol per unit paid, by the card corners' rule (rules #card-corners).
-    const costSymbols = cost => {
-      const present = RESOURCES.filter(resource => cost?.[resource] > 0);
-      const label = present.map(resource => `${cost[resource]} ${RESOURCE_NAMES[resource]}`).join(', ');
-      return `<span class="legend-cost-symbols" role="img" aria-label="${label}">${present.map(resource => `<span class="legend-cost-group" title="${cost[resource]} ${RESOURCE_NAMES[resource]}">${cornerRepeat(resourceDot(resource), cost[resource])}</span>`).join('')}</span>`;
-    };
-    const costRow = (icon, label, cost) => `<div class="legend-cost-row"><dt class="legend-cost-name">${icon}<b>${label}</b></dt><dd>${costSymbols(cost)}</dd></div>`;
-    if (corner) corner.innerHTML = `<dl class="legend-cost-list" aria-label="Resource costs">`
-      + entries.map(([type,label]) => costRow(BOARD_ICONS[type], label, pieceCost(type))).join('')
-      + costRow('<span class="legend-icon">◈</span>', 'Excavate', EXCAVATION_COST)
-      + `</dl><span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
-    $('#symbol-legend').innerHTML = `<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) => {
-      const cost = type === 'colony' ? { biomass: COLONY_LIFE_COST } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
-      return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-cost">${costSymbols(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
-    }).join('')}<strong class="legend-heading">Card icons</strong><span class="legend-vocab symbol-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
+    const costRow = (kind, icon, label, cost) => `<div class="legend-cost-row" data-cost-kind="${kind}"><dt class="legend-cost-name">${icon}<b>${label}</b></dt><dd>${costClusters(cost)}</dd></div>`;
+    const costList = `<dl class="legend-cost-list" aria-label="Resource costs">`
+      + entries.map(([type,label]) => costRow(type, BOARD_ICONS[type], label, pieceCost(type))).join('')
+      + costRow('excavate', '<span class="legend-icon">◈</span>', 'Excavate', EXCAVATION_COST) + '</dl>';
+    if (corner) corner.innerHTML = costList + `<span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
+    $('#symbol-legend').innerHTML = `<strong class="legend-heading">Costs</strong>${costList}<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) =>
+      `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`
+    ).join('')}<strong class="legend-heading">Card icons</strong><span class="legend-vocab symbol-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
   }
 
   // Replays reveal every faction's information, so fog never applies there.
