@@ -41,17 +41,49 @@
   });
 
   // ---- The hand fan: a gentle arc, the middle cards a few pixels higher. ----
+  // The hand is a fan (rules #card-corners): card tops side by side along a shallow arc, each
+  // turned a few degrees about its top centre, a small gap between neighbouring tops so both
+  // upper corners of every card show. The fan fills the room the hand already has: a small hand
+  // keeps full-width cards, a large one narrows them, down to FAN_MIN_W; only beyond that do
+  // neighbours overlap (a card's right corner then lies under its neighbour).
+  const FAN_GAP = 6, FAN_MIN_W = 56, FAN_MAX_DEG = 3.2, FAN_SPREAD_DEG = 14, FAN_SAG = 10;
   function fanHand() {
-    const cards = $$('#hand-row > .game-card');
-    $('#hand-row')?.style.setProperty('--max-hand-count', String(Math.max(2, cards.length)));
-    const mid = (cards.length - 1) / 2, step = cards.length > 6 ? 1.4 : 2.2;
+    const row = $('#hand-row'), cards = $$('#hand-row > .game-card');
+    row?.style.setProperty('--max-hand-count', String(Math.max(2, cards.length)));
+    if (!row) return;
+    for (const name of ['--top-w', '--step', 'padding-left']) row.style.removeProperty(name);
+    const phone = globalThis.matchMedia?.('(max-width: 599px), (max-height: 599px)').matches;
+    const n = cards.length, mid = (n - 1) / 2;
+    if (phone || !n) { row.classList.remove('fan-tight'); cards.forEach(card => ['--cf-fan', '--cf-arc'].forEach(name => card.style.removeProperty(name))); placeSlots(); return; }
+    const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
+    const room = row.getBoundingClientRect().width / zoom, styles = getComputedStyle(row);
+    const full = parseFloat(styles.getPropertyValue('--top-w')) || 168;
+    let width = Math.min(full, (room + FAN_GAP) / n - FAN_GAP), step = FAN_GAP;
+    if (width < FAN_MIN_W) { width = FAN_MIN_W; step = n > 1 ? (room - n * width) / (n - 1) : 0; }
+    row.classList.remove('fan-tight');
+    const lead = Math.max(0, (room - (n * width + (n - 1) * step)) / 2);
+    row.style.setProperty('--top-w', `${width.toFixed(1)}px`, 'important');
+    row.style.setProperty('--step', `${step.toFixed(1)}px`, 'important');
+    row.style.setProperty('padding-left', `${lead.toFixed(1)}px`, 'important');
+    const turn = n > 1 ? Math.min(FAN_MAX_DEG, FAN_SPREAD_DEG / (n - 1)) : 0;
+    // The arc comes from each card's height, not a shift: a card further out is shorter, so its top
+    // sits lower while its foot stays on the hand's floor, and the corner its turn lowers stays above it.
+    cards.forEach(card => card.style.removeProperty('--fan-h'));
+    const floor = cards[0].offsetHeight;
     cards.forEach((card, index) => {
-      const offset = index - mid;
-      card.style.setProperty('--cf-fan', `${(offset * step).toFixed(2)}deg`);
-      card.style.setProperty('--cf-arc', `${(-Math.max(0, 5 - offset * offset * 1.1)).toFixed(1)}px`);
+      const offset = index - mid, angle = offset * turn * Math.PI / 180, sag = mid ? FAN_SAG * (offset / mid) ** 2 : 0;
+      card.style.setProperty('--cf-fan', `${(offset * turn).toFixed(2)}deg`);
+      const height = Math.max(0, (floor - sag - width / 2 * Math.abs(Math.sin(angle))) / Math.cos(angle));
+      card.style.setProperty('--fan-h', `${height.toFixed(1)}px`);
+      // Bottom-aligned, the card's top would sit at floor - height: lift it to sit at its sag.
+      card.style.setProperty('--cf-arc', `${(sag - (floor - height)).toFixed(1)}px`);
     });
+    // Beyond the fan's room (neighbours overlap, or a card's corners are wider than the card), each
+    // card stacks its symbols in the strip that shows.
+    row.classList.toggle('fan-tight', step < 0 || cards.some(card => !raisedNow(card) && card.scrollWidth > card.clientWidth + 1));
     placeSlots();
   }
+  addEventListener('resize', () => requestAnimationFrame(fanHand));
   // Each card's resting place in the hand, in table units, so a raised card can stay inside the
   // hand's band (styles.css shifts it left when it would run past the hand's right edge).
   function placeSlots() {
@@ -172,42 +204,31 @@
     fanHand();
     syncAim();
     fitNames();
-    requestAnimationFrame(noteResting);
     const before = view, saved = previous;
     view = next; previous = null;
     if (before && saved && !next.replay && !still() && !drag) animate(before, next, saved);
   }
 
-  // ---- Raising a hand card (rules #card-corners). HAND_REST is the switch between the two
-  // resting card tops: 'symbols' shows only a card's symbols, and raising it grows the card while
-  // the symbols travel to its upper corners and the name, text and picture appear; 'name' shows
-  // the name between larger icons, and nothing travels. ----
-  const HAND_REST = 'symbols';
-  document.documentElement.dataset.handRest = HAND_REST;
-  const RAISE_MS = 180;
-  const resting = new WeakMap();
-  const corners = card => [card.querySelector(':scope > .card-symbols'), card.querySelector(':scope > .card-footer')].filter(Boolean);
+  // ---- Raising a hand card (rules #card-corners): the card straightens and lifts (CSS); its
+  // corners stay in its corners. A corner acts only on a raised card: on a touch screen the tap
+  // that raises a resting card does not also press the corner under the finger. ----
   const raisedNow = card => card.matches(':hover, :focus-within');
-  function noteResting() {
-    for (const card of $$('#hand-row > .game-card')) if (!raisedNow(card)) resting.set(card, { box: card.getBoundingClientRect(), parts: corners(card).map(el => [el, el.getBoundingClientRect()]) });
-  }
-  function raise(card) {
-    if (card.dataset.cfRaised) return;
-    card.dataset.cfRaised = '1';
-    const before = resting.get(card);
-    if (document.documentElement.dataset.handRest !== 'symbols' || still() || !before) return;
-    // An action fires only on the raised card: until the motion ends, a click on a corner is ignored.
-    card.dataset.cfRaising = '1';
-    const after = card.getBoundingClientRect(), timing = { duration: RAISE_MS, easing: 'cubic-bezier(.2, .7, .2, 1)' };
-    const inset = [before.box.top - after.top, after.right - before.box.right, after.bottom - before.box.bottom, before.box.left - after.left].map(n => `${Math.max(0, n)}px`).join(' ');
-    const runs = [card.animate([{ clipPath: `inset(${inset} round 9px)` }, { clipPath: 'inset(0 round 9px)' }], timing)];
-    for (const [el, from] of before.parts) {
-      const to = el.getBoundingClientRect();
-      if (to.width && from.width) runs.push(el.animate([{ transformOrigin: '0 0', transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.height / to.height})` }, { transformOrigin: '0 0', transform: 'none' }], timing));
-    }
-    for (const el of card.querySelectorAll(':scope > :not(.card-symbols, .card-footer)')) runs.push(el.animate([{ opacity: 0 }, { opacity: 1 }], { ...timing, easing: 'ease-out' }));
-    Promise.all(runs.map(run => run.finished.catch(() => {}))).then(() => { delete card.dataset.cfRaising; });
-  }
+  const raisedBy = new WeakMap();
+  document.addEventListener('pointerdown', event => {
+    const card = event.target.closest?.('#hand-row > .game-card');
+    if (card && event.pointerType === 'touch' && !card.dataset.cfRaised) raisedBy.set(card, performance.now());
+  }, true);
+  const raiseFrom = event => { if (event.pointerType === 'touch') return; const card = event.target.closest?.('#hand-row > .game-card'); if (card && raisedNow(card)) card.dataset.cfRaised = '1'; };
+  document.addEventListener('pointerover', raiseFrom);
+  document.addEventListener('focusin', raiseFrom);
+  document.addEventListener('click', event => {
+    if (event.detail === 0) return;
+    const corner = event.target.closest?.('#hand-row .corner-button'), card = corner?.closest('.game-card');
+    if (!card || !raisedBy.has(card)) return;
+    raisedBy.delete(card);
+    event.preventDefault(); event.stopPropagation();
+    corner.focus({ preventScroll: true });
+  }, true);
   // A card's name sits between its two corners, wrapping only between words and to two lines at
   // most (rules #card-corners); a name that does not fit there moves under the corners.
   function fitNames() {
@@ -225,23 +246,10 @@
   }
   addEventListener('resize', () => requestAnimationFrame(fitNames));
   function settle() {
-    requestAnimationFrame(() => {
-      for (const card of $$('#hand-row > .game-card[data-cf-raised]')) if (!raisedNow(card)) { delete card.dataset.cfRaised; delete card.dataset.cfRaising; }
-      noteResting();
-    });
+    requestAnimationFrame(() => { for (const card of $$('#hand-row > .game-card[data-cf-raised]')) if (!raisedNow(card)) delete card.dataset.cfRaised; });
   }
-  const raiseFrom = event => { const card = event.target.closest?.('#hand-row > .game-card'); if (card && raisedNow(card)) raise(card); };
-  document.addEventListener('pointerover', raiseFrom);
-  document.addEventListener('focusin', raiseFrom);
   document.addEventListener('pointerout', settle);
   document.addEventListener('focusout', settle);
-  addEventListener('resize', settle);
-  document.addEventListener('click', event => {
-    // Keyboard activation (detail 0) is always deliberate.
-    if (event.detail === 0) return;
-    const corner = event.target.closest?.('#hand-row .corner-button');
-    if (corner?.closest('.game-card')?.dataset.cfRaising) { event.preventDefault(); event.stopPropagation(); }
-  }, true);
 
   // ---- Drag a hand card onto the map (or onto your reserves to convert it). ----
   // A card can be picked up anywhere on it, its buttons included: a press that moves more

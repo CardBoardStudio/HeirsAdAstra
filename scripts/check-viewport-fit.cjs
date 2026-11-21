@@ -175,6 +175,8 @@ function sharedView(state) {
       { seat: 2, name: 'Violet Assembly' }, { seat: 3, name: 'Helios Compact' }], state };
 }
 
+// A hand of any size, mixing starters (with their conversion corner) and bought cards.
+const fanHand = size => Array.from({ length: size }, (_, i) => ['move', 'construct', ...MARKET.filter(c => c.code.startsWith('N')).map(c => c.key)][i % 12]);
 const longHand = ['move', 'construct', ...MARKET.filter(c => c.code.startsWith('N')).slice(0, 6).map(c => c.key)];
 // A real market is three cards from each price row (rulebook #market-tiers). Four pages cycle every
 // design through its row, heaviest text first, so page 1 is each row's worst case.
@@ -186,6 +188,9 @@ const chunks = [0, 1, 2, 3].map(page => byTier.flatMap(row => [0, 1, 2].map(n =>
 const CASES = [
   { name: 'operations, 5-card hand', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), devices: true },
   { name: 'operations, 8-card hand', save: operationsState(longHand) },
+  // The hand is a fan (rules #card-corners): every card shows both upper corners, for the smallest,
+  // a typical and the largest hands, on desktop, tablet and phone.
+  ...[1, 5, 10, 12].map(size => ({ name: `operations, fan of ${size}`, save: operationsState(fanHand(size)), expect: 'fan', devices: true })),
   { name: 'operations, raised hand card (long text)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), focus: '#hand-row .game-card:nth-child(3) button' },
   { name: 'operations, 8-card hand raised', save: operationsState(longHand), focus: '#hand-row .game-card:nth-child(5) button' },
   // A chosen order shows a toast; it must not cover the hand or any control.
@@ -352,7 +357,10 @@ const MEASURE = `(() => {
     if (next && !document.querySelector('#hand-row .game-card:is(:hover, :focus, :focus-within)')) {
       const limit = next.getBoundingClientRect().left;
       const parts = [nameShown ? top.querySelector('.card-name') : null, summary, ...top.querySelectorAll('.card-footer .resource-chip, .card-footer .level-badge')].filter(Boolean);
-      const under = parts.find(part => { const t = part.getBoundingClientRect(); return t.width > 0 && t.right > limit + 1; });
+      // The hand is a fan of turned cards (rules #card-corners): test what lies on top of each part,
+      // not bounding boxes, which a turned card overstates.
+      const under = parts.find(part => { const t = part.getBoundingClientRect(); if (!(t.width > 0)) return false;
+        return [t.left + 2, t.left + t.width / 2, t.right - 2].some(x => { const hit = document.elementFromPoint(x, t.top + t.height / 2)?.closest('#hand-row > .game-card'); return hit && hit !== top; }); });
       if (under) problems.push('hand text under the next card: ' + label(under) + ' in ' + label(top));
     }
     for (const part of [nameShown ? top.querySelector('.card-name') : null, footer?.textContent.trim() || footer?.querySelector('.resource-chip') ? footer : null, summary].filter(Boolean)) {
@@ -685,6 +693,23 @@ async function runCase(browser, origin, testCase, viewport) {
   }
   // Pointing at a hand card raises that card itself into the whole card, in place above the hand:
   // its effect shows at reading size and whole, inside the window; no copy opens beside the map.
+  if (testCase.expect === 'fan') problems.push(...await browser.evaluate(`(() => {
+    // Both upper corners of every resting card are on top at their own place in the hand.
+    // On a phone the hand is a scrolling row: judge the cards in view.
+    const problems = [], view = document.querySelector('#hand-row').getBoundingClientRect();
+    const cards = [...document.querySelectorAll('#hand-row > .game-card')].filter(card => { const r = card.getBoundingClientRect(); return r.left >= view.left - 1 && r.right <= Math.min(innerWidth, view.right) + 1; });
+    for (const card of cards) {
+      const parts = [card.querySelector(':scope > .card-symbols'), card.querySelector(':scope > .card-footer')].filter(e => e && e.getClientRects().length);
+      if (!parts.length) parts.push(card.querySelector('.card-name'));
+      for (const part of parts) {
+        const r = part.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
+        const hit = document.elementFromPoint(x, y)?.closest('#hand-row > .game-card');
+        if (hit !== card) problems.push('fan hides ' + (part.className.split(' ')[0] || 'part') + ' of ' + (card.querySelector('.card-name')?.textContent || 'a card') + (hit ? ' under ' + hit.querySelector('.card-name')?.textContent : ''));
+        if (x < 0 || x > innerWidth || y < 0 || y > innerHeight) problems.push('fan corner outside the window: ' + card.querySelector('.card-name')?.textContent);
+      }
+    }
+    return problems.slice(0, 6);
+  })()`));
   if (testCase.expect === 'inspect') problems.push(...await browser.evaluate(`(() => {
     const card = document.querySelector('#hand-row > .game-card:hover'), problems = [];
     if (document.querySelector('#card-inspect, .card-inspect')) problems.push('a separate inspect copy opened');
