@@ -4869,7 +4869,7 @@ function createGalacticReach(options = {}) {
   function positionMaxResourceGuides() {
     const grid=$('#resource-grid'),lines=grid?.querySelectorAll('.max-resource-dividers i'),cols=grid?.querySelectorAll('.resource-box');
     if(!lines?.length||!cols?.length)return;
-    const box=grid.getBoundingClientRect(),scale=box.width/grid.offsetWidth;if(!scale)return;
+    const overlay=grid.querySelector('.max-resource-dividers'),box=overlay.getBoundingClientRect(),scale=box.width/overlay.offsetWidth;if(!scale)return;
     const dots=cols[0].querySelectorAll('.mat-stars.mat-stock > i'),first=dots[0]?.getBoundingClientRect(),last=cols[cols.length-1].querySelector('.mat-stars.mat-stock > i')?.getBoundingClientRect();
     if(!first||!last)return;
     [5,10].forEach((n,i)=>{const lower=dots[n-1]?.getBoundingClientRect(),upper=dots[n]?.getBoundingClientRect();if(!lower||!upper)return;
