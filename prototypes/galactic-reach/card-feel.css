@@ -31,9 +31,10 @@
   .game-card::after { transition: none; }
 }
 
-/* Your hand: held in a slight fan (card-feel.js sets each card's angle and arc). Pointing at
-   a card straightens it and raises it whole (see styles.css). */
-#hand-row > .game-card { transform-origin: 50% 115%; cursor: grab; user-select: none; -webkit-user-select: none; }
+/* Your hand: a fan (card-feel.js sets each card's width, angle and arc so both upper corners of
+   every card show). Each card turns about its top centre. Pointing at a card straightens it and
+   raises it whole (see styles.css). */
+#hand-row > .game-card { transform-origin: 50% 0; cursor: grab; user-select: none; -webkit-user-select: none; }
 #hand-row > .game-card:is(:hover, :focus, :focus-within) { --cf-fan: 0deg !important; --cf-arc: 0px !important; --cf-lift: -12px; --cf-drop: 0 16px 18px -8px #0009, 0 30px 44px -18px #000c; }
 @media (min-width: 1024px) and (min-height: 600px) {
   /* A raised card widens over its right-hand neighbour (the last card over its left one)

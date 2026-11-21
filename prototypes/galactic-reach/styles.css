@@ -2703,8 +2703,6 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
   #hand-row .game-card:not(:hover):not(:focus-within):not(:has(.card-headline)) .card-effect { display: block !important; font-size: 11px !important; line-height: 1.15 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 !important; }
   #hand-row .game-card:not(:hover):not(:focus-within) :is(.card-name, .card-headline) { font-size: 12.5px !important; line-height: 1.15 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #hand-row .game-card:not(:hover):not(:focus-within) .card-headline { font-size: 11px !important; font-weight: 600; }
-  /* Overlap is the fan; a tilt would push corners past the table's edge. */
-  #hand-row > .game-card { --cf-fan: 0deg !important; }
   /* The last card shows whole, so its text can use the full width. */
   #hand-row .game-card:last-child:not(:hover):not(:focus-within) { padding-right: 8px !important; }
 }
@@ -3076,25 +3074,38 @@ body.background-stars .galaxy-board::before {
    There is no separate copy beside the map. ==== */
 @media (min-width: 600px) and (min-height: 600px) {
   #hand-row { align-items: flex-end !important; overflow: visible !important; --raise-w: 250px; }
+  /* One spacing scale inside the raised card (2, 6, 10px): --near between the effect line and its
+     rules text, --far between neighbours in the header, --box between groups (header, text,
+     picture, buttons), and the same --pad inset on all sides (the bottom has no border, so its
+     padding takes the border's 2px too). */
   #hand-row > .game-card:is(:hover, :focus-within) {
+    --near: 2px; --far: 6px; --box: 10px; --pad: 10px;
     width: var(--raise-w) !important; height: auto !important; max-height: none !important; z-index: 40;
-    /* Grow from the resting place, shifted left only as far as needed to stay inside the hand. */
-    --shift: min(0px, calc(var(--hand-w, 100000px) - var(--slot-x, 0px) - var(--raise-w)));
-    margin-left: calc(var(--step) + var(--shift)) !important; margin-right: calc(var(--top-w) - var(--raise-w) - var(--shift)) !important; padding: 6px 12px 10px 8px !important;
-    grid-template-columns: auto minmax(0, 1fr) !important; grid-template-areas: "cost type" "cost name" "head head" "effect effect" "note note" "art art" "buttons buttons" !important;
-    grid-template-rows: auto auto auto auto auto auto auto !important; row-gap: 4px !important; align-content: start !important;
+    /* Grow from the resting place, shifted left only as far as needed to stay inside the hand, and
+       never past the hand's left edge (the fan centres the hand, so a middle card starts further right). */
+    --shift: max(calc(-1 * var(--slot-x, 0px)), min(0px, calc(var(--hand-w, 100000px) - var(--slot-x, 0px) - var(--raise-w))));
+    margin-left: calc(var(--step) + var(--shift)) !important; margin-right: calc(var(--top-w) - var(--raise-w) - var(--shift)) !important;
+    padding: var(--pad) var(--pad) calc(var(--pad) + 2px) !important;
+    /* The header is one line: the effect button left, the name between, the convert button
+       right. The rules text, picture and any other buttons follow on one left edge. */
+    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) !important; grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" "art art art" "buttons buttons buttons" !important;
+    grid-template-rows: auto !important; column-gap: var(--far) !important; row-gap: 0 !important; align-content: start !important; align-items: center !important;
   }
   #hand-row > .game-card:first-child:is(:hover, :focus-within) { margin-left: var(--shift) !important; }
   #hand-row > .game-card:last-child:not(:first-child):is(:hover, :focus-within) { margin-right: 0 !important; margin-left: calc(var(--step) - (var(--raise-w) - var(--top-w))) !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) :is(.card-type, .card-headline, .card-effect) { display: block !important; white-space: normal !important; overflow: visible !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-type { grid-area: type; align-self: center; padding-left: 6px; font-size: 10px !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-name { grid-area: name; padding-left: 6px; font-size: 18px !important; line-height: 1.15 !important; white-space: normal !important; overflow: visible !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-headline { grid-area: head; font-size: 12.5px !important; font-weight: 650; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-effect { grid-area: effect; margin: 0 !important; font-size: 12.5px !important; line-height: 1.4 !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-art.has-picture { grid-area: art; height: 84px !important; min-height: 84px; margin: 0 !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { grid-area: buttons; position: static !important; width: auto !important; height: auto !important; clip-path: none !important; }
-  /* The conversion box still shares the raised card's top-left corner. */
-  #hand-row > .game-card:is(:hover, :focus-within) .card-footer { grid-area: cost !important; grid-row: 1 / 3 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) :is(.card-headline, .card-effect) { display: block !important; white-space: normal !important; overflow: visible !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-type { display: none !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-symbols { grid-area: sym; justify-self: start; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-footer { grid-area: cost !important; grid-row: 1 !important; justify-self: end !important; align-self: center !important; margin: 0 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-name { grid-area: name; justify-self: center; max-width: 100%; margin: 0 !important; padding: 0; text-align: center; font-size: 18px !important; line-height: 1.15 !important; white-space: normal !important; overflow: visible !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-headline { grid-area: head; margin: var(--box) 0 0 !important; font-size: 12.5px !important; font-weight: 650; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-effect { grid-area: effect; margin: var(--box) 0 0 !important; font-size: 12.5px !important; line-height: 1.4 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-headline ~ .card-effect { margin-top: var(--near) !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-limit-note { grid-area: note; margin: var(--near) 0 0 !important; }
+  /* The picture fills its window exactly (no inset), the same 79px tall as before. */
+  #hand-row > .game-card:is(:hover, :focus-within) .card-art.has-picture { grid-area: art; height: 79px !important; min-height: 79px; margin: var(--box) 0 0 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-art.has-picture .card-picture { top: 0; height: 100%; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { grid-area: buttons; position: static !important; width: auto !important; height: auto !important; margin: var(--box) 0 0 !important; clip-path: none !important; }
 }
 
 /* ==== The map key lies in the middle of the left column's free height (see stackLeft). ==== */
@@ -3116,18 +3127,20 @@ body.background-stars .galaxy-board::before {
   :root.table-wide #map-legend-corner { row-gap: 7px !important; padding: 10px 12px !important; }
 }
 /* Upright, the rows above your hand are all controls, so the raised card opens wide and short
-   instead: its cost box, name and whole effect beside its buttons, within the hand's band. */
+   instead: its header (effect button, name, convert button) over its whole effect, with any
+   other buttons down the right, within the hand's band. */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
   #hand-row { --raise-w: 540px; }
   #hand-row > .game-card:is(:hover, :focus-within) {
-    grid-template-columns: auto minmax(0, 1fr) 120px !important; grid-template-areas: "cost name buttons" "cost head buttons" "effect effect buttons" "note note buttons" !important;
-    grid-template-rows: auto auto auto auto !important; column-gap: 8px !important; row-gap: 2px !important; padding: 6px 10px 8px 8px !important;
+    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important;
+    grid-template-rows: auto auto auto 1fr !important; column-gap: 8px !important; row-gap: 2px !important; padding: 8px 10px 8px 8px !important;
   }
   #hand-row > .game-card:is(:hover, :focus-within) :is(.card-type, .card-art) { display: none !important; }
   #hand-row > .game-card:is(:hover, :focus-within) .card-name { font-size: 15px !important; padding-left: 0; }
   #hand-row > .game-card:is(:hover, :focus-within) .card-effect { font-size: 12px !important; line-height: 1.32 !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { display: flex !important; flex-direction: column; gap: 4px; align-self: center; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-footer { grid-row: 1 / 3 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { display: flex !important; flex-direction: column; gap: 4px; align-self: center; width: 120px !important; margin: 0 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) :is(.card-name, .card-headline, .card-effect, .card-headline ~ .card-effect) { margin: 0 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) :is(.card-headline, .card-effect) { margin-top: 4px !important; }
 }
 /* On a table shrunk to fit a small window (or browser zoom), the raised card keeps reading size. */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
@@ -3840,4 +3853,186 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   .card-choice-footer select { max-width:100%; width:100%; }
   .card-choice-footer label { flex-direction:column; align-items:start; max-width:100%; }
   #relic-card-dialog[data-mode="echoes"] #relic-card-options { grid-template-rows:300px; }
+}
+
+/* ==== Card corners (rules #card-corners). A card's header is one line: its effect as symbols in
+   the upper-left corner, its name between, and in the upper-right corner what it converts to
+   (one symbol, no number: a conversion gives one) or, in the market, its price. One symbol per
+   unit up to three, then one symbol and its number. On a hand card the two corners are its two
+   actions: the effect symbols use the order, the conversion symbol converts. ==== */
+.card-symbols { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 1px 6px; color: var(--ink, #253436); font-size: 16px; line-height: 1; }
+.card-symbols .corner-group { display: inline-flex; flex-wrap: nowrap; align-items: center; gap: 1px; }
+.card-symbols .vocab-icon { width: 1.1em; height: 1.1em; vertical-align: 0; }
+.corner-count { margin-left: 1px; font: 800 .8em/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
+.corner-dots .resource-chip { gap: 1px !important; }
+.corner-dots .resource-chip .corner-count { font-size: 12.5px; }
+/* The two actions: a button-shaped frame around each corner, with hover, focus, pressed (an order
+   in use; press again to cancel) and disabled states. */
+.game-card .corner-button, #hand-row .game-card .card-footer.corner-button {
+  appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 2px; min-width: 38px; min-height: 34px; margin: 0; padding: 3px 9px;
+  border: 1.5px solid color-mix(in srgb, var(--card-accent, #8d8268) 70%, #4a4234); border-radius: 8px; background: color-mix(in srgb, var(--card-accent, #8d8268) 14%, #fffaf0);
+  color: var(--ink, #253436); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; box-shadow: 0 2px 0 color-mix(in srgb, var(--card-accent, #8d8268) 55%, #2a2418);
+  transition: background-color .12s, border-color .12s, box-shadow .12s, transform .12s;
+}
+.game-card .corner-button:hover:not(:disabled) { background: color-mix(in srgb, var(--card-accent, #8d8268) 32%, #fffaf0); border-color: #2a2418; }
+.game-card .corner-button:focus-visible { outline: 3px solid #315955; outline-offset: 2px; }
+.game-card .corner-button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 transparent; }
+.game-card .corner-button[aria-pressed="true"] { background: #f2d488; border-color: #6b5420; box-shadow: inset 0 2px 4px #0004; transform: translateY(1px); }
+.game-card .corner-button:disabled { cursor: not-allowed; opacity: .6; border-style: dashed; background: transparent; box-shadow: none; }
+.game-card .corner-button .resource-chip { min-height: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
+.game-card .corner-button .resource-symbol { width: 1em !important; height: 1em !important; }
+@media (prefers-reduced-motion: reduce) { .game-card .corner-button { transition: none; } }
+/* The type line is gone from card faces; the name carries the header. */
+.game-card > .card-type { display: none !important; }
+.upgrade-group #upgrade-market > .capacity-offer > .card-type { display: block !important; }
+
+/* Card faces outside the hand and market (an opened card on a phone, deck, discard, in play,
+   relics): the same one-line header over the rest of the card. */
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) {
+  display: grid; grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr); align-content: start; align-items: center; column-gap: 6px;
+}
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) > * { grid-column: 1 / -1; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols { grid-column: 1; grid-row: 1; justify-self: start; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) > .card-name { grid-column: 2; grid-row: 1; margin: 0; text-align: center; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { grid-column: 3; grid-row: 1; justify-self: end; margin: 0; padding: 3px 7px; border: 1.5px solid var(--box-line, #a89d83); border-radius: 8px; background: var(--box-bg, #fffaf0); }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer .resource-chip { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+/* An opened card on a phone: the actions are full-size touch targets. */
+.phone-card-sheet .game-card .corner-button { min-width: 48px; min-height: 44px; font-size: 22px; }
+
+@media (min-width: 600px) and (min-height: 600px) {
+  /* Raised hand card: the corner buttons at full size. */
+  #hand-row > .game-card:is(:hover, :focus-within) .corner-button { min-height: 36px; }
+  /* Resting hand card tops (a fan, card-feel.js): the two corners in their corner tabs, the name
+     under them; the symbols scale with the card's width. Pressing a corner first raises the card. */
+  #hand-row .game-card:not(:hover):not(:focus-within) {
+    grid-template-columns: max-content minmax(0, 1fr) max-content !important; grid-template-areas: "sym . cost" "name name name" "head head head" "effect effect effect" "buttons buttons buttons" "note note note" !important;
+    grid-template-rows: none !important; column-gap: 4px !important; row-gap: 4px !important; align-items: start; align-content: start; padding: 8px !important;
+    /* Beyond the fan's room neighbours overlap: the part under the next card stays blank, so the
+       right corner sits at the visible edge. */
+    padding-right: calc(8px + max(0px, -1 * var(--step))) !important;
+    font-size: clamp(11px, calc(var(--top-w) / 7.5), 18px) !important;
+    height: var(--fan-h, var(--strip-h)) !important;
+  }
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-symbols { grid-area: sym; font-size: 1em; gap: 1px .2em; }
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-symbols .vocab-star { display: inline-grid; place-items: center; width: 1.1em; height: 1.1em; font-size: 1em; overflow: hidden; }
+  #hand-row .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer) { margin: -8px 0 0 !important; font-size: 1em; }
+  #hand-row .game-card:not(:hover):not(:focus-within) > .card-symbols { margin-left: -8px !important; justify-self: start; padding: 6px 5px 4px 8px; }
+  #hand-row .game-card:last-child:not(:hover):not(:focus-within) { padding-right: 8px !important; }
+  #hand-row .game-card:not(:hover):not(:focus-within) > .card-footer {
+    grid-area: cost !important; grid-row: 1 !important; justify-self: end !important; margin-right: -8px !important; padding: 6px 8px 4px 5px !important;
+    border: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important;
+  }
+  #hand-row .game-card:not(:hover):not(:focus-within) .card-footer .resource-symbol { width: 1.1em !important; height: 1.1em !important; }
+  /* A corner the player can press is a tab: framed on its inner edges, flush with the card's. */
+  #hand-row .game-card:not(:hover):not(:focus-within) > .corner-button { min-width: 0; min-height: 0; font-size: 1em; box-shadow: none; }
+  #hand-row .game-card:not(:hover):not(:focus-within) > .card-symbols.corner-button { border-width: 0 1.5px 1.5px 0; border-radius: 7px 0 8px 0; }
+  #hand-row .game-card:not(:hover):not(:focus-within) > .card-footer.corner-button { border-style: solid !important; border-color: color-mix(in srgb, var(--card-accent, #8d8268) 70%, #4a4234) !important; border-width: 0 0 1.5px 1.5px !important; border-radius: 0 7px 0 8px !important; background: color-mix(in srgb, var(--card-accent, #8d8268) 14%, #fffaf0) !important; }
+  #hand-row .game-card:not(:hover):not(:focus-within) :is(.card-name, .card-headline, .card-effect) { font-size: 12.5px; contain: inline-size; }
+  #hand-row .game-card:not(:hover):not(:focus-within).has-symbols .card-effect { display: none !important; }
+
+  /* Market and upgrade cards: effect symbols, name between, price; the name wraps to two lines at
+     most (the raised card shows it whole). */
+  .market-cards :is(#market-row, #upgrade-market) > .game-card .card-symbols { grid-area: sym; align-self: center; justify-self: start; font-size: 14px; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within).has-symbols { grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "art art cost" !important; grid-template-rows: auto minmax(0, 1fr) !important; column-gap: 6px !important; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within).has-symbols .card-icons { display: none !important; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within).has-symbols .card-name { -webkit-line-clamp: 2 !important; line-clamp: 2 !important; }
+  .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within).has-symbols { grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "effect effect cost" !important; column-gap: 6px !important; }
+  .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) .card-symbols { padding-top: 5px; align-self: start; }
+  .market-cards #market-row > .game-card:is(:hover, :focus, :focus-within) {
+    grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "effect effect effect" "note note note" !important; column-gap: 6px !important;
+  }
+  .market-cards #market-row > .game-card:is(:hover, :focus, :focus-within) .card-footer { grid-area: cost !important; justify-self: end !important; align-self: start !important; }
+  .market-cards #market-row > .game-card:is(:hover, :focus, :focus-within) :is(.card-icons, .card-gain) { display: none !important; }
+}
+
+/* Phones: a resting card top shows only its symbols (a card with none shows its name); the first
+   tap opens the whole card, where the corners act. */
+@media (max-width: 599px), (max-height: 599px) {
+  body #hand-row > .game-card { grid-template-columns: max-content minmax(0, 1fr) max-content !important; grid-template-rows: auto auto 1fr !important; grid-template-areas: "sym . cost" "name name name" "head head head" !important; column-gap: 6px !important; }
+  body #hand-row > .game-card .card-symbols { grid-area: sym; align-self: center; font-size: 26px; }
+  body #hand-row > .game-card .card-footer { grid-area: cost; justify-self: end; align-self: center; margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; font-size: 26px; }
+  body #hand-row > .game-card .card-footer .resource-chip { min-height: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
+  body #hand-row > .game-card .card-footer .resource-symbol { width: 26px; height: 26px; }
+  body #hand-row > .game-card .corner-button { pointer-events: none; min-width: 0; min-height: 0; padding: 0; border-color: transparent; background: none; box-shadow: none; }
+  body #hand-row > .game-card .card-effect { display: none !important; }
+  body #hand-row > .game-card:not(.has-symbols):not(.has-headline) .card-effect { display: -webkit-box !important; grid-area: head; }
+  .phone-card-sheet .phone-card-close { top: auto; bottom: 4px; }
+}
+
+/* Card-choice and bank dialogs keep their own layout and one-line summary, which already prints
+   the card's symbols with their numbers; they leave out the corner symbols. */
+:is(#max-bank-dialog, .market-choice-dialog) .game-card > .card-symbols { display: none !important; }
+/* Their price column is narrow too: a repeated price prints one symbol and its number there. */
+:is(#max-bank-dialog, .market-choice-dialog) .corner-dots .resource-chip[data-repeat] > .resource-symbol ~ .resource-symbol { display: none; }
+:is(#max-bank-dialog, .market-choice-dialog) .corner-dots .resource-chip[data-repeat]::after { content: attr(data-repeat); margin-left: 1px; color: var(--ink, #253436); font: 800 12.5px/1 system-ui, sans-serif; }
+
+/* Long names: measured between the corners without clamping or breaking words; a name that does not
+   fit there (a word too wide, or more than two lines) moves under the corners. */
+.game-card.name-probe > .card-name { display: block !important; -webkit-line-clamp: unset !important; line-clamp: unset !important; max-height: none !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; white-space: normal !important; overflow: hidden !important; text-overflow: clip !important; }
+@media (min-width: 600px) and (min-height: 600px) {
+  .market-cards #market-row > .game-card.name-under:not(:hover):not(:focus):not(:focus-within).has-symbols { grid-template-areas: "sym sym cost" "name name cost" "art art cost" !important; grid-template-rows: auto auto minmax(0, 1fr) !important; }
+  .market-cards #market-row > .game-card.name-under:is(:hover, :focus, :focus-within) { grid-template-areas: "sym sym cost" "name name cost" "effect effect effect" "note note note" !important; }
+  .upgrade-group #upgrade-market > .upgrade-offer.name-under:not(:hover):not(:focus):not(:focus-within).has-symbols { grid-template-areas: "sym sym cost" "name name cost" "effect effect cost" !important; grid-template-rows: auto auto minmax(0, 1fr) !important; }
+}
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.name-under > .card-name { grid-column: 1 / -1 !important; grid-row: 2 !important; }
+/* Phone card tops: the conversion symbol bare, without the corner box's edges. */
+@media (max-width: 599px), (max-height: 599px) {
+  body #hand-row > .game-card .card-footer.corner-button, body #hand-row > .game-card .card-footer { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+}
+
+/* ==== The corner buttons sit flush in their corners (rules #card-corners): each shares its two
+   outer edges with the card, its outer corner follows the card's, and only its inner corner is
+   rounded, like a tab cut from the corner. Its inner padding matches the card's, so the symbol
+   still lines up with the text. Focus and hover are drawn inside the tab. ==== */
+.game-card .corner-button:focus-visible { outline-offset: -4px; }
+@media (min-width: 600px) and (min-height: 600px) {
+  #hand-row > .game-card:is(:hover, :focus-within) .corner-button { align-self: start !important; min-height: 0; padding-top: var(--pad); padding-bottom: 7px; box-shadow: none; }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-symbols.corner-button {
+    margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)) !important; padding-left: var(--pad); padding-right: 9px;
+    border-width: 0 1.5px 1.5px 0; border-radius: 7px 0 9px 0;
+  }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-footer.corner-button {
+    margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0 !important; padding-right: var(--pad) !important; padding-left: 9px !important;
+    border-width: 0 0 1.5px 1.5px !important; border-style: solid !important; border-radius: 0 7px 0 9px !important;
+  }
+  /* A corner with nothing to press (converting is not possible right now) has no tab. */
+  #hand-row > .game-card:is(:hover, :focus-within) .card-footer:not(.corner-button) { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
+  #hand-row > .game-card:is(:hover, :focus-within) .corner-button[aria-pressed="true"] { transform: none; }
+  #hand-row > .game-card:is(:hover, :focus-within) .corner-button:active:not(:disabled) { transform: none; }
+}
+/* Upright, the price/convert corner is the header's last column and the other buttons sit under it. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  #hand-row > .game-card:is(:hover, :focus-within) { --pad: 8px;
+    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) !important; grid-template-areas: "sym name cost" "head head buttons" "effect effect buttons" "note note buttons" !important;
+    padding: var(--pad) !important;
+  }
+  #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { justify-self: end; }
+  #hand-row > .game-card:is(:hover, :focus-within):not(.has-buttons) { grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" !important; }
+  /* A card with text buttons keeps them in a column down the right beside every row, so it is no taller. */
+  #hand-row > .game-card:is(:hover, :focus-within).has-buttons { grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
+}
+/* An opened card on a phone and the plain card faces: the same tabs, the phone's at least 44 px. */
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) { --pad: 12px; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols.corner-button { align-self: start; margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)); padding: var(--pad) 10px 8px var(--pad); border-width: 0 1.5px 1.5px 0; border-radius: 8px 0 9px 0; box-shadow: none; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { align-self: start; margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0; padding: var(--pad) var(--pad) 8px 10px; border-width: 0 0 1.5px 1.5px; border-style: solid; border-radius: 0 8px 0 9px; box-shadow: none; }
+.phone-card-sheet .game-card > .corner-button { min-height: 44px; min-width: 52px; }
+
+/* With colour chips (a resource symbol is a chip in its colour, dark symbol on top), the convert
+   tab stays a neutral button that frames its chip; the effect symbols stay in the card's ink. */
+.card-symbols, .card-symbols :is(.vocab-icon, .vocab-move, .vocab-hit, .vocab-miss, .vocab-limit) { color: var(--ink, #253436); }
+.card-symbols .vocab-star { color: var(--ink, #253436); }
+.game-card .corner-button .resource-symbol { border-radius: 28%; }
+.card-symbols .vocab-icon svg { stroke: currentColor !important; }
+
+/* A hand bigger than the fan's room (card-feel.js marks it fan-tight): neighbours overlap, and each
+   card stacks its symbols in the strip that shows (effect over conversion, then the name). */
+@media (min-width: 600px) and (min-height: 600px) {
+  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) {
+    grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "sym" "cost" "name" "head" "effect" "buttons" "note" !important;
+    font-size: clamp(10px, calc((var(--top-w) + min(0px, var(--step)) - 14px) / 3.6), 18px) !important; row-gap: 3px !important;
+  }
+  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer) { justify-self: start !important; margin: 0 !important; padding: 0 !important; border-color: transparent !important; background: none !important; }
+  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-footer { grid-row: 2 !important; }
+  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-symbols { max-width: 100%; }
+  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-symbols .corner-group { flex-wrap: wrap; }
 }
