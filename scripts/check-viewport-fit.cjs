@@ -334,7 +334,8 @@ const MEASURE = `(() => {
     const t = top.getBoundingClientRect();
     if (t.top < -1 || t.bottom > H + 1 || t.left < -1 || t.right > W + 1) problems.push('card top outside viewport: ' + label(top));
     // A top shows its one-line headline, its effect in icons, or its effect, whichever it shows.
-    const summary = [top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(e => e && e.getClientRects().length) || top.querySelector('.card-headline') || top.querySelector('.card-effect');
+    // A card's summary: its corner symbols where it has them (rules #card-corners), else its one-line effect.
+    const summary = [top.querySelector('.card-symbols'), top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(e => e && e.getClientRects().length) || top.querySelector('.card-symbols') || top.querySelector('.card-headline') || top.querySelector('.card-effect');
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
     // An open Sector Scan (a popover over the map) or Trade panel may cover card tops while it is open.
     if (!document.querySelector(':is(dialog[open], body.menu-open, .sector-popover:popover-open, .trade-drawer.open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {

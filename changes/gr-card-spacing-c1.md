@@ -1,5 +1,5 @@
 ---
 compat: safe
-title: Raised hand cards line up
+title: Read a card from its corners
 ---
-A card raised from your hand now has one left edge: its conversion box and type sit together along the top, and the title, effect, rules text, picture and buttons all start at the same edge, with even gaps between them. The card keeps its size. [Cards](rulebook.html#cards).
+Every card shows what it does as symbols in its upper-left corner: one hammer on Construct, two on Construct II, one arrow per step of range on Move cards. The upper-right corner shows what a level I starter converts to, or a market card's price, one symbol per unit up to three. Hand cards on a phone show just their corners and name. A raised hand card has one left edge and even spacing. [Read a card from its corners](rulebook.html#card-corners).

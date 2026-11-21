@@ -624,12 +624,56 @@ function createGalacticReach(options = {}) {
   const VOCAB_LABELS = [['prestige','Prestige'],['draw','Draw a card'],['move','Move'],['hit','Hit'],['miss','Miss'],['limit','Limit'],['colonize','Colonize'],['build','Build']];
   const COUNT_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5 };
 
+  // Card corners (rules #card-corners). Top left: what the card does, as its symbols only;
+  // top right: what it converts to, or its price. One symbol per unit, as the map key prints
+  // prices; four or more of one symbol print once with their number, so a corner never overflows.
+  const CORNER_REPEAT_MAX = 3;
+  function cornerRepeat(symbol, count) {
+    return count <= CORNER_REPEAT_MAX ? symbol.repeat(count) : `${symbol}<b class="corner-count">${count}</b>`;
+  }
+  // The card's effect values, read from its data (never from its text): the order first, then
+  // what comes with it. A card with no value that has a symbol returns none.
+  function cardEffectParts(definition, card = {}) {
+    const level = card.level === 3 ? 3 : card.upgraded ? 2 : 1, effect = definition.effect || {}, parts = [];
+    const add = (key, count, label) => { if (count > 0) parts.push({ key, count, label }); };
+    if (definition.order === 'construct') { const n = definition.secondBuild || level > 1 ? 2 : 1; add('build', n, n > 1 ? `Build up to ${n}` : 'Build 1'); }
+    if (definition.order === 'move') { const range = (definition.range || 0) + (level > 1 ? 1 : 0); add('move', 1 + range, range ? `Move 1 group, +${range} range` : 'Move 1 group'); }
+    if (definition.order === 'colonize') { add('colonize', 1, 'Colonize'); if (level > 1) add('build', 1, 'then build 1'); }
+    add('hit', definition.attack, `+${definition.attack} ${definition.attack === 1 ? 'hit' : 'hits'}`);
+    add('miss', definition.shield, `prevent ${definition.shield} ${definition.shield === 1 ? 'hit' : 'hits'}`);
+    const limit = Math.max(0, ...Object.values(effect.limits || {}));
+    add('limit', limit, `+${limit} to each resource limit`);
+    const prestige = effect.prestige || definition.colonyPrestige || definition.gainPrestige || 0;
+    add('prestige', prestige, `${prestige} Prestige`);
+    const draw = (effect.draw || 0) + (definition.orderDraw || 0) + (level === 3 ? 1 : 0);
+    add('draw', draw, `draw ${draw}`);
+    return parts;
+  }
+  function cardEffectLabel(parts) {
+    const text = parts.map(part => part.label).join(', ');
+    return text.charAt(0).toUpperCase() + text.slice(1);
+  }
+  function cardSymbols(definition, card = {}) {
+    const parts = cardEffectParts(definition, card);
+    if (!parts.length) return '';
+    const label = cardEffectLabel(parts);
+    return `<span class="card-symbols" role="img" aria-label="${label}" title="${label}">${parts.map(part => `<span class="corner-group">${cornerRepeat(VOCAB_ICONS[part.key], part.count)}</span>`).join('')}</span>`;
+  }
+  // The top-right corner's resources: one symbol per unit, the amount in the accessible name.
+  function cornerDots(amounts, prefix = '', marks = {}) {
+    const present = RESOURCES.filter(resource => amounts?.[resource]);
+    // Market prices keep their "; " list (they may carry a limit note); other amounts read as a list.
+    const label = (prefix ? prefix + ' ' : '') + present.map(resource => `${amounts[resource]} ${RESOURCE_NAMES[resource]}${marks[resource]?.label || ''}`).join(Object.keys(marks).length ? '; ' : ', ');
+    const chips = present.map(resource => `<span class="resource-chip ${resource} ${marks[resource]?.mark || ''}" title="${marks[resource]?.title || `${amounts[resource]} ${RESOURCE_NAMES[resource]}`}">${cornerRepeat(resourceDot(resource), amounts[resource])}${marks[resource]?.icon || ''}</span>`).join('');
+    return `<span class="resource-dots corner-dots" role="img" aria-label="${label}">${chips}</span>`;
+  }
+
   // Card data only, for the card gallery page: no galaxy, state, timers or storage.
   if (options.catalog === true) return {
     rulesVersion: `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`, MARKET_CARDS, ADVANCED_CARDS, MARKET_MILITARY, BASIC_TACTICS, BASIC_CARDS, RELIC_CARDS,
     MARKET_SIZE, MARKET_COPIES, MARKET_TIERS, MARKET_TIER_SLOTS, marketTier, STARTING_LIMIT, DEFAULT_VICTORY_TARGET, VICTORY_TARGET_CHOICES, RESOURCES, RESOURCE_NAMES,
     // Shared, state-free presentation for the gallery's costs and card descriptions.
-    resourceDots, iconText, BOARD_ICONS
+    resourceDots, iconText, BOARD_ICONS, cardSymbols, cornerDots, cardEffectParts, cardEffectLabel
   };
 
 
@@ -5055,7 +5099,7 @@ function createGalacticReach(options = {}) {
     const isSelectedOrder=canOrder&&state.actionCardId===card.id&&Boolean(state.actionMode);
     const canBuyEffect=location==='hand'&&!replayMode&&state.phase==='buy'&&state.activePlayer===ME&&definition.buyEffect;
     const canTrash=location==='hand'&&!replayMode&&state.phase==='buy'&&state.activePlayer===ME&&card.id&&trashEligible(state.players[ME],card,'hand');
-    return `<article class="game-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''}" style="--card-accent:${definition.accent}"${card.id?` data-card-id="${card.id}"`:''}${location==='hand'&&definition.order?` data-order="${definition.order}"`:''}><span class="card-type">${definition.code?definition.code+' · ':''}${definition.kind}${definition.affinity?' · '+definition.affinity:''}${card.starter?' · STARTER':''}</span><span class="card-name">${definition.name}${starterLevel(card)===3?' III':card.upgraded?' II':''}</span>${cardHeadline(card)?`<span class="card-headline"><span aria-hidden="true">${iconText(cardHeadline(card))}</span><span class="sr-only">${cardHeadline(card)}</span></span>`:''}${cardIllustration(definition)}${definition.lore?`<span class="card-lore">${esc(definition.lore)}</span>`:''}<span class="card-effect">${resourceText(definition.text)}${card.upgraded?` ${starterLevel(card)===3?'III':'II'}: ${upgradedOrderText(card)}${starterLevel(card)===3&&card.key!=='construct'?' Draw one card when using the order.':''}`:''}</span><div class="card-footer"><span>${canConvertCard(card)?`<small>Convert</small>${resourceDots(conversionGain(card))}`:card.starter&&card.upgraded&&location==='hand'?`<span class="level-badge" title="Level ${starterLevel(card)===3?'III':'II'} starter: upgraded starters do not convert">${starterLevel(card)===3?'III':'II'}</span>`:''}</span></div>${location==='hand'?`<div class="card-buttons">${canResource?`<button class="button" data-resource-card="${card.id}" ${canStoreCard?'aria-label="Convert to resources"':`disabled title="Choose excess resources first"`}>${canStoreCard?'Convert<span class="label-detail"> to resources</span>':`Choose discards first`}</button>`:''}${canOrder?`<button class="button ${isSelectedOrder?'button-danger':'button-primary'}" data-order-card="${card.id}" ${card.key==='probe'?'data-order-mode="probe"':''} aria-pressed="${isSelectedOrder&&state.actionMode!=='excavate'}">${isSelectedOrder&&state.actionMode!=='excavate'?'Cancel order':buyExchange?'Use 2:1':card.key==='probe'?'Probe':card.key==='seedArk'&&definition.fallbackDraw?'Colonize':'Use order'}</button>${canConstructDraw(ME,card.id)?`<button class="button button-primary" data-construct-draw="${card.id}" aria-label="Play Construct III to draw one card without building">Draw 1 only</button>`:''}${canOrderDraw(ME,card.id)?`<button class="button button-primary" data-order-draw="${card.id}" aria-label="Play Seed Ark to draw two cards instead of colonizing">Draw 2 instead</button>`:''}${card.key==='probe'?`<button class="button button-primary" data-order-card="${card.id}" data-order-mode="excavate" aria-pressed="${isSelectedOrder&&state.actionMode==='excavate'}">${isSelectedOrder&&state.actionMode==='excavate'?'Cancel Excavate':'Excavate'}</button>`:''}`:''}${canBuyEffect?`<button class="button button-primary" data-buy-effect="${card.id}">Use in Buy</button>`:''}${canTrash?`<button class="button" data-trash-hand="${card.id}" aria-label="Trash ${esc(definition.name)}: choose a payment">Trash…</button>`:''}${definition.battleRelic?'<span class="muted">Play during battle</span>':definition.reaction&&isHumanOps?'<span class="muted">Automatic reaction</span>':''}</div>`:''}</article>`;
+    return `<article class="game-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''} ${cardHeadline(card)&&cardEffectParts(definition,card).length?'headline-in-corner':''}" style="--card-accent:${definition.accent}"${card.id?` data-card-id="${card.id}"`:''}${location==='hand'&&definition.order?` data-order="${definition.order}"`:''}>${cardSymbols(definition,card)}<span class="card-type">${definition.code?definition.code+' · ':''}${definition.kind}${definition.affinity?' · '+definition.affinity:''}${card.starter?' · STARTER':''}</span><span class="card-name">${definition.name}${starterLevel(card)===3?' III':card.upgraded?' II':''}</span>${cardHeadline(card)&&!cardEffectParts(definition,card).length?`<span class="card-headline"><span aria-hidden="true">${iconText(cardHeadline(card))}</span><span class="sr-only">${cardHeadline(card)}</span></span>`:''}${cardIllustration(definition)}${definition.lore?`<span class="card-lore">${esc(definition.lore)}</span>`:''}<span class="card-effect">${resourceText(definition.text)}${card.upgraded?` ${starterLevel(card)===3?'III':'II'}: ${upgradedOrderText(card)}${starterLevel(card)===3&&card.key!=='construct'?' Draw one card when using the order.':''}`:''}</span><div class="card-footer"><span>${canConvertCard(card)?`<small>Convert</small>${cornerDots(conversionGain(card),'Converts to')}`:card.starter&&card.upgraded&&location==='hand'?`<span class="level-badge" title="Level ${starterLevel(card)===3?'III':'II'} starter: upgraded starters do not convert">${starterLevel(card)===3?'III':'II'}</span>`:''}</span></div>${location==='hand'?`<div class="card-buttons">${canResource?`<button class="button" data-resource-card="${card.id}" ${canStoreCard?'aria-label="Convert to resources"':`disabled title="Choose excess resources first"`}>${canStoreCard?'Convert<span class="label-detail"> to resources</span>':`Choose discards first`}</button>`:''}${canOrder?`<button class="button ${isSelectedOrder?'button-danger':'button-primary'}" data-order-card="${card.id}" ${card.key==='probe'?'data-order-mode="probe"':''} aria-pressed="${isSelectedOrder&&state.actionMode!=='excavate'}">${isSelectedOrder&&state.actionMode!=='excavate'?'Cancel order':buyExchange?'Use 2:1':card.key==='probe'?'Probe':card.key==='seedArk'&&definition.fallbackDraw?'Colonize':'Use order'}</button>${canConstructDraw(ME,card.id)?`<button class="button button-primary" data-construct-draw="${card.id}" aria-label="Play Construct III to draw one card without building">Draw 1 only</button>`:''}${canOrderDraw(ME,card.id)?`<button class="button button-primary" data-order-draw="${card.id}" aria-label="Play Seed Ark to draw two cards instead of colonizing">Draw 2 instead</button>`:''}${card.key==='probe'?`<button class="button button-primary" data-order-card="${card.id}" data-order-mode="excavate" aria-pressed="${isSelectedOrder&&state.actionMode==='excavate'}">${isSelectedOrder&&state.actionMode==='excavate'?'Cancel Excavate':'Excavate'}</button>`:''}`:''}${canBuyEffect?`<button class="button button-primary" data-buy-effect="${card.id}">Use in Buy</button>`:''}${canTrash?`<button class="button" data-trash-hand="${card.id}" aria-label="Trash ${esc(definition.name)}: choose a payment">Trash…</button>`:''}${definition.battleRelic?'<span class="muted">Play during battle</span>':definition.reaction&&isHumanOps?'<span class="muted">Automatic reaction</span>':''}</div>`:''}</article>`;
 
   }
 
@@ -5152,7 +5196,7 @@ function createGalacticReach(options = {}) {
     const level=card.starter&&starterLevel(card)>1?` ${starterLevel(card)===3?'III':'II'}`:'';
     const text=def.text+(level?` ${level.trim()}: ${upgradedOrderText(card)}${starterLevel(card)===3&&card.key!=='construct'?' Draw one card when using the order.':''}`:'');
     const note=cost?marketBlockReason(player,cost,true).note:'';
-    return `<button type="button" class="game-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}" style="--card-accent:${def.accent}" ${attributes} ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${esc(tier.name)}: ${esc(def.code||'')} ${esc(def.name+level)}${def.military?', military deck':''}${disabled?`. Unavailable: ${esc(why)}`:''}"><span class="card-type">${def.code?def.code+' · ':''}${def.military?'Military deck':def.kind}</span><span class="card-name">${def.name}${level}</span>${def.resource?`<span class="card-gain" title="Converts for">${eachResourceGain(def.resource)?`<span class="gain-each">${eachResourceGain(def.resource)} each</span>`:resourceDots(def.resource)}</span>`:''}${cardIllustration(def)}<span class="card-effect">${resourceText(text)}</span><span class="card-icons" aria-hidden="true">${iconText(text)}</span><span class="card-footer"><small>${cost?'Buy':'In play'}</small>${cost?marketCostDots(player,cost):''}</span>${note?`<span class="card-limit-note">${esc(note)}</span>`:''}</button>`;
+    return `<button type="button" class="game-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}" style="--card-accent:${def.accent}" ${attributes} ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${esc(tier.name)}: ${esc(def.code||'')} ${esc(def.name+level)}${def.military?', military deck':''}${disabled?`. Unavailable: ${esc(why)}`:''}">${cardSymbols(def,card)}<span class="card-type">${def.code?def.code+' · ':''}${def.military?'Military deck':def.kind}</span><span class="card-name">${def.name}${level}</span>${def.resource?`<span class="card-gain" title="Converts for">${eachResourceGain(def.resource)?`<span class="gain-each">${eachResourceGain(def.resource)} each</span>`:resourceDots(def.resource)}</span>`:''}${cardIllustration(def)}<span class="card-effect">${resourceText(text)}</span><span class="card-icons" aria-hidden="true">${iconText(text)}</span><span class="card-footer"><small>${cost?'Buy':'In play'}</small>${cost?marketCostDots(player,cost):''}</span>${note?`<span class="card-limit-note">${esc(note)}</span>`:''}</button>`;
   }
 
   function renderMarket() {
@@ -5221,9 +5265,9 @@ function createGalacticReach(options = {}) {
     if (!present.length) return resourceDots(cost);
     const limits=resourceLimits(ME);
     const mark=resource=>cost[resource]>limits[resource]?'locked':cost[resource]>player.resources[resource]?'short':'';
-    const label=present.map(resource=>`${cost[resource]} ${RESOURCE_NAMES[resource]}${mark(resource)==='locked'?`, above your limit of ${limits[resource]}`:''}`).join('; ');
-    const chips=present.map(resource=>`<span class="resource-chip ${resource} ${mark(resource)}" title="${cost[resource]} ${RESOURCE_NAMES[resource]}${mark(resource)==='locked'?` · your limit is ${limits[resource]}`:mark(resource)==='short'?` · you hold ${player.resources[resource]}`:''}">${resourceDot(resource)}<strong>${cost[resource]}</strong>${mark(resource)==='locked'?LOCK_ICON:''}</span>`).join('');
-    return `<span class="resource-dots" role="img" aria-label="${label}">${chips}</span>`;
+    const marks=Object.fromEntries(present.map(resource=>[resource,{mark:mark(resource),label:mark(resource)==='locked'?`, above your limit of ${limits[resource]}`:'',
+      title:`${cost[resource]} ${RESOURCE_NAMES[resource]}${mark(resource)==='locked'?` · your limit is ${limits[resource]}`:mark(resource)==='short'?` · you hold ${player.resources[resource]}`:''}`,icon:mark(resource)==='locked'?LOCK_ICON:''}]));
+    return cornerDots(cost,'',marks);
   }
   function marketBlockReason(player,cost,humanBuy) {
     const limits=resourceLimits(ME);
@@ -5274,7 +5318,7 @@ function createGalacticReach(options = {}) {
       // cannot convert, so it says nothing about conversion.
       const copy={key,starter:true,upgraded:true,level}, extraDraw=level===3&&key!=='construct';
       const effect=iconText(`${upgradedOrderText(copy)}${extraDraw?' Draws one card when used as an order.':''}`);
-      return `<button class="game-card upgrade-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-upgrade-offer="${key}" data-upgrade-level="${level}" ${reason?`disabled title="${reason}"`:''} aria-label="Upgrade ${esc(def.name)} to level ${LEVEL_NAMES[level]} for ${price} of one resource; does not use a purchase${reason?`. Unavailable: ${reason}`:''}"><span class="card-type">Starter upgrade</span><span class="card-name">${def.name} ${LEVEL_NAMES[level]}</span>${cardIllustration(def)}<span class="card-effect">${effect}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${price}</strong>${RESOURCES.map(resource=>`<span class="pay-chip ${me.resources[resource]>=price?'can':'cannot'}" data-pay="${resource}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${price} of one resource</span></span><span class="card-limit-note">${note}</span></button>`;
+      return `<button class="game-card upgrade-offer ${reason?'unavailable':''}" style="--card-accent:${def.accent}" data-upgrade-offer="${key}" data-upgrade-level="${level}" ${reason?`disabled title="${reason}"`:''} aria-label="Upgrade ${esc(def.name)} to level ${LEVEL_NAMES[level]} for ${price} of one resource; does not use a purchase${reason?`. Unavailable: ${reason}`:''}">${cardSymbols(def,copy)}<span class="card-type">Starter upgrade</span><span class="card-name">${def.name} ${LEVEL_NAMES[level]}</span>${cardIllustration(def)}<span class="card-effect">${effect}</span><span class="card-footer"><small>Upgrade</small><span class="upgrade-price pay-options" aria-hidden="true"><strong>${price}</strong>${RESOURCES.map(resource=>`<span class="pay-chip ${me.resources[resource]>=price?'can':'cannot'}" data-pay="${resource}">${resourceDot(resource)}</span>`).join('')}</span><span class="sr-only">${price} of one resource</span></span><span class="card-limit-note">${note}</span></button>`;
     })).join('')+capacityOffer(humanBuy)+trashPile(humanBuy);
     $$('[data-upgrade-offer]').forEach(button=>button.addEventListener('click',event=>openUpgradeChoice(button.dataset.upgradeOffer,event.target.closest?.('.pay-chip.can')?.dataset.pay)));
     $$('[data-capacity-offer]').forEach(button=>button.addEventListener('click',()=>{if(buyCard(ME,'capacity','capacityModule')){render();saveGame();}}));
