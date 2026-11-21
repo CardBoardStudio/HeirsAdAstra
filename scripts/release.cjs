@@ -17,6 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
+const { inlinePalette } = require('./lib/palette.cjs');
 
 const ROOT = path.resolve(process.env.RELEASE_ROOT || path.join(__dirname, '..'));
 const CHANGES = 'changes';
@@ -105,11 +106,13 @@ function replaceIn(rel, edits) {
 function bump(ref, from, to) {
   const prev = `galactic-reach/${from.save - 1}.${from.rev - 1}`;
   const v = n => `v${n}-`;
-  // 1. Archive the released files exactly as the stable branch has them.
+  // 1. Archive the released files exactly as the stable branch has them, except that
+  //    styles.css takes its palette.css inline (scripts/lib/palette.cjs).
   const hashes = {};
   for (const asset of ARCHIVED) {
     const rel = `crates/galactic-reach/rules/v${from.save}-${asset}`;
-    write(rel, show(ref, `${GAME}/${asset}`));
+    const text = show(ref, `${GAME}/${asset}`);
+    write(rel, asset === 'styles.css' ? inlinePalette(text, () => show(ref, `${GAME}/palette.css`)) : text);
     hashes[rel] = sha256(fs.readFileSync(file(rel)));
   }
   write(`scripts/archive-hashes/v${from.save}.json`, `${JSON.stringify(hashes, null, 2)}\n`);

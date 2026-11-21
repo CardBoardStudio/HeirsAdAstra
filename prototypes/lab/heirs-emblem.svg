@@ -2,7 +2,7 @@
   <title>Heirs Ad Astra</title>
   <!-- Speed lines: one per resource, in the game's order (matter, energy, biomass, data);
        colours are the matter, energy, biomass and data custom properties in
-       prototypes/galactic-reach/styles.css. -->
+       prototypes/galactic-reach/palette.css. -->
   <circle cx="100" cy="100" r="88.6" fill="#0d1222"/>
   <g fill="none" stroke="#f0b862">
     <circle cx="100" cy="100" r="87" stroke-width="2.6"/>

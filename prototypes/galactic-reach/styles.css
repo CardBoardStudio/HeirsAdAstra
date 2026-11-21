@@ -1,33 +1,11 @@
+/* The colours (felt, paper, inks, accents, resources, seats) live in palette.css. */
+@import url("palette.css");
+
 :root {
   color-scheme: dark;
-  --bg: #060911;
-  --surface: #0d1421;
-  --surface-2: #111c2c;
-  --line: #26364c;
-  --line-bright: #4a637f;
-  --text: #edf5ff;
-  --muted: #b5c4d6;
-  --cyan: #55d9f4;
-  --gold: #ffc95e;
-  --green: #6ee7a8;
-  --red: #ff7c8b;
-  --purple: #bc9cff;
-  --matter: #e9a23b;
-  --energy: #ff6f59;
-  --biomass: #7fd6b5;
-  --data: #5fc9d8;
-  /* Map tiles and the map key: each colour toned to the map's slate at the tiles' previous lightness. */
-  --matter-tile: color-mix(in srgb, var(--matter) 63%, #26323a);
-  --energy-tile: color-mix(in srgb, var(--energy) 77%, #26323a);
-  --biomass-tile: color-mix(in srgb, var(--biomass) 56%, #26323a);
-  --data-tile: color-mix(in srgb, var(--data) 60%, #26323a);
   /* Production numbers on the player mat: lightened to 4.5:1 on the mat. */
   --matter-mat-text: color-mix(in srgb, var(--matter) 88%, #fff);
   --energy-mat-text: color-mix(in srgb, var(--energy) 70%, #fff);
-  --human: #55d9f4;
-  --ai-1: #ff9f6e;
-  --ai-2: #a58cff;
-  --ai-3: #f2cf66;
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
@@ -719,22 +697,8 @@ button.score-value:focus-visible { outline: 2px solid var(--player); outline-off
 .pile-stats { flex-wrap: wrap; }
 
 /* Tabletop: a shared board, faction mats, and a personal card-and-token tray.
-   The document scrolls naturally; no player controls live in a fixed overlay. */
-:root {
-  --bg: #10191d;
-  --surface: #19272b;
-  --surface-2: #213237;
-  --line: #3c4b4a;
-  --line-bright: #6e7b70;
-  --text: #f0ebdd;
-  --muted: #b4bdb6;
-  --cyan: #85d0c4;
-  --gold: #d9bd80;
-  --paper: #eee6d3;
-  --paper-edge: #b9ab8e;
-  --ink: #253436;
-  --ink-muted: #566461;
-}
+   The document scrolls naturally; no player controls live in a fixed overlay.
+   Its colours are palette.css's. */
 html, body { height: auto; overflow: visible; }
 body {
   background:
@@ -761,12 +725,12 @@ h2 { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; font-weigh
 .header-actions { gap: 5px; flex-wrap: wrap; }
 .header-actions .button { min-height: 32px; padding: 6px 9px; border-color: transparent; font-size: 10px; color: var(--muted); }
 .header-actions .button:hover:not(:disabled) { border-color: var(--line-bright); color: var(--text); }
-.button { border-radius: 5px; min-height: 40px; background: #2d4142; border-color: #62756d; color: var(--text); font-size: 12px; letter-spacing: 0; box-shadow: inset 0 1px #ffffff0b, 0 2px 2px #0002; transition: background .15s, border-color .15s, transform .15s; }
-.button:hover:not(:disabled) { border-color: var(--gold); color: var(--text); background: #385350; }
-.button-primary { background: var(--gold); border-color: var(--gold); color: #24302d; }
-.button-primary:hover:not(:disabled) { background: #edcf8f; border-color: #edcf8f; color: #24302d; filter: none; }
+.button { border-radius: 5px; min-height: 40px; background: var(--button); border-color: var(--button-edge); color: var(--text); font-size: 12px; letter-spacing: 0; box-shadow: inset 0 1px #ffffff0b, 0 2px 2px #0002; transition: background .15s, border-color .15s, transform .15s; }
+.button:hover:not(:disabled) { border-color: var(--gold); color: var(--text); background: var(--button-hover); }
+.button-primary { background: var(--gold); border-color: var(--gold); color: var(--on-gold); }
+.button-primary:hover:not(:disabled) { background: var(--gold-hover); border-color: var(--gold-hover); color: var(--on-gold); filter: none; }
 .button-ghost { background: transparent; box-shadow: none; }
-.button-danger { color: #ffc2b5; background: #62403b; border-color: #a17061; }
+.button-danger { color: var(--danger-text); background: var(--danger); border-color: var(--danger-edge); }
 .button-danger:hover:not(:disabled) { color: #fff0e6; background: #795044; border-color: #c28b73; }
 .button:disabled { opacity: .52; }
 .button:focus-visible, .icon-button:focus-visible, .console-tab:focus-visible, a:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
@@ -2022,7 +1986,7 @@ body.background-stars .board-stage.map-zoomed .max-resource-legend {
   body {
     background:
       url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .09 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"),
-      radial-gradient(ellipse 85% 75% at 48% 42%, #2c6a55 0%, #235946 45%, #183f33 100%) !important;
+      radial-gradient(ellipse 85% 75% at 48% 42%, var(--felt-light) 0%, var(--felt) 45%, var(--felt-deep) 100%) !important;
   }
   /* The board: a printed board with a thick cardboard edge, felt all round it. */
   .board-map-region { margin: 4px 6px 10px; border-radius: 6px !important;
@@ -2195,7 +2159,7 @@ body.background-stars .board-stage.map-zoomed .max-resource-legend {
 .phone-drawers { display: none; }
 @media (max-width: 599px), (max-height: 599px) {
   html, body { height: 100%; overflow: hidden; }
-  body { --top-h: 50px; --tabs-h: 46px; --actions-h: 44px; --sheet-h: min(52dvh, 420px); background: radial-gradient(ellipse 85% 75% at 48% 42%, #2c6a55 0%, #235946 45%, #183f33 100%); }
+  body { --top-h: 50px; --tabs-h: 46px; --actions-h: 44px; --sheet-h: min(52dvh, 420px); background: radial-gradient(ellipse 85% 75% at 48% 42%, var(--felt-light) 0%, var(--felt) 45%, var(--felt-deep) 100%); }
   .starfield, .board-heading, .round-block, .board-key, .table-jump, .map-pan-hint, #hand-help, #hand-title, .section-intro .eyebrow { display: none !important; }
   /* Menu: the page header opens from the top-left button. */
   .topbar, .playtest-changes { display: none !important; }

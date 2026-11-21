@@ -15,6 +15,7 @@
 'use strict';
 const fs = require('node:fs');
 const path = require('node:path');
+const { inlinePalette } = require('./lib/palette.cjs');
 
 const root = path.join(__dirname, '..');
 const outDir = path.resolve(process.argv[2] || path.join(root, '_site'));
@@ -231,7 +232,8 @@ const pages = {
   'releases.html': releasesPage(releases, rules),
 };
 for (const [file, html] of Object.entries(pages)) fs.writeFileSync(path.join(outDir, file), html);
-fs.copyFileSync(path.join(root, 'prototypes/galactic-reach/styles.css'), path.join(outDir, 'styles.css'));
+// The site publishes styles.css with its palette.css inline (scripts/lib/palette.cjs).
+fs.writeFileSync(path.join(outDir, 'styles.css'), inlinePalette(read('prototypes/galactic-reach/styles.css'), () => read('prototypes/galactic-reach/palette.css')));
 fs.copyFileSync(path.join(root, 'prototypes/galactic-reach/rulebook.css'), path.join(outDir, 'rulebook.css'));
 fs.copyFileSync(path.join(root, 'site/site.css'), path.join(outDir, 'site.css'));
 for (const file of EMBLEMS) {

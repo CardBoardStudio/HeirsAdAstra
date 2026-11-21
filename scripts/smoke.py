@@ -55,7 +55,7 @@ for attempt in range(60):
 else:
     raise RuntimeError("The container never became healthy")
 
-for path, content_type in [("/", "text/html"), ("/galactic-reach/styles.css", "text/css"), ("/galactic-reach/app.js", "javascript"), ("/lab/lab.js", "javascript"), ("/voidwright/", "text/html"), ("/pkg/web.js", "javascript"), ("/pkg/web_bg.wasm", "application/wasm")]:
+for path, content_type in [("/", "text/html"), ("/galactic-reach/styles.css", "text/css"), ("/galactic-reach/palette.css", "text/css"), ("/galactic-reach/app.js", "javascript"), ("/lab/lab.js", "javascript"), ("/voidwright/", "text/html"), ("/pkg/web.js", "javascript"), ("/pkg/web_bg.wasm", "application/wasm")]:
     status, headers, body = request(path)
     assert status == 200 and content_type in headers["Content-Type"] and len(body) > 100, path
 
