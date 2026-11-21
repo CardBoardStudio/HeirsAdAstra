@@ -431,6 +431,22 @@ function proxy(req, res, mix, remember = false) {
     // The game is a player surface, even in the organizer's browser. Never
     // inject build navigation or PR details into any upstream HTML.
     if (remember) out['set-cookie'] = [...(out['set-cookie'] ?? []), `${MIX_COOKIE}=${mix.key}; Path=/; HttpOnly; SameSite=Lax${cfg.https ? '; Secure' : ''}`];
+    // A fresh table must be routable before its setup document loads scripts.
+    // Record only the server-returned ID; never persist request bodies/secrets.
+    if (req.method === 'POST' && new URL(req.url, cfg.origin).pathname === '/api/tables' && upRes.statusCode >= 200 && upRes.statusCode < 300) {
+      const chunks = [];
+      upRes.on('data', chunk => chunks.push(chunk));
+      upRes.on('end', async () => {
+        const body = Buffer.concat(chunks);
+        try {
+          const {id} = JSON.parse(body.toString('utf8'));
+          if (typeof id === 'string' && /^[0-9a-f]{32}$/.test(id)
+              && lib.recordTableRoute(state, 'GET', `/api/tables/${id}/lobby`, 200, mix.key)) await save();
+        } catch { /* unknown upstream response: preserve it unchanged */ }
+        res.writeHead(upRes.statusCode, out); res.end(body);
+      });
+      return;
+    }
     res.writeHead(upRes.statusCode, out);
     upRes.pipe(res);
   });

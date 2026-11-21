@@ -160,6 +160,7 @@ test('fresh phone links select their mix through the proxy and survive a mixer r
   const upstream = http.createServer((req, res) => {
     received.push({ url: req.url, cookie: req.headers.cookie, identity: req.headers['tailscale-user-login'] });
     req.resume();
+    if (req.url === '/api/tables') {res.writeHead(200, {'content-type':'application/json'});res.end(JSON.stringify({id:other}));return;}
     if (html) { res.writeHead(status, {'content-type':'text/html'}); res.end('<html><body><h1>Your game</h1></body></html>'); return; }
     res.writeHead(status, { 'content-type': 'application/json', 'set-cookie': 'seat=fixture; Path=/' });
     res.end(JSON.stringify({ url: `/tabletop/phone.html?table=${table}#pair=TEST_SECRET` }));
@@ -214,6 +215,9 @@ test('fresh phone links select their mix through the proxy and survive a mixer r
   assert.equal(received.at(-1).url, phone);
   assert.equal((await request(`/api/tabletop/${table}/seat`)).status, 200, 'API uses the table route, upstream still checks credentials');
   assert.equal(received.at(-1).cookie, undefined, 'routing does not manufacture credentials');
+  await request('/api/tables', {method:'POST',headers:{cookie},body:'{}'});
+  assert.equal((await request(`/tabletop/host.html?table=${other}`)).status,200,'created table is routable before any lobby fetch');
+  assert.equal((await request('/tabletop/pairing.js',{headers:{referer:`${origin}/tabletop/host.html?table=${other}`}})).status,200,'first setup script has the table route');
   html = true;
   const page = await fetch(base + phone, {headers:{'tailscale-user-login':'guest@example.com',cookie:'pr_mixer_mix=000000000000'}});
   assert.equal(page.status, 200);

@@ -192,16 +192,16 @@ function tableContext(url) {
  * Routing is not authorization: the upstream still checks every capability.
  */
 export function tabletopRoute(state, method, url, selected, _now = Date.now(), referer) {
-  let table = tableContext(url);
+  let table = tableContext(url), hostAsset = false;
   if (table === null && method === 'GET' && /\.(?:js|css|html|svg|png|webp|woff2?)$/.test(url.pathname) && referer) {
-    try { const from = new URL(referer); if (from.origin === url.origin) table = tableContext(from); } catch { /* no trusted context */ }
+    try { const from = new URL(referer); if (from.origin === url.origin) { table = tableContext(from); hostAsset = from.pathname === '/tabletop/host.html' && /^\/tabletop\/(?:pairing\.js|board\.css)$/.test(url.pathname); } } catch { /* no trusted context */ }
   }
   if (table === null) return null;
   if (table === false) return { missing: true };
   const keys = Object.keys(state.tableRoutes?.[table] ?? {}).filter(key => state.mixes[key]);
   // A creator's first lobby fetch establishes the route. Guest bootstraps never
   // trust a browser selection when the table route is missing.
-  if (!keys.length && (url.pathname === '/tabletop/host.html' || /^\/api\/tables\//.test(url.pathname)
+  if (!keys.length && (hostAsset || url.pathname === '/tabletop/host.html' || /^\/api\/tables\//.test(url.pathname)
       || /\/(?:host-phone|phone-invite|board-grant|repair|play-here)$/.test(url.pathname)) && state.mixes[selected]) return { key: selected };
   if (!keys.length) return { missing: true };
   return keys.length === 1 ? { key: keys[0] } : { ambiguous: true };
