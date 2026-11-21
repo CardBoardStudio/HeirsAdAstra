@@ -1,5 +1,5 @@
 ---
 compat: safe
-title: A new Heirs Ad Astra emblem
+title: New resource colours and the Heirs Ad Astra emblem
 ---
-The home page and the browser tab now show the Heirs Ad Astra emblem: a gold compass ring with four speed lines in the colours of Matter, Energy, Life and Data.
+Resources have new colours everywhere they appear: Matter is amber, Energy coral, Life mint and Data cyan, with darker shades of the same colours on cards. The home page and the browser tab show the Heirs Ad Astra emblem, whose speed lines carry the four resource colours.
