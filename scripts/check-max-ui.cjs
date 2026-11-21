@@ -87,6 +87,7 @@ async function main() {
         if(document.querySelectorAll('.max-resource-dividers > i').length!==2)problems.push('Max needs exactly two full-width dividers');
         if(document.querySelector('#hand-row .corner-button'))problems.push('Willem corner buttons leaked into Max hand');
         if(!document.querySelector('#map-legend-corner .legend-cost-table'))problems.push('Max numeric cost reference was replaced');
+        if(document.querySelectorAll('#map-legend-corner .legend-cost-table thead .resource-symbol svg').length!==4)problems.push('cost table must use the four actual resource symbols');
         const terrainKey=document.querySelector('.max-resource-legend');
         if (!terrainKey.checkVisibility()) problems.push('board resource legend is missing');
         for (const resource of ['matter','energy','biomass','data']) {

@@ -2369,7 +2369,7 @@ function createGalacticReach(options = {}) {
     if($('#sector-popover')?.matches?.(':popover-open'))$('#sector-popover').hidePopover();
   }
   function relicCardMode(cardId) {
-    if(replayMode||!document.body.classList.contains('background-stars')||state.phase!=='operations'||state.activePlayer!==ME||!canManageResources(ME))return null;
+    if(replayMode||!globalThis.document?.body?.classList?.contains('background-stars')||state.phase!=='operations'||state.activePlayer!==ME||!canManageResources(ME))return null;
     const card=state.players[ME].hand.find(c=>c.id===cardId),ability=card&&ALL_CARDS[card.key].relicAbility;
     return ['oracle','keepers','echoes'].includes(ability)?ability:null;
   }
@@ -2475,7 +2475,7 @@ function createGalacticReach(options = {}) {
     closeRelicCards();
     if(!actions.length){relicChoiceCard=null;relicChoiceBattle=false;if(dialog.open)dialog.close();if(storageAllocationDraft?.redistribute)$('#storage-allocation-dialog').close();return;}
     const card=state.players[ME].hand.find(c=>c.id===relicChoiceCard),def=card&&ALL_CARDS[card.key];
-    if(!relicChoiceBattle&&def?.relicAbility==='reservoir'&&document.body.classList.contains('background-stars')) {
+    if(!relicChoiceBattle&&def?.relicAbility==='reservoir'&&globalThis.document?.body?.classList?.contains('background-stars')) {
       if(dialog.open)dialog.close();
       if(!reservoirCommitting) {
         if(storageAllocationDraft?.cardId===card.id&&storageAllocationDraft.redistribute)updateStorageAllocation();
@@ -4648,7 +4648,7 @@ function createGalacticReach(options = {}) {
     const corner = $('#map-legend-corner');
     const pieceCost = type => type === 'colony' ? { biomass: COLONY_LIFE_COST } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
     const costRow = (icon, label, cost) => `<tr><th scope="row"><span class="legend-cost-name">${icon}<b>${label}</b></span></th>${RESOURCES.map(resource => `<td>${cost?.[resource] || ''}</td>`).join('')}</tr>`;
-    if (corner) corner.innerHTML = `<table class="legend-cost-table" aria-label="Resource costs"><thead><tr><th scope="col">Build</th>${RESOURCES.map(resource => `<th scope="col" aria-label="${RESOURCE_NAMES[resource]}"><span class="legend-res ${resource}"><i></i><span class="legend-resource-name">${RESOURCE_NAMES[resource]}</span><span class="legend-resource-short" aria-hidden="true">${RESOURCE_NAMES[resource][0]}</span></span></th>`).join('')}</tr></thead><tbody>`
+    if (corner) corner.innerHTML = `<table class="legend-cost-table" aria-label="Resource costs"><thead><tr><th scope="col">Build</th>${RESOURCES.map(resource => `<th scope="col" aria-label="${RESOURCE_NAMES[resource]}"><span class="legend-res ${resource}">${resourceDot(resource)}<span class="legend-resource-name">${RESOURCE_NAMES[resource]}</span><span class="legend-resource-short" aria-hidden="true">${RESOURCE_NAMES[resource][0]}</span></span></th>`).join('')}</tr></thead><tbody>`
       + entries.map(([type,label]) => costRow(BOARD_ICONS[type], label, pieceCost(type))).join('')
       + costRow('<span class="legend-icon">◈</span>', 'Excavate', EXCAVATION_COST)
       + `</tbody></table><span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
@@ -4659,7 +4659,7 @@ function createGalacticReach(options = {}) {
   }
 
   function renderSymbolLegend() {
-    if(document.body.classList.contains('background-stars'))return renderMaxSymbolLegend();
+    if(globalThis.document?.body?.classList?.contains('background-stars'))return renderMaxSymbolLegend();
     $('#resource-legend').innerHTML = `<strong class="legend-heading">Map key</strong>${RESOURCES.map(resource=>`<span>${resourceDot(resource)}${RESOURCE_NAMES[resource]}</span>`).join('')}<span>${TERRITORY_SWATCH}Owner’s colour rings each held planet and marks its buildings</span><span>◈ Located relic</span><span>● Gray moon · no production</span><span>Worlds are public · Moons and relics start hidden</span>`;
     const entries = [
       ['settler','Settler'],['explorer','Explorer'],['fleet','Fleet'],
@@ -4908,7 +4908,7 @@ function createGalacticReach(options = {}) {
         <strong class="resource-amount" aria-hidden="true">${have}</strong><span class="resource-limit" aria-hidden="true">/${cap}</span>
       </article>`;
     }).join('');
-    if(document.body.classList.contains('background-stars')) {
+    if(globalThis.document?.body?.classList?.contains('background-stars')) {
       $('#resource-grid').insertAdjacentHTML('beforeend','<span class="max-resource-dividers" aria-hidden="true"><i></i><i></i></span>');
       globalThis.requestAnimationFrame?.(positionMaxResourceGuides);
     }
@@ -5201,7 +5201,7 @@ function createGalacticReach(options = {}) {
   }
 
   function cardMarkup(card, location) {
-    if(document.body.classList.contains('background-stars'))return maxCardMarkup(card, location);
+    if(globalThis.document?.body?.classList?.contains('background-stars'))return maxCardMarkup(card, location);
     const definition=ALL_CARDS[card.key];
     const isHumanOps=!replayMode&&state.phase==='operations'&&state.activePlayer===ME;
     const canResource=location==='hand'&&canConvertCards()&&canConvertCard(card);
@@ -5321,7 +5321,7 @@ function createGalacticReach(options = {}) {
   }
 
   function marketCardMarkup(card,tier,cost,enabled,why,attributes='') {
-    if(document.body.classList.contains('background-stars'))return maxMarketCardMarkup(card,tier,cost,enabled,why,attributes);
+    if(globalThis.document?.body?.classList?.contains('background-stars'))return maxMarketCardMarkup(card,tier,cost,enabled,why,attributes);
     const def=ALL_CARDS[card.key],player=state.players[ME],disabled=!enabled;
     const level=card.starter&&starterLevel(card)>1?` ${starterLevel(card)===3?'III':'II'}`:'';
     const text=def.text+(level?` ${level.trim()}: ${upgradedOrderText(card)}${starterLevel(card)===3&&card.key!=='construct'?' Draw one card when using the order.':''}`:'');
@@ -5443,7 +5443,7 @@ function createGalacticReach(options = {}) {
     });
   }
   function renderUpgradeOffers(humanBuy) {
-    const me=state.players[ME], area=$('#upgrade-market'),maxUI=document.body.classList.contains('background-stars');
+    const me=state.players[ME], area=$('#upgrade-market'),maxUI=globalThis.document?.body?.classList?.contains('background-stars');
     area.hidden=replayMode;
     if (replayMode) { area.innerHTML=''; return; }
     area.innerHTML=UPGRADE_STARTERS.flatMap(key=>[2,3].map(level=>{
@@ -5779,7 +5779,7 @@ function createGalacticReach(options = {}) {
     const card=cardId?state.players[ME].hand.find(c=>c.id===cardId):null;
     // Rules #storage-allocation: a played Capacity Module or Cradle of Lost Suns chooses a split.
     const definition=card&&ALL_CARDS[card.key],cradle=definition?.tag==='alienCradle';
-    const redistribute=definition?.relicAbility==='reservoir'&&document.body.classList.contains('background-stars');
+    const redistribute=definition?.relicAbility==='reservoir'&&globalThis.document?.body?.classList?.contains('background-stars');
     if(!canManageResources(ME)&&!(redistribute&&state.pendingRelic?.playerId===ME&&state.pendingRelic.card===cardId))return false;
     if (state.phase!=='operations'||!card||!(cradle||definition.effect?.allocate||redistribute)) return false;
     if(redistribute) {
@@ -5882,7 +5882,7 @@ function createGalacticReach(options = {}) {
       if (groups.has(key)) groups.get(key).count += 1;
       else groups.set(key, { ...piece, count: 1 });
     }
-    const shown=document.body.classList.contains('background-stars')?force.pieces.map(piece=>({...piece,count:1})):[...groups.values()];
+    const shown=globalThis.document?.body?.classList?.contains('background-stars')?force.pieces.map(piece=>({...piece,count:1})):[...groups.values()];
     return `<div class="combat-units">${shown.map(piece => {
       const name = SHIP_STATS[piece.type]?.name || 'Shipyard', hull = Math.max(0, piece.hull - piece.damage), destroyed = hull === 0;
       const label = `${piece.count > 1 ? `${piece.count} × ` : ''}${name}: ${destroyed ? 'destroyed' : `${piece.power} attack, ${hull}/${piece.hull} hull${piece.count > 1 ? ' each' : ''}`}`;
@@ -5918,7 +5918,7 @@ function createGalacticReach(options = {}) {
     if (combatTableUi.key !== key) combatTableUi = { key, tactic: null, inspect: null, escape: 0 };
     if (combatTableUi.tactic && !actions.some(action => action.type==='combat_tactic' && action.tactic===combatTableUi.tactic)) combatTableUi.tactic=null;
     dialog.classList.add('card-table-battle');
-    dialog.classList.toggle('combat-many-ships',document.body.classList.contains('background-stars')&&Math.max(mine.pieces.length,enemy.pieces.length)>8);
+    dialog.classList.toggle('combat-many-ships',globalThis.document?.body?.classList?.contains('background-stars')&&Math.max(mine.pieces.length,enemy.pieces.length)>8);
     dialog.classList.toggle('combat-dense', Math.max(combatTableInventory(mine).length, combatTableInventory(enemy).length)>6);
     $('#combat-volley').hidden=false;
     $('#combat-volley').textContent=view.stage==='opening'?'Opening relics':view.stage==='aftermath'?'After battle':view.stage==='escape'?'Before combat':`Volley ${view.volley} of 3`;
@@ -6217,7 +6217,7 @@ function createGalacticReach(options = {}) {
   const marketNeeds = new Map(), marketDeclined = new Set();
   if (!headless && typeof window !== 'undefined') try { const saved = window.localStorage?.getItem(MARKET_PREF); if (MARKET_VIEWS.includes(saved)) marketPref = saved; } catch { /* storage blocked: closed */ }
   const marketDrawerOn = () => !headless && typeof window !== 'undefined' && !!document.documentElement?.classList && tableLayout()
-    && !document.body.classList.contains('background-stars');
+    && !globalThis.document?.body?.classList?.contains('background-stars');
   // An upright table (an iPad held upright) has the supply as a band under the map: open or closed,
   // with no whole-card sheet, so the Buy turn opens the band.
   const marketUpright = () => typeof window !== 'undefined' && !window.matchMedia?.('(orientation: landscape)').matches;
@@ -6412,7 +6412,7 @@ function createGalacticReach(options = {}) {
   function fitMap() {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
     const root = document.documentElement, region = $('.board-map-region'), board = $('#galaxy-board');
-    const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || document.body.classList.contains('background-stars')) && !$('.board-stage.map-zoomed');
+    const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || globalThis.document?.body?.classList?.contains('background-stars')) && !$('.board-stage.map-zoomed');
     if (!landscape || !region?.getBoundingClientRect || !board) { ['--map-w', '--map-top'].forEach(name => root.style.removeProperty(name)); return; }
     // The market's whole cards lie over the map: it keeps the place it has beside the column under
     // them (see showMarket), fitted once for that column at the table's current size.
@@ -6441,7 +6441,7 @@ function createGalacticReach(options = {}) {
     // The map lies against the supply. A map shorter than its space may also slide up or down
     // (centred first) so its empty corners take the panels above and below. With the market
     // closed (see showMarket) it is centred, or as near the middle as its corners allow.
-    const centred = document.body.classList.contains('background-stars'), closed = root.classList.contains('market-drawer') && marketColumn === 'closed';
+    const centred = globalThis.document?.body?.classList?.contains('background-stars'), closed = root.classList.contains('market-drawer') && marketColumn === 'closed';
     const fits = width => {
       const slack = box.height - width * ratio, tops = [slack / 2, ...Array.from({ length: 33 }, (_, i) => slack * i / 32)];
       const side = box.width - width, lefts = closed ? Array.from({ length: 33 }, (_, i) => box.left + side / 2 + (i % 2 ? 1 : -1) * side / 2 * Math.ceil(i / 2) / 16) : [centred ? box.left + side / 2 : box.right - width];
@@ -6564,10 +6564,10 @@ function createGalacticReach(options = {}) {
   const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel'];
   function stackLeft(depth = 0) {
     if (typeof window === 'undefined' || typeof getComputedStyle !== 'function' || !document.documentElement?.style) return;
-    const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || document.body.classList.contains('background-stars'));
+    const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || globalThis.document?.body?.classList?.contains('background-stars'));
     const zoom = Number(document.documentElement?.style?.getPropertyValue('--table-zoom')) || 1;
     let top = 0;
-    const maxUI = document.body.classList.contains('background-stars');
+    const maxUI = globalThis.document?.body?.classList?.contains('background-stars');
     // Kept engines that predate this layout retain their original reference rails.
     document.body.classList.toggle('max-reference-rails', maxUI);
     const stack = [...LEFT_STACK, ...(maxUI ? ['#map-legend-corner'] : [])];
@@ -6579,7 +6579,7 @@ function createGalacticReach(options = {}) {
       // An open comms log lies over the pieces below it; they keep their places.
       const h = el.matches('.log-panel.open') ? (Number(el.dataset.closedH) || 0) : el.getBoundingClientRect().height / zoom;
       if (el.matches('.log-panel') && !el.matches('.open')) el.dataset.closedH = String(h);
-      if (h) top += h + (document.body.classList.contains('background-stars') ? (sel === '#prestige-track' ? 36 : 16) : 8);
+      if (h) top += h + (globalThis.document?.body?.classList?.contains('background-stars') ? (sel === '#prestige-track' ? 36 : 16) : 8);
     }
     const root = document.documentElement, legend = $('#map-legend-corner'), last = $(stack.at(-1));
     legend?.setAttribute('aria-hidden', String(!maxUI));
@@ -6736,7 +6736,7 @@ function createGalacticReach(options = {}) {
       ['.app-shell', '#market-panel', '#relics-panel', '.board-map-region'].forEach(sel => { const el = $(sel); if (el) refit.observe(el); });
       // Max’s round labels may wrap as fonts settle; keep every item below them in place.
       const refitMaxLeft = new ResizeObserver(() => {
-        if (document.body.classList.contains('background-stars')) { stackLeft(); fitMap(); settleFit(); }
+        if (globalThis.document?.body?.classList?.contains('background-stars')) { stackLeft(); fitMap(); settleFit(); }
       });
       ['#prestige-track', '.phase-stepper', '.log-panel', '#map-legend-corner', '#max-bank-nav'].forEach(sel => { const el = $(sel); if (el) refitMaxLeft.observe(el); });
       // Hex positions are measured as fractions of the board, and a hex's fixed-size parts shift

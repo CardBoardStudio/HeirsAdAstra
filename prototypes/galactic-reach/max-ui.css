@@ -856,3 +856,4 @@ body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now i{ -
 @media (min-width:600px) and (min-height:600px){:root:has(body.background-stars){ height:100%; overflow:hidden; }
 body.background-stars #guide-switch-phone, body.background-stars #guide-switch{ display:none !important; }}
 @media (min-width:600px) and (min-height:600px){body.background-stars{ height:100dvh; min-height:0; overflow:clip; }}
+body.background-stars #map-legend-corner .legend-cost-table .legend-res > .resource-symbol { display:inline-flex; width:18px; height:18px; flex:none; }
