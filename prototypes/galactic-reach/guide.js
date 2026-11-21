@@ -94,9 +94,9 @@
     { id: 'cleanup', when: c => c.ops && c.state.round >= 2, title: 'A new hand', rule: 'cleanup-draw',
       text: () => 'Last round’s cards went to your discard pile; you drew five new ones.',
       anchor: () => firstShown('#discard-button'), show: () => ({ ghost: { from: firstShown('#hand-row'), to: firstShown('#discard-button') }, callouts: [{ el: firstShown('#discard-button'), label: 'Last round’s cards', side: 'left' }, { el: firstShown('#hand-row'), label: 'Five new cards' }] }) },
-    // Production, the moment the mat has filled: the hexes that paid flash.
+    // Production, the moment the mat's pieces have moved: the hexes that paid flash.
     { id: 'production', when: c => c.ops && c.state.round >= 2 && prefs.seen.cleanup, title: 'Production', rule: 'resources',
-      text: () => 'Each hex you own paid out: your mat filled up.',
+      text: () => 'Each hex you own paid out: the pieces on your mat moved up.',
       anchor: () => firstShown('#resource-grid'), show: c => ({ callouts: [{ el: firstShown('#resource-grid'), label: 'New resources', side: 'left' }, ...producers(c).slice(0, 3).map(coord => ({ el: hex(coord), label: `+${RESOURCE_NAMES[c.state.planets[coord].type]}` }))] }) },
     // Reshuffle, only when the deck has actually run out and the discard was shuffled in.
     { id: 'reshuffle', when: c => c.ops && reshuffled, title: 'Reshuffle', rule: 'round',
