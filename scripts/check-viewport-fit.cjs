@@ -272,7 +272,9 @@ const CASES = [
   { name: 'mat drawer (phones)', save: midGameState(), click: ['.phone-drawers [data-drawer="mat"]'], devices: 'phone' },
   { name: 'comms drawer (phones)', save: midGameState(), click: ['.phone-drawers [data-drawer="comms"]'], devices: 'phone' },
   { name: 'tapped hand card opens whole (phones)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), phoneTap: '#hand-row .game-card:nth-child(3)', devices: 'phone' },
-  { name: 'Learn to play, first step (phones)', tutorial: true, phoneTap: '#hand-row .game-card.gr-coach-card-cue', devices: 'phone' },
+  // Learn to play keeps the step's card in the fan (its lit corner does the step), so neither the
+  // opened card nor the label lies over the mat row the step lights.
+  { name: 'Learn to play, first step (phones)', tutorial: true, cueTap: true, devices: 'phone' },
   { name: 'map share, market closed, guidance off (phones)', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), mapShare: 0.6, guidanceOff: true, devices: 'phone' },
 ];
 // Held upright, a phone shows only the prompt to turn it; turning it removes the prompt at once with
@@ -705,6 +707,34 @@ async function runCase(browser, origin, testCase, viewport) {
       if (card.scrollHeight > card.clientHeight + 2) problems.push('the opened card scrolls: ' + card.scrollHeight + ' > ' + card.clientHeight);
       return problems;
     })()`));
+  }
+  // Learn to play on a phone: tapping the cued card reveals the note and keeps the card in the
+  // fan; its lit corner is on top and converts it; the step's mat row, the hand and the note do not overlap.
+  if (testCase.cueTap) {
+    const at = await browser.evaluate(`(() => { const e = document.querySelector('#hand-row .game-card.gr-coach-card-cue'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 22), y: r.top + Math.min(r.height / 2, 22) }; })()`);
+    if (!at) return ['no cued card in Learn to play'];
+    await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 600))');
+    const seen = await browser.evaluate(`(() => {
+      const problems = [], over = (a, b) => a && b && a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+      if (document.querySelector('.phone-card-sheet:not([hidden])')) problems.push('the step opened the card whole over the table');
+      const corner = document.querySelector('#hand-row .gr-card-stays .gr-coach-corner');
+      if (!corner) return [...problems, 'the step does not light the card corner that does it'];
+      const c = corner.getBoundingClientRect();
+      if (!corner.contains(document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2))) problems.push('the lit corner is covered');
+      const row = document.querySelector('.resource-panel .resource-box.energy, #resource-grid .resource-box[data-resource="energy"]')?.getBoundingClientRect();
+      if (!row || !row.width) problems.push('the step does not show the mat row');
+      const note = document.querySelector('#gr-coach:popover-open')?.getBoundingClientRect();
+      for (const label of document.querySelectorAll('.gr-stage-label')) { const l = label.getBoundingClientRect(); if ([...document.querySelectorAll('#hand-row > .game-card')].some(card => over(l, card.getBoundingClientRect()))) problems.push('a callout label lies over your hand'); }
+      if (over(note, row)) problems.push('the note lies over the mat row');
+      window.__energy = +document.querySelector('#resource-grid .resource-box[data-resource="energy"] .resource-amount')?.textContent;
+      return { problems, x: c.left + c.width / 2, y: c.top + c.height / 2 };
+    })()`);
+    if (Array.isArray(seen)) return seen;
+    problems0.push(...seen.problems);
+    await mouse('mousePressed', seen.x, seen.y); await mouse('mouseReleased', seen.x, seen.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 500))');
+    if (!(await browser.evaluate('+document.querySelector(\'#resource-grid .resource-box[data-resource="energy"] .resource-amount\')?.textContent > window.__energy'))) problems0.push('pressing the lit corner did not convert the card');
   }
   // A real click on a raised card's button (press and release without moving) is still a click.
   if (testCase.tap) {

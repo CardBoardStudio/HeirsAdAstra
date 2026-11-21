@@ -123,6 +123,13 @@
   :root body #hand-row#hand-row.fan-tight > .game-card > :is(.card-symbols, .card-footer) { justify-self: start !important; }
   :root body #hand-row#hand-row.fan-tight > .game-card .card-symbols .corner-group { flex-wrap: wrap; }
 
+  /* ---- Learn to play keeps a card in the fan while a step shows its path (guide.js keepCardInHand):
+     the corner that does the step is lit and takes a tap, with a finger-sized area around it. ---- */
+  :root body #hand-row#hand-row > .game-card.gr-card-stays .corner-button.gr-coach-corner {
+    position: relative; pointer-events: auto; border-radius: 7px; background: #6ff3ff40 !important; box-shadow: 0 0 0 3px #6ff3ff, 0 0 12px #6ff3ffaa !important;
+  }
+  :root body #hand-row#hand-row > .game-card.gr-card-stays .corner-button.gr-coach-corner::after { content: ''; position: absolute; inset: -10px; }
+
   /* ---- A tapped card, whole, over the map against the note's place (or the right edge), so the
      map's left side, where your home world starts, stays in view. ---- */
   :root .phone-card-sheet:not([hidden]) {
@@ -225,6 +232,14 @@
   :root .card-table-battle .combat-options { position: sticky; bottom: 0; z-index: 1; padding: 5px 0 8px; background: #172b2c; }
   :root .card-table-battle .combat-options .button { min-height: 44px; }
   :root .card-table-battle .combat-history { max-height: 22dvh; }
+
+  /* ---- The Map key window: the costs (the key the table has no room for here) on the left at the
+     top, the map's symbols beside them. ---- */
+  :root #map-key-dialog[open] { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; gap: 10px 12px; max-height: calc(100dvh - var(--safe-t) - var(--safe-b) - 12px); }
+  :root #map-key-dialog > .dialog-heading { grid-column: 1 / -1; margin: 0; }
+  :root #map-key-dialog > #symbol-legend { grid-column: 1; grid-row: 2; margin: 0; }
+  :root #map-key-dialog > #resource-legend { grid-column: 2; grid-row: 2; margin: 0; }
+  :root #map-key-dialog #symbol-legend .legend-cost-list { width: 100%; font-size: 16px; }
 
   /* ---- Choosing cards (a relic's card choice): two to a row, without the pictures. ---- */
   :root #relic-card-dialog { --choice-visible: 2; max-height: calc(100dvh - var(--safe-t) - var(--safe-b) - 12px); }

@@ -6059,7 +6059,8 @@ function createGalacticReach(options = {}) {
     row.addEventListener('click', event => {
       if (!phoneLayout() || event.target.closest('button')) return;
       const card = event.target.closest('.game-card');
-      if (!card) return;
+      // Learn to play may keep this card in the hand, its lit corner pressable (guide.js keepCardInHand).
+      if (!card || card.classList.contains('gr-card-stays')) return;
       sheet.innerHTML = `<button type="button" class="phone-card-close" aria-label="Close">×</button>${card.outerHTML}`;
       sheet.hidden = false;
       sheet.querySelector('.phone-card-close').focus();

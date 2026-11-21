@@ -728,6 +728,7 @@
       }
     } catch (error) { console.error('Guidance could not read the table.', error); tip = null; }
     tip = drawerTip(tip);
+    keepCardInHand(tip);
     const stepKey = tip?.bringIntoView ? JSON.stringify([tip.id, tip.step]) : '';
     if (tip?.followCallouts && tip.show?.callouts?.length) {
       const live = tip.show.callouts.filter(c => c?.el && shown(c.el));
@@ -806,6 +807,21 @@
       next = { ...next, show: { ...tip.show, callouts: callouts.map(c => c?.el && !shown(c.el) && drawerHandle(drawerOf(c.el)) ? { el: drawerHandle(drawerOf(c.el)), label: `${c.label} (${drawerOf(c.el)[2]})`, side: 'right' } : c) } };
     }
     return next;
+  }
+  // A Learn to play step that shows a card's path from your hand keeps that card in the fan on a
+  // phone held sideways: a tap does not open it whole over the map (where it would lie over the
+  // mat row, the hex or the path), and the corner that does the step is lit and pressable: the
+  // conversion corner when the path ends on your mat, the effect (Use order) corner when it ends on
+  // the map. app.js and phone.css read the marks.
+  let stayingCard = null, litCorner = null;
+  function keepCardInHand(tip) {
+    const g = tip?.show?.ghost, card = sideways() && globalThis.galacticReachTutorial?.active && g?.from?.closest?.('#hand-row > .game-card') && g.to ? g.from.closest('#hand-row > .game-card') : null;
+    const corner = card && (drawerOf(g.to) ? card.querySelector(':scope > .card-footer.corner-button') : card.querySelector(':scope > .card-symbols.corner-button'));
+    if (stayingCard !== card) { stayingCard?.classList.remove('gr-card-stays'); card?.classList.add('gr-card-stays'); stayingCard = card; }
+    if (litCorner !== corner) { litCorner?.classList.remove('gr-coach-corner'); corner?.classList.add('gr-coach-corner'); litCorner = corner; }
+    // A render replaces the hand's cards: mark the new ones.
+    if (card && !card.classList.contains('gr-card-stays')) card.classList.add('gr-card-stays');
+    if (corner && !corner.classList.contains('gr-coach-corner')) corner.classList.add('gr-coach-corner');
   }
   // The map scrolls under the note's column: the hex a step names is brought into the open map once per step.
   let revealedKey = '';

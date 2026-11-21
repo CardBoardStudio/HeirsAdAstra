@@ -244,7 +244,8 @@
   document.addEventListener('click', event => {
     if (event.detail === 0) return;
     const corner = event.target.closest?.('#hand-row .corner-button'), card = corner?.closest('.game-card');
-    if (!card || !raisedBy.has(card)) return;
+    // (Learn to play's lit corner on a card it keeps in the hand acts at once: guide.js keepCardInHand.)
+    if (!card || !raisedBy.has(card) || corner.classList.contains('gr-coach-corner')) return;
     raisedBy.delete(card);
     event.preventDefault(); event.stopPropagation();
     corner.focus({ preventScroll: true });
