@@ -311,7 +311,7 @@ ul.rb-ex li { margin: 4px 0; }
 .rb-readout li { margin: 0; padding: 0; }
 
 /* ---- Prices: one resource symbol per unit, four or more as one symbol and its number,
-   in the markup of the game's map key (styles.css .legend-cost-symbols, .corner-count). ---- */
+   in the markup the game's map key used before its clusters (styles.css .cost-clusters, .corner-count). ---- */
 .rulebook .legend-cost-symbols { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; vertical-align: -.22em; }
 .rulebook .legend-cost-group { display: inline-flex; align-items: center; gap: 1px; white-space: nowrap; }
 .rulebook .legend-cost-symbols .resource-symbol { width: 1.15em; height: 1.15em; }

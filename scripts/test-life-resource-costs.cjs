@@ -34,6 +34,12 @@ const prices={settler:{matter:1,biomass:2},explorer:{energy:1,data:2},fleet:{mat
   for(const resource of e.RESOURCES)assert.equal((row[1].match(new RegExp('class="resource-symbol '+resource+' ', 'g'))||[]).length,cost[resource]||0,kind+' repeats one '+resource+' symbol per unit paid');
  }
  assert(/aria-label="3 Life"/.test(legend),'The Colony price remains readable without seeing its three leaf symbols');
+ // Each resource's symbols form one cluster, in resource order, shaped by its count (2 a pair, 3 a triangle).
+ for(const [kind,cost] of Object.entries(prices)){
+  const row=legend.match(new RegExp('<div class="legend-cost-row" data-cost-kind="'+kind+'">([\\s\\S]*?)</div>'));assert(row,kind+' row keeps its data-cost-kind');
+  const clusters=[...row[1].matchAll(/class="cost-cluster (\w+)" data-count="(\d)"/g)].map(m=>[m[1],Number(m[2])]);
+  assert.deepEqual(clusters,plain(e.RESOURCES.filter(r=>cost[r]).map(r=>[r,cost[r]])),kind+' prints one cluster per resource, in resource order');
+ }
 }
 function buildFixture(kind,funds){
  const g=game(),coord=g.s.clusters[0].coords[1];g.p.hand=[{id:'build',key:'construct',starter:true}];Object.assign(g.p.resources,funds);
