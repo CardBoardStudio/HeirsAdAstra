@@ -4095,3 +4095,7 @@ body.background-stars .combat-many-ships .combat-unit figcaption { gap:0; }
 @media (min-width:600px) and (min-height:600px) {
   body.background-stars .combat-dialog.combat-many-ships { max-width:min(1240px,calc(100vw - 24px)); }
 }
+@media (min-width:600px) and (min-height:600px) {
+  /* Fifteen rows need a shorter rail than the former twenty-one-circle track. */
+  body.background-stars #resource-grid.resource-grid { height:min(414px,calc(100% - 56px)) !important; }
+}

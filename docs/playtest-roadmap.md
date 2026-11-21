@@ -1,5 +1,12 @@
 # Playtest roadmap
 
+## Max’s UI follow-up
+
+- Restore pre-Willem resource colors, hand/card arrangement, numeric price boxes, cost reference and button placement only in Max’s UI.
+- Shorten the resource box to 15 circles, compact its left key and use two continuous dashed dividers with extra room between groups of five.
+- Protect Max’s UI from automatic adoption of Willem’s changes in AGENTS.md and a dedicated stylesheet.
+- Publish the local package first, preserving its address and browser saves, then finish PR #176 and merge after checks.
+
 ## Playtest refinements requested in this chat
 
 Implemented checklist (includes the earlier messages and the attached large-hand screenshot). Local mechanics and desktop, iPad and phone browser checks cover these changes. PR checks and deployment status are recorded in the implementation PR.

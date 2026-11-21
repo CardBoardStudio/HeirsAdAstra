@@ -52,6 +52,12 @@
     row?.style.setProperty('--max-hand-count', String(Math.max(2, cards.length)));
     if (!row) return;
     for (const name of ['--top-w', '--step', 'padding-left', 'justify-content']) row.style.removeProperty(name);
+    if(document.body.classList.contains('background-stars')) {
+      delete row.dataset.fanRoom;row.classList.remove('fan-tight');
+      const mid=(cards.length-1)/2,step=cards.length>2?1.4:0;
+      cards.forEach((card,i)=>{card.style.removeProperty('--fan-h');const offset=i-mid;card.style.setProperty('--cf-fan',`${(offset*step).toFixed(2)}deg`);card.style.setProperty('--cf-arc',`${(-Math.max(0,5-offset*offset*1.1)).toFixed(1)}px`);});
+      placeSlots();return;
+    }
     const phone = globalThis.matchMedia?.('(max-width: 599px), (max-height: 599px)').matches;
     const n = cards.length, mid = (n - 1) / 2;
     if (phone || !n) { delete row.dataset.fanRoom; row.classList.remove('fan-tight'); cards.forEach(card => ['--cf-fan', '--cf-arc'].forEach(name => card.style.removeProperty(name))); placeSlots(); return; }
@@ -463,6 +469,7 @@
       button.setAttribute('aria-pressed', String(stars));
       button.textContent=stars?'Willem’s UI':'Max’s UI';
       globalThis.galacticReachMaxUI?.sync();
+      window.dispatchEvent(new Event('galactic-reach-themechange'));
       window.dispatchEvent(new Event('resize'));
       // Refit after the live supply has returned and its measurements have settled.
       requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));

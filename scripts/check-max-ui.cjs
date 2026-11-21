@@ -79,6 +79,11 @@ async function main() {
         });
       }
       if (!d.open) {
+        const palette=getComputedStyle(document.body);
+        for(const [resource,color] of Object.entries({matter:'#a8b7c8',energy:'#62c9ff',biomass:'#70d994',data:'#c297ff'}))if(palette.getPropertyValue('--'+resource).trim()!==color)problems.push('Max resource color changed: '+resource);
+        if(document.querySelectorAll('.max-resource-dividers > i').length!==2)problems.push('Max needs exactly two full-width dividers');
+        if(document.querySelector('#hand-row .corner-button'))problems.push('Willem corner buttons leaked into Max hand');
+        if(!document.querySelector('#map-legend-corner .legend-cost-table'))problems.push('Max numeric cost reference was replaced');
         const terrainKey=document.querySelector('.max-resource-legend');
         if (!terrainKey.checkVisibility()) problems.push('board resource legend is missing');
         for (const resource of ['matter','energy','biomass','data']) {
@@ -212,6 +217,6 @@ async function main() {
     await browser.navigate(rulebook + '#card-banks'); await settle();
     assert(await evaluate('document.querySelector(":target").id==="card-banks" && document.documentElement.scrollWidth<=innerWidth+1'), 'card-bank section links work at a narrow viewport');
     console.log('ok - game Rules navigation, anonymous rulebook, card-bank anchor and narrow viewport');
-  } catch (error) { console.error(await evaluate(`({body:document.body.className,zoom:document.documentElement.style.cssText,shell:document.querySelector('.app-shell').getBoundingClientRect().toJSON(),menu:document.querySelector('#table-menu-button').getBoundingClientRect().toJSON()})`)); fs.writeFileSync('/private/tmp/max-ui-failure.png',Buffer.from((await browser.send('Page.captureScreenshot',{format:'png'})).data,'base64')); throw error; } finally {browser.close();server.close();}
+  } catch (error) { console.error(await evaluate(`({body:document.body.className,zoom:document.documentElement.style.cssText,shell:document.querySelector('.app-shell').getBoundingClientRect().toJSON(),menu:document.querySelector('#table-menu-button').getBoundingClientRect().toJSON()})`)); console.error(error); fs.writeFileSync(path.join(require('node:os').tmpdir(),'max-ui-failure.png'),Buffer.from((await browser.send('Page.captureScreenshot',{format:'png'})).data,'base64')); throw error; } finally {browser.close();server.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
