@@ -118,4 +118,88 @@ assert.equal(open({ entries: {}, blocked: true }).context.galacticReachTutorial.
   page.fire('storage', { key: PROGRESS, newValue: null });
   assert.equal(page.reloads(), 1);
 }
+// A place saved at the former Pass step (an empty hand passes by itself, so it was never shown)
+// resumes at its successor, Finish Buy.
+{
+  const page = open({ entries: practice({ step: 8, stepId: 'pass' }) });
+  assert.deepEqual(page.keys(), everything);
+  page.context.galacticReachGuide = { handCard: () => null, hex: () => null, turnButton: () => null, shown: () => false };
+  const player = { resources: { matter: 2, energy: 1, biomass: 1, data: 0 }, hand: [], deck: [], discard: [], inPlay: [], passed: true };
+  const state = { tutorialRules: RULES, pendingCombat: null, phase: 'buy', activePlayer: 0, round: 1, winner: null, players: [player], planets: {}, clusters: [], fleets: {} };
+  const tip = page.context.galacticReachTutorial.tip({ state, turnSerial: () => 1, stage: () => true }, null);
+  assert.equal(page.context.galacticReachTutorial.progress().stepId, 'buy-empty');
+  assert.match(tip.eyebrow, /The round · step 2 of 3$/, 'the step counter counts only steps that are shown');
+  assert.match(tip.text, /^No cards left, so the table passed you to Buy\./);
+}
+
+// The round's flow on a small table: a hand, the mat rows and the notices, read by selector.
+function table({ hand, resources, notices = {}, log = [] }) {
+  const page = open({ entries: {} });
+  const el = (props = {}) => ({ dataset: {}, textContent: '', getBoundingClientRect: () => ({ width: 200, height: 20 }), closest: () => null, querySelector: () => null, ...props });
+  const rows = Object.fromEntries(['matter', 'energy', 'biomass', 'data'].map(r => [r, el({ id: `row-${r}` })]));
+  const cards = hand.map(c => { const corner = el({ id: `corner-${c.id}` }); return el({ id: `card-${c.id}`, dataset: { cardId: c.id }, querySelector: sel => (sel === '[data-resource-card]' ? corner : null) }); });
+  const noticeEls = Object.fromEntries(Object.entries(notices).map(([id, text]) => [id, el({ id, textContent: text })]));
+  const logEls = log.map(text => el({ textContent: text, closest: sel => (sel === '#game-log' ? {} : null) }));
+  page.context.document.querySelector = sel => {
+    const row = /data-resource="(\w+)"/.exec(sel); if (row) return rows[row[1]];
+    const id = /^#([\w-]+)$/.exec(sel); return (id && noticeEls[id[1]]) || null;
+  };
+  page.context.document.querySelectorAll = sel => (sel === '#hand-row > .game-card' ? cards : sel === '#game-log .log-entry' ? logEls : []);
+  page.context.galacticReachGuide = { handCard: id => cards.find(c => c.dataset.cardId === id) || null, hex: () => null, turnButton: () => el({ id: 'turn-button' }), shown: e => Boolean(e) };
+  const player = { resources: { ...resources }, hand: hand.map(c => ({ ...c })), deck: [], discard: [], inPlay: [], passed: false };
+  const state = { tutorialRules: RULES, phase: 'operations', activePlayer: 0, round: 1, winner: null, players: [player], planets: {}, clusters: [], fleets: {}, market: [] };
+  const port = { state, limits: () => ({ matter: 4, energy: 4, biomass: 4, data: 4 }), canConvertCard: c => c.key !== 'probe', cards: { construct: { resource: { matter: 1 } }, move: { resource: { energy: 1 } }, probe: {} } };
+  const step = id => page.context.galacticReachTutorial.steps.find(s => s.id === id);
+  return { page, state, player, port, step, rows };
+}
+// Converting the rest of the hand lights one card's convert corner at a time (the rightmost, whose
+// corner no card covers), never the convert-everything button, and the ghost goes to that card's row.
+{
+  const { state, player, port, step, rows } = table({ hand: [{ id: 'construct-6', key: 'construct' }, { id: 'move-5', key: 'move' }], resources: { matter: 1, energy: 0, biomass: 1, data: 0 } });
+  const convert = step('convert-rest');
+  assert.equal(convert.anchor(state, port).id, 'corner-move-5');
+  assert.equal(convert.show(state, port).ghost.to, rows.energy, 'a Move converts to Energy');
+  player.hand.pop();
+  assert.equal(convert.anchor(state, port).id, 'corner-construct-6');
+  assert.equal(convert.show(state, port).ghost.to, rows.matter, 'a Construct converts to Matter');
+  player.resources.matter = 4;
+  assert.equal(convert.done(state, {}, port), true, 'a card whose resource is full is left in hand');
+}
+// The round has no Pass step the player cannot reach: an empty hand passes by itself, and Finish Buy
+// says so and lights the table's notice; cards kept back still get Pass & buy.
+{
+  const { page, state, player, port, step } = table({ hand: [], resources: {}, log: ['R1 · You had no cards left, so the table passed you to Buy.'] });
+  const steps = page.context.galacticReachTutorial.steps;
+  assert.equal(steps.some(s => s.id === 'pass'), false);
+  assert.deepEqual(page.context.galacticReachTutorial.lessons.find(l => l.id === 'round').steps.map(s => s.id).join(' '), 'convert-rest buy-empty deck');
+  const buy = step('buy-empty');
+  Object.assign(state, { phase: 'buy' }); player.passed = true;
+  assert.match(buy.text(state), /^No cards left, so the table passed you to Buy\./);
+  assert.match(buy.show(state).callouts[0].el.textContent, /no cards left/, 'the Comms line about the automatic pass is lit');
+  Object.assign(state, { phase: 'operations' }); player.passed = false; player.hand.push({ id: 'construct-6', key: 'construct' });
+  assert.match(buy.text(state), /choose Pass & buy/);
+}
+// Relics: the Probe / Excavate card stays in play until the round ends, so its round's hand is it and
+// a Move. Reaching the ◈ empties the hand; nobody is told to pass with cards in hand.
+{
+  const { state, player, step } = table({ hand: [], resources: {} });
+  const make = (key, n) => ({ id: `${key}-${n}`, key });
+  player.hand = [make('construct', 1), make('construct', 2), make('move', 3), make('construct', 4), make('move', 5)];
+  player.deck = [make('move', 6)];
+  player.discard = [make('probe', 9)];
+  const stagePort = { state, ensureFleet: () => ({ explorer: 0 }) };
+  state.planets = { '0,0': { owner: 0, upgrade: 'starbase' } };
+  state.fleets = { '0,0': { 0: { explorer: 1 } } };
+  const message = step('probe').prepare(stagePort);
+  assert.equal(player.hand.map(c => c.key).sort().join(' '), 'move probe');
+  assert.equal(player.deck.map(c => c.id).join(' '), 'move-6 construct-1 construct-2 construct-4 move-5', 'the rest go on top of the deck, drawn next round');
+  assert.match(message, /^Staged: /);
+  const excavate = step('excavate');
+  player.hand = []; player.inPlay = [make('probe', 9)];
+  Object.assign(state, { phase: 'buy' });
+  assert.match(excavate.text(state), /excavate next round\. Choose Finish Buy\.$/);
+  Object.assign(state, { phase: 'operations' }); player.hand = [make('construct', 1)];
+  assert.doesNotMatch(excavate.text(state), /Pass & buy|Finish Buy/, 'cards in hand are never to be thrown away');
+}
 console.log('Learn to play progress: new walkthroughs start clean, part-way places resume, reloads keep their place, guest saves and unreadable data are safe, other tabs follow a restart.');
+console.log('Learn to play round flow: one lit convert corner at a time, no unreachable Pass step, an excavation that never asks to throw cards away.');
