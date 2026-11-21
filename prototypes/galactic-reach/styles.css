@@ -3998,6 +3998,9 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 /* Card-choice and bank dialogs keep their own layout and one-line summary, which already prints
    the card's symbols with their numbers; they leave out the corner symbols. */
 :is(#max-bank-dialog, .market-choice-dialog) .game-card > .card-symbols { display: none !important; }
+/* Their price column is narrow too: a repeated price prints one symbol and its number there. */
+:is(#max-bank-dialog, .market-choice-dialog) .corner-dots .resource-chip[data-repeat] > .resource-symbol ~ .resource-symbol { display: none; }
+:is(#max-bank-dialog, .market-choice-dialog) .corner-dots .resource-chip[data-repeat]::after { content: attr(data-repeat); margin-left: 1px; color: var(--ink, #253436); font: 800 12.5px/1 system-ui, sans-serif; }
 
 /* Long names: measured between the corners without clamping or breaking words; a name that does not
    fit there (a word too wide, or more than two lines) moves under the corners. */

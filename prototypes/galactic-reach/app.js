@@ -667,7 +667,8 @@ function createGalacticReach(options = {}) {
     const present = RESOURCES.filter(resource => amounts?.[resource]);
     // Market prices keep their "; " list (they may carry a limit note); other amounts read as a list.
     const label = (prefix ? prefix + ' ' : '') + present.map(resource => `${amounts[resource]} ${RESOURCE_NAMES[resource]}${marks[resource]?.label || ''}`).join(Object.keys(marks).length ? '; ' : ', ');
-    const chips = present.map(resource => `<span class="resource-chip ${resource} ${marks[resource]?.mark || ''}" title="${marks[resource]?.title || `${amounts[resource]} ${RESOURCE_NAMES[resource]}`}">${cornerRepeat(resourceDot(resource), amounts[resource])}${marks[resource]?.icon || ''}</span>`).join('');
+    const repeat = n => n > 1 && n <= CORNER_REPEAT_MAX ? ` data-repeat="${n}"` : '';
+    const chips = present.map(resource => `<span class="resource-chip ${resource} ${marks[resource]?.mark || ''}"${repeat(amounts[resource])} title="${marks[resource]?.title || `${amounts[resource]} ${RESOURCE_NAMES[resource]}`}">${cornerRepeat(resourceDot(resource), amounts[resource])}${marks[resource]?.icon || ''}</span>`).join('');
     return `<span class="resource-dots corner-dots" role="img" aria-label="${label}">${chips}</span>`;
   }
 
