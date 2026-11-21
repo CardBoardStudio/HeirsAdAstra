@@ -37,9 +37,15 @@
     .gallery-cost .resource-dots { flex-direction: column; align-items: flex-end; gap: 4px; }
     .gallery-cost .resource-chip { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; gap: 3px; }
     .gallery-cost .resource-chip strong { color: var(--ink); font-size: .875rem; }
-    /* The card's corners: effect symbols lead the type line, the price fills the top-right corner. */
-    .gallery-card .meta { align-items: center; }
-    .gallery-card .meta .card-symbols { margin-right: 4px; font-size: 18px; text-transform: none; letter-spacing: 0; }
+    /* The card's header is one line: effect symbols left, name between, price in the top-right corner. */
+    .gallery-card-heading { grid-template-columns: max-content minmax(0, 1fr) auto; align-items: start; }
+    .gallery-card-heading > .card-symbols { grid-column: 1; grid-row: 1; align-self: center; font-size: 18px; }
+    .gallery-card-heading > h3 { grid-column: 2; grid-row: 1; align-self: center; text-align: center; overflow-wrap: normal; }
+    .gallery-card-heading:not(:has(> .card-symbols)) > h3 { grid-column: 1 / 3; }
+    .gallery-card-heading > .effect { grid-column: 1 / 3; }
+    .gallery-card-heading > .gallery-cost { grid-column: 3; }
+    .gallery-card-heading:not(:has(.gallery-cost)) { grid-template-columns: max-content minmax(0, 1fr); }
+    .gallery-card .needs .code { color: #765721; font-weight: 750; letter-spacing: .04em; }
     .gallery-cost .corner-dots .resource-chip { justify-content: flex-end; }
     .gallery-card .resource-symbol, .gallery-card .inline-resource .resource-symbol { width: 18px; height: 18px; }
     .gallery-card .resource-symbol.matter { color: #566b71; } .gallery-card .resource-symbol.energy { color: #1f6d88; }
@@ -179,13 +185,13 @@
         const work = art[card.key];
         return `<article class="gallery-card ${family(card)}" data-card-key="${card.key}" data-card-code="${card.code}" style="--accent:${card.accent}" aria-labelledby="name-${card.code}">
           <div class="gallery-card-heading">
-          <div class="meta">${catalog.cardSymbols ? catalog.cardSymbols(card) : ''}<span class="code">${card.code}</span><span>${card.relic ? `Alien relic · ${esc(card.affinity)}` : card.military ? 'Military deck' : `Normal deck · ${esc(card.kind)}`}</span></div>
+          ${catalog.cardSymbols ? catalog.cardSymbols(card) : ''}
           <h3 id="name-${card.code}">${esc(card.name)}</h3>
           ${card.relic ? '' : `<div class="gallery-cost">${catalog.cornerDots ? catalog.cornerDots(card.cost) : catalog.resourceDots ? catalog.resourceDots(card.cost) : chips(card.cost)}</div>`}
           <p class="effect" title="${esc(card.text)}"><span class="effect-symbols" aria-hidden="true">${catalog.iconText ? catalog.iconText(card.text) : esc(card.text)}</span><span class="sr-only">${esc(card.text)}</span></p>
           </div>
           ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.BOARD_ICONS?.[card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase'] || ''}</figure>`}
-          ${card.relic ? '<p class="needs">Excavation reward · no market price</p>' : needs(card) ? `<p class="needs">Needs ${esc(needs(card))}</p>` : ''}
+          <p class="needs"><span class="code" title="Card id for feedback">${card.code}</span>${card.relic ? ' · Excavation reward · no market price' : card.military ? ' · Military deck' : ''}${!card.relic && needs(card) ? ` · Needs ${esc(needs(card))}` : ''}</p>
           <div class="gallery-feedback" ${feedbackVisible ? '' : 'hidden'}>
           <div class="vote" role="group" aria-label="Your verdict on ${esc(card.name)}">
             ${['like', 'neutral', 'dislike'].map(vote => `<button type="button" class="button" data-card="${card.code}" data-vote="${vote}" aria-pressed="${entry.vote === vote}">${vote === 'like' ? 'Liked it' : vote === 'dislike' ? 'Disliked it' : 'Neutral'}</button>`).join('')}

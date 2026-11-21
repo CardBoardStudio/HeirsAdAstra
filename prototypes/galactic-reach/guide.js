@@ -202,7 +202,7 @@
       const excavate = c.playable.find(p => p.kind === 'excavate');
       if (excavate) { const at = hex(excavate.targets[0]); return { title: 'Excavate the relic', text: `Drag this Probe / Excavate card onto your Explorer and choose Excavate (${costText(port.excavationCost)}, +2★).`, anchor: handCard(excavate.card.id), show: { ghost: { from: handCard(excavate.card.id), to: at }, callouts: [{ el: at, label: 'Explorer on the ◈' }] } }; }
       const special = c.playable.find(p => p.kind === 'special');
-      if (special) return { title: `Play ${special.def.name}`, text: `This card needs no hex: point at it and choose Use order.`, anchor: handCard(special.card.id) };
+      if (special) return { title: `Play ${special.def.name}`, text: `This card needs no hex: point at it and ${orderHow(special.card.id)}.`, anchor: handCard(special.card.id) };
       const construct = card('construct');
       const yardHex = c.shipyards[0] && hex(c.shipyards[0]);
       if (construct && c.shipyards.length && !c.myUnits.settler.length) {
@@ -236,7 +236,7 @@
       }
       if (c.playable.length) {
         const first = c.playable[0];
-        return { title: 'Your turn', text: `This card has an order you can use now (cards with a gold outline do). Drag it onto a lit hex, or point at it and choose Use order.${fullWarning(c)}`, anchor: handCard(first.card.id) };
+        return { title: 'Your turn', text: `This card has an order you can use now (cards with a gold outline do). Drag it onto a lit hex, or point at it and ${orderHow(first.card.id)}.${fullWarning(c)}`, anchor: handCard(first.card.id) };
       }
       const first = convertFirst(c);
       if (first) return first;
@@ -672,6 +672,10 @@
     }
   }
 
+  // How to use a hand card's order: its upper-left symbols where it has them (rules #card-corners).
+  function orderHow(id) {
+    return document.querySelector(`#hand-row .game-card[data-card-id="${CSS.escape(String(id))}"] .card-symbols.corner-button`) ? 'press the symbols in its upper-left corner' : 'choose Use order';
+  }
   function hide() { if (coach) { if (coach.matches(':popover-open')) coach.hidePopover(); coach.hidden = true; } clearTargets(); lastKey = ''; raisedOver = null; currentAnchor = null; placePointer(null); currentShow = null; hideStage(); }
 
   // A reshuffle happened when, between two looks, the deck grew and the discard pile emptied.

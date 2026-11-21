@@ -171,10 +171,77 @@
     globalThis.galacticReachMaxUI?.rendered(next);
     fanHand();
     syncAim();
+    fitNames();
+    requestAnimationFrame(noteResting);
     const before = view, saved = previous;
     view = next; previous = null;
     if (before && saved && !next.replay && !still() && !drag) animate(before, next, saved);
   }
+
+  // ---- Raising a hand card (rules #card-corners). HAND_REST is the switch between the two
+  // resting card tops: 'symbols' shows only a card's symbols, and raising it grows the card while
+  // the symbols travel to its upper corners and the name, text and picture appear; 'name' shows
+  // the name between larger icons, and nothing travels. ----
+  const HAND_REST = 'symbols';
+  document.documentElement.dataset.handRest = HAND_REST;
+  const RAISE_MS = 180;
+  const resting = new WeakMap();
+  const corners = card => [card.querySelector(':scope > .card-symbols'), card.querySelector(':scope > .card-footer')].filter(Boolean);
+  const raisedNow = card => card.matches(':hover, :focus-within');
+  function noteResting() {
+    for (const card of $$('#hand-row > .game-card')) if (!raisedNow(card)) resting.set(card, { box: card.getBoundingClientRect(), parts: corners(card).map(el => [el, el.getBoundingClientRect()]) });
+  }
+  function raise(card) {
+    if (card.dataset.cfRaised) return;
+    card.dataset.cfRaised = '1';
+    const before = resting.get(card);
+    if (document.documentElement.dataset.handRest !== 'symbols' || still() || !before) return;
+    // An action fires only on the raised card: until the motion ends, a click on a corner is ignored.
+    card.dataset.cfRaising = '1';
+    const after = card.getBoundingClientRect(), timing = { duration: RAISE_MS, easing: 'cubic-bezier(.2, .7, .2, 1)' };
+    const inset = [before.box.top - after.top, after.right - before.box.right, after.bottom - before.box.bottom, before.box.left - after.left].map(n => `${Math.max(0, n)}px`).join(' ');
+    const runs = [card.animate([{ clipPath: `inset(${inset} round 9px)` }, { clipPath: 'inset(0 round 9px)' }], timing)];
+    for (const [el, from] of before.parts) {
+      const to = el.getBoundingClientRect();
+      if (to.width && from.width) runs.push(el.animate([{ transformOrigin: '0 0', transform: `translate(${from.left - to.left}px, ${from.top - to.top}px) scale(${from.height / to.height})` }, { transformOrigin: '0 0', transform: 'none' }], timing));
+    }
+    for (const el of card.querySelectorAll(':scope > :not(.card-symbols, .card-footer)')) runs.push(el.animate([{ opacity: 0 }, { opacity: 1 }], { ...timing, easing: 'ease-out' }));
+    Promise.all(runs.map(run => run.finished.catch(() => {}))).then(() => { delete card.dataset.cfRaising; });
+  }
+  // A card's name sits between its two corners, wrapping only between words and to two lines at
+  // most (rules #card-corners); a name that does not fit there moves under the corners.
+  function fitNames() {
+    for (const card of $$('.game-card:is(:has(> .card-symbols), :has(> .card-footer))')) {
+      const name = card.querySelector(':scope > .card-name');
+      if (!name) continue;
+      card.classList.remove('name-under');
+      if (card.matches(':hover, :focus-within') || !name.getClientRects().length) continue;
+      const line = parseFloat(getComputedStyle(name).lineHeight) || name.offsetHeight;
+      card.classList.add('name-probe');
+      const tooWide = name.scrollWidth > name.clientWidth + 1, tooTall = name.scrollHeight > line * 2 + 2;
+      card.classList.remove('name-probe');
+      card.classList.toggle('name-under', tooWide || tooTall);
+    }
+  }
+  addEventListener('resize', () => requestAnimationFrame(fitNames));
+  function settle() {
+    requestAnimationFrame(() => {
+      for (const card of $$('#hand-row > .game-card[data-cf-raised]')) if (!raisedNow(card)) { delete card.dataset.cfRaised; delete card.dataset.cfRaising; }
+      noteResting();
+    });
+  }
+  const raiseFrom = event => { const card = event.target.closest?.('#hand-row > .game-card'); if (card && raisedNow(card)) raise(card); };
+  document.addEventListener('pointerover', raiseFrom);
+  document.addEventListener('focusin', raiseFrom);
+  document.addEventListener('pointerout', settle);
+  document.addEventListener('focusout', settle);
+  addEventListener('resize', settle);
+  document.addEventListener('click', event => {
+    // Keyboard activation (detail 0) is always deliberate.
+    if (event.detail === 0) return;
+    const corner = event.target.closest?.('#hand-row .corner-button');
+    if (corner?.closest('.game-card')?.dataset.cfRaising) { event.preventDefault(); event.stopPropagation(); }
+  }, true);
 
   // ---- Drag a hand card onto the map (or onto your reserves to convert it). ----
   // A card can be picked up anywhere on it, its buttons included: a press that moves more

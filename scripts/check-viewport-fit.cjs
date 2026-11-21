@@ -342,17 +342,20 @@ const MEASURE = `(() => {
       const c = chip.getBoundingClientRect(), hit = document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2);
       if (!hit || !top.contains(hit)) { problems.push('gain badge covered in ' + label(top)); break; }
     }
+    // A resting hand card shows only its symbols (rules #card-corners): its name is for screen readers then.
+    const symbols = top.querySelector(':scope > .card-symbols'), nameEl = top.querySelector('.card-name');
+    const nameShown = !(symbols && symbols.getClientRects().length && nameEl && getComputedStyle(nameEl).clipPath.includes('inset(50%)'));
     // Only level I starters print a gain badge; an empty footer has nothing to show.
     const footer = top.querySelector('.card-footer');
     // In the hand, a top's text and badges must end before its right-hand neighbour begins.
     const next = top.closest('#hand-row') && top.nextElementSibling;
     if (next && !document.querySelector('#hand-row .game-card:is(:hover, :focus, :focus-within)')) {
       const limit = next.getBoundingClientRect().left;
-      const parts = [top.querySelector('.card-name'), summary, ...top.querySelectorAll('.card-footer .resource-chip, .card-footer .level-badge')].filter(Boolean);
+      const parts = [nameShown ? top.querySelector('.card-name') : null, summary, ...top.querySelectorAll('.card-footer .resource-chip, .card-footer .level-badge')].filter(Boolean);
       const under = parts.find(part => { const t = part.getBoundingClientRect(); return t.width > 0 && t.right > limit + 1; });
       if (under) problems.push('hand text under the next card: ' + label(under) + ' in ' + label(top));
     }
-    for (const part of [top.querySelector('.card-name'), footer?.textContent.trim() || footer?.querySelector('.resource-chip') ? footer : null, summary].filter(Boolean)) {
+    for (const part of [nameShown ? top.querySelector('.card-name') : null, footer?.textContent.trim() || footer?.querySelector('.resource-chip') ? footer : null, summary].filter(Boolean)) {
       const p = part.getBoundingClientRect();
       if (p.height < 4 || p.top < t.top - 1 || p.bottom > t.bottom + 1) { problems.push('card top hides ' + label(part) + ' in ' + label(top)); break; }
     }
@@ -381,7 +384,7 @@ const MEASURE = `(() => {
     }
   }
   // Every button on a raised card must be reachable: nothing may lie over its centre.
-  for (const button of document.querySelectorAll(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-buttons .button')) {
+  for (const button of document.querySelectorAll(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) :is(.card-buttons .button, .corner-button)')) {
     if (!shown(button) || modal) continue;
     const b = button.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
     if (!hit || !button.contains(hit)) problems.push('raised card button covered: ' + label(button) + ' by ' + (hit ? label(hit) : 'nothing'));
