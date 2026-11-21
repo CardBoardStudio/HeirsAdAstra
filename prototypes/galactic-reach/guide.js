@@ -396,13 +396,17 @@
       }
     }
     clearTargets();
-    const anchor = host === document.body && tip.anchor && shown(tip.anchor) ? tip.anchor : null;
-    if (anchor && !tip.noPulse) { anchor.classList.add('gr-coach-target'); targeted.push(anchor); }
+    // What the note lights lies where the note is: on the table, or inside its window (a battle's
+    // tactics, a window's button), never on the table behind a window.
+    const here = el => Boolean(el && (host === document.body || host.contains(el)) && shown(el));
+    const anchor = here(tip.anchor) ? tip.anchor : null;
+    // A choice between equals (two tactics) lights each of them alike.
+    if (anchor && !tip.noPulse) for (const el of [anchor, ...(tip.lit || []).filter(here)]) { el.classList.add('gr-coach-target'); targeted.push(el); }
     currentAnchor = anchor;
     currentAvoid = [...(tip.avoid || []), ...(tip.show?.callouts || []).map(c => c?.el), ...(tip.show?.spotlight || []), tip.show?.ghost?.to].filter(el => el && el !== anchor && !el.contains?.(anchor));
     pendingShow = host === document.body ? tip.show || null : null;
-    // A destination the note names (a world to reach) gets a quieter dashed ring of its own.
-    if (host === document.body) for (const mark of (tip.marks || []).filter(Boolean)) { mark.classList.add('gr-coach-goal'); targeted.push(mark); }
+    // A destination the note names (a world to reach, a window's settings) gets a quieter dashed ring of its own.
+    for (const mark of (tip.marks || []).filter(here)) { mark.classList.add('gr-coach-goal'); targeted.push(mark); }
     box.classList.toggle('free', Boolean(tip.free || tip.dock));
     if (host !== document.body) {
       box.style.left = box.style.top = box.style.width = ''; box.dataset.side = 'inline'; box.classList.remove('docked'); placePointer(null);
@@ -410,9 +414,19 @@
       const text = box.querySelector('.gr-coach-text');
       const over = Math.max(host.getBoundingClientRect().bottom - innerHeight + 8, host.scrollHeight - host.clientHeight);
       const more = box.querySelector('[data-coach="more"]');
-      if (box.dataset.expanded === 'true') { if (text && box.dataset.full) text.textContent = box.dataset.full; if (more) { more.hidden = false; more.textContent = 'Less'; } return; }
-      const cut = text && over > 0 && !box.dataset.full ? fitText(box, text, Math.max(60, box.offsetHeight - over)) : Boolean(box.dataset.full && text?.textContent !== box.dataset.full);
-      if (more) { more.hidden = !cut; more.textContent = 'More'; }
+      if (box.dataset.expanded === 'true') { if (text && box.dataset.full) text.textContent = box.dataset.full; if (more) { more.hidden = false; more.textContent = 'Less'; } }
+      else {
+        // With a lit control the window scrolls to it instead, so the one line naming it stays whole.
+        const cut = text && over > 0 && !anchor && !box.dataset.full ? fitText(box, text, Math.max(60, box.offsetHeight - over)) : Boolean(box.dataset.full && text?.textContent !== box.dataset.full);
+        if (more) { more.hidden = !cut; more.textContent = 'More'; }
+      }
+      // The lit control is on screen: a window that scrolls moves once, as the note appears, and only
+      // as far as needed, so the control shows below the note (which stays at the window's top).
+      if (anchor && box.dataset.revealed !== lastKey) {
+        box.dataset.revealed = lastKey;
+        const r = anchor.getBoundingClientRect(), floor = Math.min(host.getBoundingClientRect().bottom, innerHeight) - 8, ceiling = box.getBoundingClientRect().bottom + 8;
+        if (r.bottom > floor) host.scrollTop += Math.max(0, Math.min(r.bottom - floor, r.top - ceiling)); else if (r.top < ceiling) host.scrollTop -= ceiling - r.top;
+      }
       return;
     }
     currentDock = Boolean(tip.dock);
