@@ -3924,14 +3924,14 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 
 /* Card faces outside the hand and market (an opened card on a phone, deck, discard, in play,
    relics): the same one-line header over the rest of the card. */
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(:has(> .card-symbols), :has(> .card-footer .corner-dots)) {
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) {
   display: grid; grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr); align-content: start; align-items: center; column-gap: 6px;
 }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(:has(> .card-symbols), :has(> .card-footer .corner-dots)) > * { grid-column: 1 / -1; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) > * { grid-column: 1 / -1; }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols { grid-column: 1; grid-row: 1; justify-self: start; }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(:has(> .card-symbols), :has(> .card-footer .corner-dots)) > .card-name { grid-column: 2; grid-row: 1; margin: 0; text-align: center; }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-footer:has(.corner-dots) { grid-column: 3; grid-row: 1; justify-self: end; margin: 0; padding: 3px 7px; border: 1.5px solid var(--box-line, #a89d83); border-radius: 8px; background: var(--box-bg, #fffaf0); }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-footer:has(.corner-dots) .resource-chip { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) > .card-name { grid-column: 2; grid-row: 1; margin: 0; text-align: center; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { grid-column: 3; grid-row: 1; justify-self: end; margin: 0; padding: 3px 7px; border: 1.5px solid var(--box-line, #a89d83); border-radius: 8px; background: var(--box-bg, #fffaf0); }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer .resource-chip { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; }
 /* An opened card on a phone: the actions are full-size touch targets. */
 .phone-card-sheet .game-card .corner-button { min-width: 48px; min-height: 44px; font-size: 22px; }
 
@@ -3964,15 +3964,15 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   #hand-row .game-card:not(:hover):not(:focus-within) > .card-symbols.corner-button { border-width: 0 1.5px 1.5px 0; border-radius: 7px 0 8px 0; }
   #hand-row .game-card:not(:hover):not(:focus-within) > .card-footer.corner-button { border-style: solid !important; border-color: color-mix(in srgb, var(--card-accent, #8d8268) 70%, #4a4234) !important; border-width: 0 0 1.5px 1.5px !important; border-radius: 0 7px 0 8px !important; background: color-mix(in srgb, var(--card-accent, #8d8268) 14%, #fffaf0) !important; }
   #hand-row .game-card:not(:hover):not(:focus-within) :is(.card-name, .card-headline, .card-effect) { font-size: 12.5px; contain: inline-size; }
-  #hand-row .game-card:not(:hover):not(:focus-within):has(> .card-symbols) .card-effect { display: none !important; }
+  #hand-row .game-card:not(:hover):not(:focus-within).has-symbols .card-effect { display: none !important; }
 
   /* Market and upgrade cards: effect symbols, name between, price; the name wraps to two lines at
      most (the raised card shows it whole). */
   .market-cards :is(#market-row, #upgrade-market) > .game-card .card-symbols { grid-area: sym; align-self: center; justify-self: start; font-size: 14px; }
-  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within):has(> .card-symbols) { grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "art art cost" !important; grid-template-rows: auto minmax(0, 1fr) !important; column-gap: 6px !important; }
-  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within):has(> .card-symbols) .card-icons { display: none !important; }
-  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within):has(> .card-symbols) .card-name { -webkit-line-clamp: 2 !important; line-clamp: 2 !important; }
-  .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within):has(> .card-symbols) { grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "effect effect cost" !important; column-gap: 6px !important; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within).has-symbols { grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "art art cost" !important; grid-template-rows: auto minmax(0, 1fr) !important; column-gap: 6px !important; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within).has-symbols .card-icons { display: none !important; }
+  .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within).has-symbols .card-name { -webkit-line-clamp: 2 !important; line-clamp: 2 !important; }
+  .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within).has-symbols { grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "effect effect cost" !important; column-gap: 6px !important; }
   .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) .card-symbols { padding-top: 5px; align-self: start; }
   .market-cards #market-row > .game-card:is(:hover, :focus, :focus-within) {
     grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "effect effect effect" "note note note" !important; column-gap: 6px !important;
@@ -3991,7 +3991,7 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   body #hand-row > .game-card .card-footer .resource-symbol { width: 26px; height: 26px; }
   body #hand-row > .game-card .corner-button { pointer-events: none; min-width: 0; min-height: 0; padding: 0; border-color: transparent; background: none; box-shadow: none; }
   body #hand-row > .game-card .card-effect { display: none !important; }
-  body #hand-row > .game-card:not(:has(.card-symbols)):not(:has(.card-headline)) .card-effect { display: -webkit-box !important; grid-area: head; }
+  body #hand-row > .game-card:not(.has-symbols):not(.has-headline) .card-effect { display: -webkit-box !important; grid-area: head; }
   .phone-card-sheet .phone-card-close { top: auto; bottom: 4px; }
 }
 
@@ -4006,9 +4006,9 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
    fit there (a word too wide, or more than two lines) moves under the corners. */
 .game-card.name-probe > .card-name { display: block !important; -webkit-line-clamp: unset !important; line-clamp: unset !important; max-height: none !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; white-space: normal !important; overflow: hidden !important; text-overflow: clip !important; }
 @media (min-width: 600px) and (min-height: 600px) {
-  .market-cards #market-row > .game-card.name-under:not(:hover):not(:focus):not(:focus-within):has(> .card-symbols) { grid-template-areas: "sym sym cost" "name name cost" "art art cost" !important; grid-template-rows: auto auto minmax(0, 1fr) !important; }
+  .market-cards #market-row > .game-card.name-under:not(:hover):not(:focus):not(:focus-within).has-symbols { grid-template-areas: "sym sym cost" "name name cost" "art art cost" !important; grid-template-rows: auto auto minmax(0, 1fr) !important; }
   .market-cards #market-row > .game-card.name-under:is(:hover, :focus, :focus-within) { grid-template-areas: "sym sym cost" "name name cost" "effect effect effect" "note note note" !important; }
-  .upgrade-group #upgrade-market > .upgrade-offer.name-under:not(:hover):not(:focus):not(:focus-within):has(> .card-symbols) { grid-template-areas: "sym sym cost" "name name cost" "effect effect cost" !important; grid-template-rows: auto auto minmax(0, 1fr) !important; }
+  .upgrade-group #upgrade-market > .upgrade-offer.name-under:not(:hover):not(:focus):not(:focus-within).has-symbols { grid-template-areas: "sym sym cost" "name name cost" "effect effect cost" !important; grid-template-rows: auto auto minmax(0, 1fr) !important; }
 }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.name-under > .card-name { grid-column: 1 / -1 !important; grid-row: 2 !important; }
 /* Phone card tops: the conversion symbol bare, without the corner box's edges. */
@@ -4043,14 +4043,14 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
     padding: var(--pad) !important;
   }
   #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { justify-self: end; }
-  #hand-row > .game-card:is(:hover, :focus-within):not(:has(> .card-buttons)) { grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" !important; }
+  #hand-row > .game-card:is(:hover, :focus-within):not(.has-buttons) { grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" !important; }
   /* A card with text buttons keeps them in a column down the right beside every row, so it is no taller. */
-  #hand-row > .game-card:is(:hover, :focus-within):has(> .card-buttons) { grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
+  #hand-row > .game-card:is(:hover, :focus-within).has-buttons { grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
 }
 /* An opened card on a phone and the plain card faces: the same tabs, the phone's at least 44 px. */
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(:has(> .card-symbols), :has(> .card-footer .corner-dots)) { --pad: 12px; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) { --pad: 12px; }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols.corner-button { align-self: start; margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)); padding: var(--pad) 10px 8px var(--pad); border-width: 0 1.5px 1.5px 0; border-radius: 8px 0 9px 0; box-shadow: none; }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-footer:has(.corner-dots) { align-self: start; margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0; padding: var(--pad) var(--pad) 8px 10px; border-width: 0 0 1.5px 1.5px; border-style: solid; border-radius: 0 8px 0 9px; box-shadow: none; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { align-self: start; margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0; padding: var(--pad) var(--pad) 8px 10px; border-width: 0 0 1.5px 1.5px; border-style: solid; border-radius: 0 8px 0 9px; box-shadow: none; }
 .phone-card-sheet .game-card > .corner-button { min-height: 44px; min-width: 52px; }
 
 /* With colour chips (a resource symbol is a chip in its colour, dark symbol on top), the convert

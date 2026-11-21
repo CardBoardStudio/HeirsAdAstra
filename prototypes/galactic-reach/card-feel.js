@@ -243,17 +243,12 @@
   // A card's name sits between its two corners, wrapping only between words and to two lines at
   // most (rules #card-corners); a name that does not fit there moves under the corners.
   function fitNames() {
-    for (const card of $$('.game-card:is(:has(> .card-symbols), :has(> .card-footer))')) {
-      const name = card.querySelector(':scope > .card-name');
-      if (!name) continue;
-      card.classList.remove('name-under');
-      if (card.matches(':hover, :focus-within') || !name.getClientRects().length) continue;
-      const line = parseFloat(getComputedStyle(name).lineHeight) || name.offsetHeight;
-      card.classList.add('name-probe');
-      const tooWide = name.scrollWidth > name.clientWidth + 1, tooTall = name.scrollHeight > line * 2 + 2;
-      card.classList.remove('name-probe');
-      card.classList.toggle('name-under', tooWide || tooTall);
-    }
+    // Measured for all cards at once (one probe, one read, one write) so a render costs two layouts.
+    const cards = $$(':is(#hand-row, #market-row, #upgrade-market) > .game-card:is(:has(> .card-symbols), :has(> .card-footer))')
+      .filter(card => !card.matches(':hover, :focus-within')).map(card => [card, card.querySelector(':scope > .card-name')]).filter(([, name]) => name?.getClientRects().length);
+    cards.forEach(([card]) => { card.classList.remove('name-under'); card.classList.add('name-probe'); });
+    const under = cards.map(([, name]) => { const line = parseFloat(getComputedStyle(name).lineHeight) || name.offsetHeight; return name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > line * 2 + 2; });
+    cards.forEach(([card], index) => { card.classList.remove('name-probe'); card.classList.toggle('name-under', under[index]); });
   }
   addEventListener('resize', () => requestAnimationFrame(fitNames));
   function settle() {
