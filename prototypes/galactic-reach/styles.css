@@ -16,12 +16,6 @@
   --energy: #ff6f59;
   --biomass: #7fd6b5;
   --data: #5fc9d8;
-  /* Resource inks for the cream cards: each colour darkened to at least 4.5:1 on cream.
-     Data is darker than it needs to be so it stays apart from Life. */
-  --matter-ink: color-mix(in srgb, var(--matter) 56%, #000);
-  --energy-ink: color-mix(in srgb, var(--energy) 63%, #000);
-  --biomass-ink: color-mix(in srgb, var(--biomass) 50%, #000);
-  --data-ink: color-mix(in srgb, var(--data) 42%, #000);
   /* Map tiles and the map key: each colour toned to the map's slate at the tiles' previous lightness. */
   --matter-tile: color-mix(in srgb, var(--matter) 63%, #26323a);
   --energy-tile: color-mix(in srgb, var(--energy) 77%, #26323a);
@@ -936,10 +930,14 @@ button.game-card { color: var(--ink); }
 .game-card .resource-chip { min-height: 22px; padding: 2px 4px; gap: 3px; border-color: #b6af9c; background: #faf3e5; }
 .game-card .resource-chip strong { color: var(--ink); font-size: 10px; }
 .game-card .resource-symbol, .game-card .inline-resource .resource-symbol { width: 14px; height: 14px; }
-.game-card .resource-symbol.matter { color: var(--matter-ink); }
-.game-card .resource-symbol.energy { color: var(--energy-ink); }
-.game-card .resource-symbol.biomass { color: var(--biomass-ink); }
-.game-card .resource-symbol.data { color: var(--data-ink); }
+/* On the cream cards each resource is a chip in its own colour with the symbol in the card's ink.
+   The chip keeps the symbol's box, so card layouts do not move. */
+.game-card .resource-symbol { border-radius: 28%; color: var(--ink); }
+.game-card .resource-symbol svg { transform: scale(.72); }
+.game-card .resource-symbol.matter { background: var(--matter); }
+.game-card .resource-symbol.energy { background: var(--energy); }
+.game-card .resource-symbol.biomass { background: var(--biomass); }
+.game-card .resource-symbol.data { background: var(--data); }
 .card-buttons { flex-direction: column; margin-top: 11px; gap: 5px; }
 .card-buttons .button { min-height: 36px; padding: 7px 5px; font-size: 11px; background: #e6ddc7; border-color: #a99e82; box-shadow: none; color: #42534a; }
 .card-buttons .button-primary { order: -1; background: #2c5551; border-color: #2c5551; color: #fff6dc; }

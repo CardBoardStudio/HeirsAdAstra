@@ -1,70 +1,150 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" role="img" aria-label="Heirs Ad Astra">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="11 -15 178 204" role="img" aria-label="Heirs Ad Astra">
   <title>Heirs Ad Astra</title>
   <!-- Speed lines: one per resource, in the game's order (matter, energy, biomass, data);
        colours are the matter, energy, biomass and data custom properties in
        prototypes/galactic-reach/styles.css. -->
-  <circle cx="100" cy="100" r="99" fill="#0d1222"/>
+  <circle cx="100" cy="100" r="88.6" fill="#0d1222"/>
   <g fill="none" stroke="#f0b862">
-    <circle cx="100" cy="100" r="89" stroke-width="2.5"/>
-    <circle cx="100" cy="100" r="82.9" stroke-width="1.9" stroke-dasharray="1.5 1.9"/>
-    <circle cx="100" cy="100" r="78.3" stroke-width="0.8"/>
+    <circle cx="100" cy="100" r="87" stroke-width="2.6"/>
+    <circle cx="100" cy="100" r="77" stroke-width="1.2"/>
+    <!-- Degree scale: a tick every 5 degrees, longer every 30. -->
+    <g stroke-width="0.8">
+      <line stroke-width="1.5" x1="178.4" y1="100" x2="185.6" y2="100"/>
+      <line x1="178.1" y1="106.83" x2="181.69" y2="107.15"/>
+      <line x1="177.21" y1="113.61" x2="180.75" y2="114.24"/>
+      <line x1="175.73" y1="120.29" x2="179.21" y2="121.22"/>
+      <line x1="173.67" y1="126.81" x2="177.05" y2="128.05"/>
+      <line x1="171.05" y1="133.13" x2="174.32" y2="134.65"/>
+      <line stroke-width="1.5" x1="167.9" y1="139.2" x2="174.13" y2="142.8"/>
+      <line x1="164.22" y1="144.97" x2="167.17" y2="147.03"/>
+      <line x1="160.06" y1="150.39" x2="162.82" y2="152.71"/>
+      <line x1="155.44" y1="155.44" x2="157.98" y2="157.98"/>
+      <line x1="150.39" y1="160.06" x2="152.71" y2="162.82"/>
+      <line x1="144.97" y1="164.22" x2="147.03" y2="167.17"/>
+      <line stroke-width="1.5" x1="139.2" y1="167.9" x2="142.8" y2="174.13"/>
+      <line x1="133.13" y1="171.05" x2="134.65" y2="174.32"/>
+      <line x1="126.81" y1="173.67" x2="128.05" y2="177.05"/>
+      <line x1="120.29" y1="175.73" x2="121.22" y2="179.21"/>
+      <line x1="113.61" y1="177.21" x2="114.24" y2="180.75"/>
+      <line x1="106.83" y1="178.1" x2="107.15" y2="181.69"/>
+      <line stroke-width="1.5" x1="100" y1="178.4" x2="100" y2="185.6"/>
+      <line x1="93.17" y1="178.1" x2="92.85" y2="181.69"/>
+      <line x1="86.39" y1="177.21" x2="85.76" y2="180.75"/>
+      <line x1="79.71" y1="175.73" x2="78.78" y2="179.21"/>
+      <line x1="73.19" y1="173.67" x2="71.95" y2="177.05"/>
+      <line x1="66.87" y1="171.05" x2="65.35" y2="174.32"/>
+      <line stroke-width="1.5" x1="60.8" y1="167.9" x2="57.2" y2="174.13"/>
+      <line x1="55.03" y1="164.22" x2="52.97" y2="167.17"/>
+      <line x1="49.61" y1="160.06" x2="47.29" y2="162.82"/>
+      <line x1="44.56" y1="155.44" x2="42.02" y2="157.98"/>
+      <line x1="39.94" y1="150.39" x2="37.18" y2="152.71"/>
+      <line x1="35.78" y1="144.97" x2="32.83" y2="147.03"/>
+      <line stroke-width="1.5" x1="32.1" y1="139.2" x2="25.87" y2="142.8"/>
+      <line x1="28.95" y1="133.13" x2="25.68" y2="134.65"/>
+      <line x1="26.33" y1="126.81" x2="22.95" y2="128.05"/>
+      <line x1="24.27" y1="120.29" x2="20.79" y2="121.22"/>
+      <line x1="22.79" y1="113.61" x2="19.25" y2="114.24"/>
+      <line x1="21.9" y1="106.83" x2="18.31" y2="107.15"/>
+      <line stroke-width="1.5" x1="21.6" y1="100" x2="14.4" y2="100"/>
+      <line x1="21.9" y1="93.17" x2="18.31" y2="92.85"/>
+      <line x1="22.79" y1="86.39" x2="19.25" y2="85.76"/>
+      <line x1="24.27" y1="79.71" x2="20.79" y2="78.78"/>
+      <line x1="26.33" y1="73.19" x2="22.95" y2="71.95"/>
+      <line x1="28.95" y1="66.87" x2="25.68" y2="65.35"/>
+      <line stroke-width="1.5" x1="32.1" y1="60.8" x2="25.87" y2="57.2"/>
+      <line x1="35.78" y1="55.03" x2="32.83" y2="52.97"/>
+      <line x1="39.94" y1="49.61" x2="37.18" y2="47.29"/>
+      <line x1="44.56" y1="44.56" x2="42.02" y2="42.02"/>
+      <line x1="49.61" y1="39.94" x2="47.29" y2="37.18"/>
+      <line x1="55.03" y1="35.78" x2="52.97" y2="32.83"/>
+      <line stroke-width="1.5" x1="60.8" y1="32.1" x2="57.2" y2="25.87"/>
+      <line x1="66.87" y1="28.95" x2="65.35" y2="25.68"/>
+      <line x1="73.19" y1="26.33" x2="71.95" y2="22.95"/>
+      <line x1="79.71" y1="24.27" x2="78.78" y2="20.79"/>
+      <line x1="86.39" y1="22.79" x2="85.76" y2="19.25"/>
+      <line x1="93.17" y1="21.9" x2="92.85" y2="18.31"/>
+      <line stroke-width="1.5" x1="100" y1="21.6" x2="100" y2="14.4"/>
+      <line x1="106.83" y1="21.9" x2="107.15" y2="18.31"/>
+      <line x1="113.61" y1="22.79" x2="114.24" y2="19.25"/>
+      <line x1="120.29" y1="24.27" x2="121.22" y2="20.79"/>
+      <line x1="126.81" y1="26.33" x2="128.05" y2="22.95"/>
+      <line x1="133.13" y1="28.95" x2="134.65" y2="25.68"/>
+      <line stroke-width="1.5" x1="139.2" y1="32.1" x2="142.8" y2="25.87"/>
+      <line x1="144.97" y1="35.78" x2="147.03" y2="32.83"/>
+      <line x1="150.39" y1="39.94" x2="152.71" y2="37.18"/>
+      <line x1="155.44" y1="44.56" x2="157.98" y2="42.02"/>
+      <line x1="160.06" y1="49.61" x2="162.82" y2="47.29"/>
+      <line x1="164.22" y1="55.03" x2="167.17" y2="52.97"/>
+      <line stroke-width="1.5" x1="167.9" y1="60.8" x2="174.13" y2="57.2"/>
+      <line x1="171.05" y1="66.87" x2="174.32" y2="65.35"/>
+      <line x1="173.67" y1="73.19" x2="177.05" y2="71.95"/>
+      <line x1="175.73" y1="79.71" x2="179.21" y2="78.78"/>
+      <line x1="177.21" y1="86.39" x2="180.75" y2="85.76"/>
+      <line x1="178.1" y1="93.17" x2="181.69" y2="92.85"/>
+    </g>
   </g>
-  <g fill="none" stroke-linecap="round">
-    <path stroke="#3ab5ac" stroke-width="1.6" d="M57.89 70.92A52 52 0 0 1 84.93 50.55"/>
-    <path stroke="#f0b862" stroke-width="2.2" d="M63.69 76.68A44 44 0 0 1 85.95 58.65"/>
-    <path stroke="#f0b862" stroke-width="2.2" d="M138.31 123.32A44 44 0 0 1 116.05 141.35"/>
-    <path stroke="#3ab5ac" stroke-width="1.6" d="M143.07 130.56A52 52 0 0 1 117.07 149.45"/>
-    <ellipse stroke="#3ab5ac" stroke-width="1.6" cx="103.4" cy="102.6" rx="75" ry="38.6" transform="rotate(-33 103.4 102.6)"/>
-  </g>
-  <path fill="#f0b862" d="M134.56 68.95A20.5 20.5 0 0 1 139.92 107.1A22.6 22.6 0 0 0 134.56 68.95Z"/>
-  <g>
-    <path fill="#f2b53b" d="M101.2 6L101.2 100L84.66 100Z"/><path fill="#d0901f" d="M101.2 6L101.2 100L117.74 100Z"/>
-    <path fill="#f2b53b" d="M101.2 194.5L101.2 100L117.83 100Z"/><path fill="#d0901f" d="M101.2 194.5L101.2 100L84.57 100Z"/>
-    <path fill="#f2b53b" d="M199.7 100L101.2 100L101.2 96Z"/><path fill="#d0901f" d="M199.7 100L101.2 100L101.2 104Z"/>
-    <path fill="#f2b53b" d="M2.7 100L101.2 100L101.2 104Z"/><path fill="#d0901f" d="M2.7 100L101.2 100L101.2 96Z"/>
-    <path fill="#f2b53b" d="M48.44 52.49L101.2 100L92.5 109.66Z"/><path fill="#d0901f" d="M48.44 52.49L101.2 100L109.9 90.34Z"/>
-    <path fill="#f2b53b" d="M154.33 147.84L101.2 100L109.9 90.34Z"/><path fill="#d0901f" d="M154.33 147.84L101.2 100L92.5 109.66Z"/>
-  </g>
-  <circle cx="139.9" cy="47.1" r="2.6" fill="#f4e3bd"/>
-  <circle cx="164.2" cy="59.6" r="2.9" fill="#f4e3bd"/>
-  <circle cx="47.6" cy="149.3" r="4.7" fill="#e2573f"/>
-  <path fill="#f2b53b" d="M71 40Q71 44 75 44Q71 44 71 48Q71 44 67 44Q71 44 71 40Z"/>
-  <path fill="#f2b53b" d="M129 153Q129 157 133 157Q129 157 129 161Q129 157 125 157Q129 157 129 153Z"/>
-  <!-- A navy layer behind each word and its lines hides the star, orbits and crescent there. -->
-  <g fill="#0d1222">
-    <g transform="translate(55.2 96.1) rotate(-14.6)"><path d="M-3.15 2.41L4.08 -17.45L23.27 -18.12L63.67 -18.07L79.77 -18.04L72.54 1.82L55.75 2.41Z"/><g transform="rotate(1 -3.4 -5) skewX(-20)"><rect x="-38.9" y="-16.6" width="37" height="5.4"/><rect x="-38.9" y="-11.8" width="37" height="5.4"/><rect x="-33.9" y="-7" width="32" height="5.4"/><rect x="-28.9" y="-2.2" width="27" height="5.4"/></g></g>
-    <g transform="translate(87.3 110.8) rotate(-14.6)"><path d="M-3.15 2.41L4.08 -17.45L22.67 -18.1L40.47 -18.1L33.24 1.77L14.75 2.41Z"/><g transform="rotate(1 -3.4 -5) skewX(-20)"><rect x="-51.9" y="-16.6" width="50" height="5.4"/><rect x="-48.9" y="-11.8" width="47" height="5.4"/><rect x="-42.9" y="-7" width="41" height="5.4"/><rect x="-37.9" y="-2.2" width="36" height="5.4"/></g></g>
-    <g transform="translate(91.8 131.4) rotate(-14.6)"><path d="M-3.15 2.41L4.08 -17.45L22.67 -18.1L90.77 -18.1L83.54 1.76L64.95 2.41Z"/><g transform="rotate(1 -3.4 -5) skewX(-20)"><rect x="-40.9" y="-16.6" width="39" height="5.4"/><rect x="-37.9" y="-11.8" width="36" height="5.4"/><rect x="-33.9" y="-7" width="32" height="5.4"/><rect x="-29.9" y="-2.2" width="28" height="5.4"/></g></g>
-    <path d="M52.76 99.23L54.75 78.18L73.15 72.7L112.26 62.56L127.85 58.53L141.22 99.85L139.23 120.9L122.26 125.96L106.68 130.01L89.36 134.53Z"/>
-  </g>
-  <!-- Speed lines -->
-  <g>
-      <!-- HEIRS -->
-      <g transform="translate(55.2 96.1) rotate(-14.6) rotate(1 -3.4 -5) skewX(-20)">
+  <!-- Suspension ring and throne -->
+  <circle cx="100" cy="-6.6" r="5.4" fill="none" stroke="#f0b862" stroke-width="2.4"/>
+  <path fill="#f0b862" d="M83.5 15.09C88.5 12.49 93.6 10.6 93.6 5.6A6.4 6.4 0 0 1 106.4 5.6C106.4 10.6 111.5 12.49 116.5 15.09A86.5 86.5 0 0 0 83.5 15.09Z"/>
+  <g transform="translate(100 100) scale(0.86) translate(-100 -100)">
+    <g fill="none" stroke-linecap="round">
+      <path stroke="#3ab5ac" stroke-width="1.6" d="M57.89 70.92A52 52 0 0 1 84.93 50.55"/>
+      <path stroke="#f0b862" stroke-width="2.2" d="M63.69 76.68A44 44 0 0 1 85.95 58.65"/>
+      <path stroke="#f0b862" stroke-width="2.2" d="M138.31 123.32A44 44 0 0 1 116.05 141.35"/>
+      <path stroke="#3ab5ac" stroke-width="1.6" d="M143.07 130.56A52 52 0 0 1 117.07 149.45"/>
+      <ellipse stroke="#3ab5ac" stroke-width="1.6" cx="103.4" cy="102.6" rx="75" ry="38.6" transform="rotate(-33 103.4 102.6)"/>
+    </g>
+    <path fill="#f0b862" d="M134.56 68.95A20.5 20.5 0 0 1 139.92 107.1A22.6 22.6 0 0 0 134.56 68.95Z"/>
+    <!-- Compass star: each cardinal point ends on the rim's inner edge. -->
+    <g>
+      <path fill="#f2b53b" d="M101.2 11.17L101.2 100L84.7 100Z"/><path fill="#d0901f" d="M101.2 11.17L101.2 100L117.7 100Z"/>
+      <path fill="#f2b53b" d="M101.2 188.83L101.2 100L117.7 100Z"/><path fill="#d0901f" d="M101.2 188.83L101.2 100L84.7 100Z"/>
+      <path fill="#f2b53b" d="M188.84 100L101.2 100L101.2 96Z"/><path fill="#d0901f" d="M188.84 100L101.2 100L101.2 104Z"/>
+      <path fill="#f2b53b" d="M11.16 100L101.2 100L101.2 104Z"/><path fill="#d0901f" d="M11.16 100L101.2 100L101.2 96Z"/>
+      <path fill="#f2b53b" d="M48.44 52.49L101.2 100L92.5 109.66Z"/><path fill="#d0901f" d="M48.44 52.49L101.2 100L109.9 90.34Z"/>
+      <path fill="#f2b53b" d="M154.33 147.84L101.2 100L109.9 90.34Z"/><path fill="#d0901f" d="M154.33 147.84L101.2 100L92.5 109.66Z"/>
+    </g>
+    <circle cx="139.9" cy="47.1" r="2.6" fill="#f4e3bd"/>
+    <circle cx="164.2" cy="59.6" r="2.9" fill="#f4e3bd"/>
+    <circle cx="47.6" cy="149.3" r="4.7" fill="#e2573f"/>
+    <path fill="#f2b53b" d="M71 40Q71 44 75 44Q71 44 71 48Q71 44 67 44Q71 44 71 40Z"/>
+    <path fill="#f2b53b" d="M129 153Q129 157 133 157Q129 157 129 161Q129 157 125 157Q129 157 129 153Z"/>
+    <!-- A navy layer behind each word and its lines hides the star, orbits and crescent there. -->
+    <g fill="#0d1222">
+      <g transform="translate(55.2 96.1) rotate(-14.6)"><path d="M-3.15 2.41L4.08 -17.45L23.27 -18.12L63.67 -18.07L79.77 -18.04L72.54 1.82L55.75 2.41Z"/><g transform="rotate(1 -3.4 -5) skewX(-20)"><rect x="-38.9" y="-16.6" width="37" height="5.4"/><rect x="-38.9" y="-11.8" width="37" height="5.4"/><rect x="-33.9" y="-7" width="32" height="5.4"/><rect x="-28.9" y="-2.2" width="27" height="5.4"/></g></g>
+      <g transform="translate(87.3 110.8) rotate(-14.6)"><path d="M-3.15 2.41L4.08 -17.45L22.67 -18.1L40.47 -18.1L33.24 1.77L14.75 2.41Z"/><g transform="rotate(1 -3.4 -5) skewX(-20)"><rect x="-51.9" y="-16.6" width="50" height="5.4"/><rect x="-48.9" y="-11.8" width="47" height="5.4"/><rect x="-42.9" y="-7" width="41" height="5.4"/><rect x="-37.9" y="-2.2" width="36" height="5.4"/></g></g>
+      <g transform="translate(91.8 131.4) rotate(-14.6)"><path d="M-3.15 2.41L4.08 -17.45L22.67 -18.1L90.77 -18.1L83.54 1.76L64.95 2.41Z"/><g transform="rotate(1 -3.4 -5) skewX(-20)"><rect x="-40.9" y="-16.6" width="39" height="5.4"/><rect x="-37.9" y="-11.8" width="36" height="5.4"/><rect x="-33.9" y="-7" width="32" height="5.4"/><rect x="-29.9" y="-2.2" width="28" height="5.4"/></g></g>
+      <path d="M52.76 99.23L54.75 78.18L73.15 72.7L112.26 62.56L127.85 58.53L141.22 99.85L139.23 120.9L122.26 125.96L106.68 130.01L89.36 134.53Z"/>
+    </g>
+    <!-- Speed lines -->
+    <g>
+        <!-- HEIRS -->
+        <g transform="translate(55.2 96.1) rotate(-14.6) rotate(1 -3.4 -5) skewX(-20)">
         <rect fill="#e9a23b" x="-37.4" y="-15.1" width="34" height="2.4"/>
         <rect fill="#ff6f59" x="-37.4" y="-10.3" width="34" height="2.4"/>
         <rect fill="#7fd6b5" x="-32.4" y="-5.5" width="29" height="2.4"/>
         <rect fill="#5fc9d8" x="-27.4" y="-0.7" width="24" height="2.4"/>
       </g>
-      <!-- AD -->
-      <g transform="translate(87.3 110.8) rotate(-14.6) rotate(1 -3.4 -5) skewX(-20)">
+        <!-- AD -->
+        <g transform="translate(87.3 110.8) rotate(-14.6) rotate(1 -3.4 -5) skewX(-20)">
         <rect fill="#e9a23b" x="-50.4" y="-15.1" width="47" height="2.4"/>
         <rect fill="#ff6f59" x="-47.4" y="-10.3" width="44" height="2.4"/>
         <rect fill="#7fd6b5" x="-41.4" y="-5.5" width="38" height="2.4"/>
         <rect fill="#5fc9d8" x="-36.4" y="-0.7" width="33" height="2.4"/>
       </g>
-      <!-- ASTRA -->
-      <g transform="translate(91.8 131.4) rotate(-14.6) rotate(1 -3.4 -5) skewX(-20)">
+        <!-- ASTRA -->
+        <g transform="translate(91.8 131.4) rotate(-14.6) rotate(1 -3.4 -5) skewX(-20)">
         <rect fill="#e9a23b" x="-39.4" y="-15.1" width="36" height="2.4"/>
         <rect fill="#ff6f59" x="-36.4" y="-10.3" width="33" height="2.4"/>
         <rect fill="#7fd6b5" x="-32.4" y="-5.5" width="29" height="2.4"/>
         <rect fill="#5fc9d8" x="-28.4" y="-0.7" width="25" height="2.4"/>
       </g>
-  </g>
-  <!-- Lettering, drawn as strokes so it needs no font -->
-  <g fill="none" stroke="#f7e9cc" stroke-width="3.2">
-    <g transform="translate(55.2 96.1) rotate(-14.6)"><path transform="translate(0) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 0V15M13 0V15M1.6 7.5H13"/><path transform="translate(18.5) rotate(-2) skewX(-22) translate(0 -15)" d="M12.3 1.6H1.6V13.4H12.3M1.6 7.5H11"/><path transform="translate(34.7) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 0V15"/><path transform="translate(41.8) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 15V1.6H8.3A3.3 3.3 0 0 1 8.3 8.2H1.6M7.1 8.2L11.6 15"/><path transform="translate(58.9) rotate(-2) skewX(-22) translate(0 -15)" d="M12 1.6H4.55A2.95 2.95 0 0 0 4.55 7.5H7.65A2.95 2.95 0 0 1 7.65 13.4H0.2"/></g>
-    <g transform="translate(87.3 110.8) rotate(-14.6)"><path transform="translate(0) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 15C1.6 6.7 5.88 1.6 9.8 1.6A2.6 2.6 0 0 1 12.4 4.2V15M2 9.9H12.4"/><path transform="translate(17.9) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 1.6H7.7A4.6 4.6 0 0 1 12.3 6.2V8.8A4.6 4.6 0 0 1 7.7 13.4H1.6Z"/></g>
-    <g transform="translate(91.8 131.4) rotate(-14.6)"><path transform="translate(0) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 15C1.6 6.7 5.88 1.6 9.8 1.6A2.6 2.6 0 0 1 12.4 4.2V15M2 9.9H12.4"/><path transform="translate(17.9) rotate(-2) skewX(-22) translate(0 -15)" d="M12 1.6H4.55A2.95 2.95 0 0 0 4.55 7.5H7.65A2.95 2.95 0 0 1 7.65 13.4H0.2"/><path transform="translate(34) rotate(-2) skewX(-22) translate(0 -15)" d="M0 1.6H13.1M6.55 1.6V15"/><path transform="translate(51) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 15V1.6H8.3A3.3 3.3 0 0 1 8.3 8.2H1.6M7.1 8.2L11.6 15"/><path transform="translate(68.1) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 15C1.6 6.7 5.88 1.6 9.8 1.6A2.6 2.6 0 0 1 12.4 4.2V15M2 9.9H12.4"/></g>
+    </g>
+    <!-- Lettering, drawn as strokes so it needs no font -->
+    <g fill="none" stroke="#f7e9cc" stroke-width="3.2">
+      <g transform="translate(55.2 96.1) rotate(-14.6)"><path transform="translate(0) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 0V15M13 0V15M1.6 7.5H13"/><path transform="translate(18.5) rotate(-2) skewX(-22) translate(0 -15)" d="M12.3 1.6H1.6V13.4H12.3M1.6 7.5H11"/><path transform="translate(34.7) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 0V15"/><path transform="translate(41.8) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 15V1.6H8.3A3.3 3.3 0 0 1 8.3 8.2H1.6M7.1 8.2L11.6 15"/><path transform="translate(58.9) rotate(-2) skewX(-22) translate(0 -15)" d="M12 1.6H4.55A2.95 2.95 0 0 0 4.55 7.5H7.65A2.95 2.95 0 0 1 7.65 13.4H0.2"/></g>
+      <g transform="translate(87.3 110.8) rotate(-14.6)"><path transform="translate(0) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 15C1.6 6.7 5.88 1.6 9.8 1.6A2.6 2.6 0 0 1 12.4 4.2V15M2 9.9H12.4"/><path transform="translate(17.9) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 1.6H7.7A4.6 4.6 0 0 1 12.3 6.2V8.8A4.6 4.6 0 0 1 7.7 13.4H1.6Z"/></g>
+      <g transform="translate(91.8 131.4) rotate(-14.6)"><path transform="translate(0) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 15C1.6 6.7 5.88 1.6 9.8 1.6A2.6 2.6 0 0 1 12.4 4.2V15M2 9.9H12.4"/><path transform="translate(17.9) rotate(-2) skewX(-22) translate(0 -15)" d="M12 1.6H4.55A2.95 2.95 0 0 0 4.55 7.5H7.65A2.95 2.95 0 0 1 7.65 13.4H0.2"/><path transform="translate(34) rotate(-2) skewX(-22) translate(0 -15)" d="M0 1.6H13.1M6.55 1.6V15"/><path transform="translate(51) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 15V1.6H8.3A3.3 3.3 0 0 1 8.3 8.2H1.6M7.1 8.2L11.6 15"/><path transform="translate(68.1) rotate(-2) skewX(-22) translate(0 -15)" d="M1.6 15C1.6 6.7 5.88 1.6 9.8 1.6A2.6 2.6 0 0 1 12.4 4.2V15M2 9.9H12.4"/></g>
+    </g>
   </g>
 </svg>

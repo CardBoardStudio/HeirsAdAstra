@@ -3,13 +3,24 @@
   <!-- Small-size emblem. Speed lines: one per resource, in the game's order (matter, energy,
        biomass, data); colours are the matter, energy, biomass and data custom
        properties in prototypes/galactic-reach/styles.css. -->
+  
   <circle cx="100" cy="100" r="99" fill="#0d1222"/>
-  <circle cx="100" cy="100" r="86" fill="none" stroke="#f0b862" stroke-width="10"/>
+  <circle cx="100" cy="100" r="88" fill="none" stroke="#f0b862" stroke-width="12"/>
+  <g stroke="#f0b862" stroke-width="6">
+    <line x1="161.49" y1="135.5" x2="170.15" y2="140.5"/>
+    <line x1="135.5" y1="161.49" x2="140.5" y2="170.15"/>
+    <line x1="64.5" y1="161.49" x2="59.5" y2="170.15"/>
+    <line x1="38.51" y1="135.5" x2="29.85" y2="140.5"/>
+    <line x1="38.51" y1="64.5" x2="29.85" y2="59.5"/>
+    <line x1="64.5" y1="38.51" x2="59.5" y2="29.85"/>
+    <line x1="135.5" y1="38.51" x2="140.5" y2="29.85"/>
+    <line x1="161.49" y1="64.5" x2="170.15" y2="59.5"/>
+  </g>
   <g>
-    <path fill="#f2b53b" d="M100 3L100 100L91 100Z"/><path fill="#d0901f" d="M100 3L100 100L109 100Z"/>
-    <path fill="#f2b53b" d="M100 197L100 100L109 100Z"/><path fill="#d0901f" d="M100 197L100 100L91 100Z"/>
-    <path fill="#f2b53b" d="M197 100L100 100L100 94Z"/><path fill="#d0901f" d="M197 100L100 100L100 106Z"/>
-    <path fill="#f2b53b" d="M3 100L100 100L100 106Z"/><path fill="#d0901f" d="M3 100L100 100L100 94Z"/>
+    <path fill="#f2b53b" d="M100 20L100 100L91 100Z"/><path fill="#d0901f" d="M100 20L100 100L109 100Z"/>
+    <path fill="#f2b53b" d="M100 180L100 100L109 100Z"/><path fill="#d0901f" d="M100 180L100 100L91 100Z"/>
+    <path fill="#f2b53b" d="M180 100L100 100L100 94Z"/><path fill="#d0901f" d="M180 100L100 100L100 106Z"/>
+    <path fill="#f2b53b" d="M20 100L100 100L100 106Z"/><path fill="#d0901f" d="M20 100L100 100L100 94Z"/>
   </g>
   <g transform="translate(100 100) rotate(-10) skewX(-14)">
     <!-- A navy layer behind the lines hides the star there. -->
