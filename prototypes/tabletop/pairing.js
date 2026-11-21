@@ -28,13 +28,17 @@
   }
 
   // Small pictures of each way to use a device: a phone held sideways with cards,
-  // the same phone with the map above the cards, and a screen showing the map.
+  // the same phone with the map above the cards, and a screen showing the map. The
+  // map is the game's: open space with the four resources' tiles scattered through it.
   const SVG = 'http://www.w3.org/2000/svg';
+  const TILES = ['matter', '', 'biomass', 'energy', '', 'data', ''];
   function hexes(group, ox, oy, r, cols, rows) {
     for (let row = 0; row < rows; row++) for (let c = 0; c < cols; c++) {
       const x = ox + c * r * 1.5, y = oy + row * r * 1.732 + (c % 2 ? r * 0.866 : 0);
       const hex = document.createElementNS(SVG, 'polygon');
       hex.setAttribute('points', [0, 60, 120, 180, 240, 300].map(a => `${(x + r * Math.cos(a * Math.PI / 180)).toFixed(1)},${(y + r * Math.sin(a * Math.PI / 180)).toFixed(1)}`).join(' '));
+      const tile = TILES[(c * 3 + row * 5) % TILES.length];
+      if (tile) hex.classList.add(tile);
       group.append(hex);
     }
   }
