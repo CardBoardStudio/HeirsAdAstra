@@ -54,6 +54,7 @@ jobs:
       - run: node --check prototypes/galactic-reach/app.js
       - run: node scripts/test-galactic-reach.cjs
       - run: node scripts/check-card-gallery.cjs
+      - run: node scripts/check-emblem.cjs
       - run: node scripts/check-relic-interface.cjs
       - name: Max UI controls and card banks
         run: node scripts/check-max-ui.cjs
