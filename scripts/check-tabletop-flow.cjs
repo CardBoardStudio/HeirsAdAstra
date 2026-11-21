@@ -18,15 +18,13 @@ async function wait(browser,expression){await browser.evaluate(`new Promise((res
     await phone.navigate(invite.url);
     await wait(phone,"!document.querySelector('#join').hidden");
     await phone.evaluate(`document.querySelector('#name').value='Phone guest';document.querySelector('#join').requestSubmit()`);
-    await wait(phone,"document.querySelector('#status').textContent.includes('host approval')");
+    await wait(phone,"document.querySelector('#status').textContent.includes('Waiting for your host')");
     const {data:requests}=await api(`/api/tabletop/${id}/requests`,host);
     assert.equal(requests.requests.length,1);
     await api(`/api/tabletop/${id}/approve`,host,{participant:requests.requests[0].participant,approve:true});
-    await wait(phone,"document.querySelector('#status').textContent.includes('Approved')");
+    await wait(phone,"document.querySelector('#status').textContent.includes('You’re in')");
     await api(`/api/tables/${id}/lobby/start`,host,{});
-    // The player explicitly opens their complete game on this device.
-    await wait(phone,"!document.querySelector('#play').hidden");
-    await phone.evaluate("document.querySelector('#play').click()");
+    // Start opens the approved player automatically.
     for(let i=0;i<100;i++){
       const url=await phone.evaluate('location.pathname');if(url.includes('/client/'))break;
       await new Promise(resolve=>setTimeout(resolve,100));

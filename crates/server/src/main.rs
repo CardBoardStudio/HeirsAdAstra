@@ -593,6 +593,7 @@ fn router(app: App) -> Router {
         .route("/api/tabletop/{id}/requests", get(tabletop::requests))
         .route("/api/tabletop/{id}/approve", post(tabletop::approve))
         .route("/api/tabletop/{id}/join", post(tabletop::join))
+        .route("/api/tabletop/{id}/invite-details", post(tabletop::invite_details))
         .route("/api/tabletop/{id}/seat", get(tabletop::seat))
         .route("/api/tabletop/{id}/act", post(tabletop::act))
         .route("/api/tabletop/{id}/undo", post(tabletop::undo))
