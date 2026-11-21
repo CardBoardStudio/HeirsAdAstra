@@ -6009,13 +6009,152 @@ function createGalacticReach(options = {}) {
     document.addEventListener('keydown', event => { if (event.key === 'Escape' && !sheet.hidden) close(); });
   }
   function followTurnWithDrawer() {
-    if (!phoneLayout() || replayMode) return;
     const key = `${state.round}:${state.phase}:${state.activePlayer}`;
-    if (key === drawerPhase) return;
-    drawerPhase = key;
-    if (state.activePlayer !== ME) return;
-    if (state.phase === 'buy') setDrawer('supply');
-    else if (state.phase === 'operations') setDrawer('hand');
+    if (phoneLayout() && !replayMode && key !== drawerPhase) {
+      drawerPhase = key;
+      if (state.activePlayer === ME && state.phase === 'operations') setDrawer('hand');
+    }
+    // Choosing a relic for Excavate needs the relics on screen.
+    needMarket('excavate', !replayMode && state.phase === 'operations' && state.activePlayer === ME && state.actionMode === 'excavate' ? 'relics' : null);
+    showMarket();
+  }
+
+  // The market drawer (rules #shared-board). The supply (the relics, the market and the Upgrades)
+  // is closed by default and the map takes its room; the Market handle on the table's right edge
+  // opens it as the side panel and closes it again, and that choice stays until you change it. Your
+  // Buy turn brings the market forward as whole cards over the map (Smaller and the handle still
+  // shrink or close it), and when the turn ends it is back as you left it. A task outside your Buy
+  // turn that needs the supply (choosing a relic for Excavate, a note about a supply card) opens
+  // it while the task lasts, unless you close it yourself. On a phone the same rules move the
+  // Supply drawer.
+  const MARKET_VIEWS = ['closed', 'side', 'full'], MARKET_PREF = 'galactic-reach-market-view', MARKET_MOVE_MS = 200;
+  let marketPref = 'closed', marketBuyKey = null, marketBuyView = null, marketShown = null, marketColumn = 'closed', marketStep = 0;
+  let phoneMarket = null, phoneMarketFrom = '';
+  const marketNeeds = new Map(), marketDeclined = new Set();
+  if (!headless && typeof window !== 'undefined') try { const saved = window.localStorage?.getItem(MARKET_PREF); if (MARKET_VIEWS.includes(saved)) marketPref = saved; } catch { /* storage blocked: closed */ }
+  const marketDrawerOn = () => !headless && typeof window !== 'undefined' && !!document.documentElement?.classList && tableLayout()
+    && !!window.matchMedia?.('(orientation: landscape)').matches && !document.body.classList.contains('background-stars');
+  const myBuyTurn = () => !replayMode && state.winner === null && state.phase === 'buy' && state.activePlayer === ME;
+  // need: 'relics' (only the side panel shows the relics), 'market' (any open view) or null (done).
+  function needMarket(reason, need) {
+    if (!need) { if (marketNeeds.delete(reason) | marketDeclined.delete(reason)) showMarket(); return; }
+    if (marketDeclined.has(reason) || marketNeeds.get(reason) === need) return;
+    marketNeeds.set(reason, need);
+    showMarket();
+  }
+  function marketTarget() {
+    const key = myBuyTurn() ? `${state.round}` : null;
+    if (key !== marketBuyKey) { marketBuyKey = key; marketBuyView = key ? 'full' : null; }
+    const view = key ? marketBuyView : marketPref, needs = [...marketNeeds.values()];
+    if (needs.includes('relics')) return 'side';
+    return needs.includes('market') && view === 'closed' ? 'side' : view;
+  }
+  // The player's own choice: it outranks any task's need until that task is over.
+  function chooseMarketView(view) {
+    for (const reason of marketNeeds.keys()) marketDeclined.add(reason);
+    marketNeeds.clear();
+    if (marketBuyKey) marketBuyView = view;
+    else { marketPref = view; try { window.localStorage?.setItem(MARKET_PREF, view); } catch { /* not kept */ } }
+    showMarket();
+  }
+  function labelMarketHandles(view) {
+    const handle = $('#market-handle'), size = $('#market-size');
+    if (!handle?.setAttribute || !size) return;
+    const open = view !== 'closed';
+    handle.setAttribute('aria-expanded', String(open));
+    handle.setAttribute('aria-label', open ? 'Close the market' : 'Open the market');
+    handle.title = open ? 'Close the market' : marketBuyKey ? 'Open the market: your Buy turn' : 'Open the market';
+    handle.dataset.buying = String(Boolean(marketBuyKey));
+    size.hidden = !open;
+    size.firstElementChild.textContent = view === 'full' ? 'Smaller' : 'Larger';
+    size.setAttribute('aria-label', view === 'full' ? 'Smaller market: the side panel' : 'Larger market: whole cards');
+  }
+  function refitMarketTable() { supplyExtra = 0; fitMarket(); stackLeft(); fitMap(); balanceSupply(); settleFit(); }
+  function showMarket() {
+    if (typeof document === 'undefined' || !document.documentElement?.classList || !document.body?.classList) return;
+    if (phoneLayout()) followMarketOnPhone();
+    const root = document.documentElement, handles = $('#market-handles');
+    if (!marketDrawerOn()) {
+      if (handles) handles.hidden = true;
+      if (!root.classList.contains('market-drawer')) return;
+      clearTimeout(marketStep);
+      root.classList.remove('market-drawer', 'market-closed', 'market-side', 'market-full', 'market-in', 'market-out', 'market-moving', 'market-no-column');
+      marketShown = null; marketColumn = 'closed';
+      refitMarketTable();
+      return;
+    }
+    root.classList.add('market-drawer');
+    if (handles) handles.hidden = false;
+    const view = marketTarget();
+    labelMarketHandles(view);
+    if (view === marketShown) return;
+    const from = marketShown;
+    marketShown = view;
+    clearTimeout(marketStep);
+    root.classList.remove('market-in', 'market-out');
+    // The whole cards lie over the map, so the column under them (and the map) stays as it was.
+    const place = next => {
+      root.classList.remove('market-closed', 'market-side', 'market-full');
+      root.classList.add(`market-${next}`);
+      if (next !== 'full') marketColumn = next;
+      root.classList.toggle('market-no-column', marketColumn === 'closed');
+      refitMarketTable();
+    };
+    // Notes and the guide wait for this: nothing on the table is placed against a moving panel.
+    const settled = () => { root.classList.remove('market-moving', 'market-in', 'market-out'); window.dispatchEvent(new Event('gr-market-settled')); };
+    const still = from === null || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    root.classList.add('market-moving');
+    if (still) { place(view); requestAnimationFrame(() => requestAnimationFrame(settled)); return; }
+    if (view === 'closed') {
+      // Roll it back to the edge first (from the clip it has while moving); the column closes, and
+      // the map re-fits, once it has gone.
+      void root.offsetWidth;
+      requestAnimationFrame(() => root.classList.add('market-out'));
+      marketStep = setTimeout(() => { place(view); requestAnimationFrame(() => requestAnimationFrame(settled)); }, MARKET_MOVE_MS + 34);
+      return;
+    }
+    place(view);
+    root.classList.add('market-in');
+    void root.offsetWidth;
+    requestAnimationFrame(() => root.classList.remove('market-in'));
+    marketStep = setTimeout(settled, MARKET_MOVE_MS + 34);
+  }
+  // Phones: your Buy turn opens the Supply drawer on the market and its end returns the drawer you
+  // had; a task that needs the supply opens it the same way.
+  function followMarketOnPhone() {
+    if (replayMode) return;
+    const needs = [...marketNeeds.values()], want = myBuyTurn() ? 'buy' : needs.length ? needs.includes('relics') ? 'relics' : 'market' : null;
+    if (want === phoneMarket) return;
+    const was = phoneMarket;
+    phoneMarket = want;
+    if (want) {
+      if (!was) phoneMarketFrom = document.body.dataset.drawer || '';
+      setDrawer('supply');
+      switchTab(want === 'relics' ? 'relics' : 'market');
+    } else if (document.body.dataset.drawer === 'supply') setDrawer(phoneMarketFrom);
+  }
+  function setupMarketDrawer() {
+    const handle = $('#market-handle'), size = $('#market-size');
+    if (!handle?.addEventListener || !size?.addEventListener || typeof document === 'undefined') return;
+    handle.addEventListener('click', () => chooseMarketView(marketShown === 'closed' ? (marketBuyKey ? 'full' : 'side') : 'closed'));
+    size.addEventListener('click', () => chooseMarketView(marketShown === 'full' ? 'side' : 'full'));
+    // Escape from inside the open market (or on its handles) closes it and returns to the handle.
+    document.addEventListener('keydown', event => {
+      if (event.key !== 'Escape' || !marketShown || marketShown === 'closed' || document.querySelector?.('dialog[open]')) return;
+      if (!event.target?.closest?.('#relics-panel, #market-panel, #upgrade-group, #market-handles')) return;
+      chooseMarketView('closed'); handle.focus?.();
+    });
+    // On a phone, choosing another drawer is the player's own choice too.
+    $$('.phone-drawers [data-drawer]').forEach(button => button.addEventListener('click', () => {
+      if (!phoneMarket || button.dataset.drawer === 'supply') return;
+      for (const reason of marketNeeds.keys()) marketDeclined.add(reason);
+      marketNeeds.clear();
+      phoneMarket = myBuyTurn() ? 'buy' : null;
+    }));
+    window.addEventListener('resize', () => { mapFitFor = null; showMarket(); });
+    globalThis.galacticReachMarket = { need: needMarket, view: () => marketShown };
+    // A card design whose picture is missing shows its text in the picture's place.
+    document.addEventListener('error', event => { if (event.target?.matches?.('img.card-picture')) event.target.parentElement?.classList.remove('has-picture'); }, true);
   }
   const renderErrors = [];
   function drawEach(parts) {
@@ -6078,12 +6217,16 @@ function createGalacticReach(options = {}) {
   // Hex positions scale with the map's width, so they are measured once and the largest width
   // that clears every corner piece is found by scanning down from the largest.
   let fitMapLog = null;
-  let fitMapFrom = 0;
+  let fitMapFrom = 0, mapFitFor = null;
   function fitMap() {
     if (typeof document === 'undefined' || !document.documentElement?.style) return;
     const root = document.documentElement, region = $('.board-map-region'), board = $('#galaxy-board');
     const landscape = tableLayout() && (window.matchMedia?.('(orientation: landscape)').matches || document.body.classList.contains('background-stars')) && !$('.board-stage.map-zoomed');
     if (!landscape || !region?.getBoundingClientRect || !board) { ['--map-w', '--map-top'].forEach(name => root.style.removeProperty(name)); return; }
+    // The market's whole cards lie over the map: it keeps the place it has beside the column under
+    // them (see showMarket), fitted once for that column and again after a resize.
+    const sheet = root.classList.contains('market-drawer') && root.classList.contains('market-full');
+    if (sheet && mapFitFor === marketColumn) return;
     const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1;
     const box = region.getBoundingClientRect(), b = board.getBoundingClientRect();
     if (!b.width || !box.width) return;
@@ -6101,25 +6244,29 @@ function createGalacticReach(options = {}) {
     // The bottom band's pieces too: the map reaches down between your hand, piles, buttons and mat.
     const band = [...document.querySelectorAll('#hand-row, .pile-stats > button[id], #resource-grid, #hand-panel .hand-tools > :not([hidden]), .table-menu-button')].map(e => rect(e));
     // The race line and its goal stick out past the track's box on the right (the counts sit before them).
-    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('#max-bank-nav')), rect($('.map-tools')), rect($('#map-legend-corner')), ...band].filter(Boolean);
-    const clear = (width, top) => {
-      const left = document.body.classList.contains('background-stars') ? box.left + (box.width - width) / 2 : box.right - width;
-      return hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
-    };
+    const blocks = [track, rect($('.standings-stats'), [0, 4, 6, 5]), rect($('.prestige-line'), [0, 4, 6, 5]), rect($('.prestige-track-goal'), [0, 4, 6, 5]), log, rect($('.phase-stepper')), rect($('#max-bank-nav')), rect($('.map-tools')), rect($('#map-legend-corner')), sheet ? null : rect($('#market-handles')), ...band].filter(Boolean);
+    const clear = (width, top, left) => hexes.every(([l, t, r, bottom]) => blocks.every(([bl, bt, br, bb]) => left + r * width <= bl - gap || left + l * width >= br + gap || top + bottom * width <= bt - gap || top + t * width >= bb + gap));
     // The map lies against the supply. A map shorter than its space may also slide up or down
-    // (centred first) so its empty corners take the panels above and below.
+    // (centred first) so its empty corners take the panels above and below. With the market
+    // closed (see showMarket) it is centred, or as near the middle as its corners allow.
+    const centred = document.body.classList.contains('background-stars'), closed = root.classList.contains('market-drawer') && marketColumn === 'closed';
     const fits = width => {
       const slack = box.height - width * ratio, tops = [slack / 2, ...Array.from({ length: 33 }, (_, i) => slack * i / 32)];
-      return tops.find(dy => clear(width, box.top + dy));
+      const side = box.width - width, lefts = closed ? Array.from({ length: 33 }, (_, i) => box.left + side / 2 + (i % 2 ? 1 : -1) * side / 2 * Math.ceil(i / 2) / 16) : [centred ? box.left + side / 2 : box.right - width];
+      for (const left of lefts) { const dy = tops.find(dy => clear(width, box.top + dy, left)); if (dy !== undefined) return { dy, dx: left - box.left }; }
+      return undefined;
     };
     // Hexes are discrete, so a corner piece can clear a larger map and touch a smaller one: scan
     // down from the largest size in 1% steps and take the first that fits.
     const high = Math.min(box.width, box.height / ratio);
     const width = Array.from({ length: 61 }, (_, step) => high * (1 - step / 100)).find(w => fits(w) !== undefined);
-    if (!width) { ['--map-w', '--map-top'].forEach(name => root.style.removeProperty(name)); return; }
+    if (!width) { ['--map-w', '--map-top', '--map-left'].forEach(name => root.style.removeProperty(name)); return; }
+    const place = fits(width);
     root.style.setProperty('--map-w', `${Math.floor(width / zoom)}px`);
-    root.style.setProperty('--map-top', `${Math.floor(fits(width) / zoom)}px`);
+    root.style.setProperty('--map-top', `${Math.floor(place.dy / zoom)}px`);
+    if (closed) root.style.setProperty('--map-left', `${Math.floor(place.dx / zoom)}px`); else root.style.removeProperty('--map-left');
     fitMapFrom = b.width;
+    mapFitFor = marketColumn;
   }
 
   // On the table the supply is six rows of three cards, all one size: the relics, the market's
@@ -6136,6 +6283,7 @@ function createGalacticReach(options = {}) {
   let supplyExtra = 0, supplyRoom = 0;
   function balanceSupply() {
     if (typeof window === 'undefined' || !document.documentElement?.style || !tableLayout() || !window.matchMedia?.('(orientation: landscape)').matches || $('.board-stage.map-zoomed')) return;
+    if (document.documentElement.classList.contains('market-drawer') && (marketColumn !== 'side' || marketShown === 'full')) return;
     const board = $('#galaxy-board')?.getBoundingClientRect?.();
     if (!board?.width) return;
     const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
@@ -6160,11 +6308,33 @@ function createGalacticReach(options = {}) {
     if (height < 200) return;
     const cardH = Math.floor((height - (SUPPLY_ROWS - 1) * CARD_GAP) / SUPPLY_ROWS), baseW = Math.max(Math.floor(cardH * 63 / 88), CARD_MIN_W, Math.ceil(CARD_TEXT_AREA / cardH));
     supplyRoom = Math.max(0, Math.floor(cardH * 1.5) - baseW);
-    supplyExtra = Math.min(supplyExtra, supplyRoom);
+    // The market drawer (see showMarket): closed, the supply has no column; its whole cards lie on
+    // a sheet over the map, and the column under the sheet keeps the width it had.
+    const drawer = root.classList.contains('market-drawer'), full = drawer && root.classList.contains('market-full');
+    if (!drawer || marketColumn === 'side') supplyExtra = Math.min(supplyExtra, supplyRoom); else supplyExtra = 0;
     const cardW = baseW + supplyExtra;
     root.style.setProperty('--card-h', `${cardH}px`);
     root.style.setProperty('--card-w', `${cardW}px`);
-    root.style.setProperty('--supply-w', `${cardW * 3 + CARD_GAP * 2}px`);
+    root.style.setProperty('--supply-w', drawer && marketColumn === 'closed' ? '0px' : `${cardW * 3 + CARD_GAP * 2}px`);
+    if (full) fitMarketSheet(box.width / zoom, height);
+  }
+  // The whole-card sheet: the market's three rows of three cards in real card proportions (63:88)
+  // as tall as the column allows, the Upgrades in two columns beside them; on a narrower table the
+  // cards shrink so the sheet leaves the left-hand column and a strip of the map uncovered.
+  const SHEET_PAD = 12, SHEET_SPLIT = 18, SHEET_GAP = 8, SHEET_MAP_MIN = 120;
+  function fitMarketSheet(tableW, height) {
+    const root = document.documentElement, shell = $('.app-shell'), style = getComputedStyle(shell);
+    const left = parseFloat(style.getPropertyValue('--left-w')) || 250, side = parseFloat(style.paddingRight) || 16, gapX = parseFloat(style.columnGap) || 14;
+    const room = tableW - 2 * side - left - gapX - SHEET_MAP_MIN;
+    let cardH = Math.floor((height - 2 * SHEET_PAD - 2 * SHEET_GAP) / 3), cardW = Math.floor(cardH * 63 / 88);
+    const widest = Math.floor((room - 2 * SHEET_PAD - SHEET_SPLIT - 3 * SHEET_GAP) / 5);
+    if (cardW > widest) { cardW = widest; cardH = Math.floor(cardW * 88 / 63); }
+    root.style.setProperty('--card-h', `${cardH}px`);
+    root.style.setProperty('--card-w', `${cardW}px`);
+    root.style.setProperty('--card-gap', `${SHEET_GAP}px`);
+    root.style.setProperty('--sheet-pad', `${SHEET_PAD}px`);
+    root.style.setProperty('--sheet-split', `${SHEET_SPLIT}px`);
+    root.style.setProperty('--sheet-w', `${5 * cardW + 3 * SHEET_GAP + SHEET_SPLIT + 2 * SHEET_PAD}px`);
   }
   // On a portrait table the market's three cost rows share the market panel's height (each row's
   // own height follows its cards, so the space is measured down to the panel's bottom).
@@ -6331,6 +6501,7 @@ function createGalacticReach(options = {}) {
     setupPhoneCardSheet();
     setupLogCard();
     setupTradeDrawer();
+    setupMarketDrawer();
     $('#bank-trade-form').addEventListener('submit',event => {
       event.preventDefault();
       bankTrade(ME,bankSelection.give,bankSelection.get);
@@ -6540,7 +6711,7 @@ function createGalacticReach(options = {}) {
     });
     // On a phone the map fills the screen and the rest of the table slides up in drawers.
     $$('.phone-drawers [data-drawer]').forEach(button=>button.addEventListener('click',()=>setDrawer(document.body.dataset.drawer===button.dataset.drawer?'':button.dataset.drawer)));
-    setDrawer('hand');
+    setDrawer(phoneMarket ? 'supply' : 'hand');
     // At the table the bank lies open at the foot of the comms feed; its heading is a label.
     const bankTools=$('#resource-tools'), bankLabel=bankTools?.querySelector('summary');
     if(bankTools&&bankLabel&&tableLayout()){bankTools.open=true;bankLabel.tabIndex=-1;bankLabel.addEventListener('click',event=>{if(tableLayout())event.preventDefault();});}

@@ -474,7 +474,7 @@
   const reducedMotion = () => Boolean(matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   const SVG = 'http://www.w3.org/2000/svg';
   // Parts of the table that carry text: a note avoids lying over them, preferring empty felt or the map.
-  const TEXTY = '.game-card, .panel, #fleet-glance, .log-panel, .relic-row, .resource-box, #prestige-track, .phase-stepper, .pile-stats > button, #map-legend-corner, .map-tools, .board-heading, .console-tab, #board-primary, #open-trade, #convert-all-button';
+  const TEXTY = '.game-card, .panel, #fleet-glance, .log-panel, .relic-row, .resource-box, #prestige-track, .phase-stepper, .pile-stats > button, #map-legend-corner, .map-tools, .board-heading, .console-tab, #board-primary, #open-trade, #market-handle, #convert-all-button';
   function ensureStage() {
     if (stage) return stage;
     stage = document.createElement('div');
@@ -553,7 +553,13 @@
     }
   }
 
+  // The market drawer (app.js showMarket) slides on the table's right edge. While it moves, notes,
+  // the arrow and the rings keep their places (a note never rides along with the panel); a note
+  // that has not been placed yet waits. They are placed once when it has settled.
+  const supplyMoving = () => document.documentElement.classList.contains('market-moving');
   function position(box, anchor) {
+    if (supplyMoving()) { if (box.dataset.placed !== lastKey) box.style.visibility = 'hidden'; return; }
+    box.style.visibility = ''; box.dataset.placed = lastKey;
     // Your own games' notes dock whenever the map key has room, decided again as the table settles.
     if (box.classList.contains('free') && !box.classList.contains('in-dialog')) box.classList.toggle('docked', Boolean(currentDock && dockRect()));
     positionBox(box, anchor); placePointer(anchor); drawStage();
@@ -632,7 +638,7 @@
     }
     // Of the sides that fit, prefer the one that hides least of what you may need next: the lit
     // hexes of an aimed order and an open Sector Scan.
-    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...extraAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden]), #resource-grid, #open-trade, #convert-all-button:not([hidden]), #prestige-track')].filter((el, i) => el && el !== box && (i === 0 || (el !== around && !around.contains(el)))).map(el => el.getBoundingClientRect());
+    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...extraAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden]), #resource-grid, #open-trade, #market-handle, #market-size:not([hidden]), #convert-all-button:not([hidden]), #prestige-track')].filter((el, i) => el && el !== box && (i === 0 || (el !== around && !around.contains(el)))).map(el => el.getBoundingClientRect());
     const covered = o => avoid.reduce((sum, r) => sum + Math.max(0, Math.min(o.left + width, r.right) - Math.max(o.left, r.left)) * Math.max(0, Math.min(o.top + height, r.bottom) - Math.max(o.top, r.top)), 0);
     const raised = $$(':is(#hand-row, .market-cards, .relic-row) .game-card:is(:hover, :focus-within), .toast').map(el => el.getBoundingClientRect());
     const texty = $$(TEXTY).filter(el => el !== around && !el.contains(around) && !around.contains(el) && shown(el)).map(el => el.getBoundingClientRect());
@@ -727,7 +733,8 @@
       hide();
       cueCard.classList.add('gr-coach-target', 'gr-coach-card-cue');
       targeted.push(cueCard);
-    } else if (tip) { pendingShow = null; place(tip); setShow(pendingShow); settle(); } else hide();
+    } else if (tip) { tip = supplyTip(tip); pendingShow = null; place(tip); setShow(pendingShow); settle(); } else hide();
+    if (!tip) supplyTip(null);
     syncMenu();
   }
 
@@ -746,6 +753,25 @@
   }
 
   function schedule() { if (!frame) frame = requestAnimationFrame(update); }
+
+  // The market drawer may hold the supply closed. A note about a supply card (a relic, a market
+  // card, an Upgrade) opens it when the note first appears; if you close it again, the note points
+  // at the Market handle instead. No note points at a hidden card.
+  const SUPPLY = '#relics-panel, #market-panel, #upgrade-group';
+  let supplyKey = '';
+  function supplyTip(tip) {
+    const drawer = globalThis.galacticReachMarket;
+    const parts = tip ? [tip.anchor, ...(tip.show?.callouts || []).map(c => c?.el), ...(tip.show?.spotlight || [])].filter(el => el?.closest?.(SUPPLY)) : [];
+    const key = tip ? JSON.stringify([tip.id, tip.title, tip.step]) : '';
+    if (key !== supplyKey) {
+      supplyKey = key;
+      drawer?.need('guide', null);
+      if (parts.some(el => !shown(el))) drawer?.need('guide', parts.some(el => el.closest('#relics-panel')) ? 'relics' : 'market');
+    }
+    if (!tip?.anchor?.closest?.(SUPPLY) || shown(tip.anchor) || supplyMoving()) return tip;
+    const handle = $('#market-handle');
+    return shown(handle) ? { ...tip, anchor: handle } : tip;
+  }
 
   function setEnabled(enabled) {
     prefs.enabled = enabled; savePrefs();
@@ -785,6 +811,7 @@
     }, true);
     for (const dialog of $$('dialog')) dialog.addEventListener('close', () => setTimeout(schedule, 0));
     addEventListener('resize', schedule);
+    addEventListener('gr-market-settled', () => { schedule(); if (coach && !coach.hidden && coach.dataset.side !== 'inline') position(coach, currentAnchor && shown(currentAnchor) ? currentAnchor : null); });
     // Cards animate between piles after a render, and a raised hand card moves: follow the anchor,
     // and look again now and then for a dialog or popover the table opened without a render.
     setInterval(() => { if (coach && !coach.hidden && coach.dataset.side !== 'inline' && (currentAnchor || coach.classList.contains('docked') || coach.dataset.side === 'none')) position(coach, currentAnchor && shown(currentAnchor) ? currentAnchor : null); }, 250);
