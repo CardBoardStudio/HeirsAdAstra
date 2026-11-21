@@ -786,7 +786,8 @@
     const key = tip && sideways() ? JSON.stringify([tip.id, tip.title, tip.step]) : '';
     if (key !== drawerKey) {
       drawerKey = key;
-      const hidden = el => el && !shown(el), opens = el => drawerOf(el)?.[1] !== 'supply' && drawerOf(el)?.[1];
+      // (Asked for even when that drawer is already open: the drawer the note before opened stays.)
+      const hidden = el => el && el.isConnected, opens = el => drawerOf(el)?.[1] !== 'supply' && drawerOf(el)?.[1];
       const primary = key ? [tip.anchor, tip.show?.ghost?.to] : [];
       const onMap = key && [tip.anchor, tip.show?.ghost?.to, ...(tip.marks || [])].some(el => el?.closest?.('.board-map-region'));
       const mentioned = key && !onMap ? (tip.show?.callouts || []).map(c => c?.el) : [];

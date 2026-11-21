@@ -68,6 +68,8 @@
   /* ---- The map: everything between the rail, the right edge (or the note) and your hand. ---- */
   :root .board-map-region {
     top: 0 !important; left: var(--rail) !important; right: calc(var(--safe-r) + var(--note-gap)) !important; bottom: var(--hand) !important; width: auto !important; min-width: 0 !important; max-width: none !important; height: auto !important;
+    /* (A grid item's centring would otherwise shrink this fixed box to the whole board, so it never scrolled.) */
+    align-self: stretch !important; justify-self: stretch !important;
     padding: calc(var(--safe-t) + var(--bar-h)) 8px 10px !important; scroll-padding: calc(var(--safe-t) + var(--bar-h)) 8px 8px;
   }
   /* Hexes at least 44 px across, so a finger finds each one. */
@@ -121,13 +123,15 @@
   :root body #hand-row#hand-row.fan-tight > .game-card > :is(.card-symbols, .card-footer) { justify-self: start !important; }
   :root body #hand-row#hand-row.fan-tight > .game-card .card-symbols .corner-group { flex-wrap: wrap; }
 
-  /* ---- A tapped card, whole, over the map beside the note's place. ---- */
+  /* ---- A tapped card, whole, over the map against the note's place (or the right edge), so the
+     map's left side, where your home world starts, stays in view. ---- */
   :root .phone-card-sheet:not([hidden]) {
     left: calc(var(--rail) + 10px) !important; right: calc(var(--safe-r) + var(--note-gap) + 10px) !important; top: calc(var(--safe-t) + 8px); bottom: calc(var(--hand) + 8px) !important;
     max-height: none !important; display: flex !important; align-items: flex-start; justify-content: center; gap: 8px; overflow: visible !important; pointer-events: none;
   }
   :root .phone-card-sheet > * { pointer-events: auto; }
-  :root .phone-card-sheet .game-card { flex: 0 1 520px; max-width: 520px !important; max-height: 100%; overflow: auto; margin: 0 !important; }
+  :root .phone-card-sheet:not([hidden]) { justify-content: flex-end; }
+  :root .phone-card-sheet .game-card { flex: 0 1 440px; max-width: 440px !important; height: auto !important; min-height: 0 !important; aspect-ratio: auto !important; max-height: 100%; overflow: auto; margin: 0 !important; }
   :root .phone-card-sheet .game-card .card-buttons { flex-direction: row !important; gap: 8px; }
   :root .phone-card-sheet .game-card .card-buttons .button { flex: 1 1 0; min-height: 44px; }
   :root .phone-card-sheet .phone-card-close { position: static !important; flex: none; order: 2; width: 44px; height: 44px; box-shadow: 0 4px 12px #000a; }
@@ -135,7 +139,7 @@
   /* ---- Drawers: sheets that open from the rail over the map's left side, above your hand. ---- */
   :root body[data-drawer="mat"] .resource-panel, :root body[data-drawer="comms"] .board-shared, :root body[data-drawer="table"] .prestige-track,
   :root body[data-drawer="supply"] :is(#market-panel, #relics-panel):not([hidden]) {
-    display: block !important; position: fixed !important; z-index: 53 !important;
+    display: block !important; position: fixed !important; z-index: 53 !important; align-self: stretch !important; justify-self: stretch !important;
     left: var(--rail) !important; right: auto !important; top: 0 !important; bottom: var(--hand) !important; width: var(--sheet-w) !important; max-height: none !important;
     margin: 0 !important; padding: calc(var(--safe-t) + 10px) 12px 12px !important; overflow: auto !important; overscroll-behavior: contain;
     border: 0 !important; border-right: 1px solid #a49c6f66 !important; border-radius: 0 14px 14px 0 !important;
@@ -171,6 +175,9 @@
   :root body[data-drawer="mat"] .resource-panel > .panel-heading { display: none !important; }
   :root body[data-drawer="mat"] .resource-panel > #resource-grid { order: -2; }
   :root body[data-drawer="mat"] .resource-panel > .pile-stats { order: -1; }
+  :root body[data-drawer="mat"] .resource-panel > .storage-upgrade-control { display: flex !important; align-items: center; gap: 10px; margin: 0 !important; }
+  :root body[data-drawer="mat"] .storage-upgrade-control .storage-upgrade-button { flex: none; min-height: 44px; }
+  :root body[data-drawer="mat"] .storage-upgrade-control p { margin: 0; font-size: 11.5px; line-height: 1.35; }
   :root body[data-drawer="mat"] .resource-panel { width: min(440px, calc(100vw - var(--rail) - var(--safe-r) - var(--note-gap) - 16px)) !important; }
   :root body[data-drawer="mat"] #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 15px)); gap: 3px; }
   /* Each resource row is a finger-sized target for a trade: its Now track takes taps across the whole row. */
@@ -231,9 +238,8 @@
   :root body[data-drawer="supply"] :is(#market-row, #upgrade-market, .relic-row) > .game-card .card-footer .resource-symbol { width: 17px !important; height: 17px !important; }
   :root body[data-drawer="supply"] :is(#market-row, #upgrade-market, .relic-row) > .game-card .card-footer strong { font-size: 12.5px !important; }
 
-  /* With a drawer open the tapped card lies against the note's place, leaving the drawer's start in view. */
-  :root body:is([data-drawer="mat"], [data-drawer="comms"], [data-drawer="table"], [data-drawer="supply"]) .phone-card-sheet:not([hidden]) { justify-content: flex-end; }
-  :root body:is([data-drawer="mat"], [data-drawer="comms"], [data-drawer="table"], [data-drawer="supply"]) .phone-card-sheet .game-card { flex-basis: 330px; }
+  /* With a drawer open the tapped card is narrower, leaving more of the drawer in view. */
+  :root body:is([data-drawer="mat"], [data-drawer="comms"], [data-drawer="table"], [data-drawer="supply"]) .phone-card-sheet .game-card { flex-basis: 340px; }
 
   /* ---- A note's place: the column at the right edge, under the map tools. ---- */
   :root .gr-coach:not(.in-dialog) {

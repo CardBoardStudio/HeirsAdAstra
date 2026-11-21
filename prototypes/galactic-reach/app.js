@@ -6075,7 +6075,8 @@ function createGalacticReach(options = {}) {
     const key = `${state.round}:${state.phase}:${state.activePlayer}`;
     if (phoneLayout() && !replayMode && key !== drawerPhase) {
       drawerPhase = key;
-      if (state.activePlayer === ME && state.phase === 'operations') setDrawer('hand');
+      // A drawer a note has open stays open; the hand comes back when the note is over.
+      if (state.activePlayer === ME && state.phase === 'operations') { if (drawerNeeds.size) drawerNeedFrom = 'hand'; else setDrawer('hand'); }
     }
     // Choosing a relic for Excavate needs the relics on screen.
     needMarket('excavate', !replayMode && state.phase === 'operations' && state.activePlayer === ME && state.actionMode === 'excavate' ? 'relics' : null);
