@@ -1,5 +1,32 @@
 # Playtest roadmap
 
+## Playtest refinements requested in this chat
+
+Implemented checklist (includes the earlier messages and the attached large-hand screenshot). Local mechanics and desktop, iPad and phone browser checks cover these changes. PR checks and deployment status are recorded in the implementation PR.
+
+- [x] Cap every resource capacity at 15.
+- [x] Add horizontal dashed counting guides after every five circles in Max’s UI.
+- [x] Verify and fix Oracle purchases with sufficient resources; distinguish an exhausted hidden supply from an unaffordable card.
+- [x] Keep Keepers’ Archive card pictures at their printed price; choose the two-resource reduction separately.
+- [x] Keep Pass & buy and conversion controls in place with a large hand.
+- [x] Target Starfarer’s Compass through highlighted located relic sites on the map.
+- [x] Center the units in the battle display.
+- [x] Remove the repeated purchase-cost sentence from Capacity Module card text.
+- [x] Trash Omniscient Chorus immediately after locating all relics and drawing one.
+- [x] Filter basic upgrades to the level II or III offer selected.
+- [x] Target Horizon Sail by selecting its receiving host, then the group to summon; use the same destination-first map flow for Gravity Scepter.
+- [x] Offer “Willem’s UI” in the menu while Max’s UI is active.
+- [x] Itemize card Prestige by the card that awarded it, including repeated awards.
+- [x] Add a remembered statistics-table visibility toggle.
+- [x] Add a remembered symbol-legend visibility toggle.
+- [x] Make every rival prioritize feasible attacks and captures against the public Prestige leader.
+- [x] Put playable battle relic choices directly at the bottom of combat.
+- [x] Allow Gravity Scepter to summon enemy ships onto your ships, starting combat.
+- [x] Spell out Folded Warehouse’s increase to every resource capacity.
+- [x] Give the nine new relics credited artwork matching the existing engraving/star-chart theme.
+
+Rules decisions: capacity gains stop at 15 per resource; a module allocates only the remaining total headroom when fewer than four points fit. Gravity Scepter may land on the caster’s ships on a building-free hex; the displaced owner attacks and the caster defends, and the caster’s Operations action finishes after combat. The new behavior goes to fresh games; existing tables keep their dealt engine. Oracle continues to buy a real remaining deck copy at normal cost; an exhausted design is unavailable even if affordable. Keepers keeps its existing player-chosen two-resource discount. See the canonical rules sections #resources, #storage-allocation, #alien-relics, #relic-targeting, #relic-purchases, #victory and #computer-rivals.
+
 ## Developer change queue
 
 - Add a desktop administrator side panel for requested changes stored as GitHub issues, with linked implementation PRs, current checks and exact-head previews.

@@ -42,7 +42,7 @@ function tactics(g,t0='concentratedFire',t1='concentratedFire'){
  assert(located.every(x=>(x.cluster||x).scannedBy.includes(0)));assert(g.s.clusters.some(c=>!c.scannedBy.includes(1)));
 }
 {
- const g=setup('foldedWarehouse');g.p.deck=[card('move'),card('construct')];const before={...g.p.resourceLimits};act(g,'special');for(const r of g.e.RESOURCES)assert.equal(g.p.resourceLimits[r],before[r]+1);assert.equal(g.p.hand.length,2);
+ const g=setup('foldedWarehouse');g.p.resourceLimits={matter:14,energy:14,biomass:14,data:14};g.p.deck=[card('move'),card('construct')];const before={...g.p.resourceLimits};act(g,'special');for(const r of g.e.RESOURCES)assert.equal(g.p.resourceLimits[r],before[r]+1);assert.equal(g.p.hand.length,2);
 }
 {
  const g=setup('starfarersCompass'),sites=g.s.clusters.filter(c=>g.e.relicCoordInCluster(c)),known=sites[0],hidden=sites[1],dest=g.e.relicCoordInCluster(known),source=g.s.clusters[0].center;

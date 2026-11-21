@@ -461,6 +461,7 @@
     const render = () => {
       document.body.classList.toggle('background-stars', stars);
       button.setAttribute('aria-pressed', String(stars));
+      button.textContent=stars?'Willem’s UI':'Max’s UI';
       globalThis.galacticReachMaxUI?.sync();
       window.dispatchEvent(new Event('resize'));
       // Refit after the live supply has returned and its measurements have settled.
@@ -596,4 +597,18 @@
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();
+})();
+
+// Reference visibility belongs to this browser, never a saved table or another player.
+(() => {
+  const init=()=>{
+    for(const [id,css,label] of [['statistics-toggle','hide-statistics','Statistics table'],['symbol-legend-toggle','hide-symbol-legend','Symbol legend']]){
+      const button=document.getElementById(id);if(!button)continue;
+      const key='galactic-reach-'+id;let visible=true;
+      try{visible=localStorage.getItem(key)!=='off';}catch{}
+      const render=()=>{document.body.classList.toggle(css,!visible);button.setAttribute('aria-pressed',String(visible));button.textContent=label+': '+(visible?'on':'off');window.dispatchEvent(new Event('resize'));};
+      button.addEventListener('click',()=>{visible=!visible;try{localStorage.setItem(key,visible?'on':'off');}catch{}render();});render();
+    }
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
