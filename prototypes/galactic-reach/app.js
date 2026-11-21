@@ -6191,11 +6191,27 @@ function createGalacticReach(options = {}) {
     if (want === phoneMarket) return;
     const was = phoneMarket;
     phoneMarket = want;
+    // A phone held sideways shows your Buy turn's market wide (phone.css).
+    document.body.classList.toggle('phone-buy', want === 'buy');
     if (want) {
       if (!was) phoneMarketFrom = document.body.dataset.drawer || '';
       setDrawer('supply');
       switchTab(want === 'relics' ? 'relics' : 'market');
     } else if (document.body.dataset.drawer === 'supply') setDrawer(phoneMarketFrom);
+  }
+  // A note about a part in a closed drawer (your mat, the score track, the comms log) opens that
+  // drawer while the note lasts, on a phone held sideways (guide.js); when it is over the drawer
+  // you had comes back. Choosing a drawer yourself ends it.
+  const drawerNeeds = new Map();
+  let drawerNeedFrom = null;
+  function needDrawer(reason, name) {
+    if (typeof document === 'undefined' || !document.body?.dataset) return;
+    if (name) drawerNeeds.set(reason, name); else drawerNeeds.delete(reason);
+    const want = [...drawerNeeds.values()].at(-1) || null;
+    if (want) {
+      if (drawerNeedFrom === null) drawerNeedFrom = document.body.dataset.drawer || '';
+      if (document.body.dataset.drawer !== want) setDrawer(want);
+    } else if (drawerNeedFrom !== null) { setDrawer(drawerNeedFrom); drawerNeedFrom = null; }
   }
   function setupMarketDrawer() {
     const handle = $('#market-handle'), size = $('#market-size');
@@ -6210,13 +6226,14 @@ function createGalacticReach(options = {}) {
     });
     // On a phone, choosing another drawer is the player's own choice too.
     $$('.phone-drawers [data-drawer]').forEach(button => button.addEventListener('click', () => {
+      drawerNeeds.clear(); drawerNeedFrom = null;
       if (!phoneMarket || button.dataset.drawer === 'supply') return;
       for (const reason of marketNeeds.keys()) marketDeclined.add(reason);
       marketNeeds.clear();
       phoneMarket = myBuyTurn() ? 'buy' : null;
     }));
     window.addEventListener('resize', () => { mapFitFor = null; showMarket(); });
-    globalThis.galacticReachMarket = { need: needMarket, view: () => marketShown };
+    globalThis.galacticReachMarket = { need: needMarket, view: () => marketShown, drawer: needDrawer };
     // A card design whose picture is missing shows its text in the picture's place.
     document.addEventListener('error', event => { if (event.target?.matches?.('img.card-picture')) event.target.parentElement?.classList.remove('has-picture'); }, true);
   }

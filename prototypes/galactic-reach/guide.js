@@ -727,6 +727,7 @@
         }
       }
     } catch (error) { console.error('Guidance could not read the table.', error); tip = null; }
+    tip = drawerTip(tip);
     const stepKey = tip?.bringIntoView ? JSON.stringify([tip.id, tip.step]) : '';
     if (tip?.followCallouts && tip.show?.callouts?.length) {
       const live = tip.show.callouts.filter(c => c?.el && shown(c.el));
@@ -745,7 +746,7 @@
       hide();
       cueCard.classList.add('gr-coach-target', 'gr-coach-card-cue');
       targeted.push(cueCard);
-    } else if (tip) { tip = supplyTip(tip); pendingShow = null; place(tip); setShow(pendingShow); settle(); } else hide();
+    } else if (tip) { tip = supplyTip(tip); pendingShow = null; place(tip); setShow(pendingShow); settle(); revealOnMap(tip); } else hide();
     if (!tip) supplyTip(null);
     syncMenu();
   }
@@ -769,11 +770,44 @@
   // The market drawer may hold the supply closed. A note about a supply card (a relic, a market
   // card, an Upgrade) opens it when the note first appears; if you close it again, the note points
   // at the Market handle instead. No note points at a hidden card.
+  // On a phone held sideways (phone.css) the mat (with the piles and the Upgrades), the score
+  // track and the comms log are drawers on the left edge. A note about a part in a closed one opens
+  // that drawer when the note first appears (app.js puts back the drawer you had once it is over);
+  // if you close it again, the note lights that drawer's handle and says where the part is.
+  const DRAWERS = [['.resource-panel', 'mat', 'Mat'], ['#prestige-track', 'table', 'Table'], ['.board-shared', 'comms', 'Comms'], ['#relics-panel, #market-panel', 'supply', 'Supply']];
+  const sideways = () => matchMedia('(max-height: 599px) and (orientation: landscape)').matches;
+  let drawerKey = '';
+  function drawerTip(tip) {
+    const need = globalThis.galacticReachMarket?.drawer;
+    const key = tip && sideways() ? JSON.stringify([tip.id, tip.title, tip.step]) : '';
+    const drawerOf = el => DRAWERS.find(([sel]) => el?.closest?.(sel));
+    if (key !== drawerKey) {
+      drawerKey = key;
+      const parts = key ? [tip.anchor, ...(tip.show?.callouts || []).map(c => c?.el), ...(tip.show?.spotlight || []), tip.show?.ghost?.to].filter(el => el && !shown(el)) : [];
+      const name = parts.map(el => drawerOf(el)?.[1]).find(name => name && name !== 'supply') || null;
+      need?.('guide', name);
+    }
+    if (!key || !tip.anchor || shown(tip.anchor)) return tip;
+    const drawer = drawerOf(tip.anchor), handle = drawer && $(`.phone-drawers [data-drawer="${drawer[1]}"]`);
+    return handle && shown(handle) ? { ...tip, anchor: handle, text: `${tip.text} Open ${drawer[2]} on the left edge to see it.` } : tip;
+  }
+  // The map scrolls under the note's column: the hex a step names is brought into the open map once per step.
+  let revealedKey = '';
+  function revealOnMap(tip) {
+    if (!sideways()) return;
+    const hex = [tip.anchor, ...(tip.marks || [])].find(el => el?.closest?.('.board-map-region'));
+    const key = hex ? JSON.stringify([tip.id, tip.step, hex.dataset?.coord]) : '';
+    if (!hex || key === revealedKey) return;
+    revealedKey = key;
+    requestAnimationFrame(() => bringIntoView(hex));
+  }
   const SUPPLY = '#relics-panel, #market-panel, #upgrade-group';
   let supplyKey = '';
   function supplyTip(tip) {
     const drawer = globalThis.galacticReachMarket;
-    const parts = tip ? [tip.anchor, ...(tip.show?.callouts || []).map(c => c?.el), ...(tip.show?.spotlight || [])].filter(el => el?.closest?.(SUPPLY)) : [];
+    // On a phone the Upgrades lie on the mat, which drawerTip opens instead.
+    const phone = matchMedia('(max-width: 599px), (max-height: 599px)').matches;
+    const parts = tip ? [tip.anchor, ...(tip.show?.callouts || []).map(c => c?.el), ...(tip.show?.spotlight || [])].filter(el => el?.closest?.(SUPPLY) && !(phone && el.closest('.resource-panel'))) : [];
     const key = tip ? JSON.stringify([tip.id, tip.title, tip.step]) : '';
     if (key !== supplyKey) {
       supplyKey = key;

@@ -21,8 +21,15 @@
   <link rel="stylesheet" href="guide.css?v=3">
   <link rel="stylesheet" href="tabletop-controls.css">
   <link rel="stylesheet" href="market-drawer.css?v=1">
+  <link rel="stylesheet" href="phone.css?v=1">
 </head>
 <body>
+  <!-- Phones are played sideways (rules #shared-board): held upright, a phone sees only this (phone.js). -->
+  <div class="rotate-prompt" id="rotate-prompt" role="dialog" aria-modal="true" aria-labelledby="rotate-prompt-text" aria-hidden="true">
+    <img class="rotate-prompt-emblem" src="/lab/heirs-emblem-mark.svg" alt="" width="56" height="56">
+    <svg class="rotate-prompt-icon" viewBox="0 0 96 96" aria-hidden="true" focusable="false"><rect class="rotate-from" x="33" y="12" width="30" height="54" rx="6"/><rect class="rotate-to" x="21" y="48" width="58" height="32" rx="6"/><path class="rotate-arrow" d="M70 18c8 5 13 13 14 23"/><path class="rotate-arrow" d="m78 39 6 4 4-7"/></svg>
+    <p id="rotate-prompt-text">Turn your phone sideways to play.</p>
+  </div>
   <a class="skip-link" href="#console">Skip to player controls</a>
   <div class="starfield" aria-hidden="true"></div>
   <main class="app-shell">
@@ -482,6 +489,7 @@
     </div>
   </dialog>
 
+  <script src="phone.js?v=1"></script>
   <script src="channel.js"></script>
   <script src="table.js?v=construct-iii-38-43"></script>
   <script src="tabletop-controls.js"></script>
