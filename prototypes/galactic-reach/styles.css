@@ -4088,3 +4088,10 @@ body.background-stars .combat-many-ships .combat-fleet { grid-template-columns:m
 @media (max-width:599px), (max-height:599px) {
   .relic-map-controls { bottom:74px; max-height:45dvh; overflow:auto; font-size:12px; padding:8px; }
 }
+/* Keep full armies centered and inside short desktop windows across font metrics. */
+body.background-stars .combat-many-ships .combat-units { gap:4px 6px; }
+body.background-stars .combat-many-ships .combat-unit { gap:0; }
+body.background-stars .combat-many-ships .combat-unit figcaption { gap:0; }
+@media (min-width:600px) and (min-height:600px) {
+  body.background-stars .combat-dialog.combat-many-ships { max-width:min(1240px,calc(100vw - 24px)); }
+}
