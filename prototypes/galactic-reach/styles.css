@@ -2252,9 +2252,10 @@ body.background-stars .board-stage.map-zoomed .max-resource-legend {
   body { --top-h: 44px; --tabs-h: 38px; --actions-h: 40px; --sheet-h: 62dvh; }
 }
 
-/* ==== The player mat: one band per resource, two aligned rows of 20 pip slots. Rate is filled up
-   to production; Now is filled up to the stock, with a single ivory capacity pip (a ring) in the
-   capacity slot and the slots past it closed. Trades with the bank are made by dragging. ==== */
+/* ==== The player mat: one band per resource, two aligned tracks of slots for the values 0 to 20.
+   One Rate piece stands on the slot for production and one Now piece on the slot for the stock,
+   with the ivory capacity pip in the capacity slot and the slots past it closed. Trades with the
+   bank are made by dragging. ==== */
 #resource-grid { height: auto !important; display: grid !important; grid-template-columns: minmax(0, 1fr) !important; grid-template-rows: none !important; grid-auto-rows: auto !important; align-content: center !important; gap: 5px !important; padding: 7px 10px 8px !important; }
 #resource-grid > * { grid-row: auto !important; grid-column: 1 !important; }
 #resource-grid > .mat-head { display: flex !important; flex-wrap: wrap; align-items: center; gap: 2px 10px; grid-template-columns: none !important; grid-template-rows: none !important; height: auto !important; color: #c9b98a; font-size: 9px !important; font-weight: 800; letter-spacing: .08em !important; text-transform: uppercase; text-align: left !important; }
@@ -2435,9 +2436,9 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .prestige-name { font-weight: 700; letter-spacing: .02em; text-shadow: 0 1px 2px #000, 0 0 3px #000; }
 }
 
-/* ==== The mat without numbers: the pips carry every value. Both rows share one column per slot
-   (20 and the capacity fence); the Now pips fill their slot and the Rate pips are smaller, so
-   totals read first. Every fifth slot has a brighter rim. ==== */
+/* ==== The mat without numbers: the pieces' slots carry every value. Both rows share one column
+   per slot (0 to 20); the Now piece fills its slot and the Rate piece is smaller, so stock reads
+   first. Slots 5, 10, 15 and 20 have a brighter rim. ==== */
 #resource-grid > .resource-box { grid-template-columns: 20px minmax(0, 1fr) !important; grid-template-areas: "icon rate" "icon now" !important; gap: 1px 7px !important; }
 #resource-grid .resource-box :is(.resource-production, .resource-amount, .resource-limit) { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; }
 #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 16px)); gap: 3px; }
@@ -2446,8 +2447,27 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 #resource-grid .mat-pips i.five:not(.full):not(.cap) { box-shadow: inset 0 1px 2px #000c, 0 0 0 1px #d9bd8075; }
 #resource-grid .mat-pips i.five.shut:not(.full) { box-shadow: inset 0 0 0 1px #d9bd8040; }
 #resource-grid .mat-pips i.five.full { box-shadow: 0 1px 1px #000a, 0 0 0 1px #f6e7b0b0; }
-/* The fence when the stock has gone past it: ringed in red. */
-#resource-grid .mat-pips.now i.cap.full { box-shadow: 0 0 0 2px var(--red); }
+/* Rate pieces are cubes, like a board game's wooden cubes seen from above and to the right: a
+   lighter top, the colour in front and a darker side, drawn in the piece's own square so slots and
+   spacing are unchanged. Every face is mixed from --cube, the row's resource colour; the legend's
+   Rate swatch is the same cube in the legend's neutral ink. Empty slots stay flat. The outline is
+   clipped on ::before so the piece's drop shadow (and the fifth slot's rim) follow the cube. */
+#resource-grid .mat-pips.rate i.full { --cube: var(--resource); }
+#resource-grid .mat-key.rate i { --cube: #c9b98a; }
+#resource-grid :is(.mat-pips.rate i.full, .mat-key.rate i) { position: relative; border-radius: 0; background: none; box-shadow: none; filter: drop-shadow(0 1px .5px #000a); }
+#resource-grid :is(.mat-pips.rate i.full, .mat-key.rate i)::before {
+  content: ""; position: absolute; inset: 0;
+  clip-path: polygon(0 30%, 30% 0, 100% 0, 100% 70%, 70% 100%, 0 100%);
+  background:
+    linear-gradient(var(--cube), var(--cube)) left bottom / 70% 70% no-repeat,
+    linear-gradient(to bottom right, transparent 50%, color-mix(in srgb, var(--cube) 55%, #000) 50%),
+    linear-gradient(color-mix(in srgb, var(--cube) 55%, #fff) 30%, transparent 30%)
+    color-mix(in srgb, var(--cube) 55%, #000);
+}
+#resource-grid .mat-pips.rate i.five.full { box-shadow: none; filter: drop-shadow(0 0 .6px #f6e7b0) drop-shadow(0 1px .5px #000a); }
+/* Stock at its limit: the Now piece stands on the gold capacity marker, which shows as a rim around
+   it. Stock past the limit is the red piece beyond the marker (.over). */
+#resource-grid .mat-pips.now i.cap.full { background: radial-gradient(circle closest-side, color-mix(in srgb, var(--resource) 55%, #fff), var(--resource) 40%, color-mix(in srgb, var(--resource) 55%, #000) 64%, #0000 69%), radial-gradient(circle at 35% 30%, #fffbe8, #f0d27a 60%, #a8842c); box-shadow: 0 1px 1px #000a; }
 
 #resource-grid .mat-stock { display: contents; }
 #resource-grid .mat-stars { display: none !important; }

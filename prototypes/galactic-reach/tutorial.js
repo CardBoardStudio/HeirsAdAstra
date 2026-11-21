@@ -19,6 +19,21 @@
   const costText = cost => RES.filter(r => cost[r]).map(r => `${cost[r]} ${NAMES[r]}`).join(', ');
 
   function seeded(seed) { let v = seed >>> 0; return () => { v = (v * 1664525 + 1013904223) >>> 0; return v / 0x100000000; }; }
+  // Choosing Learn to play resumes only a walkthrough left part-way: past its first step and not
+  // finished, which is when the menu and welcome note offer "Continue Learn to play". Otherwise it
+  // deals the practice game again, before app.js reads it, so a fresh Lesson 1 never sits on an
+  // earlier practice table. A reload or Back/Forward stays in the same walkthrough. Unreadable
+  // progress cannot be resumed and counts as not part-way; the guest save is never touched.
+  function partWay() {
+    try { const saved = JSON.parse(localStorage.getItem(PROGRESS) || 'null'); return Number.isInteger(saved?.step) && saved.step > 0 && saved.stepId !== 'finished'; } catch { return false; }
+  }
+  function entered() {
+    try { return (globalThis.performance?.getEntriesByType?.('navigation')[0]?.type || 'navigate') === 'navigate'; } catch { return true; }
+  }
+  if (entered() && !partWay()) clearTutorial();
+  // Another tab restarted the walkthrough or began a new one: follow it here, so this tab never
+  // writes the earlier practice game or place back over it.
+  globalThis.addEventListener?.('storage', event => { if (event.key === PROGRESS && event.newValue === null) location.reload(); });
   function loadProgress() {
     try { const saved = JSON.parse(localStorage.getItem(PROGRESS) || 'null'); if (saved && saved.rules === RULES && Number.isInteger(saved.step)) return saved; } catch { /* fresh */ }
     return { rules: RULES, step: 0, view: 0, base: null, staged: {}, cardFirst: true };
@@ -117,12 +132,10 @@
 
   const LESSONS = [
     { id: 'resources', title: 'Resources', steps: [
-      { id: 'first-construct', title: 'Your first build', rule: 'building', info: true, nextLabel: 'Find a Move',
+      // The first thing to do is convert the Move, so the Move is the card that glows.
+      { id: 'first-construct', title: 'Your first build', rule: 'resources',
         prepare: s => { ensureHand(s, ['move', 'move', 'construct', 'construct', 'construct'], true); },
-        text: () => 'This Construct can build a Data Harvester. You have the Matter and Data; first convert a Move for 1 Energy.',
-        anchor: hand('construct') },
-      { id: 'convert-move', title: 'Convert a Move', rule: 'resources',
-        text: () => 'Convert this Move for 1 Energy, then use a Construct to build the Data Harvester.',
+        text: () => 'A Construct card can build a Data Harvester. You have the Matter and Data; first convert this Move for 1 Energy.',
         show: state => ({ spotlight: [$('#resource-grid'), hand('move')(state)], ghost: { from: hand('move')(state), to: matRow('energy') }, callouts: [{ el: matPart('energy', '.mat-pips.now'), label: 'Energy: +1' }] }),
         anchor: hand('move'), done: (state, base, port) => me(state).resources.energy >= port.structures.harvester.cost.energy },
     ] },
@@ -400,6 +413,8 @@
       if (progress.step <= 4) { progress.stepId = 'first-construct'; progress.step = 0; progress.view = 0; progress.base = null; }
       progress.cardFirst = true; saveProgress();
     }
+    // Lesson 1's Move conversion is now part of its first step.
+    if (progress.stepId === 'convert-move') progress.stepId = 'first-construct';
     if (!progress.stepId) return;
     const index = progress.stepId === 'finished' ? STEPS.length : STEPS.findIndex(s => s.id === progress.stepId);
     if (index >= 0 && index !== progress.step) { progress.step = index; progress.view = index; progress.base = null; }
@@ -488,11 +503,13 @@
     return {
       id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: step.title, text, rule: step.rule, aside: !reviewing && !openDialog ? note : '',
       revealOnInspect: !reviewing && !openDialog && !step.dialog && Boolean(anchor?.matches?.('#hand-row > .game-card')),
+      bringIntoView: !reviewing,
       inDialog: openDialog || step.dialog || null, anchor, followCallouts: Boolean(step.followCallouts) && !reviewing, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return step.marks?.(state, port) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
       buttons: [
         { action: 'back', label: 'Back', disabled: progress.view === 0 },
-        // Reading steps go on with Next; a "do it yourself" step goes on once you have done it.
-        { action: 'next', label: step.nextLabel || 'Next', primary: true, disabled: !(reviewing || step.info), title: reviewing || step.info ? '' : 'Do this step on the table first' },
+        // Reading steps go on with Next. A "do it yourself" step has no button that goes on or
+        // finds the target for you: the lit card or control is the way forward, and doing it advances.
+        ...(reviewing || step.info ? [{ action: 'next', label: 'Next', primary: true }] : []),
         { action: 'exit', label: 'Exit tutorial', quiet: true },
         ...(step.lessonIndex < LESSONS.length - 1 || reviewing ? [{ action: 'skip', label: 'Skip lesson', link: true }] : []),
       ]
