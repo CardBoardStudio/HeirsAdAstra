@@ -1,5 +1,9 @@
 # Playtest roadmap
 
+## Combat discussion — not authorized for implementation
+
+The proposed hull/attack rebalance, unit-based tactic allowance and opening-only base attack remain discussion notes. They are not implemented or approved by this refinement request. Existing combat resolution remains in place; the requested relic targeting, interface and rival-targeting improvements do not adopt that redesign. See the canonical [combat rules](../prototypes/galactic-reach/rulebook.html#combat).
+
 ## Max’s UI follow-up
 
 - Restore pre-Willem resource colors, hand/card arrangement, numeric price boxes, cost reference and button placement only in Max’s UI.

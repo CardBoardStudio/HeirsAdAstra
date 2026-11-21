@@ -12,6 +12,10 @@
 - Scope Willem’s UI presentation changes to `body:not(.background-stars)` or its own stylesheet. Shared styles, palettes and card renderers must preserve Max’s UI; an apparently global improvement is not authorization to apply it there.
 - Keep Max’s presentation in `max-ui.css` and explicit Max rendering branches. Share game rules and authoritative actions. When Max requests a change here, verify both themes and confirm Willem’s UI is unchanged.
 
+## Combat scope
+
+The discussed battle redesign is not approved by this refinement work. Do not change attack/hull values, the per-battle tactic allowance, or when base attack applies without a separate explicit request. Keep the existing combat resolution; the requested Gravity Scepter target change and combat presentation improvements are separate, explicit requests.
+
 ## GitHub workflow
 
 - Use HTTPS remotes, never SSH.

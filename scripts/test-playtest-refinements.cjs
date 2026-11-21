@@ -38,4 +38,19 @@ function game(key){const g=freshEngine(171);g.s=g.state;g.e=g.engine;g.p=g.s.pla
  const g=game('move');g.s.players[1].cardPrestige=10;assert.equal(g.e.aiLeaderPressure(0,1),24);assert.equal(g.e.aiLeaderPressure(0,2),0);
  g.s.players[2].cardPrestige=10;assert.equal(g.e.aiLeaderPressure(0,2),24);assert.equal(g.e.aiLeaderPressure(1,2),0);
 }
+// The discussed battle redesign is not part of these refinements (#combat).
+{
+ const g=game('move'),{e,s}=g;
+ assert.deepEqual(plain(Object.fromEntries(Object.entries(e.SHIP_STATS).map(([key,v])=>[key,[v.power,v.hull,v.defendingHull||v.hull]]))),{settler:[1,2,4],explorer:[1,1,1],fleet:[3,7,7]});
+ const coord=s.clusters[4].center;Object.assign(s.planets[coord],{owner:null,hasColony:false,upgrade:null});
+ s.fleets[coord]={0:{settler:0,explorer:0,fleet:1},1:{settler:0,explorer:0,fleet:1}};
+ assert(e.executeMove(0,coord,coord,{units:{settler:0,explorer:0,fleet:1},moveGroup:'ships'}));
+ const battle=s.pendingCombat;assert.deepEqual(plain(battle.hands.attacker),{concentratedFire:2,defensiveScreen:2});
+ while(s.pendingCombat?.stage==='escape')assert(e.applyCombatAction(e.combatActor(),{type:'combat_stay'}));
+ for(const tactic of ['defensiveScreen','defensiveScreen','concentratedFire']){
+  assert(e.applyCombatAction(0,{type:'combat_tactic',tactic}));assert(e.applyCombatAction(1,{type:'combat_tactic',tactic}));
+ }
+ assert.equal(battle.volleys.length,3,'The battle still permits three volleys, with one ship per side');
+ for(const side of ['attacker','defender']){assert.deepEqual(plain(battle.volleys.map(v=>v[side].base)),[3,3,3],'Base attack applies in every volley');assert.deepEqual(plain(battle.volleys.map(v=>v[side].damage)),[1,1,4]);}
+}
 console.log('Capacity ceiling/headroom, single-use Chorus, hostile summoning, card Prestige persistence and public leader priority passed.');
