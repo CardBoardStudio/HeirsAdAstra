@@ -3964,3 +3964,10 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .game-card:has(> .card-symbols) { grid-template-rows: auto auto minmax(0, 1fr) !important; grid-template-areas: "sym cost" "name cost" "head cost" !important; }
 :is(#max-bank-dialog, .market-choice-dialog) :is(#upgrade-market, .relic-row) .game-card:has(> .card-symbols) { grid-template-areas: "sym cost" "name cost" "head head" !important; }
 :is(#max-bank-dialog, .market-choice-dialog) .game-card > .card-symbols { grid-area: sym; justify-self: start; margin: 0 !important; font-size: 17px; }
+/* On a phone the choice cards are too small for both: they keep their one-line summary, which
+   already prints the same symbols with their numbers, and leave out the corner row. */
+@media (max-width: 599px), (max-height: 599px) {
+  :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, .card-choice-row) .game-card:has(> .card-symbols) { grid-template-rows: auto minmax(0, 1fr) !important; grid-template-areas: "name cost" "head cost" !important; }
+  :is(#max-bank-dialog, .market-choice-dialog) :is(#upgrade-market, .relic-row) .game-card:has(> .card-symbols) { grid-template-areas: "name cost" "head head" !important; }
+  :is(#max-bank-dialog, .market-choice-dialog) .game-card > .card-symbols { display: none !important; }
+}
