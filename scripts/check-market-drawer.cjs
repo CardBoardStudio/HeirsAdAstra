@@ -5,7 +5,7 @@
 // never rides along with the moving panel; phones move the Supply drawer the same way; Max's
 // table keeps its card banks.
 //   node scripts/check-market-drawer.cjs
-//   CHECK_SIZES=1440x900,390x844 node scripts/check-market-drawer.cjs
+//   CHECK_SIZES=1440x900,844x390 node scripts/check-market-drawer.cjs
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
@@ -14,7 +14,7 @@ const { findChrome, launch, operationsState, buyState } = require('./check-viewp
 const ROOT = path.resolve(__dirname, '../prototypes');
 const APP = fs.readFileSync(path.join(ROOT, 'galactic-reach/app.js'), 'utf8');
 const KEY = `galactic-reach-save-v${APP.match(/const SAVE_FORMAT_VERSION = (\d+)/)[1]}`;
-const SIZES = process.env.CHECK_SIZES ? process.env.CHECK_SIZES.split(',').map(v => v.split('x').map(Number)) : [[1280, 720], [1440, 900], [1920, 1080], [1024, 768], [820, 1180], [390, 844], [844, 390]];
+const SIZES = process.env.CHECK_SIZES ? process.env.CHECK_SIZES.split(',').map(v => v.split('x').map(Number)) : [[1280, 720], [1440, 900], [1920, 1080], [1024, 768], [820, 1180], [844, 390], [667, 375]];
 const isPhone = ([w, h]) => Math.min(w, h) < 600;
 const source = value => JSON.stringify(value);
 const MARKET = ['worldEngine', 'ascendancyCodex', 'aegisLattice', 'deflectorGrid', 'torpedoSpread', 'railBattery', 'colonyPods', 'prefabYards', 'signalRelay'];
@@ -103,7 +103,7 @@ async function main() {
     for (const size of SIZES) {
       const [width, height] = size, phone = isPhone(size);
       touch = phone || width < 1100;
-      await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: touch });
+      await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: touch, screenWidth: width, screenHeight: height });
       await browser.send('Emulation.setTouchEmulationEnabled', { enabled: touch, maxTouchPoints: touch ? 5 : 1 });
       const label = `${width}x${height}`;
       if (phone) {
@@ -118,12 +118,15 @@ async function main() {
         assert.equal(await shown('#market-row > .game-card'), true, `${label}: the Supply drawer opens on demand`);
         await click('.phone-drawers [data-drawer="supply"]');
         assert.equal(await shown('#market-row > .game-card'), false, `${label}: and closes again`);
-        await click('.phone-drawers [data-drawer="hand"]');
+        // Held sideways (phones are played sideways) the hand is always on the table and has no
+        // drawer: the drawer you had is none. Held upright (a narrow desktop window) it is Hand.
+        const had = width > height ? '' : 'hand';
+        if (had) await click('.phone-drawers [data-drawer="hand"]');
         await click('#board-primary');
         assert.equal(await drawer(), 'supply', `${label}: the Buy turn brings the Supply drawer forward`);
         assert.equal(await shown('#market-row > .game-card'), true, `${label}: on the market`);
         await click('#board-primary');
-        assert.equal(await drawer(), 'hand', `${label}: Finish Buy returns the drawer you had`);
+        assert.equal(await drawer(), had, `${label}: Finish Buy returns the drawer you had`);
         await load(excavating());
         assert.equal(await drawer(), 'supply', `${label}: Excavate opens the Supply drawer`);
         assert.equal(await shown('#relic-row .game-card'), true, `${label}: on the relics`);

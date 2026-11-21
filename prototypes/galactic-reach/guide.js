@@ -771,25 +771,38 @@
   // card, an Upgrade) opens it when the note first appears; if you close it again, the note points
   // at the Market handle instead. No note points at a hidden card.
   // On a phone held sideways (phone.css) the mat (with the piles and the Upgrades), the score
-  // track and the comms log are drawers on the left edge. A note about a part in a closed one opens
-  // that drawer when the note first appears (app.js puts back the drawer you had once it is over);
-  // if you close it again, the note lights that drawer's handle and says where the part is.
+  // track and the comms log are drawers on the left edge. A note opens the drawer that holds what it
+  // points at or where its card should go, when the note first appears (app.js puts back the drawer
+  // you had once it is over); a part it only mentions opens a drawer too, unless the note is about
+  // the map, which a drawer would cover. A part left in a closed drawer is shown by that drawer's
+  // handle instead, lit and labelled with where it is.
   const DRAWERS = [['.resource-panel', 'mat', 'Mat'], ['#prestige-track', 'table', 'Table'], ['.board-shared', 'comms', 'Comms'], ['#relics-panel, #market-panel', 'supply', 'Supply']];
   const sideways = () => matchMedia('(max-height: 599px) and (orientation: landscape)').matches;
+  const drawerOf = el => DRAWERS.find(([sel]) => el?.closest?.(sel));
+  const drawerHandle = drawer => { const handle = drawer && $(`.phone-drawers [data-drawer="${drawer[1]}"]`); return handle && shown(handle) ? handle : null; };
   let drawerKey = '';
   function drawerTip(tip) {
     const need = globalThis.galacticReachMarket?.drawer;
     const key = tip && sideways() ? JSON.stringify([tip.id, tip.title, tip.step]) : '';
-    const drawerOf = el => DRAWERS.find(([sel]) => el?.closest?.(sel));
     if (key !== drawerKey) {
       drawerKey = key;
-      const parts = key ? [tip.anchor, ...(tip.show?.callouts || []).map(c => c?.el), ...(tip.show?.spotlight || []), tip.show?.ghost?.to].filter(el => el && !shown(el)) : [];
-      const name = parts.map(el => drawerOf(el)?.[1]).find(name => name && name !== 'supply') || null;
-      need?.('guide', name);
+      const hidden = el => el && !shown(el), opens = el => drawerOf(el)?.[1] !== 'supply' && drawerOf(el)?.[1];
+      const primary = key ? [tip.anchor, tip.show?.ghost?.to] : [];
+      const onMap = key && [tip.anchor, tip.show?.ghost?.to, ...(tip.marks || [])].some(el => el?.closest?.('.board-map-region'));
+      const mentioned = key && !onMap ? (tip.show?.callouts || []).map(c => c?.el) : [];
+      need?.('guide', [...primary, ...mentioned].filter(hidden).map(opens).find(Boolean) || null);
     }
-    if (!key || !tip.anchor || shown(tip.anchor)) return tip;
-    const drawer = drawerOf(tip.anchor), handle = drawer && $(`.phone-drawers [data-drawer="${drawer[1]}"]`);
-    return handle && shown(handle) ? { ...tip, anchor: handle, text: `${tip.text} Open ${drawer[2]} on the left edge to see it.` } : tip;
+    if (!key) return tip;
+    let next = tip;
+    if (tip.anchor && !shown(tip.anchor) && drawerHandle(drawerOf(tip.anchor))) {
+      const drawer = drawerOf(tip.anchor);
+      next = { ...next, anchor: drawerHandle(drawer), text: `${tip.text} Open ${drawer[2]} on the left edge to see it.` };
+    }
+    const callouts = tip.show?.callouts;
+    if (callouts?.some(c => c?.el && !shown(c.el) && drawerHandle(drawerOf(c.el)))) {
+      next = { ...next, show: { ...tip.show, callouts: callouts.map(c => c?.el && !shown(c.el) && drawerHandle(drawerOf(c.el)) ? { el: drawerHandle(drawerOf(c.el)), label: `${c.label} (${drawerOf(c.el)[2]})`, side: 'right' } : c) } };
+    }
+    return next;
   }
   // The map scrolls under the note's column: the hex a step names is brought into the open map once per step.
   let revealedKey = '';

@@ -5,7 +5,7 @@
    it fills the screen between a rail of drawer handles on the left edge and the right edge,
    from the top down to your hand, which lies along the bottom as a low fan of card tops. The
    turn and the round's phases are one line over the map's top-left corner, the map tools sit
-   in its top-right corner and the turn's buttons in its bottom-right corner. The supply, the
+   in its top-right corner and the turn's buttons at the right end of your hand. The supply, the
    mat, the comms log and the score track open from the rail as sheets over the map's left
    side, between the top and your hand, and scroll inside. A guidance or Learn to play note has
    one place, a column at the right edge under the map tools; while it shows, the map ends
@@ -204,10 +204,10 @@
   :root .card-table-battle .combat-fleet > header { grid-column: 1; grid-row: 1; display: grid; grid-template-columns: 1fr !important; gap: 1px; }
   :root .card-table-battle .combat-fleet > .combat-units { grid-column: 2; grid-row: 1; }
   :root .card-table-battle .combat-side > .combat-hand { grid-column: 3; grid-row: 1; }
-  :root .card-table-battle .combat-units { flex-wrap: nowrap !important; justify-content: space-around; gap: 2px 6px; }
-  :root .card-table-battle .combat-unit { min-width: 0; max-width: 120px; gap: 1px; }
+  :root .card-table-battle .combat-units { flex-wrap: wrap !important; justify-content: space-around; gap: 2px 6px; }
+  :root .card-table-battle .combat-unit { min-width: 60px; max-width: 120px; gap: 1px; }
   :root .card-table-battle .combat-unit figcaption > span, :root .card-table-battle .combat-unit figcaption strong { font-size: 10.5px; }
-  :root .card-table-battle .combat-hull { width: 56px; }
+  :root .card-table-battle .combat-hull { width: min(56px, 100%); }
   :root .card-table-battle .combat-hand-heading { margin-bottom: 2px; }
   /* A deck too big for its row scrolls sideways within it. */
   :root .card-table-battle .combat-card-row { display: flex !important; flex-wrap: nowrap !important; justify-content: flex-start; gap: 5px; overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: 2px; }
@@ -218,6 +218,11 @@
   :root .card-table-battle .combat-options { position: sticky; bottom: 0; z-index: 1; padding: 5px 0 8px; background: #172b2c; }
   :root .card-table-battle .combat-options .button { min-height: 44px; }
   :root .card-table-battle .combat-history { max-height: 22dvh; }
+
+  /* ---- Choosing cards (a relic's card choice): two to a row, without the pictures. ---- */
+  :root #relic-card-dialog { --choice-visible: 2; max-height: calc(100dvh - var(--safe-t) - var(--safe-b) - 12px); }
+  :root #relic-card-dialog:not([data-mode="echoes"]) #relic-card-options { grid-template-rows: repeat(3, 140px); }
+  :root #relic-card-dialog .card-choice-row .game-card .card-art { display: none !important; }
 
   /* ---- Supply prices: one symbol per unit, small. ---- */
   :root body[data-drawer="supply"] :is(#market-row, #upgrade-market, .relic-row) > .game-card .card-footer small { display: none !important; }

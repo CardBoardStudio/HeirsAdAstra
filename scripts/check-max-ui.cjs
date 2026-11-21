@@ -8,7 +8,7 @@ const { findChrome, launch, freshEngine, operationsState, buyState } = require('
 const ROOT = path.resolve(__dirname, '../prototypes');
 const APP = fs.readFileSync(path.join(ROOT, 'galactic-reach/app.js'), 'utf8');
 const KEY = `galactic-reach-save-v${APP.match(/const SAVE_FORMAT_VERSION = (\d+)/)[1]}`;
-const SIZES = process.env.CHECK_SIZES ? process.env.CHECK_SIZES.split(',').map(v=>v.split('x').map(Number)) : [[1280,720], [1440,900], [1920,1080], [1024,768], [768,1024], [820,1180], [390,844], [844,390]];
+const SIZES = process.env.CHECK_SIZES ? process.env.CHECK_SIZES.split(',').map(v=>v.split('x').map(Number)) : [[1280,720], [1440,900], [1920,1080], [1024,768], [768,1024], [820,1180], [844,390], [667,375]];
 const source = selector => JSON.stringify(selector);
 async function main() {
   const chrome = findChrome(); assert(chrome, 'Chrome is required; set CHROME_PATH.');
