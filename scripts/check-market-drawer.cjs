@@ -198,7 +198,8 @@ async function main() {
         const opsMap = await mapWidth();
         await click('#board-primary');
         assert.equal(await view(), 'full', `${label}: the Buy turn shows whole cards (from ${before})`);
-        { const under = await mapWidth(); assert(Math.abs(under - opsMap) <= 2, `${label}: the map stays put under the whole cards (${under} vs ${opsMap})`); }
+        // Over a closed column the map may slide against the left-hand panels (one re-fit), never smaller.
+        { const under = await mapWidth(); assert(under >= opsMap - 2, `${label}: the map keeps its size under the whole cards (${under} vs ${opsMap})`); }
         await fitsWindow();
         const cards = await evaluate(`[...document.querySelectorAll('#market-row > .game-card')].map(c => { const r = c.getBoundingClientRect(), art = c.querySelector('.card-art.has-picture'); return { ratio: r.height / r.width, art: art ? art.getBoundingClientRect().height : 0 }; })`);
         assert.equal(cards.length, 9, `${label}: nine market cards`);

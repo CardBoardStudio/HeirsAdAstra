@@ -16,6 +16,9 @@
     grid-column: 3; grid-row: 1 / 9; align-self: start; justify-self: start; z-index: 32;
     display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin: 172px 0 0; transform: translateX(-100%);
   }
+  /* The turn prompt (for screen readers on the table) lies in the supply's column: with no column it
+     must not run past the table, which would scale the whole table down (see fitTable). */
+  :root.market-drawer.market-no-column .board-toolbar { overflow: clip; }
   /* Closed, the map is centred in the room it has, or as near the middle as its corners allow (see fitMap). */
   :root.market-drawer.market-no-column .board-map-region { place-items: start !important; }
   :root.market-drawer.market-no-column .board-map-region > .galaxy-board { justify-self: start !important; margin-left: var(--map-left, 0px) !important; }
@@ -25,8 +28,11 @@
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
   :root.market-drawer .market-handles {
     grid-column: 1 / -1; grid-row: 3; align-self: start; justify-self: end; z-index: 32;
-    display: flex; flex-direction: column; align-items: flex-end; margin: 150px -16px 0 0;
+    display: flex; flex-direction: column; align-items: flex-end; margin: 150px 0 0 0;
   }
+  /* Closed, the map grows into the band's room but starts below the notices' place at the top left
+     (notices never move; the map makes way). */
+  :root.market-drawer.market-closed .board-map-region { margin-top: 120px !important; }
 }
 
 @media (min-width: 600px) and (min-height: 600px) {
@@ -57,14 +63,17 @@
   :root.market-drawer.market-in :is(#relics-panel, #market-panel, #upgrade-group, .market-sheet) { transition: none; }
   :root.market-drawer:not(.market-moving) :is(#relics-panel, #market-panel, #upgrade-group, .market-sheet) { clip-path: none; }
 
-  /* Full: a sheet over the right of the map, the market's three rows of three whole cards on its
-     left and the Upgrades in two columns on its right (Move, Construct, then Capacity and Trash). */
+  /* Full: a sheet over the map, the market's three rows of three whole cards and the Upgrades in two
+     columns at its right (Move, Construct, then Capacity and Trash); a guidance note has the rest. */
   :root.market-drawer.market-full .market-sheet {
-    display: block; grid-column: 2 / 4; grid-row: 1 / 9; justify-self: end; align-self: stretch; z-index: 20; width: var(--sheet-w); margin: 0;
+    display: block; grid-column: 2 / 4; grid-row: 1 / 9; justify-self: stretch; align-self: stretch; z-index: 20; margin: 0 0 0 var(--sheet-inset, 0px);
     border: 1.5px solid #a49c6f99; border-right: 0; border-radius: 12px 0 0 12px;
     background: linear-gradient(160deg, #22352f, #182824); box-shadow: -18px 0 40px -12px #000c, inset 0 0 0 4px #101d1d66;
   }
   :root.market-drawer.market-full #relics-panel { display: none !important; }
+  /* The sheet is sized to the table (see fitMarketSheet); while the table re-fits it must not push
+     the table past the window for a moment. */
+  :root.market-drawer.market-full .app-shell { overflow-x: clip; }
   :root.market-drawer.market-full #market-panel {
     grid-column: 2 / 4 !important; grid-row: 1 / 9 !important; justify-self: end !important; align-self: start !important; z-index: 21;
     width: calc(3 * var(--card-w) + 2 * var(--card-gap)); margin: var(--sheet-pad) calc(var(--sheet-pad) + 2 * var(--card-w) + var(--card-gap) + var(--sheet-split)) 0 0 !important;
@@ -104,6 +113,9 @@
   :root.market-drawer.market-full .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { font-size: 12px !important; line-height: 1.3 !important; -webkit-line-clamp: unset !important; line-clamp: unset !important; }
   :root.market-drawer.market-full .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { font-size: 14px !important; }
 }
+
+/* Beside the whole cards a guidance note fits the strip of map they leave (see fitMarketSheet). */
+:root.market-drawer.market-full .gr-coach:not(.in-dialog):not(.quiet) { width: min(320px, var(--sheet-note-w, 320px)); }
 
 @media (prefers-reduced-motion: reduce) {
   :root.market-drawer :is(#relics-panel, #market-panel, #upgrade-group, .market-sheet) { transition: none !important; }

@@ -470,7 +470,7 @@ const MEASURE = `(() => {
   const tableArea = document.querySelector('.app-shell')?.getBoundingClientRect();
   const marketClosed = document.documentElement.classList.contains('market-drawer') && document.documentElement.classList.contains('market-closed');
   if (!phone && !modal && !marketClosed && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, .board-stage.map-zoomed')) {
-    const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .standings-stats, .phase-stepper, .log-panel, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
+    const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .standings-stats, .phase-stepper, .log-panel, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast, .market-full .market-sheet')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
     const cell = 8, cols = Math.ceil(innerWidth / cell), rows = Math.ceil(innerHeight / cell), heights = new Array(cols).fill(0);
     const covered = new Uint8Array(cols * rows);
     // Everything outside the table area counts as covered.
@@ -669,7 +669,7 @@ async function runCase(browser, origin, testCase, viewport) {
   // whole-card view, so its Buy turn opens the band), or on a phone whether the Supply drawer is open.
   if (testCase.marketView) {
     const got = await browser.evaluate(`(() => { const c = document.documentElement.classList; if (c.contains('market-drawer')) return ['closed', 'side', 'full'].find(v => c.contains('market-' + v)); if (matchMedia('(max-width: 599px), (max-height: 599px)').matches) return document.body.dataset.drawer === 'supply' ? 'open' : 'closed'; return 'band'; })()`);
-    const want = isPhone([width, height]) ? (testCase.marketView === 'closed' ? 'closed' : 'open') : height > width && testCase.marketView === 'full' ? 'side' : testCase.marketView;
+    const want = isPhone([width, height]) ? (testCase.marketView === 'closed' ? 'closed' : 'open') : height >= width && testCase.marketView === 'full' ? 'side' : testCase.marketView;
     if (got !== want) problems.push(`market drawer: ${got}, expected ${want}`);
   }
   if (testCase.buyVisible) {

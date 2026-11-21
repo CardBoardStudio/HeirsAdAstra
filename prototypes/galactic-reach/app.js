@@ -6111,7 +6111,7 @@ function createGalacticReach(options = {}) {
     const settled = () => { root.classList.remove('market-moving', 'market-in', 'market-out'); window.dispatchEvent(new Event('gr-market-settled')); };
     const still = from === null || !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
     root.classList.add('market-moving');
-    if (still) { place(view); requestAnimationFrame(() => requestAnimationFrame(settled)); return; }
+    if (still) { place(view); settled(); return; }
     if (view === 'closed') {
       // Roll it back to the edge first (from the clip it has while moving); the column closes, and
       // the map re-fits, once it has gone.
@@ -6233,7 +6233,8 @@ function createGalacticReach(options = {}) {
     // The market's whole cards lie over the map: it keeps the place it has beside the column under
     // them (see showMarket), fitted once for that column at the table's current size.
     const sheet = root.classList.contains('market-drawer') && root.classList.contains('market-full');
-    if (sheet && mapFitFor === `${marketColumn}:${Math.round(region.getBoundingClientRect().width)}x${Math.round(region.getBoundingClientRect().height)}`) return;
+    const fitKey = r => `${marketColumn}:${Math.round(r.width)}x${Math.round(r.height)}`;
+    if (sheet && mapFitFor === fitKey(region.getBoundingClientRect())) return;
     const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1;
     const box = region.getBoundingClientRect(), b = board.getBoundingClientRect();
     if (!b.width || !box.width) return;
@@ -6273,7 +6274,7 @@ function createGalacticReach(options = {}) {
     root.style.setProperty('--map-top', `${Math.floor(place.dy / zoom)}px`);
     if (closed) root.style.setProperty('--map-left', `${Math.floor(place.dx / zoom)}px`); else root.style.removeProperty('--map-left');
     fitMapFrom = b.width;
-    mapFitFor = `${marketColumn}:${Math.round(box.width)}x${Math.round(box.height)}`;
+    mapFitFor = fitKey(box);
   }
 
   // On the table the supply is six rows of three cards, all one size: the relics, the market's
@@ -6290,7 +6291,7 @@ function createGalacticReach(options = {}) {
   let supplyExtra = 0, supplyRoom = 0;
   function balanceSupply() {
     if (typeof window === 'undefined' || !document.documentElement?.style || !tableLayout() || !window.matchMedia?.('(orientation: landscape)').matches || $('.board-stage.map-zoomed')) return;
-    if (document.documentElement.classList.contains('market-drawer') && (marketColumn !== 'side' || marketShown === 'full')) return;
+    if (document.documentElement.classList.contains('market-drawer') && marketColumn !== 'side') return;
     const board = $('#galaxy-board')?.getBoundingClientRect?.();
     if (!board?.width) return;
     const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
@@ -6328,16 +6329,27 @@ function createGalacticReach(options = {}) {
   // The whole-card sheet: the market's three rows of three cards in real card proportions (63:88)
   // as tall as the column allows, the Upgrades in two columns beside them; on a narrower table the
   // cards shrink so the sheet leaves the left-hand column and a strip of the map uncovered.
-  // The strip it leaves is at least wide enough for a guidance note (about 330 window pixels) beside it.
-  const SHEET_PAD = 12, SHEET_SPLIT = 18, SHEET_GAP = 8, SHEET_NOTE_ROOM = 350;
+  // The strip it leaves beside it is wide enough for a guidance note (SHEET_NOTE_ROOM window pixels)
+  // unless that would shrink the cards below SHEET_CARD_MIN units; then the note narrows to the strip
+  // (--sheet-note-w, at least 200 pixels) rather than lie over the cards.
+  const SHEET_PAD = 12, SHEET_SPLIT = 18, SHEET_GAP = 8, SHEET_NOTE_ROOM = 350, SHEET_CARD_MIN = 128;
   function fitMarketSheet(tableW, height) {
     const root = document.documentElement, shell = $('.app-shell'), style = getComputedStyle(shell);
     const left = parseFloat(style.getPropertyValue('--left-w')) || 250, side = parseFloat(style.paddingRight) || 16, gapX = parseFloat(style.columnGap) || 14;
     const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1;
-    const room = tableW - 2 * side - left - gapX - SHEET_NOTE_ROOM / zoom;
+    // The sheet starts right of the left-hand panels (the map key and comms card are wider than
+    // their column); --sheet-inset is that distance into the map's column.
+    const start = shell.getBoundingClientRect().left + (side + left + gapX) * zoom;
+    const reach = Math.max(0, ...['#prestige-track', '.phase-stepper', '.log-panel:not(.open)', '#map-legend-corner'].map(sel => $(sel)?.getBoundingClientRect?.()).filter(r => r?.width).map(r => r.right));
+    const inset = Math.max(0, Math.ceil((reach - start) / zoom) + 10);
+    root.style.setProperty('--sheet-inset', `${inset}px`);
+    const room = tableW - 2 * side - left - gapX - inset, frame = 2 * SHEET_PAD + SHEET_SPLIT + 3 * SHEET_GAP;
     let cardH = Math.floor((height - 2 * SHEET_PAD - 2 * SHEET_GAP) / 3), cardW = Math.floor(cardH * 63 / 88);
-    const widest = Math.floor((room - 2 * SHEET_PAD - SHEET_SPLIT - 3 * SHEET_GAP) / 5);
-    if (cardW > widest) { cardW = widest; cardH = Math.floor(cardW * 88 / 63); }
+    const withNote = Math.floor((room - SHEET_NOTE_ROOM / zoom - frame) / 5), widest = Math.floor((room - frame) / 5);
+    const fitW = Math.min(cardW, widest, Math.max(withNote, SHEET_CARD_MIN));
+    if (fitW < cardW) { cardW = fitW; cardH = Math.floor(cardW * 88 / 63); }
+    const strip = (room - 5 * cardW - frame) * zoom;
+    root.style.setProperty('--sheet-note-w', `${Math.max(200, Math.min(320, Math.floor(strip - 24)))}px`);
     root.style.setProperty('--card-h', `${cardH}px`);
     root.style.setProperty('--card-w', `${cardW}px`);
     root.style.setProperty('--card-gap', `${SHEET_GAP}px`);
@@ -6419,7 +6431,8 @@ function createGalacticReach(options = {}) {
     // Trade's handle lies on the table's left edge in the gap between the comms card and the map key,
     // ending above the key where notices appear (in a tight column it may overlap the comms card).
     const stackBottom = landscape ? last?.getBoundingClientRect?.() : null, handleH = $('#open-trade')?.getBoundingClientRect?.().height || 0;
-    if (key?.height && stackBottom?.height) root.style.setProperty('--trade-top', `${Math.round(Math.min((stackBottom.bottom + key.top) / 2, key.top - 4 * zoom - handleH / 2))}px`);
+    // It ends at least 12 units above the notices' place, which a notice entering from above can reach.
+    if (key?.height && stackBottom?.height) root.style.setProperty('--trade-top', `${Math.round(Math.min((stackBottom.bottom + key.top) / 2, key.top - 12 * zoom - handleH / 2))}px`);
     else root.style.removeProperty('--trade-top');
     // When the stack and the map key cannot both fit above your piles and hand, tighten the column
     // once (the latest comms entry only) and stack again; a second step drops the icon list from

@@ -564,6 +564,14 @@
     if (box.classList.contains('free') && !box.classList.contains('in-dialog')) box.classList.toggle('docked', Boolean(currentDock && dockRect()));
     positionBox(box, anchor); placePointer(anchor); drawStage();
   }
+  // The map's open stretch: with the market's whole cards up (app.js showMarket), the sheet's free part
+  // left of the cards.
+  function openMap() {
+    const r = $('.board-map-region')?.getBoundingClientRect(), sheet = $('.market-sheet');
+    if (!r || !shown(sheet)) return r;
+    const free = sheet.getBoundingClientRect(), cards = $('#market-panel').getBoundingClientRect();
+    return new DOMRect(free.left + 4, r.top, Math.max(0, cards.left - 8 - free.left - 4), r.height);
+  }
   function positionBox(box, anchor, extraAvoid = currentAvoid, { besideOnly = false } = {}) {
     const margin = 10, gap = 14, vw = innerWidth, vh = innerHeight;
     const dock = box.classList.contains('docked') ? dockRect() : null;
@@ -627,7 +635,7 @@
     // A crowded corner (the discard pile, the turn button): the nearest open stretch of the map,
     // with the separate arrow on the target. Chosen only when every side would cover text.
     // A bubble with no separate arrow (the Sector Scan) stays beside its target so its own arrow can aim.
-    const map = besideOnly ? null : $('.board-map-region')?.getBoundingClientRect();
+    const map = besideOnly ? null : openMap();
     if (map?.width > width && map.height > height) {
       options.push({ side: 'none', left: Math.max(map.left, Math.min(map.right - width, ax - width / 2)), top: Math.max(map.top, Math.min(map.bottom - height, a.top - gap - height)), fits: true, slide: 1.5 });
       // While a raised card fills part of the map, any open stretch of it (nearer is better).
