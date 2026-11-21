@@ -351,7 +351,7 @@
         prepare: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); },
         ensure: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); return 'Supplied: your Capacity Module card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'capacityModule') && !(me(state).storage || []).length,
-        dialogs: { '#storage-allocation-dialog': 'Split the 4 points as you like, then choose Play Capacity Module. Each point raises that limit by 1, for good.' },
+        dialogs: { '#storage-allocation-dialog': 'Split the 4 points as you like, up to 15 per resource, then choose Play Capacity Module. Each point raises that limit by 1, for good. If fewer than 4 points fit, assign only those.' },
         text: () => 'Play your Capacity Module card: point at it and choose Use order.',
         show: state => ({ callouts: [{ el: hand('capacityModule')(state), label: 'Capacity Module' }, { el: $('#storage-pile'), label: 'It ends up here', side: 'left' }] }),
         anchor: hand('capacityModule'), done: state => (me(state).storage || []).length > 0 },

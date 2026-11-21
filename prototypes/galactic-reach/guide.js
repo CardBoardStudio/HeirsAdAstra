@@ -132,7 +132,7 @@
       anchor: () => { const r = port.resources.find(x => port.state.players[port.me].resources[x] >= port.limits()[x]); return firstShown(`#resource-grid .resource-box[data-resource="${r}"]`); },
       show: () => { const r = port.resources.find(x => port.state.players[port.me].resources[x] >= port.limits()[x]); return { callouts: [{ el: firstShown(`#resource-grid .resource-box[data-resource="${r}"] i.cap`), label: 'Limit', side: 'left' }] }; } },
     { id: 'capacity-module', when: c => c.ops && c.player.hand.some(card => card.key === 'capacityModule'), title: 'Capacity Module card', rule: 'storage-allocation',
-      text: () => 'Play it to add 4 points to your limits, for good.',
+      text: () => 'Play it to split up to 4 points among your limits, for good. Each resource can reach at most 15.',
       anchor: c => handCard(c.player.hand.find(card => card.key === 'capacityModule').id) },
     { id: 'combat', when: c => Boolean(c.state.pendingCombat), inDialog: '#combat-dialog', title: 'Battle', rule: 'combat',
       text: () => 'Each volley, pick one tactic: Fire adds a hit, Screen blocks 2.' },

@@ -66,7 +66,7 @@ for(const key of ['prefabYards']) {
 }
 // A named capacity bonus leaves the other limits finite and saveable.
 {
- const g=game(),before=plain(g.p.resourceLimits),c=card(g,'foldedWarehouse');
+ const g=game();g.p.resourceLimits={matter:14,energy:14,biomass:14,data:14};g.p.resources={matter:0,energy:0,biomass:0,data:0};const before=plain(g.p.resourceLimits),c=card(g,'foldedWarehouse');
  assert(g.e.resolveHumanSpecial(c,g.e.ALL_CARDS[c.key],0));
  assert.deepEqual(plain(g.p.resourceLimits),Object.fromEntries(g.e.RESOURCES.map(r=>[r,before[r]+1])));
  for(const value of Object.values(g.p.resourceLimits))assert(Number.isSafeInteger(value));
