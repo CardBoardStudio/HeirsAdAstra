@@ -632,7 +632,7 @@
     }
     // Of the sides that fit, prefer the one that hides least of what you may need next: the lit
     // hexes of an aimed order and an open Sector Scan.
-    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...extraAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden]), #resource-grid, #open-trade, #convert-all-button:not([hidden]), #prestige-track')].filter((el, i) => el && el !== box && (i === 0 || (el !== around && !around.contains(el)))).map(el => el.getBoundingClientRect());
+    const avoid = [around, ...$$('.hex.cf-drop-target, .hex.target'), ...$$('#sector-popover:popover-open'), ...extraAvoid, ...$$('#hand-row .game-card, .pile-stats > button, #board-primary:not([hidden]), #resource-grid, #open-trade, #convert-all-button:not([hidden]), #prestige-track, [data-guide-switch]')].filter((el, i) => el && el !== box && (i === 0 || (el !== around && !around.contains(el)))).map(el => el.getBoundingClientRect());
     const covered = o => avoid.reduce((sum, r) => sum + Math.max(0, Math.min(o.left + width, r.right) - Math.max(o.left, r.left)) * Math.max(0, Math.min(o.top + height, r.bottom) - Math.max(o.top, r.top)), 0);
     const raised = $$(':is(#hand-row, .market-cards, .relic-row) .game-card:is(:hover, :focus-within), .toast').map(el => el.getBoundingClientRect());
     const texty = $$(TEXTY).filter(el => el !== around && !el.contains(around) && !around.contains(el) && shown(el)).map(el => el.getBoundingClientRect());
@@ -754,19 +754,27 @@
   function setEnabled(enabled) {
     prefs.enabled = enabled; savePrefs();
     if (!enabled) hide();
+    syncMenu();
     schedule();
   }
 
+  // The menu entry and the switch on the table ([data-guide-switch]: beside the map tools, or at
+  // the start of a phone's turn buttons) all show prefs.enabled; Learn to play hides them all.
   function syncMenu() {
-    const toggle = $('#guide-toggle');
-    if (!toggle) return;
-    toggle.setAttribute('aria-pressed', String(prefs.enabled));
-    toggle.textContent = prefs.enabled ? 'Guidance: on' : 'Guidance: off';
-    toggle.hidden = Boolean(globalThis.galacticReachTutorial?.active);
+    const toggle = $('#guide-toggle'), tutorial = Boolean(globalThis.galacticReachTutorial?.active);
+    if (toggle) {
+      toggle.setAttribute('aria-pressed', String(prefs.enabled));
+      toggle.textContent = prefs.enabled ? 'Guidance: on' : 'Guidance: off';
+      toggle.hidden = tutorial;
+    }
+    for (const button of $$('[data-guide-switch]')) {
+      button.setAttribute('aria-pressed', String(prefs.enabled));
+      button.hidden = tutorial;
+    }
   }
 
   function init() {
-    $('#guide-toggle')?.addEventListener('click', () => setEnabled(!prefs.enabled));
+    for (const button of $$('#guide-toggle, [data-guide-switch]')) button.addEventListener('click', () => setEnabled(!prefs.enabled));
     // A walkthrough in progress: the menu offers to continue it rather than start again.
     try {
       const tutorial = JSON.parse(localStorage.getItem('galactic-reach-tutorial-progress-v1') || 'null');

@@ -589,6 +589,7 @@ fn router(app: App) -> Router {
         .route("/tabletop/pairing.js", get(tabletop::pairing_script))
         .route("/api/tabletop/{id}/phone-invite", post(tabletop::invite))
         .route("/api/tabletop/{id}/host-phone", post(tabletop::host_phone))
+        .route("/api/tabletop/{id}/play-here", post(tabletop::play_here))
         .route("/api/tabletop/{id}/requests", get(tabletop::requests))
         .route("/api/tabletop/{id}/approve", post(tabletop::approve))
         .route("/api/tabletop/{id}/join", post(tabletop::join))

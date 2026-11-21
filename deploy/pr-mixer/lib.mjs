@@ -34,6 +34,7 @@ export function config(env) {
     origin,
     https: url.protocol === 'https:',
     auth,
+    managers: list(env.MIXER_MANAGERS, '').map(s => s.toLowerCase()),
     devSite: (env.DEV_SITE_URL ?? 'http://127.0.0.1:3200').replace(/\/$/, ''),
     devSitePublic: env.DEV_SITE_PUBLIC_URL ?? `${url.protocol}//${url.hostname}:3200/`,
     devCookie: env.DEV_SESSION_COOKIE ?? 'drawing_board_alien_v11_session',
@@ -157,57 +158,66 @@ export function cookieValue(header, name) {
 
 // A new phone has no mix-selection cookie. Remember which mix issued its
 // table's pairing links, without reading or storing the secret link itself.
-const TABLE_ROUTE_LIFETIME = 30 * 24 * 60 * 60_000;
-export function pruneTableRoutes(routes, mixes, now = Date.now()) {
+export function pruneTableRoutes(routes, mixes) {
+  // Retain routes as long as their build exists, including stopped builds. A
+  // routing expiry must never strand a still-valid device session.
   return Object.fromEntries(Object.entries(routes ?? {}).map(([table, keys]) => [table,
-    Object.fromEntries(Object.entries(keys).filter(([key, until]) => mixes[key] && until > now)),
-  ]).filter(([, keys]) => Object.keys(keys).length)
-    .sort((a, b) => Math.max(...Object.values(b[1])) - Math.max(...Object.values(a[1])))
-    .slice(0, 4096));
+    Object.fromEntries(Object.entries(keys).filter(([key]) => mixes[key])),
+  ]).filter(([, keys]) => Object.keys(keys).length));
 }
 
-/** Only successful host-authorized link issuance establishes table ownership. */
+/** Only a successful host-owned operation establishes a table destination. */
 export function recordTableRoute(state, method, path, status, key, now = Date.now()) {
-  const match = path.match(/^\/api\/tabletop\/([0-9a-f]{32})\/(?:host-phone|phone-invite|board-grant|repair)$/);
-  if (method !== 'POST' || status < 200 || status >= 300 || !match || !state.mixes[key]) return false;
+  const issued = method === 'POST' && path.match(/^\/api\/tabletop\/([0-9a-f]{32})\/(?:host-phone|phone-invite|board-grant|repair|play-here)$/);
+  const lobby = method === 'GET' && path.match(/^\/api\/tables\/([0-9a-f]{32})\/lobby$/);
+  const match = issued || lobby;
+  if (status < 200 || status >= 300 || !match || !state.mixes[key]) return false;
   const routes = state.tableRoutes ?? {};
-  routes[match[1]] = { ...routes[match[1]], [key]: now + TABLE_ROUTE_LIFETIME };
-  state.tableRoutes = pruneTableRoutes(routes, state.mixes, now);
+  routes[match[1]] = { ...routes[match[1]], [key]: now };
+  state.tableRoutes = pruneTableRoutes(routes, state.mixes);
   return true;
 }
 
-/** Route only bootstrap pages. Credentials and all API access stay mix-scoped. */
-export function tabletopRoute(state, method, url, selected, now = Date.now()) {
-  if (method !== 'GET' || !/^\/tabletop\/(?:phone|board)\.html$/.test(url.pathname)) return null;
-  const tables = url.searchParams.getAll('table');
-  if (tables.length !== 1 || !/^[0-9a-f]{32}$/.test(tables[0])) return null;
-  const keys = Object.entries(state.tableRoutes?.[tables[0]] ?? {})
-    .filter(([key, until]) => until > now && ['built', 'running'].includes(state.mixes[key]?.status))
-    .map(([key]) => key);
-  if (!keys.length) return null;
-  if (keys.includes(selected)) return { key: selected };
+function tableContext(url) {
+  const api = url.pathname.match(/^\/api\/(?:tabletop|tables)\/([0-9a-f]{32})(?:\/|$)/);
+  if (api) return api[1];
+  const field = /^\/tabletop\/(?:phone|board|host)\.html$/.test(url.pathname) ? 'table'
+    : url.searchParams.has('tabletop') ? 'tabletop' : null;
+  if (!field) return null;
+  const values = url.searchParams.getAll(field);
+  return values.length === 1 && /^[0-9a-f]{32}$/.test(values[0]) ? values[0] : false;
+}
+
+/** Table-bearing pages, API calls and their assets ignore the global selector.
+ * Routing is not authorization: the upstream still checks every capability.
+ */
+export function tabletopRoute(state, method, url, selected, _now = Date.now(), referer) {
+  let table = tableContext(url), hostAsset = false;
+  if (table === null && method === 'GET' && /\.(?:js|css|html|svg|png|webp|woff2?)$/.test(url.pathname) && referer) {
+    try { const from = new URL(referer); if (from.origin === url.origin) { table = tableContext(from); hostAsset = from.pathname === '/tabletop/host.html' && /^\/tabletop\/(?:pairing\.js|board\.css)$/.test(url.pathname); } } catch { /* no trusted context */ }
+  }
+  if (table === null) return null;
+  if (table === false) return { missing: true };
+  const keys = Object.keys(state.tableRoutes?.[table] ?? {}).filter(key => state.mixes[key]);
+  // A creator's first lobby fetch establishes the route. Guest bootstraps never
+  // trust a browser selection when the table route is missing.
+  if (!keys.length && (hostAsset || url.pathname === '/tabletop/host.html' || /^\/api\/tables\//.test(url.pathname)
+      || /\/(?:host-phone|phone-invite|board-grant|repair|play-here)$/.test(url.pathname)) && state.mixes[selected]) return { key: selected };
+  if (!keys.length) return { missing: true };
   return keys.length === 1 ? { key: keys[0] } : { ambiguous: true };
+}
+
+/** Tailnet membership permits play; only configured operators manage builds. */
+export function isTailnetManager(headers, cfg) {
+  const identity = tailnetIdentity(headers);
+  return identity && cfg.managers.includes(identity.slice('tailnet:'.length).toLowerCase()) ? identity : null;
 }
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 export { esc as escapeHtml };
 
-/** The fixed banner every proxied HTML page of a mix carries. */
-export function banner(mix) {
-  const prs = mix.prs.length
-    ? mix.prs.map((p) => `<a href="https://github.com/${esc(mix.repo)}/pull/${p.number}" target="_blank" rel="noopener" style="color:#ffe9a8">#${p.number}</a> ${esc(p.title)}`).join(' · ')
-    : 'main only';
-  return `<div id="pr-mixer-banner" style="position:fixed;left:0;right:0;bottom:0;z-index:2147483647;display:flex;gap:10px;align-items:center;padding:3px 10px;font:12px/1.4 system-ui,sans-serif;background:rgba(60,20,90,.92);color:#fff;pointer-events:auto">`
-    + `<b>PR mix ${esc(mix.key)}</b><span style="flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis" title="${esc(mix.prs.map((p) => `#${p.number} ${p.title}`).join('\n') || 'main only')}">main ${esc(mix.mainSha.slice(0, 7))} + ${prs}</span>`
-    + `<a href="/__mixer/" style="color:#ffe9a8">Mixer</a>`
-    + `<button type="button" onclick="this.parentNode.remove()" style="background:none;border:0;color:#fff;cursor:pointer" aria-label="Hide the PR mix banner">×</button></div>`;
-}
-
-/** HTML with the banner placed before </body>, or appended. */
-export function injectBanner(html, mix) {
-  const b = banner(mix);
-  const i = html.lastIndexOf('</body>');
-  return i < 0 ? html + b : html.slice(0, i) + b + html.slice(i);
+export function gameError(message) {
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Game connection · Heirs Ad Astra</title><style>body{margin:0;background:#080f17;color:#edf5f8;font:18px/1.5 system-ui}main{max-width:32rem;margin:12vh auto;padding:24px}p{color:#9fb3bf}button{font:inherit;padding:12px 20px;background:#55d9f4;border:0;border-radius:8px;color:#080f17;cursor:pointer}</style><main><small>HEIRS AD ASTRA</small><h1>Let’s get you back to your game</h1><p>${esc(message)}</p><button onclick="location.reload()">Try again</button><p>Your host can help you reconnect or show a fresh invitation.</p></main></html>`;
 }
 
 /** Origin check for the mixer's own POST API (plain CSRF defence). */

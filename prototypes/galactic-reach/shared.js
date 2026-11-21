@@ -157,6 +157,10 @@
       // A table keeps the rules revision it was dealt with: open that revision's browser.
       if (view.client_path && location.pathname !== view.client_path) { location.replace(`${view.client_path}?${tabletop ? 'tabletop' : 'shared'}=${id}`); return; }
       current = view;
+      if (view.manage_url) {
+        const manage = document.createElement('a'); manage.className='button button-ghost';
+        manage.textContent='Manage table'; manage.href=view.manage_url; bar.append(manage);
+      }
       bar.querySelector('#saved-table-name').textContent = view.name;
       bar.querySelector('#table-rules').textContent = `Rules ${view.rules_version.split('/')[1]} · shared`;
       describe(view);
@@ -167,9 +171,9 @@
         paused: () => busy || !!controls?.pending(), newTable: leave
       });
       controls?.update(view);
-      if (tabletop) { bar.querySelector('a').textContent='Phone pairing'; bar.querySelector('a').href=`/tabletop/phone.html?table=${id}`; }
+      if (tabletop) { bar.querySelector('a').textContent='Device setup'; bar.querySelector('a').href=`/tabletop/phone.html?table=${id}`; }
       const library = document.querySelector('.header-actions a');
-      if (library) { library.textContent = tabletop ? 'Phone pairing' : 'Your tables'; library.href = tabletop ? `/tabletop/phone.html?table=${id}` : '/?game=galactic-reach#tables'; }
+      if (library) { library.textContent = tabletop ? 'Device setup' : 'Your tables'; library.href = tabletop ? `/tabletop/phone.html?table=${id}` : '/?game=galactic-reach#tables'; }
       shell.inert = false;
       listen();
     } catch (error) {

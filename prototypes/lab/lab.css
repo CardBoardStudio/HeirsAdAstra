@@ -123,16 +123,13 @@ small {
   font-weight: 500;
   margin-top: 6px;
 }
+/* The small-size emblem (ring, star and the four resource lines); the full emblem's
+   lettering does not read at this size. Same footprint as the old 37x40 tile. */
 .brand-icon {
-  background: var(--cyan);
-  color: #061018;
-  border-radius: 11px;
+  flex: none;
   width: 37px;
-  height: 40px;
-  display: grid;
-  place-items: center;
-  font-size: 17px;
-  letter-spacing: -0.04em;
+  height: 37px;
+  margin-block: 1.5px;
 }
 .nav-label {
   margin: 55px 12px 13px;

@@ -165,7 +165,7 @@ function tableList() {
 }
 function tablesView() {
   return head("A PLACE TO PICK UP WHERE YOU LEFT OFF", "Your tables.", "Name a game and return whenever you’re ready. Each table keeps the rules version it started with.") +
-    `<div class="split"><section class="panel"><h2>Saved games</h2>${tableList()}</section><section class="panel"><h2>Create a table</h2>${profile ? `<form id="table-form"><p class="hint">${rulesHint()}</p><label for="table-name">Table name</label><input id="table-name" name="name" required maxlength="60" placeholder="Friday expedition"><p class="form-note">Opens a waiting room first: share the invite link, watch seats fill, then Start. Standard AI rivals fill the remaining seats. Unrated and saved to your account. Your guest game stays separate.</p><button class="primary">Create and open table →</button></form>` : '<p>Sign in to create a table saved to your account.</p><a class="primary" href="#account">Sign in →</a><hr class="divider"><a class="text-link" href="/galactic-reach/">Play Heirs Ad Astra as a guest →</a>'}</section></div>`;
+    `<div class="split"><section class="panel"><h2>Saved games</h2>${tableList()}</section><section class="panel"><h2>Create a table</h2>${profile ? `<form id="table-form"><p class="hint">${rulesHint()}</p><label for="table-name">Table name</label><input id="table-name" name="name" required maxlength="60" placeholder="Friday expedition"><p class="form-note">Opens Table setup: invite players, approve their seats, then Start. Play here or add an optional public board. Standard AI rivals fill the remaining seats. Unrated and saved to your account. Your guest game stays separate.</p><button class="primary">Create and open table →</button></form>` : '<p>Sign in to create a table saved to your account.</p><a class="primary" href="#account">Sign in →</a><hr class="divider"><a class="text-link" href="/galactic-reach/">Play Heirs Ad Astra as a guest →</a>'}</section></div>`;
 }
 // Read the current rules from the server's engine, never a hard-coded label.
 function rulesHint() {
@@ -190,7 +190,7 @@ function lobbyView() {
     ? `<form id="lobby-settings" class="lobby-settings"><label for="lobby-target">Prestige target</label><select id="lobby-target" name="victory_target">${lobby.victory_targets.map(n => `<option value="${n}" ${n === lobby.victory_target ? "selected" : ""}>${n} Prestige${n === 30 ? " (default)" : ""}</option>`).join("")}</select><p class="form-note">The first faction at or above the target when a round ends wins.</p></form>`
     : lobby.victory_target ? `<p class="form-note">Race to ${lobby.victory_target} Prestige.</p>` : "";
   const invite = lobby.host && !started ? `<div class="lobby-invite"><label for="lobby-invite-link">Invite link</label><div class="lobby-invite-row"><input id="lobby-invite-link" readonly value="${esc(lobby.invite_url)}"><button class="secondary" id="copy-lobby-invite" type="button">Copy link</button></div><p class="form-note">Anyone with this link can take a seat after signing in. Share it privately.</p></div>` : "";
-  const phonePairing = lobby.host ? `<a class="secondary" href="/tabletop/host.html?table=${lobby.id}">Pair phones / public tablet</a>` : "";
+  const phonePairing = lobby.host ? `<a class="secondary" href="/tabletop/host.html?table=${lobby.id}">Table setup · players & public board</a>` : "";
   const start = started
     ? (lobby.table_url && (lobby.host || lobby.shared) ? `<a class="primary" href="${esc(lobby.table_url)}">Open the game →</a>` : `<p class="form-note">The host started this table solo before you joined.</p>`)
     : lobby.host ? `<button class="primary" id="lobby-start" ${lobby.blocked ? "disabled" : ""}>Start the game →</button>${lobby.blocked ? `<p class="form-note lobby-blocked" role="status">${esc(lobby.blocked)}</p>` : ""}`
@@ -415,7 +415,7 @@ function bind() {
   bindReplays(api,async()=>{matches=await api("/api/arena/matches");});
   onForm("#table-form", async body => {
     const table = await api("/api/tables", {game:arenaGame,name:body.name,practice:false,round_limit:20,lobby:true});
-    location.assign(table.url);
+    location.assign(arenaGame === "galactic-reach" ? `/tabletop/host.html?table=${table.id}` : table.url);
   });
   const room = route => `/api/tables/${lobbyRoute()?.id}/lobby${route}`;
   onClick("#lobby-join", async () => { lobby = await api(room("/join"), {invite:lobbyRoute().invite}); location.hash = `#lobby/${lobbyRoute().id}`; });
