@@ -293,13 +293,21 @@ function serve(request, response) {
 // ---- Chrome DevTools protocol over Node's WebSocket. ----
 async function launch(chrome) {
   const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'gr-fit-'));
-  const proc = spawn(chrome, ['--headless', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', 'about:blank'], { stdio: 'ignore' });
-  let port;
-  for (let i = 0; i < 150 && !port; i++) {
+  const proc = spawn(chrome, ['--headless', '--remote-debugging-port=0', `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check', '--hide-scrollbars', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+  // A CI runner's first Chrome start reads the browser from a cold disk and can take well over
+  // 15 s (later starts take 0.2 s), so wait while Chrome is starting rather than for a fixed
+  // guess; stop as soon as it exits, or after a minute, and say what it printed.
+  let stderr = '', exited = null, port;
+  proc.stderr.on('data', data => { stderr = (stderr + data).slice(-4000); });
+  proc.on('exit', (code, signal) => { exited = signal || `code ${code}`; });
+  for (const deadline = Date.now() + 60000; !port && !exited && Date.now() < deadline;) {
     await new Promise(r => setTimeout(r, 100));
     try { port = fs.readFileSync(path.join(profile, 'DevToolsActivePort'), 'utf8').split('\n')[0]; } catch { /* starting */ }
   }
-  if (!port) throw new Error('Chrome did not start');
+  if (!port) {
+    proc.kill();
+    throw new Error(`Chrome did not start: ${exited ? `it exited (${exited})` : 'no DevTools port after 60 s'}\n${stderr}`);
+  }
   const page = (await (await fetch(`http://127.0.0.1:${port}/json/list`)).json()).find(t => t.type === 'page');
   const ws = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => { ws.addEventListener('open', resolve); ws.addEventListener('error', reject); });

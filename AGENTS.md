@@ -6,6 +6,16 @@
 - Game screens must fit the viewport at 1280x720 and larger: no scrolling may be required to view or play. Long reference content (rulebook, card gallery, game report) may scroll. `node scripts/check-viewport-fit.cjs` checks key play states.
 - Accessibility work still covers desktop keyboard operation, screen-reader labels, focus visibility, contrast, and desktop window sizes. State the coverage actually tested.
 
+## Max’s UI is a separately owned interface
+
+- Max’s UI (`body.background-stars`, `max-ui.css` and the Max-specific card-bank/render paths) is controlled by Max. Do not change its colors, cards, cost boxes, controls or layout as part of work on Willem’s UI or the main interface. Max will explicitly request which changes to adopt.
+- Scope Willem’s UI presentation changes to `body:not(.background-stars)` or its own stylesheet. Shared styles, palettes and card renderers must preserve Max’s UI; an apparently global improvement is not authorization to apply it there.
+- Keep Max’s presentation in `max-ui.css` and explicit Max rendering branches. Share game rules and authoritative actions. When Max requests a change here, verify both themes and confirm Willem’s UI is unchanged.
+
+## Combat scope
+
+The discussed battle redesign is not approved by this refinement work. Do not change attack/hull values, the per-battle tactic allowance, or when base attack applies without a separate explicit request. Keep the existing combat resolution; the requested Gravity Scepter target change and combat presentation improvements are separate, explicit requests.
+
 ## GitHub workflow
 
 - Use HTTPS remotes, never SSH.

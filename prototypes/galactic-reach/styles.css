@@ -4178,3 +4178,42 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 #hand-row > .game-card > .card-name { transition: none !important; }
 #hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { white-space: normal !important; text-overflow: clip !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; min-height: min-content !important; flex-shrink: 0; }
 #hand-row > .game-card.name-tucked:not(:hover):not(:focus-within) > .card-name { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }
+
+/* Playtest refinements: stable controls, five-count guides and optional references. */
+body.hide-statistics .standings-stats { display:none !important; }
+body.hide-symbol-legend #map-legend-corner#map-legend-corner { display:none !important; }
+body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now i { --upright-pip:min(20px,calc((100cqh - 42px)/15)); }
+body.background-stars #resource-grid .mat-stars.mat-stock > i.five::before { content:""; position:absolute; left:-50%; right:-50%; bottom:calc(100% + 1px); border-top:1px dashed #a5b4cc99; pointer-events:none; }
+.combat-unit { justify-content:center; }
+.combat-unit :is(.board-icon,figcaption,.combat-hull) { justify-self:center; }
+.combat-fleet { grid-template-columns:minmax(0,1fr); }
+.combat-fleet > header { grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:10px; }
+body.background-stars .combat-many-ships .combat-fleet { grid-template-columns:minmax(0,1fr); }
+.card-table-battle .combat-options { flex-wrap:wrap; }
+.combat-relic-action { max-width:100%; white-space:normal; }
+.prestige-card-source dt { padding-left:18px; font-size:.9em; }
+.relic-map-controls { position:absolute; bottom:12px; left:50%; transform:translateX(-50%); z-index:25; display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:8px; width:min(520px,90%); padding:12px; color:var(--text); background:var(--surface); border:1px solid var(--gold); border-radius:10px; box-shadow:0 4px 16px #0007; }
+.relic-map-controls[hidden] { display:none; }
+.relic-map-controls > :is(strong,span) { flex-basis:100%; text-align:center; }
+.relic-map-controls select { min-height:40px; max-width:100%; color:var(--text); background:var(--surface-2); }
+@media (min-width:600px) and (min-height:600px) and (orientation:landscape) {
+  /* Hand size cannot move the action group into the resource panel. */
+  body.background-stars .app-shell #hand-panel .hand-tools,
+  :root.table-wide body.background-stars .app-shell:has(#hand-row > :nth-child(10)) #hand-panel .hand-tools {
+    align-self:end !important; justify-self:end !important; margin:0 12px 8px 0 !important; width:var(--tools-w) !important;
+  }
+}
+@media (max-width:599px), (max-height:599px) {
+  .relic-map-controls { bottom:74px; max-height:45dvh; overflow:auto; font-size:12px; padding:8px; }
+}
+/* Keep full armies centered and inside short desktop windows across font metrics. */
+body.background-stars .combat-many-ships .combat-units { gap:4px 6px; }
+body.background-stars .combat-many-ships .combat-unit { gap:0; }
+body.background-stars .combat-many-ships .combat-unit figcaption { gap:0; }
+@media (min-width:600px) and (min-height:600px) {
+  body.background-stars .combat-dialog.combat-many-ships { max-width:min(1240px,calc(100vw - 24px)); }
+}
+@media (min-width:600px) and (min-height:600px) {
+  /* Fifteen rows need a shorter rail than the former twenty-one-circle track. */
+  body.background-stars #resource-grid.resource-grid { height:min(414px,calc(100% - 56px)) !important; }
+}
