@@ -1,7 +1,8 @@
 // Starting a game from the home page, against an isolated local DEV_AUTH server. No mocks.
 // Build web + server first, then TABLETOP_ORIGIN=http://127.0.0.1:PORT node scripts/check-start-flow.cjs
 // Play alone never opens a waiting room, an invitation or a shared table; the two
-// choices are the whole first screen at phone and desktop sizes. SHOTS=path saves captures.
+// choices are the whole first screen at phone and desktop sizes; a waiting room never
+// offers a phone a Start it refuses. SHOTS=path saves captures.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
@@ -32,6 +33,51 @@ async function sized(browser, label, sizes) {
   }
 }
 const SIZES = [[390,844],[844,390],[1280,720]];
+// A phone, as the person holds it: mobile viewport, touch and a phone browser's user agent.
+async function phone(browser, width, height) {
+  await browser.send('Emulation.setDeviceMetricsOverride', {width, height, deviceScaleFactor:2, mobile:true, screenOrientation: width > height ? {type:'landscapePrimary', angle:90} : {type:'portraitPrimary', angle:0}});
+  await browser.send('Emulation.setTouchEmulationEnabled', {enabled:true, maxTouchPoints:5});
+  await browser.send('Emulation.setUserAgentOverride', {userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1', platform:'iPhone'});
+}
+// A game for playing with others with only its host seated, on a phone held upright and
+// sideways. Its older waiting room (#lobby, still open in a tab, the history or a bookmark)
+// offered Start beside three computer rivals, then refused it with a pairing notice: a dead
+// end. It must say Start waits for someone and offer Play alone, and the game page must send
+// the host to the waiting screen, as Your tables does.
+async function phoneWaitingRoom(chrome) {
+  const host = await launch(chrome);
+  try {
+    await host.navigate(origin);
+    assert.equal((await request(host, '/api/auth/dev', {name:'Phone host'})).status, 200);
+    for (const [width, height] of [[390,844],[844,390]]) {
+      await phone(host, width, height);
+      await host.navigate(`${origin}/`);
+      await wait(host, "!!document.querySelector('#play-with-others')");
+      await host.evaluate("document.querySelector('#play-with-others').click()");
+      await wait(host, "location.pathname==='/tabletop/host.html' && document.querySelector('#manual-link')?.value.includes('#invite=')");
+      const id = await host.evaluate("new URLSearchParams(location.search).get('table')");
+      // The game page sends a table still waiting to its waiting screen.
+      await host.navigate(`${origin}/galactic-reach/?table=${id}`);
+      await wait(host, `location.pathname==='/tabletop/host.html' && location.search==='?table=${id}'`);
+      // The older waiting room: no Start the server refuses; it says why and offers Play alone.
+      await host.navigate(`${origin}/?game=galactic-reach#lobby/${id}`);
+      await wait(host, "!!document.querySelector('.lobby-seats') && !!document.querySelector('#lobby-alone')");
+      assert.equal(await host.evaluate("document.querySelectorAll('.lobby-seat.ai').length"), 3, 'three computer rivals are seated');
+      assert(await host.evaluate("!document.querySelector('#lobby-start')"), 'no Start while nobody else has joined');
+      assert.match(await host.evaluate("document.querySelector('.lobby-blocked').textContent"), /second person/);
+      assert(await host.evaluate("document.querySelector('#notice').hidden"), 'no error notice');
+      await sized(host, `phone-waiting-room`, [[width, height]]);
+      await host.evaluate("document.querySelector('#lobby-alone').click()");
+      await wait(host, "location.hash==='#alone' && !!document.querySelector('#alone-form')");
+      await host.evaluate("document.querySelector('#alone-form').requestSubmit()");
+      await wait(host, "location.pathname==='/galactic-reach/' && document.querySelector('#table-sync')?.textContent==='Saved to your account'");
+      const alone = (await request(host, `/api/tables/${await host.evaluate("new URLSearchParams(location.search).get('table')")}`)).data;
+      assert.equal(alone.lobby, null, 'Play alone from the waiting room starts a game with no waiting room');
+      assert.equal(alone.save.state.players.length, 4, 'against three computer rivals');
+    }
+    assert.deepEqual(host.errors, []);
+  } finally { host.close(); }
+}
 (async()=>{
   const chrome = findChrome(); assert(chrome);
   const player = await launch(chrome), visitor = await launch(chrome);
@@ -75,4 +121,6 @@ const SIZES = [[390,844],[844,390],[1280,720]];
     assert.deepEqual(player.errors, []); assert.deepEqual(visitor.errors, []);
     console.log('ok - two start choices at phone and desktop sizes; Play alone starts a saved game at the chosen target with no waiting room, invitation or shared table; a visitor gets the New game choices; resume sits beneath');
   } finally { player.close(); visitor.close(); }
+  await phoneWaitingRoom(chrome);
+  console.log('ok - on a phone, upright and sideways, a game for others with nobody else seated never offers a Start it refuses: the game page opens its waiting screen, and the older waiting room says why and offers Play alone, which starts against three computer rivals');
 })().catch(error=>{console.error(error);process.exit(1);});

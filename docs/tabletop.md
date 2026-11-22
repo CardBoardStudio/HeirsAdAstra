@@ -24,6 +24,13 @@ The home page offers two choices, and the same words are used throughout.
   link already sent; **Make a new link** does, after a confirmation.
 - Resuming sits beneath the two choices: the latest unfinished account game and an
   unfinished game saved in this browser.
+- A waiting table played with others (it has a tabletop room) always sends its host
+  to the waiting screen: **Your tables**, **Continue** and the game page's redirect
+  (`lobby_url`) all use `lobby::host_url`. The older waiting room
+  (`#lobby/<table>`, still open in a tab, the history or a bookmark from before the
+  two choices) reports Start's second-person rule as `blocked`
+  (`lobby::NEEDS_A_SECOND_PERSON`, the condition `check_start` refuses) and offers
+  **Play alone instead** in place of a Start the server would refuse.
 
 Every device in a game says once how it is used, stored per game in
 `localStorage` (`heirs-device:<table>`): **My hand** or **The whole game** for a

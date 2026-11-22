@@ -231,9 +231,13 @@ function lobbyView() {
     ? `<form id="lobby-settings" class="lobby-settings"><label for="lobby-target">Prestige target</label><select id="lobby-target" name="victory_target">${lobby.victory_targets.map(n => `<option value="${n}" ${n === lobby.victory_target ? "selected" : ""}>${n} Prestige${n === 30 ? " (default)" : ""}</option>`).join("")}</select><p class="form-note">The first faction at or above the target when a round ends wins.</p></form>`
     : lobby.victory_target ? `<p class="form-note">Race to ${lobby.victory_target} Prestige.</p>` : "";
   const invite = lobby.host && !started ? `<div class="lobby-invite"><label for="lobby-invite-link">Invite link</label><div class="lobby-invite-row"><input id="lobby-invite-link" readonly value="${esc(lobby.invite_url)}"><button class="secondary" id="copy-lobby-invite" type="button">Copy link</button></div><p class="form-note">Anyone with this link can take a seat after signing in. Share it privately.</p></div>` : "";
-  const phonePairing = lobby.host ? `<a class="secondary" href="/tabletop/host.html?table=${lobby.id}">Table setup · players & public board</a>` : "";
+  // Played with others, Start waits for a second person (rules #shared-tables): say so,
+  // and offer the game alone instead of a Start the server refuses.
+  const alone = lobby.host && lobby.paired && lobby.blocked ? `<a class="primary" id="lobby-alone" href="#alone">Play alone instead →</a>` : "";
+  const phonePairing = lobby.host ?`<a class="secondary" href="/tabletop/host.html?table=${lobby.id}">Table setup · players & public board</a>` : "";
   const start = started
     ? (lobby.table_url && (lobby.host || lobby.shared) ? `<a class="primary" href="${esc(lobby.table_url)}">Open the game →</a>` : `<p class="form-note">The host started this table solo before you joined.</p>`)
+    : alone ? `<p class="form-note lobby-blocked" role="status">${esc(lobby.blocked)}</p>${alone}`
     : lobby.host ? `<button class="primary" id="lobby-start" ${lobby.blocked ? "disabled" : ""}>Start the game →</button>${lobby.blocked ? `<p class="form-note lobby-blocked" role="status">${esc(lobby.blocked)}</p>` : ""}`
     : lobby.member ? `<p class="form-note" role="status">You have a seat. Waiting for the host to start.${lobby.blocked ? ` ${esc(lobby.blocked)}` : ""}</p><button class="secondary" id="lobby-leave">Leave this table</button>`
     : `<button class="primary" id="lobby-join">Take a seat →</button>`;
