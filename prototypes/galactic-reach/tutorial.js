@@ -122,6 +122,18 @@
     source[type] -= 1;
     s.ensureFleet(to, 0)[type] += 1;
   }
+  // Leaves your `type` unit alone on its hex: your other units there move to a free neighbouring
+  // hex of the same world, the one nearest the next world to settle.
+  function standAlone(s, type) {
+    const at = unitsAt(s.state, type)[0], others = Object.keys(s.state.fleets[at]?.[0] || {}).filter(t => t !== type && s.state.fleets[at][0][t] > 0);
+    if (!at || !others.length) return null;
+    const goal = targetWorld(s.state)?.center || at, occupied = c => Object.values(s.state.fleets[c] || {}).some(f => Object.values(f || {}).some(n => n > 0));
+    const aside = Object.keys(s.state.planets).filter(c => s.state.planets[c].cluster === s.state.planets[at]?.cluster && distance(c, at) === 1 && !occupied(c))
+      .sort((a, b) => distance(a, goal) - distance(b, goal) || a.localeCompare(b))[0];
+    if (!aside) return null;
+    for (const other of others) while (s.state.fleets[at][0][other] > 0) relocate(s, other, at, aside);
+    return `Staged: your ${others.map(t => s.SHIP_STATS[t].name).join(' and ')} stepped 1 hex aside, so your ${s.SHIP_STATS[type].name} has its hex to itself.`;
+  }
 
   // ---- Begin with the opening cards, then explain the table the player has used. ----
   const hand = key => state => globalThis.galacticReachGuide.handCard(handHas(state, key)?.id || '');
@@ -231,7 +243,10 @@
         show: state => ({ ghost: state.moveSource || scanOpen() ? null : { from: hand('move')(state), to: hexAt(yard(state)) }, callouts: [{ el: $('#sector-popover [data-move-unit="settler"]')?.closest('label') || hexAt(yard(state)), label: scanOpen() ? 'Untick: Settlers move 1' : 'Fleet + Settler here' }] }),
         anchor: state => scanOpen() && $('#sector-popover [data-move-unit="settler"]')?.checked ? $('#sector-popover [data-move-unit="settler"]').closest('label') : hand('move')(state),
         done: (state, base) => unitsAt(state, 'fleet').join('|') !== base.fleets && !state.pendingMove },
-      { id: 'move-explorer', title: 'Explorers fly alone', rule: 'movement', aimAt: state => state.moveSource ? null : unitsAt(state, 'explorer')[0],
+      { id: 'move-explorer', title: 'Explorers fly alone', rule: 'movement', aimAt: state => state.moveSource ? null : unitsAt(state, 'explorer')[0], moves: 'explorer',
+        // A Move dropped on a hex shared with a Settler or Fleet chooses those, not the Explorer
+        // (rules #split-moves): they step aside first, so the Move dropped here flies the Explorer.
+        prepare: s => standAlone(s, 'explorer'),
         ensure: s => { ensureHand(s, ['move']); return 'Supplied: a Move card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'move'),
         start: state => ({ explorers: unitsAt(state, 'explorer').join('|') }),
@@ -401,7 +416,8 @@
     return ok;
   }
   let note = '';
-  // A Sector Scan left open from the step before is closed once, as a new step begins.
+  // A Sector Scan left open from the step before is closed as a new step begins; one the player
+  // opens during the step (a hex selected to look at it) stays open.
   let scanClosedFor = -1;
   function toastNote(message) { note = message; }
 
@@ -491,13 +507,17 @@
     try { anchor = openDialog || step.dialog ? null : step.anchor?.(state, port) || null; } catch { anchor = null; }
     // This step needs an Operations turn, but you are in Buy: finish it, then carry on next round.
     // The Sector Scan stays open after a build; when this step's control is elsewhere, close it first.
-    if (!reviewing && !openDialog && scanOpen() && !buyDetour && !(anchor && anchor.closest?.('#sector-popover')) && !['scan-close'].includes(step.id) && !(['move', 'construct', 'colonize', 'excavate'].includes(state.actionMode)))
-      { if (scanClosedFor !== progress.step) { scanClosedFor = progress.step; $('#sector-popover')?.hidePopover?.(); } }
+    const stepBegins = !reviewing && scanClosedFor !== progress.step;
+    if (stepBegins) scanClosedFor = progress.step;
+    if (stepBegins && !openDialog && scanOpen() && !buyDetour && !(anchor && anchor.closest?.('#sector-popover')) && !['scan-close'].includes(step.id) && !(['move', 'construct', 'colonize', 'excavate'].includes(state.actionMode)))
+      $('#sector-popover')?.hidePopover?.();
     if (buyDetour) { anchor = globalThis.galacticReachGuide.turnButton(); if (!/Finish Buy/.test(text)) text = `You are in your Buy turn. Choose Finish Buy; the next round brings a new hand. Then: ${text}`; }
     // A card aimed with Use order waits for its hex: point at the lit hexes, whatever the step.
     const lit = coord => coord && $(`.hex.cf-drop-target[data-coord="${coord}"], .hex.target[data-coord="${coord}"]`);
     const choiceInScan = anchor?.closest?.('#sector-popover') && scanOpen();
-    const aimed = !reviewing && !openDialog && !state.pendingCombat && !choiceInScan && ['move', 'construct', 'colonize'].includes(state.actionMode)
+    // A step about one unit aims only while that unit is the one moving, never at another unit's hexes.
+    const ownUnit = !step.moves || !state.moveSource || state.actionOptions?.units?.[step.moves] > 0;
+    const aimed = !reviewing && !openDialog && !state.pendingCombat && !choiceInScan && ownUnit && ['move', 'construct', 'colonize'].includes(state.actionMode)
       && (lit(step.aimAt?.(state, port)) || $('.hex.cf-drop-target, .hex.target'));
     if (aimed) { anchor = aimed; text = `${state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.) ${text}`; }
     return {
