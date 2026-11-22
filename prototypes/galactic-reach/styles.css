@@ -4116,51 +4116,51 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
    A raised card is measured at its raised width, up to 280px; the wide, short raised card of an
    upright tablet at 200px; the opened card on a phone at 170px. A hand past the fan's room keeps
    its stacked sizes. ==== */
-#hand-row > .game-card { --card-w: var(--top-w, 136px); --corner-cap: calc(var(--fan-h, 200px) * .32); }
-#hand-row > .game-card:is(:hover, :focus-within) { --card-w: min(var(--raise-w, 250px), 280px); --corner-cap: 999px; }
+body:not(.background-stars) #hand-row > .game-card { --card-w: var(--top-w, 136px); --corner-cap: calc(var(--fan-h, 200px) * .32); }
+body:not(.background-stars) #hand-row > .game-card:is(:hover, :focus-within) { --card-w: min(var(--raise-w, 250px), 280px); --corner-cap: 999px; }
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
-  #hand-row > .game-card:is(:hover, :focus-within) { --card-w: 200px; }
+  body:not(.background-stars) #hand-row > .game-card:is(:hover, :focus-within) { --card-w: 200px; }
 }
 /* The opened card on a phone is wide but short (a sideways phone has about 150px over the hand):
    its tabs take the chosen size for a 170px card, about 60px, not a third of its width. */
 .phone-card-sheet .game-card { --card-w: 170px; --corner-cap: 999px; }
-:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) {
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) {
   --tab-pad: max(3px, calc(var(--card-w) * .03));
   --icon: min(calc(var(--card-w) * .29), var(--corner-cap), calc((var(--card-w) - 2 * var(--pad-x, 8px) - 2 * var(--tab-pad)) / var(--glyphs, 1)));
   font-size: var(--icon) !important;
 }
 /* Each part reads the size itself rather than inheriting it: a fan that changes a card's height
    (--fan-h) left inherited font sizes stale in Chrome. */
-:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.corner-group, .corner-dots, .resource-dots, .resource-chip, .vocab-icon, .vocab-star, .resource-symbol) { font-size: var(--icon) !important; }
-:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.vocab-icon, .vocab-star, .resource-symbol) { width: var(--icon) !important; height: var(--icon) !important; }
-:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.corner-group, .resource-chip) { gap: 0 !important; }
-:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) .corner-count { font-size: calc(var(--icon) * .5) !important; }
-:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > .corner-button {
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.corner-group, .corner-dots, .resource-dots, .resource-chip, .vocab-icon, .vocab-star, .resource-symbol) { font-size: var(--icon) !important; }
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.vocab-icon, .vocab-star, .resource-symbol) { width: var(--icon) !important; height: var(--icon) !important; }
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.corner-group, .resource-chip) { gap: 0 !important; }
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) .corner-count { font-size: calc(var(--icon) * .5) !important; }
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > .corner-button {
   min-width: auto !important; min-height: auto !important; gap: calc(var(--icon) * .12) !important;
   padding: var(--tab-pad) !important; padding-bottom: calc(var(--tab-pad) + 3px) !important;
 }
 /* A name that does not fit between corners this big moves under them on the raised card too
    (card-feel.js measures it as the card rises), as it does at rest. */
 @media (min-width: 600px) and (min-height: 600px) {
-  #hand-row > .game-card.name-under-raised:is(:hover, :focus-within) { grid-template-areas: "sym . cost" "name name name" "head head head" "effect effect effect" "note note note" "art art art" "buttons buttons buttons" !important; }
-  #hand-row > .game-card.name-under-raised:is(:hover, :focus-within) > .card-name { margin-top: var(--box, 10px) !important; }
+  body:not(.background-stars) #hand-row > .game-card.name-under-raised:is(:hover, :focus-within) { grid-template-areas: "sym . cost" "name name name" "head head head" "effect effect effect" "note note note" "art art art" "buttons buttons buttons" !important; }
+  body:not(.background-stars) #hand-row > .game-card.name-under-raised:is(:hover, :focus-within) > .card-name { margin-top: var(--box, 10px) !important; }
 }
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
-  #hand-row > .game-card.name-under-raised:is(:hover, :focus-within):not(.has-buttons) { grid-template-areas: "sym . cost" "name name name" "head head head" "effect effect effect" "note note note" !important; }
-  #hand-row > .game-card.name-under-raised:is(:hover, :focus-within).has-buttons { grid-template-areas: "sym . cost buttons" "name name name buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
+  body:not(.background-stars) #hand-row > .game-card.name-under-raised:is(:hover, :focus-within):not(.has-buttons) { grid-template-areas: "sym . cost" "name name name" "head head head" "effect effect effect" "note note note" !important; }
+  body:not(.background-stars) #hand-row > .game-card.name-under-raised:is(:hover, :focus-within).has-buttons { grid-template-areas: "sym . cost buttons" "name name name buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
 }
 /* A resting card's name sits clear of its bigger corners. Its empty rows (effect, buttons, notes:
    hidden at rest) take no gap, so the corners and the name keep the card's height; a card without
    corners keeps a small space between its name and the line under it. */
 @media (min-width: 600px) and (min-height: 600px) {
-  #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within) { row-gap: 0 !important; }
-  #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within) > .card-name ~ :is(.card-headline, .card-effect) { margin-top: 3px !important; }
-  #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within):is(:has(> .card-symbols), :has(> .card-footer)) > .card-name { margin-top: 5px !important; }
+  body:not(.background-stars) #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within) { row-gap: 0 !important; }
+  body:not(.background-stars) #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within) > .card-name ~ :is(.card-headline, .card-effect) { margin-top: 3px !important; }
+  body:not(.background-stars) #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within):is(:has(> .card-symbols), :has(> .card-footer)) > .card-name { margin-top: 5px !important; }
 }
 /* On a phone a resting card's corners may use more of its height: a fanned phone hand shows the
    symbols without the name (a card without symbols shows its name instead). */
 @media (max-width: 599px), (max-height: 599px) {
-  body #hand-row > .game-card { --corner-cap: calc(var(--fan-h, 200px) * .6); }
+  body:not(.background-stars) #hand-row > .game-card { --corner-cap: calc(var(--fan-h, 200px) * .6); }
 }
 
 /* ==== A resting hand card's name is never cut off (rules #card-corners): it wraps between words
@@ -4168,16 +4168,16 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
    --name-fs, down to 9px). A name that does not fit even then, in a hand squeezed past the fan's
    room, is left to the raised card and kept for screen readers. ==== */
 @media (min-width: 600px) and (min-height: 600px) {
-  #hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { font-size: var(--name-fs, 12.5px) !important; }
+  body:not(.background-stars) #hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { font-size: var(--name-fs, 12.5px) !important; }
 }
 @media (max-width: 599px), (max-height: 599px) {
-  body #hand-row > .game-card > .card-name { font-size: var(--name-fs, 14px); }
+  body:not(.background-stars) #hand-row > .game-card > .card-name { font-size: var(--name-fs, 14px); }
 }
 /* A name never animates its size: under reduced motion every property gets a 0.01ms transition,
    and a measurement in the same frame would still read the old size. */
-#hand-row > .game-card > .card-name { transition: none !important; }
-#hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { white-space: normal !important; text-overflow: clip !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; min-height: min-content !important; flex-shrink: 0; }
-#hand-row > .game-card.name-tucked:not(:hover):not(:focus-within) > .card-name { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }
+body:not(.background-stars) #hand-row > .game-card > .card-name { transition: none !important; }
+body:not(.background-stars) #hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { white-space: normal !important; text-overflow: clip !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; min-height: min-content !important; flex-shrink: 0; }
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(:hover):not(:focus-within) > .card-name { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }
 
 /* Playtest refinements: stable controls, five-count guides and optional references. */
 body.hide-statistics .standings-stats { display:none !important; }

@@ -274,7 +274,10 @@
   // down to NAME_MIN. A name that does not fit even then is left to the raised card (styles.css
   // keeps it for screen readers). All cards step together, so a pass costs one layout per size.
   const NAME_MIN = 9;
+  // Max's table (body.background-stars) draws its own cards and keeps their names as they are.
+  const maxTable = () => document.body.classList.contains('background-stars');
   function fitHandNameSizes(onlyNew = false) {
+    if (maxTable()) return;
     const cards = $$('#hand-row > .game-card').filter(card => !raisedNow(card) && !(onlyNew && card.dataset.nameFit));
     for (const card of cards) { card.style.removeProperty('--name-fs'); card.classList.remove('name-tucked'); }
     // Fits: no word wider than its box, two lines at most, not squeezed in its row, and above the
@@ -316,6 +319,7 @@
   // A redraw replaces the card, so each card's answer is kept by its id and put back on the new one.
   const raisedNames = new Map();
   function fitRaised(card) {
+    if (document.body.classList.contains('background-stars')) return;
     const name = card.querySelector(':scope > .card-name');
     if (!name?.getClientRects().length) return;
     card.classList.remove('name-under-raised'); card.classList.add('name-probe');
