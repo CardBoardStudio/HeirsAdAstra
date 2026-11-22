@@ -39,6 +39,21 @@
 
 /* Inside a modal dialog (a battle, a choice), the note sits at the top of that dialog. */
 .gr-coach.in-dialog { position: static; width: auto; max-height: none; margin: 0 0 10px; box-shadow: 0 0 0 2px #ffc95e55; }
+/* Learn to play's note in a window is short, so the window's own controls stay in view: its title
+   and one line on the left, its controls on the right (they wrap below when the window is narrow).
+   A window taller than the screen (a battle on a phone) scrolls to the lit control; the note stays
+   at the window's top edge, in the same place, rather than scrolling away from it. */
+.tutorial-mode .gr-coach.in-dialog { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px; padding: 8px 12px; }
+.tutorial-mode .gr-coach.in-dialog :is(.gr-coach-progress, .gr-coach-eyebrow, .gr-coach-rule) { display: none; }
+.tutorial-mode .gr-coach.in-dialog .gr-coach-title { flex: 0 0 auto; margin: 0; font-size: 16px; }
+.tutorial-mode .gr-coach.in-dialog .gr-coach-text { flex: 1 1 260px; }
+/* A window's own paragraph colour (the battle report's muted text) never fades the note's line. */
+#gr-coach.in-dialog .gr-coach-text { color: var(--coach-ink); }
+.tutorial-mode .gr-coach.in-dialog .gr-coach-aside { flex: 1 0 100%; order: 1; }
+.tutorial-mode .gr-coach.in-dialog .gr-coach-actions { flex: 0 0 auto; margin: 0 0 0 auto; }
+.tutorial-mode .gr-coach.in-dialog .gr-coach-link { margin-left: 6px; }
+/* A window's setting the note names (the capacity split): a dashed cyan ring, as a named hex gets. */
+dialog .gr-coach-goal:not(.gr-coach-target) { outline: 2px dashed #6ff3ff; outline-offset: 4px; border-radius: 6px; }
 
 /* The element to use pulses with a gold ring; still for reduced motion. */
 /* The ONE element a note is about: a cyan ring (not the gold "you can use this" outline every

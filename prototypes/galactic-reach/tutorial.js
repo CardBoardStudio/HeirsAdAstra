@@ -34,8 +34,9 @@
   // Another tab restarted the walkthrough or began a new one: follow it here, so this tab never
   // writes the earlier practice game or place back over it.
   globalThis.addEventListener?.('storage', event => { if (event.key === PROGRESS && event.newValue === null) location.reload(); });
+  // Reviewing an earlier step (Back) is not a place: a reload returns to the current step.
   function loadProgress() {
-    try { const saved = JSON.parse(localStorage.getItem(PROGRESS) || 'null'); if (saved && saved.rules === RULES && Number.isInteger(saved.step)) return saved; } catch { /* fresh */ }
+    try { const saved = JSON.parse(localStorage.getItem(PROGRESS) || 'null'); if (saved && saved.rules === RULES && Number.isInteger(saved.step)) return { ...saved, view: saved.step }; } catch { /* fresh */ }
     return { rules: RULES, step: 0, view: 0, base: null, staged: {}, cardFirst: true };
   }
   let progress = loadProgress();
@@ -103,6 +104,14 @@
       }
     }
   }
+  // Make the hand exactly these cards: the rest go back on top of the deck, drawn next round.
+  function onlyHand(s, keys) {
+    ensureHand(s, keys);
+    const p = me(s.state), keep = [...keys], back = [];
+    p.hand = p.hand.filter(c => { const i = keep.indexOf(c.key); if (i < 0) { back.push(c); return false; } keep.splice(i, 1); return true; });
+    p.deck.push(...back);
+    return back.length;
+  }
   function ensureOwned(s, key) { const p = me(s.state); if (!allCards(p).some(c => c.key === key)) p.discard.push(s.makeCard(key)); }
   function ensureShipyard(s) {
     if (yard(s.state)) return yard(s.state);
@@ -126,16 +135,45 @@
   // ---- Begin with the opening cards, then explain the table the player has used. ----
   const hand = key => state => globalThis.galacticReachGuide.handCard(handHas(state, key)?.id || '');
   const lastHand = key => state => { const cards = me(state).hand.filter(c => c.key === key); return globalThis.galacticReachGuide.handCard(cards.at(-1)?.id || ''); };
+  // Hand cards that still convert without waste, and the resource each would add.
+  const gainOf = (state, port, card) => { const lim = port.limits(); return Object.keys(port.cards[card.key].resource || {}).find(r => me(state).resources[r] < lim[r]) || null; };
+  const worthConverting = (state, port) => me(state).hand.filter(c => port.canConvertCard(c) && gainOf(state, port, c));
+  // Converting one card at a time: the rightmost such card in the hand (no card covers its corner),
+  // its top-right convert corner and the mat row it adds to.
+  function nextConvert(state, port) {
+    const cards = worthConverting(state, port);
+    const el = $$('#hand-row > .game-card').filter(e => cards.some(c => c.id === e.dataset.cardId)).at(-1) || null;
+    const card = cards.find(c => c.id === el?.dataset.cardId) || null;
+    return { el, corner: el?.querySelector('[data-resource-card]') || el, row: card ? matRow(gainOf(state, port, card)) : null };
+  }
+  // The table's own word that it passed you to Buy (no cards left): its notice where the table shows
+  // one, otherwise the newest such line in the Comms feed.
+  const seen = el => Boolean(el && globalThis.galacticReachGuide.shown(el) && el.getBoundingClientRect().width > 40);
+  const autoPassNotice = () => [$('#market-notice'), $('#turn-notice'), ...$$('#game-log .log-entry')].find(el => seen(el) && /no cards left/i.test(el.textContent)) || null;
   // Only an open Sector Scan offers a choice (a closed one keeps its last buttons in the page).
   const scanButton = pattern => () => (scanOpen() && $$('#sector-popover button').find(b => !b.disabled && pattern.test(b.textContent.trim()))) || null;
   const hexAt = coord => coord && globalThis.galacticReachGuide.hex(coord);
+  // The battle window's next control for you, in the order you use them: Stay and fight, then a
+  // tactic (each one you may pick), then Commit.
+  function battleControl() {
+    const actions = $$('#combat-dialog #combat-options [data-combat-action]:not(:disabled)');
+    const stay = actions.find(b => /^Stay and fight$/.test(b.textContent.trim()));
+    if (stay) return { text: 'Choose Stay and fight.', lit: [stay] };
+    const commit = actions.find(b => /^Commit\b/.test(b.textContent.trim()));
+    if (commit) return { text: 'Choose Commit: both sides reveal their tactics together.', lit: [commit] };
+    const tactics = $$('#combat-dialog [data-combat-tactic]:not(:disabled)');
+    const named = b => `${b.querySelector('strong')?.textContent || 'a tactic'} (${b.querySelector('.combat-tactic-stats')?.textContent || ''})`.replace(' ()', '');
+    if (tactics.length) return { text: `Pick ${tactics.map(named).join(' or ')}.`, lit: tactics };
+    // Nothing to use yet (or no window to read): the whole battle in one line.
+    return { text: 'Choose Stay and fight. Then pick a tactic and commit it: Concentrated Fire adds 1 hit; Defensive Screen blocks 2.', lit: [] };
+  }
 
   const LESSONS = [
     { id: 'resources', title: 'Resources', steps: [
       // The first thing to do is convert the Move, so the Move is the card that glows.
-      { id: 'first-construct', title: 'Your first build', rule: 'resources',
+      { id: 'first-construct', title: 'Convert this Move', rule: 'resources',
         prepare: s => { ensureHand(s, ['move', 'move', 'construct', 'construct', 'construct'], true); },
-        text: () => 'A Construct card can build a Data Harvester. You have the Matter and Data; first convert this Move for 1 Energy.',
+        text: () => 'Convert this Move into 1 Energy: the last thing your first build, a Data Harvester, needs.',
         show: state => ({ spotlight: [$('#resource-grid'), hand('move')(state)], ghost: { from: hand('move')(state), to: matRow('energy') }, callouts: [{ el: matPart('energy', '.mat-pips.now'), label: 'Energy: +1' }] }),
         anchor: hand('move'), done: (state, base, port) => me(state).resources.energy >= port.structures.harvester.cost.energy },
     ] },
@@ -155,15 +193,15 @@
         anchor: scanButton(/Harvester/), done: state => Boolean(harvester(state)) },
     ] },
     { id: 'table', title: 'Read the table', steps: [
-      { id: 'track', title: 'The score track', rule: 'shared-board', info: true, followCallouts: true,
-        text: s => `Race to ${s.victoryTarget || 40}★ on the score track. Your Colony already scores 3★.`,
-        show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'You: 3★', side: 'right' }, { el: $('.prestige-track-goal'), label: 'First to the goal wins', side: 'bottom' }] }),
+      { id: 'track', title: 'The score track', rule: 'shared-board', info: true,
+        text: s => `Your Colony already scores 3★. When a round ends with anyone at ${s.victoryTarget || 40}★ or more, the highest score wins.`,
+        show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'You: 3★', side: 'right' }, { el: $('.prestige-track-goal'), label: 'The goal', side: 'bottom' }] }),
         anchor: () => $('[data-score-player="0"]') },
-      { id: 'home', title: 'Your home world', rule: 'shared-board', info: true, followCallouts: true,
+      { id: 'home', title: 'Your home world', rule: 'shared-board', info: true,
         text: () => 'Your home world. Select any hex to see what is on it.',
         show: state => ({ spotlight: homeHexes(state), callouts: [{ el: hexAt(colony(state)), label: 'Your Colony (3★)' }] }),
         anchor: state => hexAt(colony(state)) },
-      { id: 'mat', title: 'Your mat', rule: 'player-mat', info: true, followCallouts: true,
+      { id: 'mat', title: 'Your mat', rule: 'player-mat', info: true,
         text: () => 'Your mat has one row per resource.',
         show: state => ({ spotlight: [$('#resource-grid'), hexAt(colony(state))], callouts: [{ el: matPart('matter', '.mat-pips.now'), label: 'Now: the Matter you hold' }, { el: matPart('matter', '.mat-pips.rate'), label: 'Rate: Matter made each round' }, { el: matPart('matter', '.mat-pips.now i.cap'), label: 'Limit: 4 at most' }, { el: hexAt(colony(state)), label: 'Your Colony makes that +1' }] }),
         anchor: () => $('#resource-grid') },
@@ -176,19 +214,20 @@
     { id: 'round', title: 'The round', steps: [
       { id: 'convert-rest', title: 'Convert first', rule: 'resources',
         text: () => 'Unused cards are discarded at round end: convert your leftover cards to resources first.',
-        show: state => ({ ghost: { from: $('#hand-row .game-card'), to: matRow('matter') }, callouts: [{ el: $('#hand-row'), label: 'Discarded at round end if unused' }] }),
-        anchor: () => $('#convert-all-button:not([hidden])') || $('#hand-row .game-card'),
+        // One card at a time: its convert corner is lit and the ghost goes to that resource's row.
+        show: (state, port) => { const next = nextConvert(state, port); return { ghost: next.el && next.row ? { from: next.el, to: next.row } : null, callouts: [{ el: $('#hand-row'), label: 'Discarded at round end if unused' }] }; },
+        anchor: (state, port) => nextConvert(state, port).corner,
         // Done when nothing convertible is left, or when converting would only waste resources at their limit.
-        done: (state, base, port) => { const lim = port.limits(); return !me(state).hand.some(c => port.canConvertCard(c) && Object.keys(port.cards[c.key].resource || {}).some(r => me(state).resources[r] < lim[r])); } },
-      { id: 'pass', title: 'Pass & buy', rule: 'round',
-        text: () => 'Nothing else to afford: choose Pass & buy.',
-        show: () => ({ spotlight: [$('#hand-row'), globalThis.galacticReachGuide.turnButton()], callouts: [{ el: $('#hand-row'), label: 'Left in hand = discarded at round end' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Ends your turns this round', side: 'left' }] }),
-        anchor: () => globalThis.galacticReachGuide.turnButton(), start: state => ({ round: state.round }), done: (state, base) => me(state).passed || state.round > base.round },
+        done: (state, base, port) => !worthConverting(state, port).length },
+      // An empty hand passes by itself (the table says so), so this step is usually already in Buy.
+      // Cards kept back (their resource full) still need Pass & buy.
       { id: 'buy-empty', buy: true, title: 'Finish Buy', rule: 'buy',
-        text: () => 'Your Buy turn. Nothing to buy yet: choose Finish Buy.',
-        show: () => ({ callouts: [{ el: $('#market-row'), label: 'The market: buy cards here', side: 'left' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Finish Buy', side: 'left' }] }),
+        text: state => !myBuy(state) ? 'Nothing else to afford: choose Pass & buy, then Finish Buy.'
+          : me(state).hand.length ? 'Your Buy turn. Nothing to buy yet: choose Finish Buy.' : 'No cards left, so the table passed you to Buy. Nothing to buy yet: choose Finish Buy.',
+        show: state => !myBuy(state) ? { spotlight: [$('#hand-row'), globalThis.galacticReachGuide.turnButton()], callouts: [{ el: $('#hand-row'), label: 'Left in hand = discarded at round end' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Ends your turns this round', side: 'left' }] }
+          : { callouts: [...(me(state).hand.length ? [] : [{ el: autoPassNotice(), label: 'Passed for you: no cards left', side: autoPassNotice()?.closest('#game-log') ? 'right' : undefined }]), { el: $('#market-row'), label: 'The market: buy cards here', side: 'left' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Finish Buy', side: 'left' }] },
         anchor: () => globalThis.galacticReachGuide.turnButton(), start: state => ({ round: state.round }), done: (state, base) => state.round > base.round },
-      { id: 'deck', title: 'A new round', rule: 'cleanup-draw', info: true, followCallouts: true, wait: state => !myOps(state),
+      { id: 'deck', title: 'A new round', rule: 'cleanup-draw', info: true, wait: state => !myOps(state),
         text: () => 'A new round: a new hand. Your resources stayed; last round’s cards went to the discard pile.',
         show: state => ({ spotlight: [$('#hand-row'), $('#deck-button'), $('#discard-button'), $('#resource-grid')], callouts: [{ el: $('#hand-row'), label: 'New hand of 5' }, { el: $('#deck-button'), label: 'Cards left to draw' }, { el: $('#discard-button'), label: 'Last round’s cards', side: 'left' }, ...(harvester(state) ? [{ el: matPart('data', '.mat-pips.now'), label: '+2 Data from the Harvester', side: 'left' }] : [])] }),
         anchor: () => $('#deck-button') },
@@ -241,7 +280,9 @@
     ] },
     { id: 'relics', title: 'Relics', steps: [
       { id: 'probe', title: 'Probe for a relic', rule: 'movement', aimAt: state => unitsAt(state, 'explorer')[0], wait: state => !myOps(state),
-        prepare: s => { ensureUnits(s, { explorer: 1 }); ensureOwned(s, 'probe'); ensureHand(s, ['probe', 'move', 'move']); },
+        // The Probe / Excavate card stays in play until the round ends, so this round's hand is only it
+        // and a Move: reaching the ◈ empties the hand, the round moves on, and nothing is thrown away.
+        prepare: s => { ensureUnits(s, { explorer: 1 }); ensureOwned(s, 'probe'); return onlyHand(s, ['probe', 'move']) ? 'Staged: this round’s hand is your Probe / Excavate card and a Move; your other cards went back on your deck.' : null; },
         ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); return 'Supplied: your Probe / Excavate card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'probe') && !me(state).inPlay.some(c => c.key === 'probe'),
         text: () => 'Drag the Probe / Excavate card onto your Explorer and choose Probe: it finds the nearest hidden relic.',
@@ -254,12 +295,12 @@
         show: (state, port) => ({ ghost: state.moveSource ? null : { from: hand('move')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(knownRelic(state, port)), label: '◈ the relic' }] }),
         anchor: (state, port) => (myOps(state) ? hand('move')(state) : null) || hexAt(knownRelic(state, port)),
         done: (state, base, port) => { const site = knownRelic(state, port); return !site || unitsAt(state, 'explorer').includes(site); } },
-      { id: 'excavate', title: 'Excavate', rule: 'excavation', aimAt: state => unitsAt(state, 'explorer')[0],
+      { id: 'excavate', title: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? 'Finish the round' : 'Excavate', rule: 'excavation', aimAt: state => unitsAt(state, 'explorer')[0],
         ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); ensureResources(s, s.EXCAVATION_COST); return `Supplied: your Probe / Excavate card and the excavation cost (${costText(s.EXCAVATION_COST)}).`; },
         needsEnsure: (state, port) => myOps(state) && !me(state).inPlay.some(c => c.key === 'probe') && (!handHas(state, 'probe') || !port.canAfford(port.excavationCost)),
-        text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? 'Your Probe / Excavate card is in play until the round ends. Finish this round: Pass & buy, then Finish Buy.' : `Drag Probe / Excavate onto your Explorer on the ◈ and choose Excavate (${costText(port.excavationCost)}).`,
+        text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? `Your Probe / Excavate card is in play until this round ends, so you excavate next round. ${myBuy(state) ? 'Choose Finish Buy.' : me(state).hand.length ? 'Use or convert your other cards first.' : 'Choose Pass & buy, then Finish Buy.'}` : `Drag Probe / Excavate onto your Explorer on the ◈ and choose Excavate (${costText(port.excavationCost)}).`,
         show: state => handHas(state, 'probe') ? { ghost: { from: hand('probe')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(unitsAt(state, 'explorer')[0]), label: 'Explorer on the ◈' }] } : { callouts: [{ el: $('#in-play-button'), label: 'Probe / Excavate: in play' }] },
-        anchor: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? globalThis.galacticReachGuide.turnButton() : (scanButton(/Excavate/)() || hand('probe')(state)),
+        anchor: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? (me(state).hand.length && !myBuy(state) ? $('#hand-row') : globalThis.galacticReachGuide.turnButton()) : (scanButton(/Excavate/)() || hand('probe')(state)),
         done: state => me(state).relicsExcavated > 0 || state.actionMode === 'excavate' },
       { id: 'choose-relic', title: 'Choose a relic card', rule: 'alien-relics',
         // Cancelled Excavate (or never chose a card): go back and play it again.
@@ -290,7 +331,7 @@
         ensure: s => { ensureOwned(s, 'colonize'); ensureHand(s, ['colonize']); ensureResources(s, { biomass: s.COLONY_LIFE_COST }); return `Supplied: a Colonize card and ${s.COLONY_LIFE_COST} Life.`; },
         needsEnsure: (state, port) => myOps(state) && (!handHas(state, 'colonize') || me(state).resources.biomass < port.colonyCost),
         start: state => ({ colonies: coloniesOf(state) }),
-        text: () => `Drag the Colonize card onto your Settler and choose Found Colony: ${port.colonyCost} Life, +3★.`,
+        text: () => scanButton(/Found Colony/)() ? `Choose Found Colony: ${port.colonyCost} Life, +3★.` : `Drag the Colonize card onto your Settler and choose Found Colony: ${port.colonyCost} Life, +3★.`,
         show: state => ({ ghost: scanOpen() ? null : { from: hand('colonize')(state), to: hexAt(targetWorld(state)?.center) }, callouts: [{ el: scanButton(/Found Colony/)() || hexAt(targetWorld(state)?.center), label: scanOpen() ? 'This one' : 'Your Settler' }] }),
         anchor: state => scanButton(/Found Colony/)() || hand('colonize')(state), done: (state, base) => coloniesOf(state) > base.colonies },
     ] },
@@ -315,7 +356,7 @@
         needsEnsure: (state, port) => myBuy(state) && !state.market.some(c => port.canAfford(port.purchaseCost(c.key))),
         start: state => ({ bought: purchases(me(state)) }),
         text: () => 'Buy the ringed card: like every card with a gold outline, you can afford it. It goes to your discard pile.',
-        show: () => ({ spotlight: [$('#market-row')], callouts: [{ el: $('[data-buy-market]:not([disabled])'), label: 'You can afford this' }, { el: $('[data-market-tier="expensive"]'), label: 'Expensive', side: 'left' }, { el: $('[data-market-tier="cheap"]'), label: 'Cheap', side: 'left' }] }),
+        show: () => ({ spotlight: [$('#market-row')], callouts: [{ el: $('[data-buy-market]:not([disabled])'), label: 'You can afford this' }] }),
         anchor: (state, port) => $(`[data-buy-market]:not([disabled])`), done: (state, base) => purchases(me(state)) > base.bought },
       { id: 'upgrade', buy: true, title: 'Upgrade a starter', rule: 'buy',
         ensure: s => { ensureResources(s, { energy: 2 }); return 'Supplied: 2 Energy.'; },
@@ -342,6 +383,8 @@
         anchor: () => $('[data-trash-pile]:not([disabled])') || $('#open-trash'), done: (state, base) => allCards(me(state)).length < base.cards },
       { id: 'finish-buy', buy: true, title: 'Finish Buy', rule: 'round',
         start: state => ({ round: state.round }),
+        // The card is gone and the Trash window is still open: its Done closes it.
+        dialogs: { '#trash-dialog': { text: 'Card removed. Choose Done to close this window.', anchor: () => $('#close-trash') } },
         text: () => 'Choose Finish Buy. The next round brings a new hand.',
         show: () => ({ callouts: [{ el: globalThis.galacticReachGuide.turnButton(), label: 'Finish Buy', side: 'left' }] }),
         anchor: () => globalThis.galacticReachGuide.turnButton(), done: (state, base) => state.round > base.round },
@@ -351,7 +394,8 @@
         prepare: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); },
         ensure: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); return 'Supplied: your Capacity Module card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'capacityModule') && !(me(state).storage || []).length,
-        dialogs: { '#storage-allocation-dialog': 'Split the 4 points as you like, up to 15 per resource, then choose Play Capacity Module. Each point raises that limit by 1, for good. If fewer than 4 points fit, assign only those.' },
+        dialogs: { '#storage-allocation-dialog': { text: 'Split up to 4 points among your limits, up to 15 per resource, then choose Play Capacity Module. If fewer than 4 points fit, assign only those.',
+          anchor: () => $('#storage-allocation-confirm'), marks: () => [$('#storage-allocation-options')] } },
         text: () => 'Play your Capacity Module card: point at it and choose Use order.',
         show: state => ({ callouts: [{ el: hand('capacityModule')(state), label: 'Capacity Module' }, { el: $('#storage-pile'), label: 'It ends up here', side: 'left' }] }),
         anchor: hand('capacityModule'), done: state => (me(state).storage || []).length > 0 },
@@ -375,15 +419,17 @@
         anchor: state => { const enemy = unitsAt(state, 'explorer', 1)[0]; return (myOps(state) ? hand('move')(state) : null) || hexAt(enemy); },
         done: (state, base) => Boolean(state.pendingCombat) || (me(state).combatVictories || 0) > base.wins },
       { id: 'tactics', title: 'Choose tactics', rule: 'combat-tactics', dialog: '#combat-dialog',
-        text: () => 'If asked, choose Stay and fight. Then pick a tactic: Fire adds 1 hit; Screen blocks 2. Fleets take hits before Settlers.',
+        text: () => battleControl().text,
+        anchor: () => battleControl().lit[0] || null, lit: () => battleControl().lit.slice(1),
         done: state => !state.pendingCombat },
       { id: 'report', title: 'Victory', rule: 'combat', dialog: '#message-dialog',
         start: state => ({ wins: me(state).combatVictories || 0 }),
         text: () => 'Every enemy unit destroyed: a decisive victory, +2★. Choose Continue.',
+        anchor: () => $('#message-dialog #message-continue'),
         done: state => !state.pendingCombatReport && !modalOpen('#message-dialog') },
     ] },
     { id: 'victory', title: 'Winning', steps: [
-      { id: 'final-track', title: 'How to win', rule: 'victory', info: true, followCallouts: true,
+      { id: 'final-track', title: 'How to win', rule: 'victory', info: true,
         text: (state, port) => `You have ${port.prestige(0)}★. When a round ends with anyone at ${port.victoryTarget()}★ or more, the highest score wins.`,
         show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'Your score', side: 'right' }, { el: $('.prestige-track-goal'), label: 'The goal', side: 'bottom' }] }),
         anchor: () => $('[data-score-player="0"]') },
@@ -415,6 +461,8 @@
     }
     // Lesson 1's Move conversion is now part of its first step.
     if (progress.stepId === 'convert-move') progress.stepId = 'first-construct';
+    // The Pass step is now part of Finish Buy (an empty hand passes by itself).
+    if (progress.stepId === 'pass') progress.stepId = 'buy-empty';
     if (!progress.stepId) return;
     const index = progress.stepId === 'finished' ? STEPS.length : STEPS.findIndex(s => s.id === progress.stepId);
     if (index >= 0 && index !== progress.step) { progress.step = index; progress.view = index; progress.base = null; }
@@ -452,6 +500,7 @@
     }
   }
 
+  const titleOf = (step, state) => typeof step.title === 'function' ? step.title(state, port) : step.title;
   function tip(nextPort, nextGuide) {
     port = nextPort; guide = nextGuide;
     resolveProgress();
@@ -461,7 +510,8 @@
       if (progress.step > 0 || Object.keys(progress.staged).length) { progress = { rules: RULES, step: 0, view: 0, base: null, staged: {}, cardFirst: true }; saveProgress(); }
       port.stage(s => { s.state.tutorialRules = RULES; }, null);
     }
-    if (progress.view === progress.step) advance();
+    // The current step's action still counts while you review an earlier one: doing it ends the review.
+    advance();
     const finished = progress.step >= STEPS.length;
     if (finished) return {
       id: 'finished', eyebrow: 'Tutorial complete', title: 'You are ready',
@@ -475,20 +525,41 @@
     const stray = !reviewing && !step.dialog && !Object.keys(step.dialogs || {}).some(modalOpen)
       && $$('dialog[open]').find(d => d.matches(':modal') && d.id);
     if (stray) return {
-      id: `${step.id}-stray`, eyebrow: `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${step.lesson.title}`, title: step.title,
+      id: `${step.id}-stray`, eyebrow: `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${step.lesson.title}`, title: titleOf(step, state),
       text: `Close this window (Close, Done or Escape) to continue: ${typeof step.text === 'function' ? step.text(state, port) : step.text}`,
       rule: step.rule, inDialog: `#${stray.id}`, anchor: null,
-      buttons: [{ action: 'back', label: 'Back', disabled: progress.view === 0 }, { action: 'exit', label: 'Exit tutorial' }]
+      buttons: [{ action: 'back', label: 'Back', disabled: progress.view === 0 }, { action: 'exit', label: 'Exit tutorial', quiet: true },
+        ...(step.lessonIndex < LESSONS.length - 1 ? [{ action: 'skip', label: 'Skip lesson', link: true }] : [])]
     };
     const openDialog = Object.keys(step.dialogs || {}).find(modalOpen);
+    // A window the step works in: its one line, and the control in it to use (with any it names).
+    const win = openDialog ? (typeof step.dialogs[openDialog] === 'string' ? { text: step.dialogs[openDialog] } : step.dialogs[openDialog]) : null;
     const lesson = step.lesson;
     const eyebrow = `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${lesson.title} · step ${step.index + 1} of ${lesson.steps.length}${reviewing ? ' · done' : ''}`;
-    let text = openDialog ? step.dialogs[openDialog] : typeof step.text === 'function' ? step.text(state, port) : step.text;
+    // A step you have done, seen again with Back: its note only. Nothing on the table is lit,
+    // ringed or shown being dragged, since its action is finished, and the note keeps its place.
+    if (reviewing) {
+      const modal = $$('dialog[open]').find(d => d.matches(':modal') && d.id);
+      return {
+        id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: titleOf(step, state), rule: step.rule,
+        text: typeof step.text === 'function' ? step.text(state, port) : step.text,
+        aside: 'Looking back at a step you have done: nothing to do here.',
+        inDialog: modal ? `#${modal.id}` : null, anchor: null, hold: true,
+        progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
+        buttons: [
+          { action: 'back', label: 'Back', disabled: progress.view === 0 },
+          { action: 'next', label: 'Next', primary: true },
+          { action: 'resume', label: 'Return to current step', link: true },
+          { action: 'exit', label: 'Exit tutorial', quiet: true },
+          { action: 'skip', label: 'Skip lesson', link: true },
+        ]
+      };
+    }
+    let text = win ? win.text : typeof step.text === 'function' ? step.text(state, port) : step.text;
 
-    if (!reviewing && !openDialog && !step.dialog && state.activePlayer !== 0 && state.phase === 'operations' && !state.pendingCombat) text = `Rivals are taking their turns… ${text}`;
     const buyDetour = !reviewing && !openDialog && !step.buy && myBuy(state);
     let anchor = null;
-    try { anchor = openDialog || step.dialog ? null : step.anchor?.(state, port) || null; } catch { anchor = null; }
+    try { anchor = (win ? win.anchor?.(state, port) : step.anchor?.(state, port)) || null; } catch { anchor = null; }
     // This step needs an Operations turn, but you are in Buy: finish it, then carry on next round.
     // The Sector Scan stays open after a build; when this step's control is elsewhere, close it first.
     if (!reviewing && !openDialog && scanOpen() && !buyDetour && !(anchor && anchor.closest?.('#sector-popover')) && !['scan-close'].includes(step.id) && !(['move', 'construct', 'colonize', 'excavate'].includes(state.actionMode)))
@@ -499,12 +570,14 @@
     const choiceInScan = anchor?.closest?.('#sector-popover') && scanOpen();
     const aimed = !reviewing && !openDialog && !state.pendingCombat && !choiceInScan && ['move', 'construct', 'colonize'].includes(state.actionMode)
       && (lit(step.aimAt?.(state, port)) || $('.hex.cf-drop-target, .hex.target'));
-    if (aimed) { anchor = aimed; text = `${state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.) ${text}`; }
+    // The step's own instruction (drag the card, choose the unit) is done by now: say what is left.
+    if (aimed) { const ringed = aimed === lit(step.aimAt?.(state, port)); anchor = aimed; text = `${ringed ? `Now choose the ringed hex${state.moveSource ? ' to move to' : ''}.` : state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.)`; }
     return {
-      id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: step.title, text, rule: step.rule, aside: !reviewing && !openDialog ? note : '',
+      id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: titleOf(step, state), text, rule: step.rule, aside: !reviewing && !openDialog ? note : '',
       revealOnInspect: !reviewing && !openDialog && !step.dialog && Boolean(anchor?.matches?.('#hand-row > .game-card')),
       bringIntoView: !reviewing,
-      inDialog: openDialog || step.dialog || null, anchor, followCallouts: Boolean(step.followCallouts) && !reviewing, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return step.marks?.(state, port) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
+      inDialog: openDialog || step.dialog || null, anchor, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return (win ? win.marks?.(state, port) : step.marks?.(state, port)) || []; } catch { return []; } })(),
+      lit: (() => { try { return (win ? win.lit?.(state, port) : step.lit?.(state, port)) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
       buttons: [
         { action: 'back', label: 'Back', disabled: progress.view === 0 },
         // Reading steps go on with Next. A "do it yourself" step has no button that goes on or
@@ -523,6 +596,7 @@
       else if (STEPS[progress.step]?.info) enter(progress.step + 1);
       saveProgress();
     }
+    else if (action === 'resume') { progress.view = progress.step; saveProgress(); }
     else if (action === 'skip') {
       const current = STEPS[progress.view]?.lessonIndex ?? 0;
       const next = STEPS.findIndex(s => s.lessonIndex > current);
