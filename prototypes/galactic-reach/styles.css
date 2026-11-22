@@ -3911,10 +3911,10 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   color: var(--ink, #253436); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; box-shadow: var(--tab-shadow);
   transition: background-color .12s, border-color .12s, box-shadow .12s;
 }
-.game-card .card-footer.corner-button:where(:has(.resource-chip.matter)) { --tab-fill: var(--matter); --tab-edge: color-mix(in srgb, var(--matter) 45%, #2a2418); }
-.game-card .card-footer.corner-button:where(:has(.resource-chip.energy)) { --tab-fill: var(--energy); --tab-edge: color-mix(in srgb, var(--energy) 45%, #2a2418); }
-.game-card .card-footer.corner-button:where(:has(.resource-chip.biomass)) { --tab-fill: var(--biomass); --tab-edge: color-mix(in srgb, var(--biomass) 45%, #2a2418); }
-.game-card .card-footer.corner-button:where(:has(.resource-chip.data)) { --tab-fill: var(--data); --tab-edge: color-mix(in srgb, var(--data) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(.tab-matter) { --tab-fill: var(--matter); --tab-edge: color-mix(in srgb, var(--matter) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(.tab-energy) { --tab-fill: var(--energy); --tab-edge: color-mix(in srgb, var(--energy) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(.tab-biomass) { --tab-fill: var(--biomass); --tab-edge: color-mix(in srgb, var(--biomass) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(.tab-data) { --tab-fill: var(--data); --tab-edge: color-mix(in srgb, var(--data) 45%, #2a2418); }
 /* On an enabled convert tab the symbol sits straight on the tab's colour. */
 .game-card .corner-button:not(:disabled) .resource-symbol { background: none !important; }
 .game-card .corner-button:hover:not(:disabled) { --tab-tint: linear-gradient(#ffffff59, #ffffff59); --tab-edge: #2a2418; }
@@ -4155,7 +4155,7 @@ body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-c
 @media (min-width: 600px) and (min-height: 600px) {
   body:not(.background-stars) #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within) { row-gap: 0 !important; }
   body:not(.background-stars) #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within) > .card-name ~ :is(.card-headline, .card-effect) { margin-top: 3px !important; }
-  body:not(.background-stars) #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within):is(:has(> .card-symbols), :has(> .card-footer)) > .card-name { margin-top: 5px !important; }
+  body:not(.background-stars) #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within):is(.has-symbols, .has-corner-dots) > .card-name { margin-top: 5px !important; }
 }
 /* On a phone a resting card's corners may use more of its height: a fanned phone hand shows the
    symbols without the name (a card without symbols shows its name instead). */
