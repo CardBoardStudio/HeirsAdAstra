@@ -221,6 +221,9 @@ const CASES = [
   // The reverse: pointing at a hex raises the hand card that can start an order there.
   { name: 'operations, pointing at a hex raises its playable card', save: operationsState(['construct', 'move']), playsHere: 'construct', devices: 'tablet' },
   { name: 'operations, Use order aims like a drag', save: operationsState(['construct', 'move']), click: ['#hand-row .game-card[data-order="construct"] [data-order-card]'], expect: 'aimed', devices: 'tablet' },
+  // A corner tab acts only on a raised card (rules #card-corners): a pointer raises the card as it
+  // arrives; on a touch screen the first tap on a resting card's tab raises it, the next press acts.
+  { name: 'operations, a resting card\'s tab raises it first', save: operationsState(['move', 'construct', 'move']), tabRule: '#hand-row .game-card[data-order="construct"] .card-symbols[data-order-card]', devices: 'tablet' },
   { name: 'operations, click Convert with the mouse', save: operationsState(['construct', 'move']), tap: '#hand-row .game-card[data-order="construct"] [data-resource-card]', expect: 'converted' },
   { name: 'map pieces on every terrain', save: piecesState() },
   // Trading with the bank on the mat: drag (mouse, and touch on iPads), and tap then tap.
@@ -611,6 +614,26 @@ async function runCase(browser, origin, testCase, viewport) {
     if (!testCase.device) await mouse('mouseMoved', 4, 4);
     await browser.evaluate('new Promise(r => setTimeout(r, 450))');
     steps.playsHere = hexes;
+  }
+  if (testCase.tabRule) {
+    const state = () => browser.evaluate(`(() => { const tab = document.querySelector(${JSON.stringify(testCase.tabRule)}), card = tab?.closest('.game-card');
+      return { raised: !!card?.matches(':hover, :focus-within'), used: !!document.querySelector('#hand-row .game-card.order-selected') }; })()`);
+    const press = async () => { const at = await centre(testCase.tabRule); if (!at) return false; await mouse('mouseMoved', at.x, at.y); await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y); await browser.evaluate('new Promise(r => setTimeout(r, 300))'); return true; };
+    if (touch) {
+      if (!(await press())) return [`could not find ${testCase.tabRule}`];
+      const first = await state();
+      if (!first.raised) problems0.push('the first tap on a resting card\'s tab did not raise the card');
+      if (first.used) problems0.push('the first tap on a resting card\'s tab used its order');
+      // A second tap soon after the first at the same spot would be a double tap.
+      await browser.evaluate('new Promise(r => setTimeout(r, 700))');
+    } else {
+      const at = await centre(testCase.tabRule);
+      if (!at) return [`could not find ${testCase.tabRule}`];
+      await mouse('mouseMoved', at.x, at.y); await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+      if (!(await state()).raised) problems0.push('pointing at a resting card\'s tab did not raise the card');
+    }
+    await press();
+    if (!(await state()).used) problems0.push('pressing the raised card\'s tab did not use its order');
   }
   // A real click on a raised card's button (press and release without moving) is still a click.
   if (testCase.tap) {

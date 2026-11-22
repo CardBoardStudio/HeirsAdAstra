@@ -224,21 +224,29 @@
   // corners stay in its corners. A corner acts only on a raised card: on a touch screen the tap
   // that raises a resting card does not also press the corner under the finger. ----
   const raisedNow = card => card.matches(':hover, :focus-within');
-  const raisedBy = new WeakMap();
+  // The raised card is remembered by its card id: the tap that raises it can redraw the hand, and the
+  // next tap, on the redrawn card, must act.
+  const raisedIds = new Set(), raisedBy = new WeakMap();
+  const markRaised = card => { if (card?.dataset.cardId) raisedIds.add(card.dataset.cardId); };
   document.addEventListener('pointerdown', event => {
     const card = event.target.closest?.('#hand-row > .game-card');
-    if (card && event.pointerType === 'touch' && !card.dataset.cfRaised) raisedBy.set(card, performance.now());
+    if (card && event.pointerType === 'touch' && !raisedIds.has(card.dataset.cardId)) raisedBy.set(card, performance.now());
   }, true);
-  const raiseFrom = event => { if (event.pointerType === 'touch') return; const card = event.target.closest?.('#hand-row > .game-card'); if (card && raisedNow(card)) card.dataset.cfRaised = '1'; };
+  const raiseFrom = event => { if (event.pointerType === 'touch') return; const card = event.target.closest?.('#hand-row > .game-card'); if (card && raisedNow(card)) markRaised(card); };
   document.addEventListener('pointerover', raiseFrom);
   document.addEventListener('focusin', raiseFrom);
   document.addEventListener('click', event => {
     if (event.detail === 0) return;
-    const corner = event.target.closest?.('#hand-row .corner-button'), card = corner?.closest('.game-card');
+    // The raising tap's click may land anywhere on the card, which grows under the finger: it
+    // presses nothing there, and the card counts as raised from then on.
+    const card = event.target.closest?.('#hand-row > .game-card');
     if (!card || !raisedBy.has(card)) return;
     raisedBy.delete(card);
+    markRaised(card);
+    const button = event.target.closest('button');
+    if (!button) return;
     event.preventDefault(); event.stopPropagation();
-    corner.focus({ preventScroll: true });
+    button.focus({ preventScroll: true });
   }, true);
   // A card's name sits between its two corners, wrapping only between words and to two lines at
   // most (rules #card-corners); a name that does not fit there moves under the corners.
@@ -252,7 +260,7 @@
   }
   addEventListener('resize', () => requestAnimationFrame(fitNames));
   function settle() {
-    requestAnimationFrame(() => { for (const card of $$('#hand-row > .game-card[data-cf-raised]')) if (!raisedNow(card)) delete card.dataset.cfRaised; });
+    requestAnimationFrame(() => { for (const id of raisedIds) { const card = $(`#hand-row > .game-card[data-card-id="${CSS.escape(id)}"]`); if (!card || !raisedNow(card)) raisedIds.delete(id); } });
   }
   document.addEventListener('pointerout', settle);
   document.addEventListener('focusout', settle);
