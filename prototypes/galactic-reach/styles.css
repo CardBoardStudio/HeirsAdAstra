@@ -4176,5 +4176,5 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 /* A name never animates its size: under reduced motion every property gets a 0.01ms transition,
    and a measurement in the same frame would still read the old size. */
 #hand-row > .game-card > .card-name { transition: none !important; }
-#hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { white-space: normal !important; text-overflow: clip !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; }
+#hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { white-space: normal !important; text-overflow: clip !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; min-height: min-content !important; flex-shrink: 0; }
 #hand-row > .game-card.name-tucked:not(:hover):not(:focus-within) > .card-name { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }
