@@ -812,7 +812,7 @@ test('Resource counters show starting production separately from available stock
  for(const resource of ['matter','energy','biomass','data']){
   const article=html.match(new RegExp('<article class="resource-box '+resource+'[^"]*"[\\s\\S]*?</article>'))[0];
   const pips=[...article.matchAll(/<i aria-hidden="true" class="([^"]*)"><\/i>/g)].map(m=>m[1].trim().split(/\s+/));
-  assert.equal(pips.length,21);assert.equal(pips.filter(p=>p.includes('shut')).length,17,'Only four slots available');
+  assert.equal(pips.length,15);assert.equal(pips.filter(p=>p.includes('shut')).length,11,'Only four slots available');
   assert.equal(pips.filter(p=>p.includes('producing')).length,resource==='matter'?1:0);
   assert.equal(pips.filter(p=>p.includes('full')).length,resource==='energy'?0:1);
  }
