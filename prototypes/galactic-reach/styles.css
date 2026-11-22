@@ -4046,7 +4046,7 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   justify-self: end !important; margin: calc(-1 * var(--pad-t)) calc(-1 * var(--pad-x)) 0 0 !important; padding-right: var(--pad-x) !important; padding-left: 9px !important;
   border-width: 0 0 1.5px 1.5px !important; border-style: solid; border-radius: 0 7px 0 9px !important;
 }
-#hand-row > .game-card > .card-footer.corner-button:disabled { border-style: dashed; }
+#hand-row > .game-card > .corner-button:disabled { border-style: dashed; }
 @media (min-width: 600px) and (min-height: 600px) {
   /* A corner with nothing to press (converting is not possible for this card) has no tab. */
   #hand-row > .game-card:is(:hover, :focus-within) .card-footer:not(.corner-button) { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
