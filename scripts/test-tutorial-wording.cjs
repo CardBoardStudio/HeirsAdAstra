@@ -117,7 +117,7 @@ const port = state => ({ state, colonyCost: 3, excavationCost: { energy: 1, data
   const elsewhere = { id: 'other-hex', matches: () => false, closest: () => null };
   const moving = open({ stepId: 'move-explorer', found: selector => (selector === '.hex.cf-drop-target, .hex.target' ? elsewhere : null) });
   const move = { id: 'move-1', key: 'move' };
-  const flight = moving.tutorial.tip(port(table({ actionMode: 'move', moveSource: '0,0', players: [player({ hand: [move] })] })), null);
+  const flight = moving.tutorial.tip(port(table({ actionMode: 'move', moveSource: '0,0', actionOptions: { units: { settler: 0, explorer: 1, fleet: 0 } }, players: [player({ hand: [move] })] })), null);
   assert.equal(flight.text, 'Now choose a lit hex to move to. (Escape cancels.)');
 }
 console.log('tutorial wording: ok');

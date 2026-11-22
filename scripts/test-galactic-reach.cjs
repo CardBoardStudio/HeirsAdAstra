@@ -134,3 +134,5 @@ require('./test-relic-deck.cjs');
 require('./test-tutorial-progress.cjs');
 // Learn to play's notes (tutorial.js) run here too, so CI covers them without a workflow edit.
 require('./test-tutorial-wording.cjs');
+// Learn to play's steps 5 and 17 (tutorial.js) run here too, so CI covers them without a workflow edit.
+require('./test-tutorial-steps.cjs');
