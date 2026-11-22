@@ -275,6 +275,9 @@ const CASES = [
   // Learn to play keeps the step's card in the fan (its lit corner does the step), so neither the
   // opened card nor the label lies over the mat row the step lights.
   { name: 'Learn to play, first step (phones)', tutorial: true, cueTap: true, devices: 'phone' },
+  // A phone joined to a shared table as "my hand" or as "the whole game" (rulebook #phone-pairing):
+  // held sideways both show the map and the hand's fan, with no drawer over them.
+  ...['hand', 'game'].map(view => ({ name: `shared table, this device: ${view === 'hand' ? 'my hand' : 'the whole game'} (phones)`, shared: sharedView(operationsState(['move', 'construct', 'probe', 'construct', 'move'])), storage: { [`heirs-device:${TABLE_ID}`]: view }, deviceView: view, devices: 'phone' })),
   { name: 'map share, market closed, guidance off (phones)', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), mapShare: 0.6, guidanceOff: true, devices: 'phone' },
 ];
 // Held upright, a phone shows only the prompt to turn it; turning it removes the prompt at once with
@@ -596,7 +599,7 @@ async function runCase(browser, origin, testCase, viewport) {
     await browser.navigate(`${origin}/?game=galactic-reach#lobby/${TABLE_ID}`);
   } else {
     await browser.navigate(`${origin}/galactic-reach/rulebook.html`);
-    await browser.evaluate(`localStorage.clear(); ${process.env.CHECK_BACKGROUND === 'stars' ? "localStorage.setItem('galactic-reach-background','stars');" : ''} ${testCase.guidanceOff ? "localStorage.setItem('galactic-reach-guide-v1', JSON.stringify({ enabled: false, seen: {} }));" : ''} ${testCase.table || testCase.tutorial ? '' : `localStorage.setItem(${JSON.stringify(SAVE_KEY)}, ${JSON.stringify(JSON.stringify(testCase.save))});`} true`);
+    await browser.evaluate(`localStorage.clear(); ${process.env.CHECK_BACKGROUND === 'stars' ? "localStorage.setItem('galactic-reach-background','stars');" : ''} ${testCase.guidanceOff ? "localStorage.setItem('galactic-reach-guide-v1', JSON.stringify({ enabled: false, seen: {} }));" : ''} ${Object.entries(testCase.storage || {}).map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`).join(' ')} ${testCase.table || testCase.tutorial ? '' : `localStorage.setItem(${JSON.stringify(SAVE_KEY)}, ${JSON.stringify(JSON.stringify(testCase.save))});`} true`);
     tableSave = testCase.table ? { state: clone(testCase.save), turnHistory: { pending: null, undo: null } } : null;
     sharedTable = testCase.shared || null;
     await browser.navigate(`${origin}/galactic-reach/${testCase.table ? `?table=${TABLE_ID}` : testCase.shared ? `?shared=${TABLE_ID}` : testCase.tutorial ? '?tutorial=1' : ''}`);
@@ -711,7 +714,8 @@ async function runCase(browser, origin, testCase, viewport) {
   // Learn to play on a phone: tapping the cued card reveals the note and keeps the card in the
   // fan; its lit corner is on top and converts it; the step's mat row, the hand and the note do not overlap.
   if (testCase.cueTap) {
-    const at = await browser.evaluate(`(() => { const e = document.querySelector('#hand-row .game-card.gr-coach-card-cue'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 22), y: r.top + Math.min(r.height / 2, 22) }; })()`);
+    // (Tap the card's visible strip at its foot, below its corners: a lit corner acts on the first tap.)
+    const at = await browser.evaluate(`(() => { const e = document.querySelector('#hand-row .game-card.gr-coach-card-cue'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 20), y: Math.min(innerHeight - 3, r.bottom - 6) }; })()`);
     if (!at) return ['no cued card in Learn to play'];
     await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y);
     await browser.evaluate('new Promise(r => setTimeout(r, 600))');
@@ -910,6 +914,20 @@ async function runCase(browser, origin, testCase, viewport) {
   lastSlack = slack;
   if (testCase.lobby && !(await browser.evaluate('!!document.querySelector(".lobby-seats")'))) problems.push('waiting room did not render');
   if (testCase.shared && !(await browser.evaluate('!!document.querySelector("#shared-seats li") && !document.querySelector(".app-shell").inert'))) problems.push('shared table did not open');
+  if (testCase.deviceView) problems.push(...await browser.evaluate(`(() => {
+    const problems = [], view = ${JSON.stringify(testCase.deviceView)}, shown = e => e && e.checkVisibility() && e.getBoundingClientRect().height > 8;
+    if (document.body.dataset.deviceView !== view) problems.push('this device is ' + document.body.dataset.deviceView + ', not ' + view);
+    if (!/my hand|the whole game/.test(document.querySelector('#device-view-button')?.textContent || '')) problems.push('the menu has no This device switch');
+    if (!shown(document.querySelector('#hand-row > .game-card'))) problems.push('the hand is not on the table');
+    if (!shown(document.querySelector('.board-map-region .hex'))) problems.push('the map is not on the table');
+    const drawerOpen = () => document.querySelector('body:is([data-drawer="mat"], [data-drawer="comms"], [data-drawer="table"], [data-drawer="supply"])');
+    if (drawerOpen()) problems.push('a drawer is open over the table: ' + document.body.dataset.drawer);
+    // The game menu's switch changes the view at once, still with no drawer over the table.
+    document.querySelector('#device-view-button')?.click();
+    if (document.body.dataset.deviceView === view) problems.push('the This device switch did not change the view');
+    if (drawerOpen() || !shown(document.querySelector('#hand-row > .game-card'))) problems.push('switching the view covered the table or hid the hand');
+    return problems;
+  })()`));
   if (!testCase.lobby && testCase.save?.pendingCombat && !(await browser.evaluate('document.querySelector("#combat-dialog").open'))) problems.push('battle dialog did not open');
   if (SHOTS) {
     fs.mkdirSync(SHOTS, { recursive: true });

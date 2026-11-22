@@ -3,9 +3,9 @@
 
    Held sideways (a window under 600 px tall and wider than it is tall) the map is the table:
    it fills the screen between a rail of drawer handles on the left edge and the right edge,
-   from the top down to your hand, which lies along the bottom as a low fan of card tops. The
-   turn and the round's phases are one line over the map's top-left corner, the map tools sit
-   in its top-right corner and the turn's buttons at the right end of your hand. The supply, the
+   from the top down to your hand, which lies along the bottom as a low fan of card tops. Whose
+   turn it is and the current round sit in the screen's bottom-left corner before your hand, the
+   map tools in the map's top-right corner and the turn's buttons at the right end of your hand. The supply, the
    mat, the comms log and the score track open from the rail as sheets over the map's left
    side, between the top and your hand, and scroll inside. A guidance or Learn to play note has
    one place, a column at the right edge under the map tools; while it shows, the map ends
@@ -21,7 +21,7 @@
     --safe-l: env(safe-area-inset-left, 0px); --safe-r: env(safe-area-inset-right, 0px);
     --rail-w: 58px; --rail: calc(var(--safe-l) + var(--rail-w));
     --hand-h: 64px; --hand: calc(var(--safe-b) + var(--hand-h));
-    --bar-h: 46px;
+    --bar-h: 46px; --turn-w: 156px; --turn-h: 50px;
     --note-w: min(280px, 35vw); --note-gap: 0px;
     --sheet-w: min(400px, calc(100vw - var(--rail) - var(--safe-r) - var(--note-gap) - 16px));
   }
@@ -31,31 +31,49 @@
   /* ---- The rail: the menu, then a handle for each drawer and Trade. ---- */
   :root .phone-drawers {
     left: 0 !important; right: auto !important; top: 0 !important; bottom: 0 !important; width: var(--rail) !important; height: auto !important;
-    flex-direction: column; gap: 4px; padding: calc(var(--safe-t) + 56px) 0 calc(var(--safe-b) + 6px) var(--safe-l) !important;
+    flex-direction: column; gap: 2px; padding: calc(var(--safe-t) + 52px) 0 calc(var(--safe-b) + 6px) var(--safe-l) !important;
     border-top: 0 !important; border-right: 1px solid #a49c6f55; background: #0b1614;
   }
-  :root .phone-drawers button { flex: 0 0 46px; width: 100%; min-height: 46px; padding: 0 2px; font-size: 11.5px; letter-spacing: .02em; }
+  :root .phone-drawers button { flex: 0 0 44px; width: 100%; min-height: 44px; padding: 0 2px; font-size: 11.5px; letter-spacing: .02em; }
   :root .phone-drawers button[aria-pressed="true"] { box-shadow: inset 3px 0 0 var(--gold); }
   /* The hand is always on the table here, so it has no drawer. */
   :root .phone-drawers [data-drawer="hand"] { display: none; }
   :root .table-menu-button { top: calc(var(--safe-t) + 6px) !important; left: calc(var(--safe-l) + 7px) !important; width: 44px; height: 44px; }
   /* Trade's handle is the rail's last button and stays there while its panel is out. */
   :root .trade-handle, :root .trade-drawer.open .trade-handle {
-    left: var(--safe-l) !important; top: calc(var(--safe-t) + 56px + 4 * 50px) !important; transform: none !important;
-    width: var(--rail-w); min-width: 0; min-height: 46px; padding: 0 2px; border: 0; border-radius: 0; background: none; box-shadow: none;
+    left: var(--safe-l) !important; top: calc(var(--safe-t) + 52px + 4 * 46px) !important; transform: none !important;
+    width: var(--rail-w); min-width: 0; min-height: 44px; height: 44px; padding: 0 2px; border: 0; border-radius: 0; background: none; box-shadow: none;
     color: var(--muted); font: 700 11.5px/1 inherit; letter-spacing: .02em; writing-mode: horizontal-tb;
   }
   :root .trade-drawer.open .trade-handle { color: var(--gold); box-shadow: inset 3px 0 0 var(--gold); background: #ffffff08; }
 
-  /* ---- One line over the map's top-left corner: whose turn, then the round's phases. ---- */
-  :root .board-toolbar {
-    min-height: 0 !important; padding: 0 !important; align-items: center !important;
-    top: var(--safe-t) !important; left: calc(var(--rail) + 8px) !important; right: calc(var(--safe-r) + 214px) !important;
-    height: 22px !important; line-height: 22px; pointer-events: none;
+  /* ---- Whose turn and the round, in the screen's bottom-left corner under the rail's handles and
+     before your hand: "Your turn" (or whose), then the current round and phase only. The hint line
+     and the other phases are still read to screen readers; the Table drawer shows all four phases.
+     Nothing of the turn or round lies over the map. ---- */
+  :root .board-toolbar, :root .phase-stepper {
+    top: auto !important; left: calc(var(--safe-l) + 8px) !important; right: auto !important; width: calc(var(--turn-w) - 12px); z-index: 57 !important;
+    margin: 0 !important; padding: 0 !important; min-height: 0 !important; overflow: hidden !important; white-space: nowrap; pointer-events: none; background: none !important; border: 0 !important;
   }
-  :root .phase-stepper { top: calc(var(--safe-t) + 22px) !important; left: calc(var(--rail) + 8px) !important; right: calc(var(--safe-r) + 214px) !important; height: 20px; overflow: hidden !important; pointer-events: none; }
-  :root .board-toolbar, :root .phase-stepper { text-shadow: 0 1px 2px #000, 0 0 4px #000a; }
-  :root body::before { content: ''; position: fixed; z-index: 2; left: var(--rail); right: 0; top: 0; height: calc(var(--safe-t) + var(--bar-h)); background: linear-gradient(#0b1614e6, #0b161400); pointer-events: none; }
+  :root .board-toolbar { bottom: calc(var(--safe-b) + 25px) !important; height: 22px !important; line-height: 22px; align-items: center !important; }
+  :root .board-toolbar > div { display: flex !important; align-items: center; gap: 6px; min-width: 0; }
+  :root .board-toolbar strong#turn-title { display: block; flex: 1 1 auto; min-width: 0; margin: 0 !important; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px !important; line-height: 22px; }
+  :root .board-toolbar > div { width: 100%; }
+  :root .board-toolbar #turn-instruction { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap; }
+  :root .phase-stepper { bottom: calc(var(--safe-b) + 6px) !important; height: 19px !important; display: flex !important; align-items: center; gap: 0 !important; font-size: 12.5px !important; line-height: 19px; }
+  :root .phase-stepper strong#stepper-round { font-size: 12.5px !important; line-height: 19px; color: var(--text); }
+  :root .phase-stepper ol { display: flex; margin: 0; padding: 0; }
+  :root .phase-stepper li:not(.current) { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; }
+  :root .phase-stepper li.current { padding: 0 !important; background: none !important; color: var(--gold) !important; font-size: 12.5px !important; font-weight: 700; line-height: 19px; }
+  :root .phase-stepper li.current::before { content: '\00a0·\00a0'; color: var(--muted); font-weight: 400; }
+  /* The corner they sit in, dark like the rail. */
+  :root body::before { content: ''; position: fixed; z-index: 56; left: 0; bottom: 0; width: calc(var(--safe-l) + var(--turn-w)); height: calc(var(--safe-b) + var(--turn-h)); border-top: 1px solid #a49c6f55; border-right: 1px solid #a49c6f55; border-radius: 0 10px 0 0; background: #0b1614; pointer-events: none; }
+  /* The Table drawer holds the whole round: all four phases at its top. */
+  :root body[data-drawer="table"] .phase-stepper { top: calc(var(--safe-t) + 8px) !important; bottom: auto !important; left: calc(var(--rail) + 16px) !important; width: calc(var(--sheet-w) - 32px); height: 26px !important; gap: 8px !important; }
+  :root body[data-drawer="table"] .phase-stepper ol { gap: 3px; }
+  :root body[data-drawer="table"] .phase-stepper li { position: static !important; width: auto !important; height: auto !important; overflow: visible !important; clip-path: none !important; padding: 2px 8px !important; border-radius: 999px; background: #ffffff10 !important; color: var(--muted) !important; font-weight: 600; }
+  :root body[data-drawer="table"] .phase-stepper li.current { background: var(--gold) !important; color: #10201c !important; }
+  :root body[data-drawer="table"] .phase-stepper li.current::before { content: none; }
 
   /* ---- The map tools in the map's top-right corner, finger-sized. ---- */
   :root .map-tools { top: calc(var(--safe-t) + 4px) !important; right: calc(var(--safe-r) + 6px) !important; z-index: 51 !important; gap: 4px; height: 44px; margin: 0 !important; padding: 0 !important; align-items: flex-start !important; }
@@ -97,7 +115,7 @@
   :root #hand-panel .section-intro > div:first-child { display: none !important; }
   :root body #hand-row#hand-row {
     --top-w: 108px;
-    position: fixed !important; z-index: 45; left: calc(var(--rail) + 6px) !important; right: var(--hand-end, calc(var(--safe-r) + 6px)) !important; bottom: 0 !important;
+    position: fixed !important; z-index: 45; left: calc(var(--safe-l) + var(--turn-w) + 6px) !important; right: var(--hand-end, calc(var(--safe-r) + 6px)) !important; bottom: 0 !important;
     display: flex !important; flex-wrap: nowrap !important; align-items: flex-end !important; justify-content: flex-start;
     height: var(--hand) !important; margin: 0 !important; padding: 0 0 var(--safe-b) !important; overflow: visible !important; gap: 0 !important; container-type: inline-size;
   }
@@ -193,7 +211,7 @@
   /* Comms: the whole log. */
   :root body[data-drawer="comms"] .board-shared > :not(.board-reference), :root body[data-drawer="comms"] .board-reference > :not(.log-panel) { display: none !important; }
   /* Table: the score track and standings. */
-  :root body[data-drawer="table"] .prestige-track { padding: calc(var(--safe-t) + 26px) 56px 14px 18px !important; }
+  :root body[data-drawer="table"] .prestige-track { padding: calc(var(--safe-t) + 60px) 56px 14px 18px !important; }
 
   /* ---- Trade pulls out from the rail. ---- */
   :root .trade-drawer { --trade-w: min(360px, calc(100vw - var(--rail) - var(--safe-r) - 64px)); }
