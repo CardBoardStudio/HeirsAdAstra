@@ -17,7 +17,7 @@ Status: **implemented for 38.43** (`prototypes/galactic-reach/tutorial.js`, `gui
 | Resources | Converts the lit Move for the missing Energy of the first Harvester | `#player-mat`, `#resources` | Energy reached the Harvester's price |
 | Orders | Uses a Construct card's order on the Data hex next to the Colony and builds a Data Harvester (2 Data a round: Explorers, excavation, upgrades) | `#orders`, `#building` | A Harvester exists |
 | Read the table | Reads the score track, home world and mat after building the Harvester, then converts a Construct for Matter | `#shared-board`, `#victory`, `#player-mat` | Next |
-| The round | Passes and finishes Buy; then reads the new round (new hand, deck, discard and production labelled): unused cards were discarded, resources carried over | `#round`, `#buy`, `#cleanup-draw`, `#deck-inspection` | Passed; the round advanced; Next |
+| The round | Converts the rest of the hand, one lit card corner at a time; the empty hand passes by itself (the note says so and lights the table's notice of it), so the player finishes Buy; then reads the new round (new hand, deck, discard and production labelled): unused cards were discarded, resources carried over | `#round`, `#buy`, `#cleanup-draw`, `#deck-inspection` | Nothing left worth converting; the round advanced; Next |
 | Ships | Builds a Shipyard, then commissions a Settler and an Explorer (one Construct card each, one per turn) | `#building` | A Shipyard, then each unit, exists |
 | Movement | Splits a move (Fleet without the Settler), then moves the Explorer alone; a Fleet is supplied, with its price | `#split-moves`, `#movement` | The Fleet, then the Explorer, left the Shipyard |
 | Relics | Probes, flies to the ◈, excavates and chooses a relic card | `#movement`, `#excavation`, `#alien-relics` | A relic is located, reached, then excavated |
@@ -32,7 +32,7 @@ Status: **implemented for 38.43** (`prototypes/galactic-reach/tutorial.js`, `gui
 
 Real play would take many rounds to reach some lessons, so the walkthrough stages them through `guidePort().stage`, which exists only in tutorial mode. Each staging step is said in the coach mark and the game log ("Tutorial supply: …", "Tutorial fast-forward: …"):
 
-- At a lesson's start: a hand of named cards (brought from deck or discard, never invented while a copy exists), resources for that lesson's purchases, a missing Shipyard or unit placed at the Shipyard, the Settler moved to the edge of the nearest neutral world, and a rival Explorer with no Energy placed two hexes from the Fleet.
+- At a lesson's start: a hand of named cards (brought from deck or discard, never invented while a copy exists; for Relics the hand is only the Probe / Excavate card and a Move, the rest put back on the deck, so reaching the ◈ ends the round and the excavation falls in the next one with nothing thrown away), resources for that lesson's purchases, a missing Shipyard or unit placed at the Shipyard, the Settler moved to the edge of the nearest neutral world, and a rival Explorer with no Energy placed two hexes from the Fleet.
 - As the Explorer's move begins (Movement, second step): any of your units sharing the Explorer's hex step 1 hex aside, to a free hex of the same world nearest the next world to settle, so the Move dropped there flies the Explorer and not the units a Move chooses first.
 - During a step, once per turn and only when the step cannot otherwise be completed: one missing card or the resources the step needs.
 
