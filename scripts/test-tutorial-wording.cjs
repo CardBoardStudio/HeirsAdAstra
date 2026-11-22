@@ -12,8 +12,11 @@ const PROGRESS = 'galactic-reach-tutorial-progress-v1';
 
 // The page as far as the walkthrough reads it: `found` answers querySelector by selector text.
 // Progress resumes by step id, so any saved index is moved to the named step.
+// Once `ids` is known the place is saved at its real index, so Back can then review the step before it.
+let ids = null;
 function open({ stepId, found = () => null, all = () => [] }) {
-  const store = { [PROGRESS]: JSON.stringify({ rules: RULES, step: 1, view: 1, stepId, base: null, staged: {}, cardFirst: true }) };
+  const step = ids ? ids.indexOf(stepId) : 1, view = step;
+  const store = { [PROGRESS]: JSON.stringify({ rules: RULES, step, view, stepId, base: null, staged: {}, cardFirst: true }) };
   const localStorage = {
     getItem: key => (Object.hasOwn(store, key) ? store[key] : null),
     setItem: (key, value) => { store[key] = String(value); },
@@ -34,6 +37,7 @@ function open({ stepId, found = () => null, all = () => [] }) {
   const tutorial = context.galacticReachTutorial;
   return { tutorial, step: tutorial.steps.find(s => s.id === stepId) };
 }
+ids = open({ stepId: 'first-construct' }).tutorial.steps.map(s => s.id);
 const player = (extra = {}) => ({ resources: { matter: 1, energy: 1, biomass: 3, data: 1 }, hand: [], deck: [], discard: [], inPlay: [], ...extra });
 const table = (extra = {}) => ({ tutorialRules: RULES, pendingCombat: null, phase: 'operations', activePlayer: 0, winner: null, round: 1, players: [player()], planets: {}, clusters: [], fleets: {}, ...extra });
 const port = state => ({ state, colonyCost: 3, excavationCost: { energy: 1, data: 3 }, canAfford: () => true, victoryTarget: () => 40, structures: { harvester: { cost: { energy: 1 } } }, turnSerial: () => 1, stage: () => true });
@@ -77,6 +81,10 @@ const port = state => ({ state, colonyCost: 3, excavationCost: { energy: 1, data
   const tip = tutorial.tip(port(table({ players: [player({ inPlay: [probe] })] })), null);
   assert.equal(tip.title, 'Finish the round');
   assert.match(tip.text, /Pass & buy/);
+  // Seen again with Back from the next step, its title is still text.
+  const later = open({ stepId: 'choose-relic' }).tutorial;
+  later.coachAction('back');
+  assert.equal(later.tip(port(table({ players: [player({ inPlay: [probe] })] })), null).title, 'Finish the round');
 }
 // Found a Colony follows its state: with the Sector Scan offering Found Colony, it says to choose it.
 {
