@@ -4095,9 +4095,10 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer) { justify-self: start !important; margin: 0 !important; padding: 0 !important; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer):not(.corner-button) { border-color: transparent !important; background: none !important; }
-  /* Stacked, a tab is a small button of its own: framed on every side. */
-  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .corner-button { padding: 2px 4px 4px !important; border-width: 1.5px !important; border-radius: 6px !important; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-footer { grid-row: 2 !important; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-symbols { max-width: 100%; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-symbols .corner-group { flex-wrap: wrap; }
 }
+/* Stacked (a hand past the fan's room, on any layout), a tab is a small button of its own,
+   framed on every side, under the one above it. */
+#hand-row.fan-tight > .game-card:not(:hover):not(:focus-within) > .corner-button { justify-self: start !important; margin: 0 !important; padding: 2px 4px 4px !important; border-width: 1.5px !important; border-radius: 6px !important; }
