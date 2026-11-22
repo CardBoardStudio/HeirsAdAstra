@@ -4129,9 +4129,12 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   --icon: min(calc(var(--card-w) * .29), var(--corner-cap), calc((var(--card-w) - 2 * var(--pad-x, 8px) - 2 * var(--tab-pad)) / var(--glyphs, 1)));
   font-size: var(--icon) !important;
 }
-:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.vocab-icon, .vocab-star, .resource-symbol) { width: 1em !important; height: 1em !important; font-size: 1em !important; }
+/* Each part reads the size itself rather than inheriting it: a fan that changes a card's height
+   (--fan-h) left inherited font sizes stale in Chrome. */
+:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.corner-group, .corner-dots, .resource-dots, .resource-chip, .vocab-icon, .vocab-star, .resource-symbol) { font-size: var(--icon) !important; }
+:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.vocab-icon, .vocab-star, .resource-symbol) { width: var(--icon) !important; height: var(--icon) !important; }
 :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.corner-group, .resource-chip) { gap: 0 !important; }
-:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) .corner-count { font-size: .5em; }
+:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) .corner-count { font-size: calc(var(--icon) * .5) !important; }
 :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > .corner-button {
   min-width: auto !important; min-height: auto !important; gap: calc(var(--icon) * .12) !important;
   padding: var(--tab-pad) !important; padding-bottom: calc(var(--tab-pad) + 3px) !important;
