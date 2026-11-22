@@ -4099,6 +4099,11 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-symbols { max-width: 100%; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-symbols .corner-group { flex-wrap: wrap; }
 }
-/* Stacked (a hand past the fan's room, on any layout), a tab is a small button of its own,
-   framed on every side, under the one above it. */
-#hand-row.fan-tight > .game-card:not(:hover):not(:focus-within) > .corner-button { justify-self: start !important; min-width: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 1px 3px 3px !important; border-width: 1.5px !important; border-radius: 6px !important; }
+/* Stacked (a hand past the fan's room, on any layout), a tab is a small button of its own under
+   the one above it. The strip that shows can be a few pixels wide, so its frame takes no room:
+   an edge and a ledge drawn inside the symbols' own box. */
+#hand-row.fan-tight > .game-card:not(:hover):not(:focus-within) > .corner-button {
+  justify-self: start !important; min-width: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; border-width: 0 !important; border-radius: 5px !important;
+  box-shadow: inset 0 0 0 1.5px var(--tab-edge), inset 0 -2px 0 color-mix(in srgb, var(--tab-edge) 55%, transparent) !important;
+}
+#hand-row.fan-tight > .game-card:not(:hover):not(:focus-within) > .corner-button:disabled { box-shadow: inset 0 0 0 1px var(--tab-edge) !important; }
