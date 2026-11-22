@@ -133,9 +133,9 @@
   const LESSONS = [
     { id: 'resources', title: 'Resources', steps: [
       // The first thing to do is convert the Move, so the Move is the card that glows.
-      { id: 'first-construct', title: 'Your first build', rule: 'resources',
+      { id: 'first-construct', title: 'Convert this Move', rule: 'resources',
         prepare: s => { ensureHand(s, ['move', 'move', 'construct', 'construct', 'construct'], true); },
-        text: () => 'A Construct card can build a Data Harvester. You have the Matter and Data; first convert this Move for 1 Energy.',
+        text: () => 'Convert this Move into 1 Energy: the last thing your first build, a Data Harvester, needs.',
         show: state => ({ spotlight: [$('#resource-grid'), hand('move')(state)], ghost: { from: hand('move')(state), to: matRow('energy') }, callouts: [{ el: matPart('energy', '.mat-pips.now'), label: 'Energy: +1' }] }),
         anchor: hand('move'), done: (state, base, port) => me(state).resources.energy >= port.structures.harvester.cost.energy },
     ] },
@@ -156,8 +156,8 @@
     ] },
     { id: 'table', title: 'Read the table', steps: [
       { id: 'track', title: 'The score track', rule: 'shared-board', info: true, followCallouts: true,
-        text: s => `Race to ${s.victoryTarget || 40}★ on the score track. Your Colony already scores 3★.`,
-        show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'You: 3★', side: 'right' }, { el: $('.prestige-track-goal'), label: 'First to the goal wins', side: 'bottom' }] }),
+        text: s => `Your Colony already scores 3★. When a round ends with anyone at ${s.victoryTarget || 40}★ or more, the highest score wins.`,
+        show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'You: 3★', side: 'right' }, { el: $('.prestige-track-goal'), label: 'The goal', side: 'bottom' }] }),
         anchor: () => $('[data-score-player="0"]') },
       { id: 'home', title: 'Your home world', rule: 'shared-board', info: true, followCallouts: true,
         text: () => 'Your home world. Select any hex to see what is on it.',
@@ -254,7 +254,7 @@
         show: (state, port) => ({ ghost: state.moveSource ? null : { from: hand('move')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(knownRelic(state, port)), label: '◈ the relic' }] }),
         anchor: (state, port) => (myOps(state) ? hand('move')(state) : null) || hexAt(knownRelic(state, port)),
         done: (state, base, port) => { const site = knownRelic(state, port); return !site || unitsAt(state, 'explorer').includes(site); } },
-      { id: 'excavate', title: 'Excavate', rule: 'excavation', aimAt: state => unitsAt(state, 'explorer')[0],
+      { id: 'excavate', title: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? 'Finish the round' : 'Excavate', rule: 'excavation', aimAt: state => unitsAt(state, 'explorer')[0],
         ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); ensureResources(s, s.EXCAVATION_COST); return `Supplied: your Probe / Excavate card and the excavation cost (${costText(s.EXCAVATION_COST)}).`; },
         needsEnsure: (state, port) => myOps(state) && !me(state).inPlay.some(c => c.key === 'probe') && (!handHas(state, 'probe') || !port.canAfford(port.excavationCost)),
         text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? 'Your Probe / Excavate card is in play until the round ends. Finish this round: Pass & buy, then Finish Buy.' : `Drag Probe / Excavate onto your Explorer on the ◈ and choose Excavate (${costText(port.excavationCost)}).`,
@@ -290,7 +290,7 @@
         ensure: s => { ensureOwned(s, 'colonize'); ensureHand(s, ['colonize']); ensureResources(s, { biomass: s.COLONY_LIFE_COST }); return `Supplied: a Colonize card and ${s.COLONY_LIFE_COST} Life.`; },
         needsEnsure: (state, port) => myOps(state) && (!handHas(state, 'colonize') || me(state).resources.biomass < port.colonyCost),
         start: state => ({ colonies: coloniesOf(state) }),
-        text: () => `Drag the Colonize card onto your Settler and choose Found Colony: ${port.colonyCost} Life, +3★.`,
+        text: () => scanButton(/Found Colony/)() ? `Choose Found Colony: ${port.colonyCost} Life, +3★.` : `Drag the Colonize card onto your Settler and choose Found Colony: ${port.colonyCost} Life, +3★.`,
         show: state => ({ ghost: scanOpen() ? null : { from: hand('colonize')(state), to: hexAt(targetWorld(state)?.center) }, callouts: [{ el: scanButton(/Found Colony/)() || hexAt(targetWorld(state)?.center), label: scanOpen() ? 'This one' : 'Your Settler' }] }),
         anchor: state => scanButton(/Found Colony/)() || hand('colonize')(state), done: (state, base) => coloniesOf(state) > base.colonies },
     ] },
@@ -315,7 +315,7 @@
         needsEnsure: (state, port) => myBuy(state) && !state.market.some(c => port.canAfford(port.purchaseCost(c.key))),
         start: state => ({ bought: purchases(me(state)) }),
         text: () => 'Buy the ringed card: like every card with a gold outline, you can afford it. It goes to your discard pile.',
-        show: () => ({ spotlight: [$('#market-row')], callouts: [{ el: $('[data-buy-market]:not([disabled])'), label: 'You can afford this' }, { el: $('[data-market-tier="expensive"]'), label: 'Expensive', side: 'left' }, { el: $('[data-market-tier="cheap"]'), label: 'Cheap', side: 'left' }] }),
+        show: () => ({ spotlight: [$('#market-row')], callouts: [{ el: $('[data-buy-market]:not([disabled])'), label: 'You can afford this' }] }),
         anchor: (state, port) => $(`[data-buy-market]:not([disabled])`), done: (state, base) => purchases(me(state)) > base.bought },
       { id: 'upgrade', buy: true, title: 'Upgrade a starter', rule: 'buy',
         ensure: s => { ensureResources(s, { energy: 2 }); return 'Supplied: 2 Energy.'; },
@@ -375,7 +375,7 @@
         anchor: state => { const enemy = unitsAt(state, 'explorer', 1)[0]; return (myOps(state) ? hand('move')(state) : null) || hexAt(enemy); },
         done: (state, base) => Boolean(state.pendingCombat) || (me(state).combatVictories || 0) > base.wins },
       { id: 'tactics', title: 'Choose tactics', rule: 'combat-tactics', dialog: '#combat-dialog',
-        text: () => 'If asked, choose Stay and fight. Then pick a tactic: Fire adds 1 hit; Screen blocks 2. Fleets take hits before Settlers.',
+        text: () => 'Choose Stay and fight. Then pick a tactic and commit it: Concentrated Fire adds 1 hit; Defensive Screen blocks 2.',
         done: state => !state.pendingCombat },
       { id: 'report', title: 'Victory', rule: 'combat', dialog: '#message-dialog',
         start: state => ({ wins: me(state).combatVictories || 0 }),
@@ -452,6 +452,7 @@
     }
   }
 
+  const titleOf = (step, state) => typeof step.title === 'function' ? step.title(state, port) : step.title;
   function tip(nextPort, nextGuide) {
     port = nextPort; guide = nextGuide;
     resolveProgress();
@@ -475,7 +476,7 @@
     const stray = !reviewing && !step.dialog && !Object.keys(step.dialogs || {}).some(modalOpen)
       && $$('dialog[open]').find(d => d.matches(':modal') && d.id);
     if (stray) return {
-      id: `${step.id}-stray`, eyebrow: `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${step.lesson.title}`, title: step.title,
+      id: `${step.id}-stray`, eyebrow: `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${step.lesson.title}`, title: titleOf(step, state),
       text: `Close this window (Close, Done or Escape) to continue: ${typeof step.text === 'function' ? step.text(state, port) : step.text}`,
       rule: step.rule, inDialog: `#${stray.id}`, anchor: null,
       buttons: [{ action: 'back', label: 'Back', disabled: progress.view === 0 }, { action: 'exit', label: 'Exit tutorial' }]
@@ -499,9 +500,10 @@
     const choiceInScan = anchor?.closest?.('#sector-popover') && scanOpen();
     const aimed = !reviewing && !openDialog && !state.pendingCombat && !choiceInScan && ['move', 'construct', 'colonize'].includes(state.actionMode)
       && (lit(step.aimAt?.(state, port)) || $('.hex.cf-drop-target, .hex.target'));
-    if (aimed) { anchor = aimed; text = `${state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.) ${text}`; }
+    // The step's own instruction (drag the card, choose the unit) is done by now: say what is left.
+    if (aimed) { const ringed = aimed === lit(step.aimAt?.(state, port)); anchor = aimed; text = `${ringed ? `Now choose the ringed hex${state.moveSource ? ' to move to' : ''}.` : state.moveSource ? 'Now choose a lit hex to move to.' : 'Now choose one of the lit hexes.'} (Escape cancels.)`; }
     return {
-      id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: step.title, text, rule: step.rule, aside: !reviewing && !openDialog ? note : '',
+      id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: titleOf(step, state), text, rule: step.rule, aside: !reviewing && !openDialog ? note : '',
       revealOnInspect: !reviewing && !openDialog && !step.dialog && Boolean(anchor?.matches?.('#hand-row > .game-card')),
       bringIntoView: !reviewing,
       inDialog: openDialog || step.dialog || null, anchor, followCallouts: Boolean(step.followCallouts) && !reviewing, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return step.marks?.(state, port) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },

@@ -130,3 +130,5 @@ require("./test-maxbot-study.cjs");
 require("./test-captured-harvesters.cjs");
 
 require('./test-relic-deck.cjs');
+// Learn to play's notes (tutorial.js) run here too, so CI covers them without a workflow edit.
+require('./test-tutorial-wording.cjs');
