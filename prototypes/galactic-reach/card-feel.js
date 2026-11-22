@@ -215,6 +215,8 @@
     fanHand();
     syncAim();
     fitNames();
+    fitHandNameSizes();
+    watchHandNames();
     keepRaisedNames();
     for (const card of $$('#hand-row > .game-card')) if (raisedNow(card)) fitRaised(card);
     const before = view, saved = previous;
@@ -261,6 +263,48 @@
     cards.forEach(([card], index) => { card.classList.remove('name-probe'); card.classList.toggle('name-under', under[index]); });
   }
   addEventListener('resize', () => requestAnimationFrame(fitNames));
+  // A resting hand card's name is never cut off (rules #card-corners): it wraps between words onto
+  // two lines at most, inside the card; where it does not fit, it gets smaller in half-pixel steps
+  // down to NAME_MIN. A name that does not fit even then is left to the raised card (styles.css
+  // keeps it for screen readers). All cards step together, so a pass costs one layout per size.
+  const NAME_MIN = 9;
+  function fitHandNameSizes(onlyNew = false) {
+    const cards = $$('#hand-row > .game-card').filter(card => !raisedNow(card) && !(onlyNew && card.dataset.nameFit));
+    for (const card of cards) { card.style.removeProperty('--name-fs'); card.classList.remove('name-tucked'); }
+    // Fits: no word wider than its box, two lines at most, not squeezed in its row, and above the
+    // card's bottom padding.
+    const fits = ([card, name]) => {
+      const style = getComputedStyle(name), line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.25;
+      const floor = card.clientHeight - (parseFloat(getComputedStyle(card).paddingBottom) || 0);
+      return name.scrollWidth <= name.clientWidth + 1 && name.scrollHeight <= line * 2 + 2 && name.scrollHeight <= name.clientHeight + 1 && name.offsetTop + name.scrollHeight <= floor + 1;
+    };
+    let open = cards.map(card => [card, card.querySelector(':scope > .card-name')])
+      .filter(([, name]) => name?.getClientRects().length && getComputedStyle(name).clipPath === 'none');
+    const size = new Map(open.map(([card, name]) => [card, parseFloat(getComputedStyle(name).fontSize)]));
+    while (open.length) {
+      open = open.filter(item => !fits(item));
+      for (const item of open) {
+        const [card] = item, next = size.get(card) - .5;
+        if (next < NAME_MIN) { card.classList.add('name-tucked'); item.done = true; continue; }
+        size.set(card, next); card.style.setProperty('--name-fs', `${next}px`);
+      }
+      open = open.filter(item => !item.done);
+    }
+    for (const card of cards) card.dataset.nameFit = '1';
+  }
+  addEventListener('resize', () => requestAnimationFrame(() => fitHandNameSizes()));
+  // A card whose box changes after it was drawn (the fan sets widths and heights) is measured again.
+  const nameObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
+    if (entries.some(entry => entry.target.isConnected && !raisedNow(entry.target))) fitHandNameSizes();
+  }) : null;
+  function watchHandNames() {
+    if (!nameObserver) return;
+    nameObserver.disconnect();
+    for (const card of $$('#hand-row > .game-card')) nameObserver.observe(card);
+  }
+  // A web font arriving after the hand was drawn changes every name's width: measure again.
+  document.fonts?.addEventListener?.('loadingdone', () => requestAnimationFrame(() => fitHandNameSizes()));
+  document.fonts?.ready?.then(() => requestAnimationFrame(() => fitHandNameSizes()));
   // The raised card's corners leave less room between them than most names need: its name is
   // measured at the raised width as the card rises, by the same rule.
   // A redraw replaces the card, so each card's answer is kept by its id and put back on the new one.
@@ -287,7 +331,7 @@
   document.addEventListener('pointerover', fitRaisedFrom);
   document.addEventListener('focusin', fitRaisedFrom);
   function settle() {
-    requestAnimationFrame(() => { for (const id of raisedIds) { const card = $(`#hand-row > .game-card[data-card-id="${CSS.escape(id)}"]`); if (!card || !raisedNow(card)) raisedIds.delete(id); } });
+    requestAnimationFrame(() => { for (const id of raisedIds) { const card = $(`#hand-row > .game-card[data-card-id="${CSS.escape(id)}"]`); if (!card || !raisedNow(card)) raisedIds.delete(id); } fitHandNameSizes(true); });
   }
   document.addEventListener('pointerout', settle);
   document.addEventListener('focusout', settle);
