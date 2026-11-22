@@ -3897,29 +3897,31 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
    effect tab is tinted with the card's colour; the convert tab is filled with its resource's
    colour with the dark symbol on it, like the chip. Pressed marks an order in use (press again to
    cancel). The tab never moves when pressed: it shares its edges with the card. */
+/* Each state sets only the tab's custom properties, which the one tab rule reads, so a state
+   looks the same whichever layout rule placed the tab. */
 :where(.game-card .corner-button) {
   --tab-fill: color-mix(in srgb, var(--card-accent, #8d8268) 34%, #fff6e2);
   --tab-edge: color-mix(in srgb, var(--card-accent, #8d8268) 50%, #3b3326);
+  --tab-tint: none;
+  --tab-shadow: inset 0 -3px 0 color-mix(in srgb, var(--tab-edge) 55%, transparent), inset 0 1.5px 0 #ffffff8c;
 }
 .game-card .corner-button, #hand-row .game-card .card-footer.corner-button {
   appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 2px; min-width: 38px; min-height: 34px; margin: 0; padding: 3px 9px;
-  border: 1.5px solid var(--tab-edge); border-radius: 8px; background: var(--tab-fill);
-  color: var(--ink, #253436); font: inherit; font-size: 20px; line-height: 1; cursor: pointer;
-  box-shadow: inset 0 -3px 0 color-mix(in srgb, var(--tab-edge) 55%, transparent), inset 0 1.5px 0 #ffffff8c;
+  border: 1.5px solid var(--tab-edge); border-radius: 8px; background: var(--tab-tint) var(--tab-fill);
+  color: var(--ink, #253436); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; box-shadow: var(--tab-shadow);
   transition: background-color .12s, border-color .12s, box-shadow .12s;
 }
-.game-card .card-footer.corner-button:has(.resource-chip.matter) { --tab-fill: var(--matter); --tab-edge: color-mix(in srgb, var(--matter) 45%, #2a2418); }
-.game-card .card-footer.corner-button:has(.resource-chip.energy) { --tab-fill: var(--energy); --tab-edge: color-mix(in srgb, var(--energy) 45%, #2a2418); }
-.game-card .card-footer.corner-button:has(.resource-chip.biomass) { --tab-fill: var(--biomass); --tab-edge: color-mix(in srgb, var(--biomass) 45%, #2a2418); }
-.game-card .card-footer.corner-button:has(.resource-chip.data) { --tab-fill: var(--data); --tab-edge: color-mix(in srgb, var(--data) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(:has(.resource-chip.matter)) { --tab-fill: var(--matter); --tab-edge: color-mix(in srgb, var(--matter) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(:has(.resource-chip.energy)) { --tab-fill: var(--energy); --tab-edge: color-mix(in srgb, var(--energy) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(:has(.resource-chip.biomass)) { --tab-fill: var(--biomass); --tab-edge: color-mix(in srgb, var(--biomass) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(:has(.resource-chip.data)) { --tab-fill: var(--data); --tab-edge: color-mix(in srgb, var(--data) 45%, #2a2418); }
 /* On an enabled convert tab the symbol sits straight on the tab's colour. */
 .game-card .corner-button:not(:disabled) .resource-symbol { background: none !important; }
-.game-card .corner-button:hover:not(:disabled) { background-image: linear-gradient(#ffffff59, #ffffff59); border-color: #2a2418; }
+.game-card .corner-button:hover:not(:disabled) { --tab-tint: linear-gradient(#ffffff59, #ffffff59); --tab-edge: #2a2418; }
 .game-card .corner-button:focus-visible { outline: 3px solid #1d3533; outline-offset: -5px; }
-.game-card .corner-button:active:not(:disabled), .game-card .corner-button[aria-pressed="true"] { box-shadow: inset 0 2px 5px #0006; }
-.game-card .corner-button:active:not(:disabled) { background-image: linear-gradient(#00000014, #00000014); }
-.game-card .corner-button[aria-pressed="true"] { --tab-fill: #f2d488; --tab-edge: #6b5420; }
-.game-card .corner-button:disabled { cursor: default; border-style: dashed; border-color: #8d8268b3; background: color-mix(in srgb, var(--card-accent, #8d8268) 5%, #f4eddc); box-shadow: none; }
+.game-card .corner-button[aria-pressed="true"] { --tab-fill: #f2d488; --tab-edge: #6b5420; --tab-shadow: inset 0 2px 5px #0006; }
+.game-card .corner-button:active:not(:disabled) { --tab-tint: linear-gradient(#0000001f, #0000001f); --tab-shadow: inset 0 2px 5px #0006; }
+.game-card .corner-button:disabled { --tab-fill: color-mix(in srgb, var(--card-accent, #8d8268) 5%, #f4eddc); --tab-edge: #8d8268b3; --tab-shadow: none; cursor: default; border-style: dashed; }
 .game-card .corner-button:disabled > * { opacity: .6; }
 .game-card .corner-button .resource-chip { min-height: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
 .game-card .corner-button .resource-symbol { width: 1em !important; height: 1em !important; }
@@ -3936,7 +3938,8 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) > * { grid-column: 1 / -1; }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols { grid-column: 1; grid-row: 1; justify-self: start; }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) > .card-name { grid-column: 2; grid-row: 1; margin: 0; text-align: center; }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { grid-column: 3; grid-row: 1; justify-self: end; margin: 0; padding: 3px 7px; border: 1.5px solid var(--box-line, #a89d83); border-radius: 8px; background: var(--box-bg, #fffaf0); }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { grid-column: 3; grid-row: 1; justify-self: end; margin: 0; padding: 3px 7px; border-radius: 8px; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer:not(.corner-button) { border: 1.5px solid var(--box-line, #a89d83); background: var(--box-bg, #fffaf0); }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer .resource-chip { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; }
 /* An opened card on a phone: the actions are full-size touch targets. */
 .phone-card-sheet .game-card .corner-button { min-width: 48px; min-height: 44px; font-size: 22px; }
@@ -4070,9 +4073,11 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 }
 /* An opened card on a phone and the plain card faces: the same tabs, the phone's at least 44 px. */
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) { --pad: 12px; }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols.corner-button { align-self: start; margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)); padding: var(--pad) 10px 8px var(--pad); border-width: 0 1.5px 1.5px 0; border-radius: 8px 0 9px 0; box-shadow: none; }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { align-self: start; margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0; padding: var(--pad) var(--pad) 8px 10px; border-width: 0 0 1.5px 1.5px; border-style: solid; border-radius: 0 8px 0 9px; box-shadow: none; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols.corner-button { align-self: start; margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)); padding: var(--pad) 10px 8px var(--pad); border-width: 0 1.5px 1.5px 0; border-radius: 8px 0 9px 0; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { align-self: start; margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0; padding: var(--pad) var(--pad) 8px 10px; border-width: 0 0 1.5px 1.5px; border-style: solid; border-radius: 0 8px 0 9px; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer:not(.corner-button) { box-shadow: none; }
 .phone-card-sheet .game-card > .corner-button { min-height: 44px; min-width: 52px; }
+.phone-card-sheet .game-card > .corner-button:disabled { border-style: dashed; }
 
 /* With colour chips (a resource symbol is a chip in its colour, dark symbol on top), the convert
    tab stays a neutral button that frames its chip; the effect symbols stay in the card's ink. */
