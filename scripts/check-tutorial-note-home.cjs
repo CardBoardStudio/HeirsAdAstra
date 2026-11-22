@@ -123,6 +123,13 @@ async function main() {
       await wait(`galacticReachTutorial.steps[galacticReachTutorial.progress().step]?.id === 'mat'`, `${name}: the mat step`);
       const mat = await hold(`${name} mat`, 5200, home);
       assert.equal(mat.labels.length, 4, `${name}: the mat labels its four parts`);
+      // Looking back with Back, and returning, keeps the note at home.
+      await press('back');
+      await wait(`galacticReachTutorial.progress().view < galacticReachTutorial.progress().step`, `${name}: reviewing with Back`);
+      await hold(`${name} looking back`, 1000, home);
+      await press('next');
+      await wait(`galacticReachTutorial.progress().view === galacticReachTutorial.progress().step`, `${name}: back at the current step`);
+      await hold(`${name} mat again`, 800, home);
       // Every later lesson's opening note is at the same home.
       for (let lesson = 0; lesson < 10; lesson++) {
         await press('skip');
