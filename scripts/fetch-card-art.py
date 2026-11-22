@@ -1,6 +1,6 @@
 # Rebuild Heirs Ad Astra card art from the National Gallery of Art's open-access images.
 # Each card design gets one public-domain work (openaccess=1 in NGA's opendata), cropped 2:1
-# through IIIF, converted to WebP (cwebp), plus card-art/manifest.json with the credits.
+# through IIIF, converted to WebP (Pillow), plus card-art/manifest.json with the credits.
 #   git clone --depth 1 https://github.com/NationalGalleryOfArt/opendata /tmp/nga
 #   python3 scripts/fetch-card-art.py /tmp/nga/data [card-key ...]
 import csv, json, os, subprocess, sys, urllib.request, concurrent.futures as cf
@@ -47,6 +47,16 @@ CARDS = {
   'stellarCrucible': ('Alien Relic', 33740, .5, .5, 1), 'evergreenArk': ('Alien Relic', 56673, .5, .5, 1),
   'foldedWarehouse': ('Alien Relic', 33741, .5, .5, 1), 'cinderDrive': ('Alien Relic', 33731, .5, .4, 1),
   'keepersArchive': ('Alien Relic', 43182, .5, .5, 1),
+  # New relics continue the imaginary-architecture engraving theme.
+  'prismaticReservoir': ('Alien Relic', 9794, .5, .5, 1),
+  'hourglassOfTwoSuns': ('Alien Relic', 30124, .5, .5, 1),
+  'crownOfTheUsurper': ('Alien Relic', 67345, .5, .5, 1),
+  'phoenixCrucible': ('Alien Relic', 56867, .5, .5, 1),
+  'worldseed': ('Alien Relic', 54766, .5, .5, 1),
+  'theSilentHour': ('Alien Relic', 80710, .5, .5, 1),
+  'gravityScepter': ('Alien Relic', 55808, .5, .5, 1),
+  'eclipseRegalia': ('Alien Relic', 55809, .5, .5, 1),
+  'oracleOfTheUnmade': ('Alien Relic', 36456, .5, .5, 1),
 }
 
 def metadata():
@@ -75,7 +85,8 @@ def one(key, objs, imgs):
     src = f"{i['iiifurl']}/{region}/{W},{H}/0/default.jpg"
     jpg = os.path.join(RAW, f'{key}.jpg')
     open(jpg, 'wb').write(get(src))
-    subprocess.run(['cwebp', '-quiet', '-q', '68', '-m', '6', '-sharp_yuv', jpg, '-o', os.path.join(OUT, f'{key}.webp')], check=True)
+    from PIL import Image
+    Image.open(jpg).save(os.path.join(OUT, f'{key}.webp'), 'WEBP', quality=68, method=6)
     return key, {
         'family': family, 'image': f'card-art/{key}.webp', 'ngaObjectId': oid, 'title': o['title'], 'artist': o['attribution'],
         'date': o['displaydate'], 'medium': o['medium'], 'accession': o['accessionnum'], 'creditLine': o['creditline'],

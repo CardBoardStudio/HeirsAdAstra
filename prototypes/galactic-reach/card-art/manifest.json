@@ -1326,6 +1326,231 @@
     ]
    },
    "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "prismaticReservoir": {
+   "family": "Alien Relic",
+   "image": "card-art/prismaticReservoir.webp",
+   "ngaObjectId": 9794,
+   "title": "The Gothic Arch",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1800/1809",
+   "medium": "etching, engraving, sulphur tint or open bite, burnishing",
+   "accession": "1943.3.6998",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.9794.html",
+   "iiif": "https://api.nga.gov/iiif/0a8a5a9e-abc4-4f82-bd26-3535183408ac/0,620,4692,2346/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,620,4692,2346",
+    "imageSize": [
+     4692,
+     3586
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "hourglassOfTwoSuns": {
+   "family": "Alien Relic",
+   "image": "card-art/hourglassOfTwoSuns.webp",
+   "ngaObjectId": 30124,
+   "title": "Spaccato interno della Basilica di S. Paolo fuori delle Mura",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "probably 1748/1749",
+   "medium": "etching",
+   "accession": "1943.10.9",
+   "creditLine": "Gift of David Keppel",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.30124.html",
+   "iiif": "https://api.nga.gov/iiif/1d54b58e-36b4-4a93-ba95-943edfaa4dbb/0,510,5505,2752/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,510,5505,2752",
+    "imageSize": [
+     5505,
+     3773
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "crownOfTheUsurper": {
+   "family": "Alien Relic",
+   "image": "card-art/crownOfTheUsurper.webp",
+   "ngaObjectId": 67345,
+   "title": "Fantasy on a Magnificent Triumphal Artch",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "1765",
+   "medium": "pen and brown ink, heightened with reed pen and brown ink, some brown wash (laid on eighteenth-century card)",
+   "accession": "1986.32.1",
+   "creditLine": "Ailsa Mellon Bruce Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.67345.html",
+   "iiif": "https://api.nga.gov/iiif/017c59d8-e73f-49b2-b888-8da8b4b634e2/0,940,7690,3845/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,940,7690,3845",
+    "imageSize": [
+     7690,
+     5724
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "phoenixCrucible": {
+   "family": "Alien Relic",
+   "image": "card-art/phoenixCrucible.webp",
+   "ngaObjectId": 56867,
+   "title": "Rovine d' antichi Edifizj",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1743/1744",
+   "medium": "etching, engraving, drypoint, scratching",
+   "accession": "1978.97.10",
+   "creditLine": "Andrew W. Mellon Fund",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.56867.html",
+   "iiif": "https://api.nga.gov/iiif/22dd3041-03cc-499a-a0fd-661917d82545/0,1689,3477,1738/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1689,3477,1738",
+    "imageSize": [
+     3477,
+     5116
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "worldseed": {
+   "family": "Alien Relic",
+   "image": "card-art/worldseed.webp",
+   "ngaObjectId": 54766,
+   "title": "Veduta della Cascata di Tivoli",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "1766",
+   "medium": "etching",
+   "accession": "1974.92.1",
+   "creditLine": "Gift of Angus Whyte",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.54766.html",
+   "iiif": "https://api.nga.gov/iiif/270c9211-2aa7-4f46-b968-21ebb6c5f8a2/0,440,5100,2550/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,440,5100,2550",
+    "imageSize": [
+     5100,
+     3430
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "theSilentHour": {
+   "family": "Alien Relic",
+   "image": "card-art/theSilentHour.webp",
+   "ngaObjectId": 80710,
+   "title": "A Magnificent Palatial Interior",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "1748/1752",
+   "medium": "pen and brown ink with brown wash with graphite over red chalk, touches of black chalk on laid paper, incised",
+   "accession": "2000.9.20",
+   "creditLine": "Gift of Gertrude Laughlin Chanler",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.80710.html",
+   "iiif": "https://api.nga.gov/iiif/045846c6-efbf-4844-8b9d-e89676c1e86b/0,827,7137,3568/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,827,7137,3568",
+    "imageSize": [
+     7137,
+     5223
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "gravityScepter": {
+   "family": "Alien Relic",
+   "image": "card-art/gravityScepter.webp",
+   "ngaObjectId": 55808,
+   "title": "The Drawbridge",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1749/1750",
+   "medium": "etching, engraving, scratching",
+   "accession": "1976.35.5",
+   "creditLine": "W.G. Russell Allen, Ailsa Mellon Bruce, Lessing J. Rosenwald, and Pepita Milmore Funds",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.55808.html",
+   "iiif": "https://api.nga.gov/iiif/14b5b6c3-fc41-47eb-876f-e15dd0987aa8/0,1460,3517,1758/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1460,3517,1758",
+    "imageSize": [
+     3517,
+     4678
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "eclipseRegalia": {
+   "family": "Alien Relic",
+   "image": "card-art/eclipseRegalia.webp",
+   "ngaObjectId": 55809,
+   "title": "The Staircase with Trophies",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1749/1750",
+   "medium": "etching, engraving",
+   "accession": "1976.35.6",
+   "creditLine": "W.G. Russell Allen, Ailsa Mellon Bruce, Lessing J. Rosenwald, and Pepita Milmore Funds",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.55809.html",
+   "iiif": "https://api.nga.gov/iiif/1a2c1fed-6155-4493-a3f4-f74c3b0d5347/0,1465,3450,1725/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1465,3450,1725",
+    "imageSize": [
+     3450,
+     4655
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "oracleOfTheUnmade": {
+   "family": "Alien Relic",
+   "image": "card-art/oracleOfTheUnmade.webp",
+   "ngaObjectId": 36456,
+   "title": "Lapides Capitolini; Le Rovine dell Castello dell'Acqua Giula; Antichità di Cora",
+   "artist": "Giovanni Battista Piranesi",
+   "date": "published 1762",
+   "medium": "3 works bound in 1 vol: etchings",
+   "accession": "1949.5.15",
+   "creditLine": "Rosenwald Collection",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.36456.html",
+   "iiif": "https://api.nga.gov/iiif/0044b7db-f9d6-4cad-aac0-c8a00eb23b11/0,1618,3280,1640/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1618,3280,1640",
+    "imageSize": [
+     3280,
+     4875
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
   }
  }
 }
