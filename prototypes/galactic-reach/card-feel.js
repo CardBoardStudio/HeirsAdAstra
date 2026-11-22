@@ -215,6 +215,8 @@
     fanHand();
     syncAim();
     fitNames();
+    keepRaisedNames();
+    for (const card of $$('#hand-row > .game-card')) if (raisedNow(card)) fitRaised(card);
     const before = view, saved = previous;
     view = next; previous = null;
     if (before && saved && !next.replay && !still() && !drag) animate(before, next, saved);
@@ -259,6 +261,31 @@
     cards.forEach(([card], index) => { card.classList.remove('name-probe'); card.classList.toggle('name-under', under[index]); });
   }
   addEventListener('resize', () => requestAnimationFrame(fitNames));
+  // The raised card's corners leave less room between them than most names need: its name is
+  // measured at the raised width as the card rises, by the same rule.
+  // A redraw replaces the card, so each card's answer is kept by its id and put back on the new one.
+  const raisedNames = new Map();
+  function fitRaised(card) {
+    const name = card.querySelector(':scope > .card-name');
+    if (!name?.getClientRects().length) return;
+    card.classList.remove('name-under-raised'); card.classList.add('name-probe');
+    const line = parseFloat(getComputedStyle(name).lineHeight) || name.offsetHeight;
+    const under = name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > line * 2 + 2;
+    card.classList.remove('name-probe'); card.classList.toggle('name-under-raised', under);
+    if (card.dataset.cardId) raisedNames.set(card.dataset.cardId, under);
+  }
+  function keepRaisedNames() {
+    for (const card of $$('#hand-row > .game-card[data-card-id]')) if (raisedNames.has(card.dataset.cardId)) card.classList.toggle('name-under-raised', raisedNames.get(card.dataset.cardId));
+  }
+  addEventListener('resize', () => raisedNames.clear());
+  // Measured as the card rises and again a frame later, after anything that redraws it settles.
+  const fitRaisedFrom = event => {
+    const card = event.target.closest?.('#hand-row > .game-card');
+    if (card && raisedNow(card)) fitRaised(card);
+    requestAnimationFrame(() => { for (const raised of $$('#hand-row > .game-card')) if (raisedNow(raised)) fitRaised(raised); });
+  };
+  document.addEventListener('pointerover', fitRaisedFrom);
+  document.addEventListener('focusin', fitRaisedFrom);
   function settle() {
     requestAnimationFrame(() => { for (const id of raisedIds) { const card = $(`#hand-row > .game-card[data-card-id="${CSS.escape(id)}"]`); if (!card || !raisedNow(card)) raisedIds.delete(id); } });
   }

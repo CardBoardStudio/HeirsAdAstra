@@ -664,11 +664,16 @@ function createGalacticReach(options = {}) {
   function cardSymbolGroups(parts) {
     return parts.map(part => `<span class="corner-group">${cornerRepeat(VOCAB_ICONS[part.key], part.count)}</span>`).join('');
   }
+  // How many symbols wide a corner is (a number counts as most of one, a gap between groups as a
+  // quarter), so a hand card's corner tab can size its symbols to fit the card (styles.css).
+  function cornerGlyphs(parts) {
+    return +(parts.reduce((n, part) => n + (part.count <= CORNER_REPEAT_MAX ? part.count : 1.7), 0) + (parts.length - 1) * .25).toFixed(2);
+  }
   function cardSymbols(definition, card = {}) {
     const parts = cardEffectParts(definition, card);
     if (!parts.length) return '';
     const label = cardEffectLabel(parts);
-    return `<span class="card-symbols" role="img" aria-label="${label}" title="${label}">${cardSymbolGroups(parts)}</span>`;
+    return `<span class="card-symbols" role="img" aria-label="${label}" title="${label}" style="--glyphs:${cornerGlyphs(parts)}">${cardSymbolGroups(parts)}</span>`;
   }
   // The top-right corner's resources: one symbol per unit, the amount in the accessible name.
   function cornerDots(amounts, prefix = '', marks = {}) {
@@ -5122,8 +5127,8 @@ function createGalacticReach(options = {}) {
     // action at all (battle and Buy cards, Probe / Excavate's empty corner, an upgraded starter's
     // missing conversion) has no tab.
     const orderTab=location==='hand'&&parts.length>0&&definition.order&&!definition.battleRelic&&!definition.reaction&&!definition.buyEffect&&card.key!=='probe';
-    const effectCorner=!parts.length?'':iconOrder?`<button type="button" class="card-symbols corner-button${orderPressed?' pressed':''}" data-order-card="${card.id}" aria-pressed="${orderPressed}" aria-label="${orderPressed?'Cancel order':'Use order'}: ${effectLabel}" title="${orderPressed?'Cancel order':'Use order'}: ${effectLabel}">${cardSymbolGroups(parts)}</button>`
-      :orderTab?`<button type="button" class="card-symbols corner-button" disabled aria-label="Use order: ${effectLabel} (not now)" title="Use order: ${effectLabel} (not now)">${cardSymbolGroups(parts)}</button>`:cardSymbols(definition,card);
+    const effectCorner=!parts.length?'':iconOrder?`<button type="button" class="card-symbols corner-button${orderPressed?' pressed':''}" style="--glyphs:${cornerGlyphs(parts)}" data-order-card="${card.id}" aria-pressed="${orderPressed}" aria-label="${orderPressed?'Cancel order':'Use order'}: ${effectLabel}" title="${orderPressed?'Cancel order':'Use order'}: ${effectLabel}">${cardSymbolGroups(parts)}</button>`
+      :orderTab?`<button type="button" class="card-symbols corner-button" style="--glyphs:${cornerGlyphs(parts)}" disabled aria-label="Use order: ${effectLabel} (not now)" title="Use order: ${effectLabel} (not now)">${cardSymbolGroups(parts)}</button>`:cardSymbols(definition,card);
     const gain=canConvertCard(card)?conversionGain(card):null, gainText=gain?RESOURCES.filter(r=>gain[r]).map(r=>`${gain[r]} ${RESOURCE_NAMES[r]}`).join(', '):'';
     const convertCorner=!gain?'':canResource?`<button type="button" class="card-footer corner-button" data-resource-card="${card.id}" aria-label="Convert to ${gainText}${canStoreCard?'':' (choose excess resources first)'}" title="${canStoreCard?`Convert to ${gainText}`:'Choose excess resources first'}" ${canStoreCard?'':'disabled'}>${cornerDots(gain,'Converts to')}</button>`
       :location==='hand'?`<button type="button" class="card-footer corner-button" disabled aria-label="Convert to ${gainText} (not now)" title="Convert to ${gainText} (not now)">${cornerDots(gain,'Converts to')}</button>`:`<div class="card-footer">${cornerDots(gain,'Converts to')}</div>`;

@@ -3087,7 +3087,7 @@ body.background-stars .galaxy-board::before {
     padding: var(--pad) var(--pad) calc(var(--pad) + 2px) !important;
     /* The header is one line: the effect button left, the name between, the convert button
        right. The rules text, picture and any other buttons follow on one left edge. */
-    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) !important; grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" "art art art" "buttons buttons buttons" !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" "art art art" "buttons buttons buttons" !important;
     grid-template-rows: auto !important; column-gap: var(--far) !important; row-gap: 0 !important; align-content: start !important; align-items: center !important;
   }
   #hand-row > .game-card:first-child:is(:hover, :focus-within) { margin-left: var(--shift) !important; }
@@ -3130,7 +3130,7 @@ body.background-stars .galaxy-board::before {
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
   #hand-row { --raise-w: 540px; }
   #hand-row > .game-card:is(:hover, :focus-within) {
-    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important;
+    grid-template-columns: auto minmax(0, 1fr) auto auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important;
     grid-template-rows: auto auto auto 1fr !important; column-gap: 8px !important; row-gap: 2px !important; padding: 8px 10px 8px 8px !important;
   }
   #hand-row > .game-card:is(:hover, :focus-within) :is(.card-type, .card-art) { display: none !important; }
@@ -4063,13 +4063,13 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 /* Upright, the price/convert corner is the header's last column and the other buttons sit under it. */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
   #hand-row > .game-card:is(:hover, :focus-within) { --pad: 8px;
-    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) !important; grid-template-areas: "sym name cost" "head head buttons" "effect effect buttons" "note note buttons" !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "head head buttons" "effect effect buttons" "note note buttons" !important;
     padding: var(--pad) !important;
   }
   #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { justify-self: end; }
   #hand-row > .game-card:is(:hover, :focus-within):not(.has-buttons) { grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" !important; }
   /* A card with text buttons keeps them in a column down the right beside every row, so it is no taller. */
-  #hand-row > .game-card:is(:hover, :focus-within).has-buttons { grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
+  #hand-row > .game-card:is(:hover, :focus-within).has-buttons { grid-template-columns: auto minmax(0, 1fr) auto auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
 }
 /* An opened card on a phone and the plain card faces: the same tabs, the phone's at least 44 px. */
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) { --pad: 12px; }
@@ -4107,3 +4107,48 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   box-shadow: inset 0 0 0 1.5px var(--tab-edge), inset 0 -2px 0 color-mix(in srgb, var(--tab-edge) 55%, transparent) !important;
 }
 #hand-row.fan-tight > .game-card:not(:hover):not(:focus-within) > .corner-button:disabled { box-shadow: inset 0 0 0 1px var(--tab-edge) !important; }
+
+/* ==== Corner size (rules #card-corners): a hand card's corner tab is about a third of the card's
+   width and square, its symbol most of it: the symbol is 0.29 of the card's width and the tab's
+   padding 0.03 of it on each side. Every symbol in a corner is 1em square, so a square icon drops
+   in. A resting card also keeps its symbols under 32% of its height, so its name fits below. An
+   effect corner of several symbols shrinks them to fit across the card (--glyphs, from app.js).
+   A raised card is measured at its raised width, up to 280px; the wide, short raised card of an
+   upright tablet at 200px; the opened card on a phone at 170px. A hand past the fan's room keeps
+   its stacked sizes. ==== */
+#hand-row > .game-card { --card-w: var(--top-w, 136px); --corner-cap: calc(var(--fan-h, 200px) * .32); }
+#hand-row > .game-card:is(:hover, :focus-within) { --card-w: min(var(--raise-w, 250px), 280px); --corner-cap: 999px; }
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  #hand-row > .game-card:is(:hover, :focus-within) { --card-w: 200px; }
+}
+/* The opened card on a phone is wide but short (a sideways phone has about 150px over the hand):
+   its tabs take the chosen size for a 170px card, about 60px, not a third of its width. */
+.phone-card-sheet .game-card { --card-w: 170px; --corner-cap: 999px; }
+:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) {
+  --tab-pad: max(3px, calc(var(--card-w) * .03));
+  --icon: min(calc(var(--card-w) * .29), var(--corner-cap), calc((var(--card-w) - 2 * var(--pad-x, 8px) - 2 * var(--tab-pad)) / var(--glyphs, 1)));
+  font-size: var(--icon) !important;
+}
+:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.vocab-icon, .vocab-star, .resource-symbol) { width: 1em !important; height: 1em !important; font-size: 1em !important; }
+:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.corner-group, .resource-chip) { gap: 0 !important; }
+:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) .corner-count { font-size: .5em; }
+:is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > .corner-button {
+  min-width: auto !important; min-height: auto !important; gap: calc(var(--icon) * .12) !important;
+  padding: var(--tab-pad) !important; padding-bottom: calc(var(--tab-pad) + 3px) !important;
+}
+/* A name that does not fit between corners this big moves under them on the raised card too
+   (card-feel.js measures it as the card rises), as it does at rest. */
+@media (min-width: 600px) and (min-height: 600px) {
+  #hand-row > .game-card.name-under-raised:is(:hover, :focus-within) { grid-template-areas: "sym . cost" "name name name" "head head head" "effect effect effect" "note note note" "art art art" "buttons buttons buttons" !important; }
+  #hand-row > .game-card.name-under-raised:is(:hover, :focus-within) > .card-name { margin-top: var(--box, 10px) !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  #hand-row > .game-card.name-under-raised:is(:hover, :focus-within):not(.has-buttons) { grid-template-areas: "sym . cost" "name name name" "head head head" "effect effect effect" "note note note" !important; }
+  #hand-row > .game-card.name-under-raised:is(:hover, :focus-within).has-buttons { grid-template-areas: "sym . cost buttons" "name name name buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
+}
+/* A resting card's name sits clear of its bigger corners. Its empty rows (effect, buttons, notes:
+   hidden at rest) take no gap, so the corners and the name keep the card's height. */
+@media (min-width: 600px) and (min-height: 600px) {
+  #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within):is(:has(> .card-symbols), :has(> .card-footer)) { row-gap: 0 !important; }
+  #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within):is(:has(> .card-symbols), :has(> .card-footer)) > .card-name { margin-top: 5px !important; }
+}
