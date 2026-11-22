@@ -4152,3 +4152,8 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within):is(:has(> .card-symbols), :has(> .card-footer)) { row-gap: 0 !important; }
   #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within):is(:has(> .card-symbols), :has(> .card-footer)) > .card-name { margin-top: 5px !important; }
 }
+/* On a phone a resting card's corners may use more of its height: a fanned phone hand shows the
+   symbols without the name (a card without symbols shows its name instead). */
+@media (max-width: 599px), (max-height: 599px) {
+  body #hand-row > .game-card { --corner-cap: calc(var(--fan-h, 200px) * .6); }
+}
