@@ -133,7 +133,7 @@ assert.equal(open({ entries: {}, blocked: true }).context.galacticReachTutorial.
 }
 
 // The round's flow on a small table: a hand, the mat rows and the notices, read by selector.
-function table({ hand, resources, notices = {}, log = [] }) {
+function roundTable({ hand, resources, notices = {}, log = [] }) {
   const page = open({ entries: {} });
   const el = (props = {}) => ({ dataset: {}, textContent: '', getBoundingClientRect: () => ({ width: 200, height: 20 }), closest: () => null, querySelector: () => null, ...props });
   const rows = Object.fromEntries(['matter', 'energy', 'biomass', 'data'].map(r => [r, el({ id: `row-${r}` })]));
@@ -155,7 +155,7 @@ function table({ hand, resources, notices = {}, log = [] }) {
 // Converting the rest of the hand lights one card's convert corner at a time (the rightmost, whose
 // corner no card covers), never the convert-everything button, and the ghost goes to that card's row.
 {
-  const { state, player, port, step, rows } = table({ hand: [{ id: 'construct-6', key: 'construct' }, { id: 'move-5', key: 'move' }], resources: { matter: 1, energy: 0, biomass: 1, data: 0 } });
+  const { state, player, port, step, rows } = roundTable({ hand: [{ id: 'construct-6', key: 'construct' }, { id: 'move-5', key: 'move' }], resources: { matter: 1, energy: 0, biomass: 1, data: 0 } });
   const convert = step('convert-rest');
   assert.equal(convert.anchor(state, port).id, 'corner-move-5');
   assert.equal(convert.show(state, port).ghost.to, rows.energy, 'a Move converts to Energy');
@@ -168,7 +168,7 @@ function table({ hand, resources, notices = {}, log = [] }) {
 // The round has no Pass step the player cannot reach: an empty hand passes by itself, and Finish Buy
 // says so and lights the table's notice; cards kept back still get Pass & buy.
 {
-  const { page, state, player, port, step } = table({ hand: [], resources: {}, log: ['R1 · You had no cards left, so the table passed you to Buy.'] });
+  const { page, state, player, port, step } = roundTable({ hand: [], resources: {}, log: ['R1 · You had no cards left, so the table passed you to Buy.'] });
   const steps = page.context.galacticReachTutorial.steps;
   assert.equal(steps.some(s => s.id === 'pass'), false);
   assert.deepEqual(page.context.galacticReachTutorial.lessons.find(l => l.id === 'round').steps.map(s => s.id).join(' '), 'convert-rest buy-empty deck');
@@ -182,7 +182,7 @@ function table({ hand, resources, notices = {}, log = [] }) {
 // Relics: the Probe / Excavate card stays in play until the round ends, so its round's hand is it and
 // a Move. Reaching the ◈ empties the hand; nobody is told to pass with cards in hand.
 {
-  const { state, player, step } = table({ hand: [], resources: {} });
+  const { state, player, step } = roundTable({ hand: [], resources: {} });
   const make = (key, n) => ({ id: `${key}-${n}`, key });
   player.hand = [make('construct', 1), make('construct', 2), make('move', 3), make('construct', 4), make('move', 5)];
   player.deck = [make('move', 6)];
@@ -201,5 +201,71 @@ function table({ hand, resources, notices = {}, log = [] }) {
   Object.assign(state, { phase: 'operations' }); player.hand = [make('construct', 1)];
   assert.doesNotMatch(excavate.text(state), /Pass & buy|Finish Buy/, 'cards in hand are never to be thrown away');
 }
-console.log('Learn to play progress: new walkthroughs start clean, part-way places resume, reloads keep their place, guest saves and unreadable data are safe, other tabs follow a restart.');
+
+// The smallest table Lessons 1 to 3 read: a home Colony with an empty Data hex beside it, your
+// Move converted, a Construct in hand. `stagings` counts every change the walkthrough makes to it.
+function table(page) {
+  page.context.galacticReachGuide = { handCard: id => ({ card: id }), hex: coord => ({ hex: coord }), turnButton: () => ({ button: 'turn' }) };
+  const player = { resources: { matter: 2, energy: 1, biomass: 1, data: 2 }, hand: [{ id: 'construct-4', key: 'construct' }], deck: [], discard: [], inPlay: [] };
+  const state = {
+    tutorialRules: RULES, pendingCombat: null, phase: 'operations', activePlayer: 0, winner: null, round: 1, victoryTarget: 40, players: [player], fleets: {},
+    planets: { '0,0': { cluster: 0, owner: 0, hasColony: true, type: 'matter', upgrade: null }, '1,0': { cluster: 0, owner: null, hasColony: false, type: 'data', upgrade: null } },
+    clusters: [{ id: 0, kind: 'home', center: '0,0', coords: ['0,0', '1,0'] }],
+  };
+  const port = { state, stagings: 0, structures: { harvester: { cost: { matter: 1, energy: 1, data: 1 } } }, turnSerial: () => 1, stage: () => { port.stagings += 1; return true; } };
+  return port;
+}
+// What a note lights on the table: a ring, a goal ring, a ghost drag or callouts, a pointer, the card cue.
+const lit = tip => ['anchor', 'marks', 'show', 'followCallouts', 'revealOnInspect', 'bringIntoView']
+  .filter(key => (Array.isArray(tip[key]) ? tip[key].some(Boolean) : Boolean(tip[key])));
+
+// Back shows a finished step's note and lights nothing on the table: its action is done, so no
+// ring, goal ring or ghost drag invites it again. The note holds its place, says it is a look back,
+// and offers the way back to the current step. Next walks forward to it without staging anything.
+{
+  const page = open({ entries: practice({ step: 3, stepId: 'track' }) });
+  const tutorial = page.context.galacticReachTutorial, port = table(page);
+  assert.equal(tutorial.tip(port, null).id, 'track');
+  for (const id of ['harvester-build', 'harvester-aim', 'first-construct']) {
+    tutorial.coachAction('back');
+    const tip = tutorial.tip(port, null);
+    assert.equal(tip.id, id);
+    assert.match(tip.eyebrow, / · done$/, id);
+    assert.deepEqual(lit(tip), [], `reviewing ${id} lights nothing`);
+    assert.equal(tip.hold, true, `reviewing ${id} keeps the note in place`);
+    assert.match(tip.aside, /Looking back/, id);
+    assert.deepEqual([...tip.buttons.map(b => b.action)], ['back', 'next', 'resume', 'exit', 'skip'], id);
+  }
+  for (const id of ['harvester-aim', 'harvester-build', 'track']) {
+    tutorial.coachAction('next');
+    assert.equal(tutorial.tip(port, null).id, id);
+    assert.equal(tutorial.progress().step, 3, 'Next through review never re-enters a finished step');
+  }
+  assert.equal(tutorial.progress().view, 3);
+  assert.equal(port.stagings, 0, 'Next through review stages nothing again');
+  assert.equal(JSON.stringify(tutorial.progress().staged), JSON.stringify({ 'first-construct': true }));
+  // Return to current step goes straight back from any earlier step.
+  tutorial.coachAction('back'); tutorial.coachAction('back');
+  tutorial.coachAction('resume');
+  assert.equal(tutorial.tip(port, null).id, 'track');
+  assert.equal(port.stagings, 0);
+}
+// Reloading while reviewing returns to the current step, not the one being looked at.
+for (const navigation of ['reload', 'back_forward', 'navigate']) {
+  const page = open({ entries: practice({ step: 3, stepId: 'track', view: 1 }), navigation });
+  assert.equal(page.context.galacticReachTutorial.progress().view, 3, navigation);
+  assert.equal(page.context.galacticReachTutorial.tip(table(page), null).id, 'track', navigation);
+}
+// Doing the current step's action while looking back still counts: the review ends at the step it reaches.
+{
+  const page = open({ entries: practice({ step: 1, stepId: 'harvester-aim' }) });
+  const tutorial = page.context.galacticReachTutorial, port = table(page);
+  assert.equal(tutorial.tip(port, null).id, 'harvester-aim');
+  tutorial.coachAction('back');
+  assert.equal(tutorial.tip(port, null).id, 'first-construct');
+  Object.assign(port.state.planets['1,0'], { owner: 0, upgrade: 'harvester' });
+  assert.equal(tutorial.tip(port, null).id, 'track');
+  assert.equal(tutorial.progress().view, tutorial.progress().step);
+}
+console.log('Learn to play progress: new walkthroughs start clean, part-way places resume, reloads keep their place, guest saves and unreadable data are safe, other tabs follow a restart, Back reviews without lighting anything, a reload or the current action ends a review.');
 console.log('Learn to play round flow: one lit convert corner at a time, no unreachable Pass step, an excavation that never asks to throw cards away.');
