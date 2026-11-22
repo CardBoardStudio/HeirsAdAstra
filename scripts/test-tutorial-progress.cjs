@@ -200,6 +200,8 @@ function roundTable({ hand, resources, notices = {}, log = [] }) {
   assert.match(excavate.text(state), /excavate next round\. Choose Finish Buy\.$/);
   Object.assign(state, { phase: 'operations' }); player.hand = [make('construct', 1)];
   assert.doesNotMatch(excavate.text(state), /Pass & buy|Finish Buy/, 'cards in hand are never to be thrown away');
+  player.hand = [];
+  assert.match(excavate.text(state), /Choose Pass & buy, then Finish Buy\.$/, 'an empty hand still in Operations (the table has not passed yet)');
 }
 
 // The smallest table Lessons 1 to 3 read: a home Colony with an empty Data hex beside it, your
