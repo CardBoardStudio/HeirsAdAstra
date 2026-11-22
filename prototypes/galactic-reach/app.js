@@ -4870,12 +4870,18 @@ function createGalacticReach(options = {}) {
     const grid=$('#resource-grid'),lines=grid?.querySelectorAll('.max-resource-dividers i'),cols=grid?.querySelectorAll('.resource-box');
     if(!lines?.length||!cols?.length)return;
     const overlay=grid.querySelector('.max-resource-dividers'),box=overlay.getBoundingClientRect(),scale=box.width/overlay.offsetWidth;if(!scale)return;
-    const dots=cols[0].querySelectorAll('.mat-stars.mat-stock > i'),first=dots[0]?.getBoundingClientRect(),last=cols[cols.length-1].querySelector('.mat-stars.mat-stock > i')?.getBoundingClientRect();
+    // Measure the slots, not a resource's temporary scale-in animation.
+    const slot=dot=>{if(!dot?.offsetParent)return null;const parent=dot.offsetParent.getBoundingClientRect(),left=parent.left+dot.offsetLeft*scale,top=parent.top+dot.offsetTop*scale;return {left,top,right:left+dot.offsetWidth*scale,bottom:top+dot.offsetHeight*scale};};
+    const dots=cols[0].querySelectorAll('.mat-stars.mat-stock > i'),first=slot(dots[0]),last=slot(cols[cols.length-1].querySelector('.mat-stars.mat-stock > i'));
     if(!first||!last)return;
-    [5,10].forEach((n,i)=>{const lower=dots[n-1]?.getBoundingClientRect(),upper=dots[n]?.getBoundingClientRect();if(!lower||!upper)return;
+    [5,10].forEach((n,i)=>{const lower=slot(dots[n-1]),upper=slot(dots[n]);if(!lower||!upper)return;
       Object.assign(lines[i].style,{left:`${(first.left-box.left)/scale}px`,width:`${(last.right-first.left)/scale}px`,top:`${((lower.top+upper.bottom)/2-box.top)/scale}px`});});
   }
+  // Fonts and the table fit can settle after the first paint. Follow the columns'
+  // final size so the guides retain the same inset on both sides.
+  const maxResourceGuideResize = typeof ResizeObserver === 'function' ? new ResizeObserver(positionMaxResourceGuides) : null;
   function renderResources() {
+    maxResourceGuideResize?.disconnect();
     const player = state.players[viewSeat];
     const production = aiIncome(viewSeat);
     const stored = totalResources(player);
@@ -4911,6 +4917,7 @@ function createGalacticReach(options = {}) {
     }).join('');
     if(globalThis.document?.body?.classList?.contains('background-stars')) {
       $('#resource-grid').insertAdjacentHTML('beforeend','<span class="max-resource-dividers" aria-hidden="true"><i></i><i></i></span>');
+      [$('#resource-grid'),...$('#resource-grid').querySelectorAll('.mat-pips.now')].forEach(el=>maxResourceGuideResize?.observe(el));
       globalThis.requestAnimationFrame?.(positionMaxResourceGuides);
     }
     matSeen[viewSeat] = Object.fromEntries(RESOURCES.map(resource => [resource, { have: player.resources[resource], cap: limits[resource], next: production[resource] }]));
@@ -6559,7 +6566,7 @@ function createGalacticReach(options = {}) {
   function settleFit() {
     if (typeof requestAnimationFrame !== 'function' || typeof document === 'undefined') return;
     cancelAnimationFrame(settleFrame);
-    settleFrame = requestAnimationFrame(() => { stackLeft(); fitMap(); });
+    settleFrame = requestAnimationFrame(() => { stackLeft(); fitMap(); positionMaxResourceGuides(); });
   }
   // The left column: each piece lies under the one before it, in order (standings, round, comms).
   const LEFT_STACK = ['#prestige-track', '.phase-stepper', '.log-panel'];

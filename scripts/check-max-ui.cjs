@@ -105,7 +105,9 @@ async function main() {
             if (!col.querySelector('.mat-lap') && top.top-box.top>24*zoom) problems.push('unused space above resource circles');
           }
           const columns=[...bank.querySelectorAll('.resource-box')],firstRing=columns[0].querySelector('.mat-stock.mat-stars i').getBoundingClientRect(),lastRing=columns.at(-1).querySelector('.mat-stock.mat-stars i').getBoundingClientRect();
-          for(const line of bank.querySelectorAll('.max-resource-dividers > i')){const r=line.getBoundingClientRect();if(Math.abs(r.left-firstRing.left)>1||Math.abs(r.right-lastRing.right)>1)problems.push('divider ends must align with the outer resource circles');}
+          for(const line of bank.querySelectorAll('.max-resource-dividers > i')){const r=line.getBoundingClientRect();if(Math.abs(r.left-firstRing.left)>1||Math.abs(r.right-lastRing.right)>1)problems.push('divider ends must align with the outer resource circles: '+JSON.stringify({left:r.left-firstRing.left,right:r.right-lastRing.right}));}
+          const rings=columns[0].querySelectorAll('.mat-stock.mat-stars i');
+          [...bank.querySelectorAll('.max-resource-dividers > i')].forEach((line,i)=>{const r=line.getBoundingClientRect(),n=(i+1)*5,lower=rings[n-1].getBoundingClientRect(),upper=rings[n].getBoundingClientRect();if(r.top<=upper.bottom||r.bottom>=lower.top)problems.push('divider must sit in the gap between groups of five');});
           if (!phone && box.left < innerWidth * .7) problems.push('resource bank is not on the right');
         }
         if (!phone) {
