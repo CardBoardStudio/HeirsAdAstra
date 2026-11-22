@@ -373,6 +373,13 @@ const MEASURE = `(() => {
       const r = e.getBoundingClientRect();
       if (r.width > 1 && (r.width < 43.5 || r.height < 43.5)) problems.push('tap target under 44 px: ' + label(e) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height));
     }
+    // The turn's buttons are narrow ("Pass &" over "buy") and no taller than the hand's band; an open
+    // mat's pile counts end above the hand.
+    const band = document.querySelector('#hand-row')?.getBoundingClientRect();
+    for (const e of document.querySelectorAll('#hand-panel .hand-tools .button')) if (shown(e) && band && e.getBoundingClientRect().height > band.height + 0.5) problems.push('turn button taller than the hand: ' + label(e));
+    const primary = document.querySelector('#board-primary');
+    if (shown(primary) && primary.getBoundingClientRect().width > 80) problems.push('main turn button not stacked narrow: ' + Math.round(primary.getBoundingClientRect().width) + ' px');
+    if (document.body.dataset.drawer === 'mat') for (const count of document.querySelectorAll('.pile-stats > button[id] strong')) if (band && count.getBoundingClientRect().bottom > band.top + 0.5) problems.push('mat pile count under the hand: ' + label(count.closest('button')));
     // (A hand too big for that scrolls sideways: the cards in view are judged.)
     const strip = document.querySelector('#hand-row')?.getBoundingClientRect();
     const hand = [...document.querySelectorAll('#hand-row > .game-card')].filter(card => { const r = card.getBoundingClientRect(); return shown(card) && r.left >= strip.left - 1 && r.left < strip.right - 2; });

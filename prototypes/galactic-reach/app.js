@@ -5201,7 +5201,7 @@ function createGalacticReach(options = {}) {
     // Shown only when it can do something: you may convert now and hold a level I starter.
     convertAll.hidden = !canConvertCards() || !player.hand.some(canConvertCard);
     convertAll.disabled = convertAll.hidden;
-    convertAll.innerHTML = `<span>Convert level I starters</span><span class="conversion-symbols" aria-hidden="true">${['matter','energy'].map(resource => resourceDot(resource)).join('')}</span>`;
+    convertAll.innerHTML = `<span>Convert all</span><span class="conversion-symbols" aria-hidden="true">${['matter','energy'].map(resource => resourceDot(resource)).join('')}</span>`;
     $('#finish-construct').hidden=replayMode || !state.pendingConstruct || state.activePlayer!==ME;
     $('#skip-colony-build').hidden=replayMode || !state.pendingColonyBuild || state.activePlayer!==ME;
     if (replayMode) {
@@ -5462,7 +5462,8 @@ function createGalacticReach(options = {}) {
     const primary = $('#board-primary');
     const pass = !$('#pass-button').hidden, finish = !$('#hand-finish-buy-button').hidden;
     primary.hidden = replayMode || !(pass || finish);
-    primary.textContent = pass ? 'Pass & buy' : 'Finish Buy';
+    // Word groups that never break inside, so a narrow layout can stack them (phone.css).
+    primary.innerHTML = pass ? '<span class="word">Pass &amp;</span> <span class="word">buy</span>' : '<span class="word">Finish</span> <span class="word">Buy</span>';
     primary.className = `button board-primary ${pass ? 'button-danger' : 'button-primary'}`;
     primary.dataset.target = pass ? 'pass-button' : 'hand-finish-buy-button';
   }

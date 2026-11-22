@@ -102,8 +102,10 @@
   }
   :root #hand-panel .hand-tools .button { max-width: 124px; min-height: 48px !important; padding: 4px 9px !important; font-size: 12.5px !important; line-height: 1.2; white-space: normal !important; text-align: center; justify-content: center; box-shadow: 0 4px 12px #000a; }
   :root #hand-panel .hand-tools .button[hidden] { display: none !important; }
-  :root #hand-panel .hand-tools > #board-primary { order: 9; min-width: 92px; }
-  :root #hand-panel .hand-tools #convert-all-button { display: flex; flex-wrap: wrap; align-items: center; column-gap: 5px; row-gap: 0; }
+  /* Both narrow: "Pass &" over "buy" (or "Finish" over "Buy"), and "Convert all" over its two symbols. */
+  :root #hand-panel .hand-tools > #board-primary { order: 9; width: min-content; min-width: 0; flex-direction: column; justify-content: center; align-items: center; row-gap: 0; padding: 4px 10px !important; line-height: 1.15; }
+  :root #hand-panel .hand-tools #convert-all-button { display: flex; flex-direction: column; flex-wrap: nowrap; align-items: center; justify-content: center; row-gap: 3px; width: max-content; padding: 4px 10px !important; }
+  :root #hand-panel .hand-tools #convert-all-button > span:first-child { white-space: nowrap; }
   :root #hand-panel .hand-tools #convert-all-button .conversion-symbols { display: inline-flex; gap: 2px; }
 
   /* ---- Your hand: a low fan of card tops along the bottom edge (card-feel.js lays it out). ---- */
@@ -142,7 +144,9 @@
   :root body #hand-row#hand-row.fan-tight > .game-card .card-symbols .corner-group { flex-wrap: wrap; }
 
   /* ---- Learn to play keeps a card in the fan while a step shows its path (guide.js keepCardInHand):
-     the corner that does the step is lit and takes a tap, with a finger-sized area around it. ---- */
+     the corner that does the step is lit and takes a tap, with a finger-sized area around it. The card
+     lies over its neighbours so the lit corner is never under one. ---- */
+  :root body #hand-row#hand-row > .game-card.gr-card-stays { position: relative; z-index: 4; }
   :root body #hand-row#hand-row > .game-card.gr-card-stays .corner-button.gr-coach-corner {
     position: relative; pointer-events: auto; border-radius: 7px; background: #6ff3ff40 !important; box-shadow: 0 0 0 3px #6ff3ff, 0 0 12px #6ff3ffaa !important;
   }
@@ -200,6 +204,17 @@
   :root body[data-drawer="mat"] .resource-panel > .panel-heading { display: none !important; }
   :root body[data-drawer="mat"] .resource-panel > #resource-grid { order: -2; }
   :root body[data-drawer="mat"] .resource-panel > .pile-stats { order: -1; }
+  /* Nothing in the mat shrinks: what does not fit scrolls, and the piles are one low row whose counts sit
+     beside their names, so the stock and the piles both end above your hand. */
+  :root body[data-drawer="mat"] .resource-panel > * { flex: none !important; }
+  /* The sheet's lower edge fades out, so what scrolls on below the piles does not end in a hard cut against the hand. */
+  :root body[data-drawer="mat"] .resource-panel { padding-bottom: 0 !important; }
+  :root body[data-drawer="mat"] .resource-panel::after { content: ''; order: 99; position: sticky; bottom: 0; flex: none; height: 26px; margin: -10px -12px 0; background: linear-gradient(to bottom, #14232000, #142320); pointer-events: none; }
+  :root body[data-drawer="mat"] .resource-panel > .pile-stats { display: grid !important; grid-template-columns: repeat(4, minmax(0, 1fr)) !important; gap: 6px !important; margin: 0 !important; padding: 0 !important; height: auto !important; }
+  :root body[data-drawer="mat"] .resource-panel > .pile-stats > span { display: none !important; }
+  :root body[data-drawer="mat"] .resource-panel > .pile-stats > button { display: flex !important; flex-direction: row !important; align-items: center !important; justify-content: center !important; gap: 6px !important; min-height: 44px !important; height: auto !important; aspect-ratio: auto !important; padding: 4px 6px !important; font-size: 13px !important; }
+  :root body[data-drawer="mat"] .resource-panel > .pile-stats > button .pile-card { display: none !important; }
+  :root body[data-drawer="mat"] .resource-panel > .pile-stats > button strong { font-size: 15px !important; margin: 0 !important; }
   :root body[data-drawer="mat"] .resource-panel > .storage-upgrade-control { display: flex !important; align-items: center; gap: 10px; margin: 0 !important; }
   :root body[data-drawer="mat"] .storage-upgrade-control .storage-upgrade-button { flex: none; min-height: 44px; }
   :root body[data-drawer="mat"] .storage-upgrade-control p { margin: 0; font-size: 11.5px; line-height: 1.35; }
