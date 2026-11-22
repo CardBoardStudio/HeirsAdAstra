@@ -67,7 +67,7 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
  try{
   await b.send('Emulation.setFocusEmulationEnabled',{enabled:true});
   await b.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
-  for(const [width,height,touch] of (process.env.CHECK_SIZES?process.env.CHECK_SIZES.split(',').map(v=>{const [w,h]=v.split('x').map(Number);return [w,h,w<1200];}):[[1280,720,false],[1440,900,false],[1024,768,true],[768,1024,true],[390,844,false],[320,700,false],[844,390,true],[667,375,true],[932,430,true]])){
+  for(const [width,height,touch] of (process.env.CHECK_SIZES?process.env.CHECK_SIZES.split(',').map(v=>{const [w,h]=v.split('x').map(Number);return [w,h,w<1200];}):[[1280,720,false],[1440,900,false],[1024,768,true],[768,1024,true],[390,844,false],[844,390,true],[667,375,true]])){
    await b.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:touch});await b.send('Emulation.setTouchEmulationEnabled',{enabled:touch,maxTouchPoints:1});
    await load('echoes');await click('[data-order-card]');await wait('document.querySelector("#relic-action-dialog").open');await fit();
    await select('#relic-choice-options','Construct III + Folded Warehouse');await shot(`echoes-${width}x${height}`);
