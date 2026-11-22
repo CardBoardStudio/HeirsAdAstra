@@ -396,13 +396,17 @@
       }
     }
     clearTargets();
-    const anchor = host === document.body && tip.anchor && shown(tip.anchor) ? tip.anchor : null;
-    if (anchor && !tip.noPulse) { anchor.classList.add('gr-coach-target'); targeted.push(anchor); }
+    // What the note lights lies where the note is: on the table, or inside its window (a battle's
+    // tactics, a window's button), never on the table behind a window.
+    const here = el => Boolean(el && (host === document.body || host.contains(el)) && shown(el));
+    const anchor = here(tip.anchor) ? tip.anchor : null;
+    // A choice between equals (two tactics) lights each of them alike.
+    if (anchor && !tip.noPulse) for (const el of [anchor, ...(tip.lit || []).filter(here)]) { el.classList.add('gr-coach-target'); targeted.push(el); }
     currentAnchor = anchor;
     currentAvoid = [...(tip.avoid || []), ...(tip.show?.callouts || []).map(c => c?.el), ...(tip.show?.spotlight || []), tip.show?.ghost?.to].filter(el => el && el !== anchor && !el.contains?.(anchor));
     pendingShow = host === document.body ? tip.show || null : null;
-    // A destination the note names (a world to reach) gets a quieter dashed ring of its own.
-    if (host === document.body) for (const mark of (tip.marks || []).filter(Boolean)) { mark.classList.add('gr-coach-goal'); targeted.push(mark); }
+    // A destination the note names (a world to reach, a window's settings) gets a quieter dashed ring of its own.
+    for (const mark of (tip.marks || []).filter(here)) { mark.classList.add('gr-coach-goal'); targeted.push(mark); }
     box.classList.toggle('free', Boolean(tip.free || tip.dock));
     if (host !== document.body) {
       box.style.left = box.style.top = box.style.width = ''; box.dataset.side = 'inline'; box.classList.remove('docked'); placePointer(null);
@@ -410,41 +414,54 @@
       const text = box.querySelector('.gr-coach-text');
       const over = Math.max(host.getBoundingClientRect().bottom - innerHeight + 8, host.scrollHeight - host.clientHeight);
       const more = box.querySelector('[data-coach="more"]');
-      if (box.dataset.expanded === 'true') { if (text && box.dataset.full) text.textContent = box.dataset.full; if (more) { more.hidden = false; more.textContent = 'Less'; } return; }
-      const cut = text && over > 0 && !box.dataset.full ? fitText(box, text, Math.max(60, box.offsetHeight - over)) : Boolean(box.dataset.full && text?.textContent !== box.dataset.full);
-      if (more) { more.hidden = !cut; more.textContent = 'More'; }
+      if (box.dataset.expanded === 'true') { if (text && box.dataset.full) text.textContent = box.dataset.full; if (more) { more.hidden = false; more.textContent = 'Less'; } }
+      else {
+        // With a lit control the window scrolls to it instead, so the one line naming it stays whole.
+        const cut = text && over > 0 && !anchor && !box.dataset.full ? fitText(box, text, Math.max(60, box.offsetHeight - over)) : Boolean(box.dataset.full && text?.textContent !== box.dataset.full);
+        if (more) { more.hidden = !cut; more.textContent = 'More'; }
+      }
+      // The lit control is on screen: a window that scrolls moves once, as the note appears, and only
+      // as far as needed, so the control shows below the note (which stays at the window's top).
+      if (anchor && box.dataset.revealed !== lastKey) {
+        box.dataset.revealed = lastKey;
+        const r = anchor.getBoundingClientRect(), floor = Math.min(host.getBoundingClientRect().bottom, innerHeight) - 8, ceiling = box.getBoundingClientRect().bottom + 8;
+        if (r.bottom > floor) host.scrollTop += Math.max(0, Math.min(r.bottom - floor, r.top - ceiling)); else if (r.top < ceiling) host.scrollTop -= ceiling - r.top;
+      }
       return;
     }
     currentDock = Boolean(tip.dock);
     currentHold = Boolean(tip.hold);
-    box.classList.toggle('docked', Boolean(tip.dock && dockRect()));
+    box.classList.toggle('docked', Boolean(tip.dock && noteHome()));
     position(box, anchor);
   }
 
-  // In your own games the note lies over the map key in the left column, where the table's
-  // notices appear, so it never hides a hex; the pulsing ring shows what it is about.
-  function dockRect() {
+  // ---- Learn to play's note has one home. ----
+  // It stays there for every step and within every step, so it never moves while you read it or
+  // reach for Next: over the map key at the foot of the left column, where no step lights anything
+  // and the market sheet and relic column never reach. Its top is fixed; a longer note reaches
+  // further down, never over your piles or the menu button. Only a modal window takes the note
+  // inside it (place). The home is measured from the key's box once for each window size (the
+  // key's own height changes a little as the table fills), never from the map, the hand or a
+  // raised card, so a refit, a hover or a timer finds the same place. This is the one place that
+  // says where the home is: a phone has none here (its note sits where guide.css puts it).
+  let home = null;
+  function noteHome() {
+    const size = `${innerWidth}x${innerHeight}`;
+    if (home?.size === size) return home;
     const key = $('#map-legend-corner');
     if (!shown(key) || matchMedia('(max-width: 599px), (max-height: 499px)').matches) return null;
     const r = key.getBoundingClientRect();
     if (r.width < 160 || r.height < 100) return null;
-    const above = $('#fleet-glance')?.getBoundingClientRect();
-    // Never over your hand, piles or menu button where the key's box reaches beside them.
-    let bottom = r.bottom;
-    for (const el of $$('#hand-row .game-card, .pile-stats > button, #table-menu-button, #board-primary:not([hidden])')) {
+    let bottom = innerHeight - 8;
+    for (const el of $$('.pile-stats > button, #table-menu-button')) {
       const b = el.getBoundingClientRect();
-      if (b.width && b.right > r.left && b.left < r.right && b.top > r.top + 40 && b.top < bottom) bottom = b.top - 6;
+      if (b.width && b.right > r.left && b.left < r.right && b.top > r.top + 40) bottom = Math.min(bottom, b.top - 6);
     }
-    // The hexagon's slanted edge can reach into the key's box. Either start below every hex in
-    // this column, or keep the key's height and stop short of the hexes: whichever leaves more room.
-    const hexes = $$('.hex').map(h => h.getBoundingClientRect()).filter(h => h.right > r.left + 2 && h.left < r.right - 2 && h.top < bottom && h.bottom > r.top);
-    const below = { left: r.left, width: r.width, top: Math.max(r.top, ...hexes.map(h => h.bottom + 2)) };
-    const beside = { left: r.left, width: Math.min(r.width, ...hexes.map(h => h.left - 4 - r.left)), top: r.top };
-    const area = d => Math.max(0, d.width) * Math.max(0, bottom - d.top);
-    const best = [below, beside].filter(d => d.width >= 160 && bottom - d.top >= 100).sort((a, b) => area(b) - area(a))[0];
-    if (!best) return null;
-    return { ...best, bottom, ceiling: above?.height ? above.bottom + 8 : 10 };
+    home = { size, left: r.left, top: r.top, width: r.width, bottom };
+    return home;
   }
+  // Learn to play's notes live at home and name every part they light at once.
+  const atHome = tip => tip && { ...tip, dock: true, show: tip.show && { ...tip.show, together: true } };
 
   // A long docked note shows its first whole sentences until you choose More, so nothing is cut.
   function fitText(box, text, room) {
@@ -468,9 +485,10 @@
   // Beside the anchor, never over it and never off screen (the table does not scroll).
   // ---- Show, don't tell: a spotlight, labelled callouts and a ghost drag, drawn over the real
   // table (never intercepting a click). A step names the parts it talks about; the stage lights
-  // them, labels them one at a time, and shows the drag it asks for. Reduced motion: all still. ----
+  // them, labels them (Learn to play all at once, your own games one at a time), and shows the drag
+  // it asks for. Reduced motion: all still. ----
   let pendingShow = null, currentDock = false, currentHold = false;
-  let following = false, dismissed = '';
+  let dismissed = '';
   let stage = null, currentShow = null, showKey = '', activeCallout = 0, ghostAnimation = null, ghostKey = '';
   const reducedMotion = () => Boolean(matchMedia?.('(prefers-reduced-motion: reduce)').matches);
   const SVG = 'http://www.w3.org/2000/svg';
@@ -484,16 +502,17 @@
     stage.setAttribute('popover', 'manual');
     stage.innerHTML = `<svg class="gr-stage-svg" xmlns="${SVG}"><defs><mask id="gr-stage-mask" maskUnits="userSpaceOnUse"><rect class="gr-stage-all" x="0" y="0" fill="white"></rect><g class="gr-stage-holes"></g></mask><marker id="gr-stage-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10z" fill="#6ff3ff"></path></marker></defs><rect class="gr-stage-dim" x="0" y="0" mask="url(#gr-stage-mask)"></rect><g class="gr-stage-rings"></g><path class="gr-stage-path" marker-end="url(#gr-stage-head)"></path></svg><div class="gr-stage-labels"></div><div class="gr-stage-ghost"><span>↓</span></div>`;
     document.body.appendChild(stage);
-    // One callout at a time, in the order the step names them.
-    // (A still change, not an animation: it also runs under reduced motion.)
-    setInterval(() => { if (currentShow?.callouts?.length > 1) { activeCallout = (activeCallout + 1) % currentShow.callouts.length; if (following) schedule(); else drawStage(); } }, 2400);
+    // Your own games' notes label one callout at a time, in the order the note names them. (A still
+    // change, not an animation: it also runs under reduced motion.) Learn to play labels them all
+    // at once (together), so nothing on its table changes while you read.
+    setInterval(() => { if (currentShow?.callouts?.length > 1 && !currentShow.together) { activeCallout = (activeCallout + 1) % currentShow.callouts.length; drawStage(); } }, 2400);
     return stage;
   }
   function setShow(show) {
     const callouts = (show?.callouts || []).filter(c => c?.el && shown(c.el));
     const spotlight = (show?.spotlight || []).filter(el => el && shown(el));
     const ghost = show?.ghost?.from && show.ghost.to && shown(show.ghost.from) && shown(show.ghost.to) ? show.ghost : null;
-    currentShow = callouts.length || spotlight.length || ghost ? { callouts, spotlight, ghost, noLabels: Boolean(show?.noLabels) } : null;
+    currentShow = callouts.length || spotlight.length || ghost ? { callouts, spotlight, ghost, together: Boolean(show?.together) } : null;
     const key = currentShow ? JSON.stringify([callouts.map(c => c.label), spotlight.length, Boolean(ghost)]) : '';
     if (key !== showKey) { showKey = key; activeCallout = 0; }
     drawStage();
@@ -504,6 +523,12 @@
     ghostAnimation?.cancel(); ghostAnimation = null; ghostKey = '';
   }
   const pad = (r, n) => ({ left: r.left - n, top: r.top - n, right: r.right + n, bottom: r.bottom + n, width: r.width + 2 * n, height: r.height + 2 * n });
+  // A callout's label, on the given side of its part (a raised label, 'top' lifted by `lift` px, sits
+  // above a crowded row).
+  const labelStyle = (r, side, W, lift = 0) => side === 'left' ? `right:${Math.round(W - r.left + 6)}px;top:${Math.round(r.top + r.height / 2)}px;transform:translateY(-50%)`
+    : side === 'right' ? `left:${Math.round(r.right + 6)}px;top:${Math.round(r.top + r.height / 2)}px;transform:translateY(-50%)`
+    : side === 'bottom' ? `left:${Math.round(r.left + r.width / 2)}px;top:${Math.round(r.bottom + 6)}px;transform:translateX(-50%)`
+    : `left:${Math.round(r.left + r.width / 2)}px;top:${Math.round(r.top - 6 - lift)}px;transform:translate(-50%,-100%)`;
   function drawStage() {
     const visibleNote = coach && !coach.hidden && !coach.classList.contains('in-dialog') && getComputedStyle(coach).display !== 'none' && getComputedStyle(coach).visibility !== 'hidden';
     if (!currentShow || !visibleNote) { hideStage(); return; }
@@ -521,21 +546,32 @@
     const lit = currentShow.spotlight.length ? [...currentShow.spotlight, ...currentShow.callouts.map(c => c.el), coach, currentAnchor].filter(el => el && shown(el)) : [];
     stage.classList.toggle('dimmed', lit.length > 0);
     stage.querySelector('.gr-stage-holes').innerHTML = lit.map(el => { const r = pad(el.getBoundingClientRect(), 6); return `<rect x="${r.left}" y="${r.top}" width="${r.width}" height="${r.height}" rx="10" fill="black"></rect>`; }).join('');
-    // Callouts: a ring around each part and a short label; the current one is lit.
+    // Callouts: a ring around each part and a short label. Your own games label one part at a time
+    // (the current one is lit; every part keeps its ring). Learn to play labels every part at once.
     const rings = [], labels = [];
     currentShow.callouts.forEach((c, i) => {
-      const r = pad(c.el.getBoundingClientRect(), 3), active = i === activeCallout % currentShow.callouts.length;
+      const r = pad(c.el.getBoundingClientRect(), 3), active = currentShow.together || i === activeCallout % currentShow.callouts.length;
       rings.push(`<rect class="gr-stage-ring${active ? ' active' : ''}" x="${r.left}" y="${r.top}" width="${r.width}" height="${r.height}" rx="8"></rect>`);
-      const side = c.side || (r.top < 34 ? 'bottom' : 'top');
-      const style = side === 'left' ? `right:${Math.round(W - r.left + 6)}px;top:${Math.round(r.top + r.height / 2)}px;transform:translateY(-50%)`
-        : side === 'right' ? `left:${Math.round(r.right + 6)}px;top:${Math.round(r.top + r.height / 2)}px;transform:translateY(-50%)`
-        : side === 'bottom' ? `left:${Math.round(r.left + r.width / 2)}px;top:${Math.round(r.bottom + 6)}px;transform:translateX(-50%)`
-        : `left:${Math.round(r.left + r.width / 2)}px;top:${Math.round(r.top - 6)}px;transform:translate(-50%,-100%)`;
-      // One label at a time (neighbouring parts' labels would overlap); every part keeps its ring.
-      if (active && !currentShow.noLabels) labels.push(`<span class="gr-stage-label active" style="${style}">${esc(c.label)}</span>`);
+      if (active) labels.push({ r, side: c.side || (r.top < 34 ? 'bottom' : 'top'), label: c.label });
     });
     stage.querySelector('.gr-stage-rings').innerHTML = rings.join('');
-    stage.querySelector('.gr-stage-labels').innerHTML = labels.join('');
+    const layer = stage.querySelector('.gr-stage-labels');
+    layer.innerHTML = labels.map(l => `<span class="gr-stage-label active" style="${labelStyle(l.r, l.side, W)}">${esc(l.label)}</span>`).join('');
+    // Labels shown together: one that would lie over an earlier label, the note or its arrow takes
+    // another side of its part, or failing that rises above it until it is clear. The same parts
+    // always give the same places.
+    if (currentShow.together) {
+      const taken = [coach, pointer?.hidden ? null : pointer].filter(Boolean).map(el => el.getBoundingClientRect());
+      const over = (a, b) => a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+      [...layer.children].forEach((span, i) => {
+        const { r, side } = labels[i];
+        const fits = ([place, lift]) => { span.style.cssText = labelStyle(r, place, W, lift); const b = span.getBoundingClientRect(); return b.left >= 0 && b.right <= W && b.top >= 0 && b.bottom <= H && !taken.some(t => over(b, t)); };
+        const tall = span.offsetHeight + 4;
+        const places = [side, ...['top', 'bottom', 'right', 'left'].filter(x => x !== side)].map(x => [x, 0]).concat([1, 2, 3, 4].map(k => ['top', k * tall]));
+        if (!places.some(fits)) span.style.cssText = labelStyle(r, side, W);
+        taken.push(span.getBoundingClientRect());
+      });
+    }
     // Ghost drag: a dashed arrow from the card to where it goes, and a card gliding along it.
     const path = stage.querySelector('.gr-stage-path'), ghostEl = stage.querySelector('.gr-stage-ghost');
     const g = currentShow.ghost;
@@ -561,11 +597,11 @@
   function position(box, anchor) {
     if (supplyMoving()) { if (box.dataset.placed !== lastKey) box.style.visibility = 'hidden'; return; }
     box.style.visibility = ''; box.dataset.placed = lastKey;
-    // Your own games' notes dock whenever the map key has room, decided again as the table settles.
-    if (box.classList.contains('free') && !box.classList.contains('in-dialog')) box.classList.toggle('docked', Boolean(currentDock && dockRect()));
+    // Learn to play's notes are at home whenever the map key is on screen, decided again as the table settles.
+    if (box.classList.contains('free') && !box.classList.contains('in-dialog')) box.classList.toggle('docked', Boolean(currentDock && noteHome()));
     // A note that holds its place (a walkthrough step seen again with Back) stays where it was,
-    // kept on screen, and points at nothing.
-    if (currentHold && box.style.top) {
+    // kept on screen, and points at nothing. A note at home is already in its place.
+    if (currentHold && box.style.top && !box.classList.contains('docked')) {
       const r = box.getBoundingClientRect(), margin = 10;
       box.style.left = `${Math.round(Math.max(margin, Math.min(innerWidth - r.width - margin, r.left)))}px`;
       box.style.top = `${Math.round(Math.max(margin, Math.min(innerHeight - r.height - margin, r.top)))}px`;
@@ -583,14 +619,14 @@
   }
   function positionBox(box, anchor, extraAvoid = currentAvoid, { besideOnly = false } = {}) {
     const margin = 10, gap = 14, vw = innerWidth, vh = innerHeight;
-    const dock = box.classList.contains('docked') ? dockRect() : null;
+    const dock = box.classList.contains('docked') ? noteHome() : null;
     if (dock) {
-      // Within the map key's own area. More lets a long note grow upward over the map, because
-      // you asked to read it all.
+      // At home, its top fixed. More lets a long note reach down over your piles, because you
+      // asked to read it all.
       box.style.width = `${Math.round(dock.width)}px`;
       const text = box.querySelector('.gr-coach-text'), more = box.querySelector('[data-coach="more"]');
       const expanded = box.dataset.expanded === 'true';
-      const room = Math.round(expanded ? dock.bottom - dock.ceiling : dock.bottom - dock.top);
+      const room = Math.round((expanded ? innerHeight - 8 : dock.bottom) - dock.top);
       const fit = `${lastKey}|${room}|${Math.round(dock.width)}|${expanded}`;
       if (text && box.dataset.fit !== fit) {
         box.dataset.fit = fit;
@@ -606,9 +642,8 @@
       // A window too small even for the title and buttons: the note steps aside rather than
       // cover your hand; it returns when there is room (Guidance in the menu stays on).
       box.classList.toggle('no-room', !expanded && box.offsetHeight > room + 2);
-      const tall = box.offsetHeight;
       box.style.left = `${Math.round(dock.left)}px`;
-      box.style.top = `${Math.round(Math.max(expanded ? dock.ceiling : dock.top, dock.bottom - tall))}px`;
+      box.style.top = `${Math.round(dock.top)}px`;
       box.dataset.side = 'none';
       return;
     }
@@ -715,7 +750,7 @@
     let tip = null;
     try {
       const tutorial = globalThis.galacticReachTutorial;
-      if (tutorial?.active) tip = tutorial.tip(port, api);
+      if (tutorial?.active) tip = atHome(tutorial.tip(port, api));
       else if (prefs.enabled) {
         watchPiles();
         const c = context();
@@ -737,12 +772,6 @@
       }
     } catch (error) { console.error('Guidance could not read the table.', error); tip = null; }
     const stepKey = tip?.bringIntoView ? JSON.stringify([tip.id, tip.step]) : '';
-    if (tip?.followCallouts && tip.show?.callouts?.length) {
-      const live = tip.show.callouts.filter(c => c?.el && shown(c.el));
-      // The note itself names the lit part (it moves with it), so the stage draws rings without labels.
-      if (live.length) { const part = live[activeCallout % live.length]; tip = { ...tip, anchor: part.el, text: `${part.label}. ${tip.text}`, step: `${tip.step}:${activeCallout % live.length}`, show: { ...tip.show, noLabels: true } }; }
-    }
-    following = Boolean(tip?.followCallouts);
     cueCard = tip?.revealOnInspect && shown(tip.anchor) ? tip.anchor : null;
     cueKey = cueCard ? JSON.stringify([tip.id, tip.step, cueCard.dataset.cardId]) : '';
     document.body.classList.toggle('gr-card-guidance', Boolean(cueCard));
@@ -853,7 +882,7 @@
       for (const el of [$('#map-legend-corner'), $('#galaxy-board'), document.documentElement]) if (el) watch.observe(el);
       ensureCoach(); watch.observe(coach);
     }
-    document.fonts?.ready?.then(() => { lastKey = ''; schedule(); });
+    document.fonts?.ready?.then(() => { lastKey = ''; home = null; schedule(); });
     syncMenu();
   }
 
