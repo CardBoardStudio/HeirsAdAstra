@@ -141,7 +141,7 @@
   function fillSlots(root) {
     for (const slot of root.querySelectorAll('[data-hx-slot]')) slot.innerHTML = svg(slot.dataset.hxSlot, { small: slot.dataset.hxSize !== 'ghost' });
   }
-  if (typeof document !== 'undefined' && document.addEventListener) {
+  if (typeof document !== 'undefined' && document.addEventListener && document.querySelectorAll) {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => fillSlots(document));
     else fillSlots(document);
   }

@@ -4750,7 +4750,7 @@ function createGalacticReach(options = {}) {
       fleets.innerHTML = fleetSymbolsAt(key);
       if (planet) {
         buildings.innerHTML = known ? buildingSymbols(planet) : '';
-        special.innerHTML = relicSignal ? `<span class="relic-mark${planet.relicClaimed ? ' relic-claimed' : ''}">${RELIC_ICON}</span>` : '';
+        special.innerHTML = relicSignal ? `<span class="hex-relic${planet.relicClaimed ? ' relic-claimed' : ''}">${RELIC_ICON}</span>` : '';
         const buildingText = hasBuilding(planet) ? `, ${buildingLabel(planet)}` : '';
         const fleetText = fleetAriaAt(key);
         hex.setAttribute('aria-label',known?`${planet.name}, ${planet.type}, ${planet.owner===null?'unclaimed':state.players[planet.owner].name}${buildingText}${fleetText ? `, fleet ${fleetText}` : ''}${relicSignal?', relic site':''}`:relicSignal?`Alien relic signal at ${key}; surrounding terrain unknown${fleetText?', fleet '+fleetText:''}`:`Space ${key}${fleetText?', fleet '+fleetText:''}`);

@@ -191,7 +191,7 @@ p { line-height: 1.55; }
 .hex.relic-signal { background: color-mix(in srgb, var(--gold) 72%, #fff); }
 .hex.relic-signal::before { box-shadow: inset 0 0 0 1px rgba(242,207,102,.42), inset 0 0 18px rgba(242,207,102,.12); }
 .hex.relic-signal .special { top: 50%; right: 50%; transform: translate(50%,-50%); font-size: 16px; }
-.hex.relic-signal .special .relic-mark { filter: drop-shadow(0 0 5px rgba(242,207,102,.85)); }
+.hex.relic-signal .special .hex-relic { filter: drop-shadow(0 0 5px rgba(242,207,102,.85)); }
 .hex.relic-signal .hex-buildings:not(:empty) + .special { top: 24%; right: 20%; transform: none; font-size: 10px; }
 .hex > * { position: relative; z-index: 1; pointer-events: none; }
 .hex-fleets, .hex-buildings { position: absolute; left: 50%; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
@@ -205,9 +205,9 @@ p { line-height: 1.55; }
 
 .hex .special { position: absolute; top: 18%; right: 18%; color: var(--gold); font-size: 10px; line-height: 1; }
 /* A relic site: Excavate's diamond, 1em square; an excavated one stays as a faint mark. */
-.relic-mark { display: block; width: 1em; height: 1em; }
-.relic-mark .hx-icon { display: block; width: 100%; height: 100%; }
-.relic-mark.relic-claimed { opacity: .45; }
+.hex-relic { display: block; width: 1em; height: 1em; }
+.hex-relic .hx-icon { display: block; width: 100%; height: 100%; }
+.hex-relic.relic-claimed { opacity: .45; }
 @keyframes target-pulse { 50% { filter: brightness(1.45); } }
 
 .map-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px 15px; padding: 10px; border: 1px solid var(--line); background: rgba(13,20,33,.96); color: var(--muted); font-size: 12px; line-height: 1.35; }

@@ -61,7 +61,7 @@
       if(p?.hasColony||p?.upgrade)markers.push([p.owner,p.hasColony?'C':p.upgrade==='starbase'?'Y':'H']);
       for(const [seat,fleet] of Object.entries(state.fleets[coord]||{}))for(const [kind,n] of Object.entries(fleet))if(n)markers.push([seat,`${n}${kind[0].toUpperCase()}`]);
       markers.forEach(([seat,label],i)=>{const text=document.createElementNS(ns,'text');text.setAttribute('x',String((i%2)*14-7));text.setAttribute('y',String(Math.floor(i/2)*8-4));text.style.fill=colors[seat]||'white';text.textContent=label;node.append(text);});
-      if(p?.relic&&!p.relicClaimed){const mark=document.createElementNS(ns,'text');mark.setAttribute('y','13');mark.textContent='◈';node.append(mark);}
+      if(p?.relic&&!p.relicClaimed&&globalThis.heirsIcons){const mark=document.createElementNS(ns,'svg');for(const [k,v] of Object.entries({x:'-4',y:'6',width:'8',height:'8',viewBox:'0 0 24 24',class:'relic-mark'}))mark.setAttribute(k,v);mark.innerHTML=heirsIcons.inner('excavate',true);node.append(mark);}
       node.setAttribute('aria-label',`${p?.name||'Space'} ${coord}${markers.length?`, ${markers.map(([s,l])=>`${state.players[s]?.name} ${l}`).join(', ')}`:''}`);
     });
     $('battle').textContent=state.combat?`Combat · volley ${state.combat.volley}. ${state.players[state.combat.actor]?.name||'A player'} chooses privately on their phone.`:'';

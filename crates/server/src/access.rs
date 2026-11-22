@@ -37,6 +37,7 @@ const PUBLIC: &[&str] = &[
     "/lab/heirs-emblem-mark.svg",
     "/lab/heirs-emblem-favicon.svg",
     "/galactic-reach/palette.css",
+    "/galactic-reach/icons.js",
     "/api/health",
     "/api/session",
     "/api/auth/nido",
