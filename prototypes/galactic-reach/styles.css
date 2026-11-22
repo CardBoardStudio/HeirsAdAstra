@@ -4101,4 +4101,4 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 }
 /* Stacked (a hand past the fan's room, on any layout), a tab is a small button of its own,
    framed on every side, under the one above it. */
-#hand-row.fan-tight > .game-card:not(:hover):not(:focus-within) > .corner-button { justify-self: start !important; margin: 0 !important; padding: 2px 4px 4px !important; border-width: 1.5px !important; border-radius: 6px !important; }
+#hand-row.fan-tight > .game-card:not(:hover):not(:focus-within) > .corner-button { justify-self: start !important; min-width: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 1px 3px 3px !important; border-width: 1.5px !important; border-radius: 6px !important; }
