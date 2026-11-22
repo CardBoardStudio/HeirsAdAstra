@@ -33,9 +33,9 @@ assert(e.buildShip(0,home.coords[1],'fleet'));
 assert(!e.buildShip(0,home.center,'explorer'));assert(e.buildShip(0,home.coords[1],'explorer'));
 // Rules #storage-allocation: capacity is a Capacity Module bought during your own Buy turn.
 assert(!e.buyCapacity(0),'No capacity purchase outside Buy');
-{const phase=e.state.phase,active=e.state.activePlayer;e.state.phase='buy';e.state.activePlayer=0;
+{const phase=e.state.phase,active=e.state.activePlayer,limits=p.resourceLimits,resources=p.resources;p.resourceLimits={matter:10,energy:10,biomass:10,data:10};p.resources={matter:10,energy:10,biomass:10,data:10};e.state.phase='buy';e.state.activePlayer=0;
 assert(e.buyCapacity(0));assert(e.buyCapacity(0));assert.equal(p.discard.filter(c=>c.key==='capacityModule').length,2);assert.equal(e.state.capacitySupply,e.CAPACITY_SUPPLY-2);
-e.state.phase=phase;e.state.activePlayer=active;}
+e.state.phase=phase;e.state.activePlayer=active;p.resourceLimits=limits;p.resources=resources;}
 const center=e.state.clusters[4].center;
 e.state.fleets[center]={0:{settler:1,explorer:0,fleet:0}};
 assert(e.colonizePlanet(0,center));assert(!e.colonizePlanet(0,center));

@@ -1,0 +1,859 @@
+/* Max-owned card, price and reference presentation restored from 79955af.
+   Shared bank containers stay in styles.css; only card faces are overridden here. */
+body.background-stars{ --matter:#a8b7c8; --energy:#62c9ff; --biomass:#70d994; --data:#c297ff; }
+body.background-stars .game-card:focus-visible{ outline: 2px solid var(--cyan); outline-offset: 2px; }
+body.background-stars .symbol-legend{ border-top: 0; padding-top: 10px; padding-bottom: 10px; gap: 12px 18px; align-items: flex-start; }
+body.background-stars .symbol-legend .legend-heading{ flex: 0 0 100%; text-align: center; }
+body.background-stars .symbol-legend .board-glyph{ width: 18px; height: 18px; color: var(--text); }
+body.background-stars .symbol-legend .symbol-legend-item{ display: inline-flex; flex-direction: column; align-items: center; gap: 5px; }
+body.background-stars .symbol-legend .symbol-legend-name{ display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-weight: 650; }
+body.background-stars .symbol-legend .symbol-legend-cost{ min-height: 10px; display: inline-flex; align-items: center; }
+body.background-stars .symbol-legend-cost .resource-symbol{ width: 14px; height: 14px; }
+body.background-stars .symbol-legend-cost .resource-chip{ min-height: 24px; padding: 3px 6px; }
+body.background-stars .resource-dots{ display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; vertical-align: middle; }
+body.background-stars .resource-chip{ --chip-color: var(--muted); display: inline-flex; align-items: center; gap: 4px; min-height: 22px; padding: 3px 6px; border: 1px solid color-mix(in srgb,var(--chip-color) 34%,var(--line)); border-radius: 999px; background: color-mix(in srgb,var(--chip-color) 10%,var(--surface-2)); color: var(--chip-color); }
+body.background-stars .resource-chip.matter{ --chip-color: var(--matter); }
+body.background-stars .resource-chip.energy{ --chip-color: var(--energy); }
+body.background-stars .resource-chip.biomass{ --chip-color: var(--biomass); }
+body.background-stars .resource-chip.data{ --chip-color: var(--data); }
+body.background-stars .resource-chip strong{ color: var(--text); font-size: 12px; line-height: 1; }
+body.background-stars .resource-symbol{ width: 15px; height: 15px; display: inline-grid; place-items: center; flex: none; color: var(--muted); }
+body.background-stars .resource-symbol svg{ width: 100%; height: 100%; overflow: visible; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+body.background-stars .resource-symbol.matter{ color: var(--matter); }
+body.background-stars .resource-symbol.energy{ color: var(--energy); }
+body.background-stars .resource-symbol.energy svg{ fill: currentColor; stroke-width: 1.2; }
+body.background-stars .resource-symbol.biomass{ color: var(--biomass); }
+body.background-stars .resource-symbol.data{ color: var(--data); }
+body.background-stars .resource-dot-large{ width: 17px; height: 17px; margin-right: 4px; }
+body.background-stars .inline-resource .resource-symbol{ width: 13px; height: 13px; }
+body.background-stars .resource-symbol-large{ width: 28px; height: 28px; padding: 5px; border: 1px solid color-mix(in srgb,var(--resource) 45%,var(--line)); border-radius: 6px; background: color-mix(in srgb,var(--resource) 10%,transparent); color: var(--resource); }
+body.background-stars .hand-tools{ display: flex; align-items: center; gap: 10px; }
+body.background-stars .card-row{ display: grid; grid-template-columns: repeat(5, minmax(150px,1fr)); gap: 8px; }
+body.background-stars .game-card{ min-height: 148px; display: flex; flex-direction: column; border: 1px solid var(--line); border-top: 3px solid var(--card-accent, var(--cyan)); background: linear-gradient(150deg, color-mix(in srgb, var(--card-accent, var(--cyan)) 9%, var(--surface-2)), var(--surface)); padding: 11px; text-align: left; }
+body.background-stars button.game-card{ color: var(--text); cursor: pointer; }
+body.background-stars .game-card:hover:not(:disabled){ border-color: var(--card-accent, var(--cyan)); transform: translateY(-1px); }
+body.background-stars .game-card:disabled{ opacity: .58; cursor: not-allowed; }
+body.background-stars .game-card.upgraded{ box-shadow: inset 0 0 0 1px color-mix(in srgb,var(--card-accent) 35%,transparent); }
+body.background-stars .game-card.order-selected{ border-color: var(--card-accent, var(--cyan)); box-shadow: 0 0 0 2px color-mix(in srgb,var(--card-accent, var(--cyan)) 42%,transparent), inset 0 0 24px color-mix(in srgb,var(--card-accent, var(--cyan)) 10%,transparent); }
+body.background-stars .card-type{ color: var(--card-accent, var(--cyan)); font-size: 10px; font-weight: 750; letter-spacing: .1em; }
+body.background-stars .card-name{ margin: 5px 0 8px; font-size: 14px; font-weight: 750; }
+body.background-stars .card-effect{ flex: 1; color: var(--muted); font-size: 12px; line-height: 1.45; }
+body.background-stars .card-footer{ display: flex; justify-content: space-between; align-items: end; gap: 8px; margin-top: 10px; padding-top: 7px; border-top: 1px solid var(--line); color: var(--text); font-size: 11px; }
+body.background-stars .card-footer > span:not(.resource-dots){ display: grid; gap: 4px; }
+body.background-stars .card-footer > span:not(.resource-dots):last-child{ justify-items: end; }
+body.background-stars .card-footer small{ color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; }
+body.background-stars .card-footer .resource-symbol{ width: 12px; height: 12px; }
+body.background-stars .card-footer .resource-chip{ min-height: 20px; padding: 2px 5px; }
+body.background-stars .card-buttons{ display: flex; gap: 5px; margin-top: 8px; }
+body.background-stars .card-buttons .button{ flex: 1; min-height: 36px; padding: 7px; font-size: 12px; }
+body.background-stars .upgrade-list{ margin-top: 7px; padding-top: 7px; border-top: 1px solid var(--line); }
+body.background-stars .military-card-grid{ display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 7px; }
+body.background-stars .discard-scroll{ max-height: 68vh; overflow: auto; padding: 2px; }
+body.background-stars .discard-row{ grid-template-columns: repeat(5, minmax(160px, 1fr)); }
+body.background-stars .discard-empty{ grid-column: 1 / -1; padding: 24px; border: 1px dashed var(--line); text-align: center; }
+@media (max-width: 1120px){body.background-stars .card-row{ grid-template-columns: repeat(3,minmax(150px,1fr)); }
+body.background-stars .discard-row{ grid-template-columns: repeat(3,minmax(150px,1fr)); }}
+@media (max-width: 760px){body.background-stars .card-row{ grid-template-columns: repeat(2,minmax(130px,1fr)); }
+body.background-stars .hand-tools{ width: 100%; justify-content: space-between; }
+body.background-stars .military-card-grid{ grid-template-columns: repeat(2,1fr); }}
+@media (max-width: 460px){body.background-stars .card-row{ grid-template-columns: 1fr; }}
+body.background-stars .resource-chip{ gap: 6px; min-height: 32px; padding: 5px 8px; }
+body.background-stars .resource-chip strong{ font-size: 16px; }
+body.background-stars .resource-symbol, body.background-stars .card-footer .resource-symbol, body.background-stars .inline-resource .resource-symbol{ width: 21px; height: 21px; }
+body.background-stars .card-footer .resource-chip{ min-height: 30px; padding: 4px 7px; }
+body.background-stars .resource-symbol-large{ width: 38px; height: 38px; padding: 5px; }
+body.background-stars .map-key-dialog .resource-symbol{ width: 26px; height: 26px; }
+body.background-stars .map-key-dialog .symbol-legend{ display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 14px; }
+body.background-stars .map-key-dialog .symbol-legend-item{ min-width: 0; align-items: flex-start; gap: 12px; padding: 14px; border: 1px solid var(--line); background: var(--surface-2); }
+body.background-stars .map-key-dialog .symbol-legend-name{ min-height: 0; justify-content: flex-start; text-align: left; font-size: 17px; gap: 10px; }
+body.background-stars .map-key-dialog .symbol-legend-cost{ min-height: 0; }
+body.background-stars .map-key-dialog .resource-dots{ justify-content: flex-start; }
+body.background-stars .map-key-dialog .resource-chip{ min-height: 34px; padding: 5px 8px; }
+body.background-stars .map-key-dialog .symbol-legend-description{ display: block; font-size: 14px; line-height: 1.5; color: var(--muted); }
+@media (max-width:760px){body.background-stars .map-key-dialog .symbol-legend{ grid-template-columns: repeat(2,minmax(0,1fr)); padding: 12px; gap: 8px; }
+body.background-stars .map-key-dialog .symbol-legend-item{ padding: 10px; }
+body.background-stars .map-key-dialog .symbol-legend-name{ flex-wrap: wrap; font-size: 16px; }}
+body.background-stars .hand-tools{ flex-wrap: wrap; }
+body.background-stars .conversion-symbols .resource-symbol{ width: 16px; height: 16px; }
+body.background-stars .bank-resource-button .resource-symbol{ color: var(--resource); flex: none; }
+body.background-stars .storage-upgrade-control{ margin-top: 12px; }
+body.background-stars .storage-upgrade-button{ width: 100%; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+body.background-stars .storage-upgrade-control p{ margin: 6px 0 0; font-size: 11px; line-height: 1.5; }
+body.background-stars .game-card.alien-relic{ border-color: #ccb577; background: radial-gradient(circle at 90% 0, #a8864228, transparent 60%), linear-gradient(150deg,#192334,#0e1422); box-shadow: inset 0 0 22px #e7c66a0c; }
+body.background-stars .alien-relic .card-type{ color: #f2ce76; }
+body.background-stars .card-lore{ display: block; font-size: 11px; font-style: italic; color: #b8b0d3; line-height: 1.4; }
+body.background-stars .relic-catalog-grid .game-card{ min-width: 0; width: auto; min-height: 265px; }
+body.background-stars .relic-row .game-card{ flex: 1; min-width: 0; }
+body.background-stars .deck-card-group{ display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+body.background-stars .deck-card-count{ color: var(--cyan); font-size: 15px; }
+body.background-stars .deck-card-group .game-card{ flex: 1; }
+body.background-stars .resource-box > .resource-symbol{ display: grid; width: 29px; height: 29px; padding: 6px; margin-bottom: 3px; border-radius: 50%; color: var(--resource); background: color-mix(in srgb,var(--resource) 13%,#182723); border: 1px solid color-mix(in srgb,var(--resource) 45%,transparent); box-shadow: 0 2px 2px #0004,inset 0 1px #ffffff29; }
+body.background-stars .storage-upgrade-control{ margin-top: 19px; }
+body.background-stars .storage-upgrade-button{ justify-content: center; gap: 6px; padding: 8px; font-size: 10px; }
+body.background-stars .storage-upgrade-button .resource-chip{ min-height: 21px; padding: 2px 4px; gap: 3px; }
+body.background-stars .storage-upgrade-button .resource-chip strong{ font-size: 10px; }
+body.background-stars .storage-upgrade-button .resource-symbol{ width: 13px; height: 13px; }
+body.background-stars .storage-upgrade-control p{ font-size: 9px; line-height: 1.5; }
+body.background-stars .bank-resource-button .resource-symbol{ width: 15px; height: 15px; }
+body.background-stars .hand-tools{ width: auto; flex-wrap: wrap; gap: 7px; }
+body.background-stars .hand-tools .button{ min-height: 34px; font-size: 10px; }
+body.background-stars .card-row{ display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); align-items: stretch; gap: 12px; }
+body.background-stars .game-card{
+  position: relative; min-width: 0; min-height: 290px; padding: 12px;
+  border: 1px solid var(--paper-edge); border-top: 5px solid color-mix(in srgb,var(--card-accent) 65%,#435146);
+  border-radius: 9px; background: radial-gradient(ellipse at 0 0,#fff9ef,transparent 85%),var(--paper);
+  color: var(--ink); box-shadow: 0 3px 0 #9b8d72,0 6px 12px #0004,inset 0 0 0 4px #fff8;
+  transition: transform .15s,box-shadow .15s;
+}
+body.background-stars button.game-card{ color: var(--ink); }
+body.background-stars .game-card:hover:not(:disabled){ transform: translateY(-4px); border-color: #b0a07d; box-shadow: 0 3px 0 #9b8d72,0 10px 18px #0005,inset 0 0 0 4px #fff8; }
+body.background-stars .game-card:disabled{ opacity: 1; cursor: not-allowed; background: #d9d3c3; color: #45504c; box-shadow: 0 2px 0 #8b816c,0 3px 5px #0003,inset 0 0 0 4px #ffffff30; }
+body.background-stars .game-card.order-selected{ border-color: #bda05d; box-shadow: 0 0 0 3px var(--gold),0 6px 14px #0005; }
+body.background-stars .game-card.upgraded{ border-top-color: #9c7b35; }
+body.background-stars .card-type{ color: #4d6259; font-size: 8px; letter-spacing: .1em; font-weight: 700; text-transform: uppercase; }
+body.background-stars .card-name{ margin: 6px 0 10px; color: var(--ink); font-family: Georgia,'Times New Roman',serif; font-size: 20px; font-weight: 400; line-height: 1.15; }
+body.background-stars .card-art{ position: relative; display: grid; place-items: center; flex: none; min-height: 74px; margin-bottom: 12px; overflow: hidden; border: 1px solid #64736a60; border-radius: 3px; background: repeating-linear-gradient(0deg,#ffffff03 0 1px,transparent 1px 5px),color-mix(in srgb,var(--card-accent) 15%,#223a3c); color: #ebe5ce; }
+body.background-stars .card-art::before, body.background-stars .card-art::after{ content: ''; position: absolute; width: 110px; height: 110px; border: 1px solid #d6d7b62b; border-radius: 50%; }
+body.background-stars .card-art::before{ left: -55px; top: -48px; box-shadow: 0 0 0 15px #ffffff04,0 0 0 16px #d6d7b620; }
+body.background-stars .card-art::after{ right: -78px; bottom: -60px; }
+body.background-stars .card-orbit{ position: absolute; width: 85px; height: 85px; border: 1px dashed #e8e0bd55; border-radius: 50%; transform: scaleY(.42) rotate(-30deg); }
+body.background-stars .card-art .board-glyph{ width: 34px; height: 34px; stroke-width: 1.2; filter: drop-shadow(0 3px 2px #0005); }
+body.background-stars .card-registration{ position: absolute; left: 7px; bottom: 5px; font-size: 4px; letter-spacing: .2em; opacity: .6; }
+body.background-stars .card-effect{ color: #45534c; font-size: 12px; line-height: 1.5; }
+body.background-stars .card-footer{ gap: 6px; border-top: 1px solid #a89d8370; color: var(--ink); margin-top: 12px; padding-top: 9px; }
+body.background-stars .card-footer small{ color: var(--ink-muted); font-size: 9px; }
+body.background-stars .game-card .resource-chip{ min-height: 22px; padding: 2px 4px; gap: 3px; border-color: #b6af9c; background: #faf3e5; }
+body.background-stars .game-card .resource-chip strong{ color: var(--ink); font-size: 10px; }
+body.background-stars .game-card .resource-symbol, body.background-stars .game-card .inline-resource .resource-symbol{ width: 14px; height: 14px; }
+body.background-stars .game-card .resource-symbol.matter{ color: #566b71; }
+body.background-stars .game-card .resource-symbol.energy{ color: #1f6d88; }
+body.background-stars .game-card .resource-symbol.biomass{ color: #3d734f; }
+body.background-stars .game-card .resource-symbol.data{ color: #79528b; }
+body.background-stars .card-buttons{ flex-direction: column; margin-top: 11px; gap: 5px; }
+body.background-stars .card-buttons .button{ min-height: 36px; padding: 7px 5px; font-size: 11px; background: #e6ddc7; border-color: #a99e82; box-shadow: none; color: #42534a; }
+body.background-stars .card-buttons .button-primary{ order: -1; background: #2c5551; border-color: #2c5551; color: #fff6dc; }
+body.background-stars .card-buttons .button-danger{ order: -1; background: #865646; border-color: #865646; color: #fff5dc; }
+body.background-stars .card-buttons .button:hover:not(:disabled){ color: #152d2a; border-color: #6b785e; background: #d1c6a9; }
+body.background-stars .card-buttons .button-primary:hover:not(:disabled){ background: #3b6b60; border-color: #3b6b60; color: #fff6dc; }
+body.background-stars .card-buttons .muted{ color: var(--ink-muted); font-size: 10px; }
+body.background-stars .game-card.alien-relic{ border-color: #b69b5d; background: radial-gradient(ellipse at 100% 0,#fff4d2,transparent 80%),#e8dfc6; box-shadow: 0 3px 0 #8e794d,0 6px 12px #0004,inset 0 0 0 4px #f8eed3; }
+body.background-stars .alien-relic .card-type{ color: #7e6634; }
+body.background-stars .alien-relic .card-art{ background-color: #574b36; }
+body.background-stars .card-lore{ margin-bottom: 9px; color: #76684e; font-size: 10px; }
+body.background-stars .military-card-grid{ grid-template-columns: repeat(2,minmax(0,1fr)); }
+body.background-stars .discard-row{ gap: 16px; }
+body.background-stars .discard-row .game-card, body.background-stars .relic-catalog-grid .game-card{ min-height: 270px; }
+body.background-stars .pile-dialog .discard-row{ grid-template-columns: repeat(auto-fit,minmax(165px,210px)); justify-content: center; }
+body.background-stars .pile-dialog:has(.discard-row > :only-child){ width: min(420px,calc(100vw - 28px)); }
+body.background-stars .relic-row .game-card{ min-height: 310px; }
+@media (min-width: 1800px){body.background-stars .card-row{ grid-template-columns: repeat(5,minmax(0,1fr)); }}
+@media (max-width: 1250px){body.background-stars .card-row{ grid-template-columns: repeat(3,minmax(0,1fr)); }
+body.background-stars .card-name{ font-size: 20px; }}
+@media (max-width: 760px){body.background-stars .resource-box > .resource-symbol{ grid-row: 1 / 3; margin: 0; width: 25px; height: 25px; padding: 4px; }
+body.background-stars .storage-upgrade-control{ margin-top: 15px; }
+body.background-stars .storage-upgrade-button{ min-height: 42px; font-size: 11px; }
+body.background-stars .storage-upgrade-control p{ text-align: center; }
+body.background-stars .game-card{ scroll-margin-top: 108px; }
+body.background-stars .bank-resource-button .resource-symbol{ width: 20px; height: 20px; }
+body.background-stars .card-row{ grid-template-columns: repeat(2,minmax(0,1fr)); gap: 13px; }
+body.background-stars .game-card{ padding: 11px; min-height: 295px; }
+body.background-stars .card-name{ font-size: 21px; }
+body.background-stars .card-art{ min-height: 77px; }
+body.background-stars .card-effect{ font-size: 12px; }
+body.background-stars .card-buttons .button{ min-height: 39px; font-size: 11px; }
+body.background-stars .card-footer{ flex-wrap: wrap; }
+body.background-stars .card-footer > span:not(.resource-dots):last-child{ justify-items: start; }
+body.background-stars .relic-row .game-card{ min-height: 340px; }
+body.background-stars .relic-row .card-art{ min-height: 110px; }
+body.background-stars .discard-row{ grid-template-columns: repeat(2,minmax(0,1fr)); }}
+@media (max-width: 380px){body.background-stars .resource-box > .resource-symbol{ width: 21px; height: 21px; padding: 3px; }
+body.background-stars .card-row{ gap: 9px; }
+body.background-stars .game-card{ padding: 9px; }
+body.background-stars .card-name{ font-size: 19px; }}
+@media (prefers-contrast: more){body.background-stars .card-effect{ color: #243b32; }}
+body.background-stars .alien-relic .card-type{ color: #6a552b; }
+body.background-stars .game-card .resource-symbol, body.background-stars .game-card .inline-resource .resource-symbol{ width:24px; height:24px; }
+body.background-stars .game-card .resource-chip{ min-height:32px; }
+body.background-stars .game-card .resource-dot{ min-width:26px; min-height:26px; }
+body.background-stars .game-card .resource-dot svg{ width:22px; height:22px; }
+body.background-stars .game-card .button:focus-visible{ outline: 3px solid #315955; outline-offset: 3px; }
+body.background-stars .card-lore{ color: #655941; }
+body.background-stars .storage-allocation-option>span:not(.resource-symbol){ flex:1; font-weight:650; }
+@media (min-width:761px){body.background-stars .storage-upgrade-button{ font-size:14px; }
+body.background-stars .card-effect{ font-size:16px; line-height:1.5; }
+body.background-stars .card-type, body.background-stars .card-footer small, body.background-stars .card-lore, body.background-stars .card-buttons .muted{ font-size:12px; }
+body.background-stars .card-buttons .button{ min-height:42px; font-size:14px; }
+body.background-stars .game-card .resource-chip strong{ font-size:13px; }}
+@media (min-width:761px){body.background-stars .resource-box > .resource-symbol{ grid-column:1; grid-row:1; width:22px; height:22px; padding:3px; margin:0; }
+body.background-stars #storage-upgrade-help{ font-size:13px; line-height:1.5; }}
+body.background-stars .hand-tools #pass-button, body.background-stars .hand-tools #hand-finish-buy-button{ order: -1; }
+body.background-stars .upgrade-list small{ margin-left: 4px; opacity: .75; }
+body.background-stars .upgrade-list .upgrade-note{ flex-basis: 100%; }
+body.background-stars .game-card.unavailable{ background: #c9c3b4; color: #3f4a46; box-shadow: 0 2px 0 #7d7462, 0 3px 5px #0003, inset 0 0 0 999px #1a28290f; filter: saturate(.55); }
+body.background-stars .game-card.unavailable .card-name, body.background-stars .game-card.unavailable .card-effect{ color: #3a4542; }
+body.background-stars .card-limit-note{ display: block; margin-top: 6px; color: #7a3b2c; font-size: 12px; font-weight: 650; line-height: 1.35; }
+body.background-stars .upgrade-market{ display: grid; gap: 12px; }
+body.background-stars .upgrade-offer{ border-style: dashed; }
+body.background-stars .upgrade-price{ display: inline-flex; align-items: baseline; gap: 4px; font-size: 12px; }
+body.background-stars .upgrade-price strong{ font-size: 14px; }
+body.background-stars .upgrade-resource-label{ display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+body.background-stars .upgrade-resource-label select{ min-height: 40px; padding: 6px 8px; border: 1px solid var(--line-bright); border-radius: 4px; background: var(--surface-2); color: var(--text); font-size: 15px; }
+body.background-stars .upgrade-options{ display: flex; flex-wrap: wrap; gap: 8px; }
+body.background-stars .upgrade-options .button small{ margin-left: 6px; color: var(--muted); font-weight: 500; }
+body.background-stars .card-headline{ display: none; }
+body.background-stars .game-log .log-res .resource-symbol{ width: 12px; height: 12px; }
+@media (min-width: 600px) and (min-height: 600px){body.background-stars #hand-panel, body.background-stars #hand-panel > .section-intro{ display: contents; }
+body.background-stars #hand-panel > .section-intro > div:first-child, body.background-stars #storage-upgrade-help{
+    position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); margin: 0;
+  }
+body.background-stars #hand-panel .hand-tools{ grid-row: 8; grid-column: 1 / -1; z-index: 6; justify-self: end; align-self: center; display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); align-content: center; gap: 5px; width: var(--tools-w); max-width: none; margin: 0; }
+body.background-stars #hand-panel .hand-tools .table-jump{ display: none; }
+body.background-stars #hand-panel .hand-tools:not(:has(.button:not([hidden]))){ display: none; }
+body.background-stars #hand-panel .hand-tools .button{ min-height: 30px; padding: 3px 10px; font-size: 13px; justify-content: center; white-space: nowrap; box-shadow: 0 3px 0 #0a1513, 0 6px 12px #0006; }
+body.background-stars #hand-panel .hand-tools .button[hidden]{ display: none; }
+body.background-stars #convert-all-button .resource-symbol{ width: 13px; height: 13px; }
+body.background-stars .hand-tools{ flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-start; gap: 5px; max-width: none; }
+body.background-stars .hand-tools .button{ min-height: 28px; padding: 2px 9px; font-size: 12.5px; }
+body.background-stars .storage-upgrade-control{ grid-column: 3; grid-row: 7; z-index: 5; justify-self: end; align-self: stretch; background: linear-gradient(160deg, #2f423d, #23332f); box-shadow: inset 0 1px 0 #ffffff14, 0 3px 0 #0a1513, 0 10px 18px #0006; }
+body.background-stars .resource-box > .resource-symbol{ grid-column: 1; grid-row: 1; width: 16px; height: 16px; padding: 2px; margin: 0; }
+body.background-stars .storage-upgrade-control{ display: flex; align-items: center; width: var(--cap-w); padding: 5px 10px 5px 2px; border-radius: 0 9px 9px 0; }
+body.background-stars .storage-upgrade-control{ margin: 0; padding: 0; border: 0; min-width: 0; }
+body.background-stars .storage-upgrade-button{ display: flex; flex-direction: column; align-items: flex-start; width: 100%; min-height: 0; padding: 3px 8px; gap: 2px; font-size: 11.5px; white-space: nowrap; }
+body.background-stars #storage-upgrade-cost{ display: flex; flex-wrap: nowrap; gap: 3px; }
+body.background-stars .storage-upgrade-button .resource-chip{ min-height: 18px; padding: 0 3px; gap: 2px; }
+body.background-stars .storage-upgrade-button .resource-chip strong{ font-size: 10.5px; }
+body.background-stars .storage-upgrade-button .resource-symbol{ width: 12px; height: 12px; }
+body.background-stars .resource-tools .bank-resource-button .resource-symbol{ width: 16px; height: 16px; }
+body.background-stars .resource-tools .resource-exchange-preview .resource-chip{ min-height: 18px; padding: 0 3px; }
+body.background-stars .resource-tools .resource-exchange-preview .resource-symbol{ width: 12px; height: 12px; }
+body.background-stars #discard-button{ justify-self: end; margin-right: calc(var(--tools-w) + 12px) !important; }
+body.background-stars .game-card{ min-height: 0; }
+body.background-stars :is(#hand-row, .market-cards) .game-card{
+    position: relative; min-width: 0; overflow: hidden; display: grid; grid-template-columns: auto minmax(0, 1fr); align-content: start; column-gap: 7px; row-gap: 2px;
+    grid-template-areas: "type type" "cost name" "gain head" "effect effect" "note note" "buttons buttons"; grid-template-rows: repeat(6, max-content);
+    padding: 5px 8px 7px; border: 2px solid color-mix(in srgb, var(--card-accent) 75%, #6f6650); border-radius: 9px;
+    background: linear-gradient(170deg, color-mix(in srgb, var(--card-accent) 16%, #fbf4e3), var(--paper) 55%);
+    box-shadow: 0 -2px 10px #0006, inset 0 0 0 3px #fff8; transition: transform .15s, box-shadow .15s; text-align: left;
+  }
+body.background-stars :is(#hand-row, .market-cards) .game-card > *{ min-width: 0; }
+body.background-stars :is(#hand-row, .market-cards) :is(.card-art, .card-lore, .card-type, .card-limit-note){ display: none; }
+body.background-stars :is(#hand-row, .market-cards) .card-type{ grid-area: type; margin: 0 0 2px; font-size: 9.5px; }
+body.background-stars :is(#hand-row, .market-cards) .card-name{ grid-area: name; align-self: center; margin: 0; font-size: 14.5px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.background-stars :is(#hand-row, .market-cards) .card-headline, body.background-stars :is(#hand-row, .market-cards) .card-effect{ grid-area: head; align-self: center; margin: 0; font-size: 12px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.background-stars :is(#hand-row, .market-cards) .card-headline{ display: block; font-weight: 650; color: #2c3a35; }
+body.background-stars :is(#hand-row, .market-cards) .card-headline ~ .card-effect{ display: none; }
+body.background-stars :is(#hand-row, .market-cards) .card-buttons{ grid-area: buttons; flex-direction: row; gap: 4px; margin-top: 6px; opacity: 0; }
+body.background-stars :is(#hand-row, .market-cards) .card-buttons .button{ flex: 1 1 auto; min-width: 0; min-height: 30px; padding: 2px 6px; font-size: 12.5px; white-space: nowrap; }
+body.background-stars :is(#hand-row, .market-cards) .card-buttons .label-detail{ display: none; }
+body.background-stars :is(#hand-row, .market-cards) :is(.card-effect, .card-headline) .inline-resource .resource-symbol{ width: 1.15em; height: 1.15em; }
+body.background-stars :is(#hand-row, .market-cards) :is(.card-effect, .card-headline) .inline-resource{ vertical-align: -.2em; }
+body.background-stars #hand-row .card-footer{ grid-area: cost; grid-row: 2 / 4; align-self: start; margin: 0; padding: 0; border: 0; }
+body.background-stars #hand-row .card-footer small, body.background-stars .market-cards .card-footer small{ display: none; }
+body.background-stars .market-cards .card-footer{ grid-area: cost; align-self: center; margin: 0; padding: 0; border: 0; }
+body.background-stars .market-cards .card-gain{ grid-area: gain; align-self: center; }
+body.background-stars .market-cards .upgrade-price{ font-size: 12px; white-space: nowrap; }
+body.background-stars .market-cards .upgrade-price strong{ font-size: 15px; }
+body.background-stars :is(#hand-row, .market-cards) .resource-dots{ flex-wrap: nowrap; gap: 2px; }
+body.background-stars :is(#hand-row, .market-cards) .resource-chip{ min-height: 26px; padding: 1px 7px 1px 5px; gap: 3px; border: 0; background: color-mix(in srgb, var(--card-accent) 26%, #fffaf0); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--card-accent) 65%, #5c5442); }
+body.background-stars :is(#hand-row, .market-cards) .resource-symbol{ width: 18px; height: 18px; }
+body.background-stars :is(#hand-row, .market-cards) .resource-chip strong{ font-size: 14.5px; font-weight: 800; }
+body.background-stars .market-cards .card-gain .resource-chip{ min-height: 22px; padding: 0 5px 0 4px; background: transparent; }
+body.background-stars .market-cards .card-gain .resource-symbol{ width: 15px; height: 15px; }
+body.background-stars .market-cards .card-gain .resource-chip strong{ font-size: 12px; }
+body.background-stars .market-cards .card-gain::before{ content: '+'; margin-right: 1px; color: var(--ink-muted); font-weight: 700; }
+body.background-stars .market-cards .card-gain{ display: flex; align-items: center; }
+body.background-stars :is(#hand-row, .market-cards) .resource-dots:has(> :nth-child(2)) .resource-chip{ min-height: 24px; padding: 0 4px 0 3px; gap: 2px; }
+body.background-stars :is(#hand-row, .market-cards) .resource-dots:has(> :nth-child(2)) .resource-symbol{ width: 15px; height: 15px; }
+body.background-stars :is(#hand-row, .market-cards) .resource-dots:has(> :nth-child(2)) .resource-chip strong{ font-size: 13px; }
+body.background-stars :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within){
+    z-index: 30; height: auto; overflow: visible; transform: translateY(var(--lift, -6px));
+    box-shadow: 0 14px 40px #000a, inset 0 0 0 3px #fff8;
+  }
+body.background-stars :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) :is(.card-type, .card-limit-note){ display: block; }
+body.background-stars :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-type{ white-space: normal; }
+body.background-stars :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-effect{ display: block; grid-area: effect; white-space: normal; overflow: visible; margin-top: 3px; }
+body.background-stars :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-name{ white-space: normal; }
+body.background-stars :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) .card-buttons{ opacity: 1; }
+body.background-stars .market-cards .card-limit-note{ grid-area: note; margin: 3px 0 0; font-size: 11px; }
+body.background-stars #hand-row .game-card:has(button[data-order-card]:not(:disabled)):not(.order-selected), body.background-stars .market-cards .game-card:not(:disabled){ box-shadow: 0 0 0 2px #f2d488, 0 0 14px #f2d48866, inset 0 0 0 3px #fff8; }
+body.background-stars #hand-row .game-card.order-selected{ box-shadow: 0 0 0 3px var(--gold), 0 -2px 10px #0006; }
+body.background-stars .market-cards .game-card.unavailable{ background: #c9c3b4; filter: saturate(.6); }
+body.background-stars #hand-row{
+    --n: 5; --top-w: clamp(124px, calc((100cqw + (var(--n) - 1) * 12px) / var(--n)), 210px);
+    grid-column: 2; grid-row: 8; align-self: end; justify-self: stretch; z-index: 6; display: flex; flex-wrap: nowrap; align-items: flex-end; justify-content: flex-start;
+    height: var(--strip-h); margin: 0; padding: 0; container-type: inline-size; gap: 0;
+  }
+body.background-stars #hand-row:not(:has(> :nth-child(5))){ --n: 4; }
+body.background-stars #hand-row:not(:has(> :nth-child(4))){ --n: 3; }
+body.background-stars #hand-row:has(> :nth-child(6)){ --n: 6; }
+body.background-stars #hand-row:has(> :nth-child(7)){ --n: 7; }
+body.background-stars #hand-row:has(> :nth-child(8)){ --n: 8; }
+body.background-stars #hand-row:has(> :nth-child(9)){ --n: 9; }
+body.background-stars #hand-row:has(> :nth-child(10)){ --n: 10; }
+body.background-stars #hand-row .game-card{ flex: none; width: var(--top-w); height: var(--strip-h); border-bottom-width: 0; border-radius: 9px 9px 4px 4px; grid-template-areas: "type type" "cost name" "cost head" "effect effect" "buttons buttons"; }
+body.background-stars #hand-row{ --step: min(4px, calc((100cqw - var(--n) * var(--top-w)) / (var(--n) - 1))); }
+body.background-stars #hand-row .game-card + .game-card{ margin-left: var(--step); }
+body.background-stars #hand-row .game-card:not(:last-child):not(:hover):not(:focus-within){ padding-right: calc(8px + max(0px, -1 * var(--step))); }
+body.background-stars #hand-row .level-badge{ display: inline-grid; place-items: center; min-width: 26px; height: 24px; padding: 0 6px; border-radius: 12px; background: color-mix(in srgb, var(--card-accent) 26%, #fffaf0); box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--card-accent) 65%, #5c5442); color: #2a2418; font-family: Georgia, serif; font-size: 13px; font-weight: 700; }
+body.background-stars #hand-row .game-card:is(:hover, :focus-within){ width: max(var(--top-w), 200px); max-height: none; margin-right: calc(-1 * max(0px, 200px - var(--top-w))); }
+body.background-stars #hand-row .game-card:last-child:not(:first-child):is(:hover, :focus-within){ margin-right: 0; margin-left: calc(var(--step) - max(0px, 200px - var(--top-w))); }
+body.background-stars .app-shell.app-shell:has(#hand-row > :nth-child(7)){ --front-h: 140px; }
+body.background-stars #hand-row:has(> :nth-child(7)) .game-card{ grid-template-areas: "type type" "name name" "cost cost" "head head" "effect effect" "buttons buttons"; padding-top: 4px; }
+body.background-stars #hand-row:has(> :nth-child(7)) .card-footer{ grid-row: auto; }
+body.background-stars #market-panel .section-intro .hand-tools{ flex: 0 0 auto; }
+body.background-stars #upgrade-market{ grid-column: 1; grid-row: 1; min-height: 0; display: grid; grid-template-columns: 18px repeat(2, minmax(0, 1fr)); grid-template-rows: minmax(0, var(--utop-h, 66px)); gap: 5px; padding: 4px; border: 1px dashed #d9bd8055; border-radius: 9px; background: #ffffff06; }
+body.background-stars #upgrade-market[hidden]{ display: none; }
+body.background-stars #upgrade-market::before{ content: 'Upgrades'; grid-column: 1; grid-row: 1; align-self: center; justify-self: center; writing-mode: vertical-rl; transform: rotate(180deg); color: #c9b98a; font-size: 9.5px; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+body.background-stars .market-cards .game-card{ height: min(100%, var(--mtop-max)); align-self: start; --lift: 0px; }
+body.background-stars .market-cards .card-footer .resource-dots{ gap: 2px; }
+body.background-stars #market-row .game-card:nth-child(n+5){ align-self: end; }
+body.background-stars :is(#market-row, #upgrade-market) .game-card{ grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "type type" "name name" "cost gain" "head head" "effect effect" "note note"; row-gap: 2px; padding: 3px 7px 4px; }
+body.background-stars :is(#market-row, #upgrade-market) .card-name{ font-size: 13.5px; }
+body.background-stars :is(#market-row, #upgrade-market) .card-gain{ justify-self: end; }
+body.background-stars :is(#market-row, #upgrade-market) .card-footer{ justify-self: start; }
+body.background-stars :is(#market-row, #upgrade-market) .card-effect{ font-size: 11.5px; }
+body.background-stars #upgrade-market .card-footer{ flex-wrap: nowrap; }
+body.background-stars #upgrade-market .upgrade-price{ display: inline-flex; align-items: baseline; gap: 4px; white-space: nowrap; font-size: 11.5px; }
+body.background-stars #upgrade-market .upgrade-price strong{ font-size: 15px; }
+body.background-stars :is(#market-row, #upgrade-market) .card-footer .resource-chip{ min-height: 21px; padding: 0 4px 0 3px; gap: 2px; }
+body.background-stars :is(#market-row, #upgrade-market) .card-footer .resource-symbol{ width: 15px; height: 15px; }
+body.background-stars :is(#market-row, #upgrade-market) .card-footer .resource-chip strong{ font-size: 13px; }
+body.background-stars :is(#market-row, #upgrade-market) .card-gain .resource-dots{ gap: 0; }
+body.background-stars :is(#market-row, #upgrade-market) .card-gain::before{ margin-right: 0; }
+body.background-stars :is(#market-row, #upgrade-market) .card-gain .resource-chip{ min-height: 20px; padding: 0 2px; box-shadow: none; }
+body.background-stars :is(#market-row, #upgrade-market) .card-gain .resource-symbol{ width: 14px; height: 14px; }
+body.background-stars .market-cards .game-card:is(:hover, :focus, :focus-within){ height: auto; min-height: min(100%, var(--mtop-max)); }
+body.background-stars .upgrade-offer{ border-style: dashed; }
+body.background-stars .military-card-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; }
+body.background-stars .relic-payment .resource-chip{ min-height: 20px; padding: 0 4px 0 2px; }
+body.background-stars .relic-payment .resource-symbol{ width: 13px; height: 13px; }
+body.background-stars .relic-row .game-card{
+    position: relative; flex: none; min-height: 0; height: 100%; overflow: hidden; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "type type" "name gain" "effect effect";
+    align-content: start; align-items: center; gap: 1px 6px; padding: 4px 7px 5px; transition: transform .15s, box-shadow .15s;
+  }
+body.background-stars .relic-row > div:has(> .button) .game-card{ height: auto; }
+body.background-stars .relic-row .card-type{ grid-area: type; display: none; margin: 0; font-size: 9.5px; }
+body.background-stars .relic-row .card-name{ grid-area: name; margin: 0; font-size: 13px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.background-stars .relic-row .card-effect{ grid-area: effect; font-size: 11.5px; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.background-stars .relic-row .card-footer{ grid-area: gain; margin: 0; padding: 0; border: 0; }
+body.background-stars .relic-row .card-footer small{ display: none; }
+body.background-stars .relic-row .card-footer .resource-chip{ min-height: 20px; padding: 0 4px 0 2px; }
+body.background-stars .relic-row .card-footer .resource-symbol, body.background-stars .relic-row .card-effect .inline-resource .resource-symbol{ width: 14px; height: 14px; }
+body.background-stars .relic-row .card-art, body.background-stars .relic-row .card-lore{ display: none; }
+body.background-stars .relic-row .game-card:is(:hover, :focus, :focus-within){ z-index: 30; height: auto; min-height: 100%; overflow: visible; transform: translateY(-4px); box-shadow: 0 14px 40px #000a, inset 0 0 0 3px #fff8; }
+body.background-stars .relic-row .game-card:is(:hover, :focus, :focus-within) .card-type{ display: block; }
+body.background-stars .relic-row .game-card:is(:hover, :focus, :focus-within) :is(.card-name, .card-effect){ white-space: normal; overflow: visible; }
+body.background-stars .card-frame-legend .frame-swatch{ display: inline-block; width: 14px; height: 18px; border: 2px solid var(--swatch); border-radius: 3px; background: color-mix(in srgb, var(--swatch) 20%, #fbf4e3); }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{ white-space: nowrap; display: block; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{ white-space: normal; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars #upgrade-market{ --utop-h: 84px; }
+body.background-stars #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{ -webkit-line-clamp: 2; line-clamp: 2; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .resource-grid .resource-box > .resource-symbol{ grid-column: 1; grid-row: 1; width: 16px; height: 16px; padding: 2px; margin: 0; }
+body.background-stars .storage-upgrade-control{ grid-column: 3; grid-row: 8; z-index: 6; justify-self: start; align-self: center; width: auto !important; margin: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; border-radius: 0 !important; }
+body.background-stars .storage-upgrade-button{ min-height: 0 !important; padding: 4px 8px !important; gap: 3px !important; font-size: 11.5px !important; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars #discard-button{ justify-self: end; margin-right: 0 !important; }
+body.background-stars #hand-panel .hand-tools{ grid-row: 7 !important; grid-template-rows: auto !important; grid-auto-flow: column !important; width: auto !important; justify-self: end !important; align-self: end !important; }
+body.background-stars .resource-grid .resource-box > .resource-symbol{ height: 21px !important; }
+body.background-stars .resource-grid .resource-box > .resource-symbol{ width: 18px !important; }
+body.background-stars .storage-upgrade-control{ grid-row: 7 !important; justify-self: start !important; align-self: end !important; margin: 0 !important; }
+body.background-stars .storage-upgrade-button{ flex-direction: row !important; align-items: center !important; padding: 1px 6px !important; gap: 4px !important; font-size: 10px !important; border-radius: 999px !important; }
+body.background-stars .storage-upgrade-button .resource-chip{ min-height: 14px !important; padding: 0 2px !important; }
+body.background-stars .storage-upgrade-button .resource-symbol{ width: 10px !important; height: 10px !important; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .resource-tools .bank-resource-button .resource-symbol{ opacity: .9; }
+body.background-stars #upgrade-market{ border: 0 !important; background: none !important; padding: 0 0 4px !important; }
+body.background-stars #upgrade-market::before{ color: #e9dcb8 !important; text-shadow: 0 1px 2px #0009; }
+body.background-stars #upgrade-market .game-card{ box-shadow: 0 1px 0 #efe5cc, 0 2px 0 #cfc09c, 0 3px 0 #a99a77, 0 5px 0 #efe5cc, 0 6px 0 #a99a77, 0 9px 10px -3px #000a !important; }
+body.background-stars .storage-upgrade-button{ border-radius: 999px !important; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .app-shell.app-shell:has(#hand-row > :nth-child(7)){ --front-h: 124px; }
+body.background-stars #hand-row{ grid-row: 9 !important; }
+body.background-stars #hand-panel .hand-tools, body.background-stars .storage-upgrade-control{ grid-row: 7 !important; }
+body.background-stars #discard-button{ grid-row: 9 !important; }
+body.background-stars .resource-grid .resource-box > .resource-symbol{ grid-area: icon !important; justify-self: center; width: 20px !important; height: 20px !important; }
+body.background-stars :is(#market-row, #upgrade-market) .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{ display: block !important; white-space: nowrap !important; -webkit-line-clamp: unset !important; line-clamp: unset !important; }
+body.background-stars #upgrade-market{ --utop-h: 70px !important; }
+body.background-stars #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{ display: block !important; white-space: nowrap !important; }
+body.background-stars #hand-panel .hand-tools{ grid-row: 7 !important; }
+body.background-stars .storage-upgrade-control{ grid-row: 8 !important; justify-self: start !important; align-self: start !important; margin: 8px 0 0 12px !important; z-index: 7 !important; }
+body.background-stars .storage-upgrade-button{ min-height: 0 !important; padding: 1px 7px !important; border-radius: 999px !important; }
+body.background-stars .storage-upgrade-button > span:first-child{ font-size: 0 !important; }
+body.background-stars .storage-upgrade-button > span:first-child::before{ content: '+4'; font-size: 11px; font-weight: 800; }
+body.background-stars #storage-upgrade-cost{ position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait){body.background-stars .storage-upgrade-control{ grid-column: 3 !important; grid-row: 6 !important; }
+body.background-stars #hand-panel .hand-tools{ grid-column: 1 / -1 !important; grid-row: 7 !important; }
+body.background-stars #discard-button{ grid-column: 1 / -1 !important; grid-row: 8 !important; justify-self: end !important; }
+body.background-stars #hand-row{ grid-column: 1 / -1 !important; grid-row: 8 !important; margin: 0 calc(var(--pile-w) + 14px) 0 calc(52px + 3 * var(--pile-w) + 32px) !important; }}
+@media (max-width: 599px), (max-height: 599px){body.background-stars :is(.console, .resource-panel, .board-shared) :is(.card-art, .card-lore){ display: none !important; }
+body.background-stars #hand-panel .hand-tools{ position: fixed !important; left: 0; right: 0; bottom: var(--tabs-h); height: var(--actions-h); z-index: 52; display: flex !important; flex-wrap: nowrap; align-items: center; justify-content: flex-end; gap: 6px; margin: 0 !important; padding: 4px 8px; overflow-x: auto; background: #10201cf2; border-top: 1px solid #a49c6f40; }
+body.background-stars #hand-panel .hand-tools .button{ flex: none; min-height: 36px; padding: 4px 12px; font-size: 13px; white-space: nowrap; }
+body.background-stars #hand-panel .hand-tools .button[hidden]{ display: none !important; }
+body.background-stars:not([data-drawer="hand"]):not([data-drawer="supply"]) .console :is(.console-nav, .tab-panel, #hand-row, #hand-panel .section-intro > div:first-child){ display: none !important; }
+body.background-stars[data-drawer="hand"] #hand-panel{ display: block !important; }
+body.background-stars[data-drawer="hand"] #hand-row{ display: flex !important; flex-wrap: nowrap; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+body.background-stars[data-drawer="hand"] #hand-row .game-card{ flex: 0 0 170px; min-height: 0; }
+body.background-stars[data-drawer="supply"] :is(#hand-row, #hand-panel .section-intro > div:first-child){ display: none !important; }
+body.background-stars[data-drawer="supply"] .upgrade-market{ display: contents !important; }}
+body.background-stars #resource-grid .resource-box > .resource-symbol{ grid-area: icon !important; width: 20px !important; height: 20px !important; padding: 2px; margin: 0; }
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .storage-upgrade-control{ justify-self: end !important; margin: 7px calc(var(--pile-w) + 26px) 0 0 !important; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait){body.background-stars .storage-upgrade-control{ margin: 7px 12px 0 0 !important; }}
+body.background-stars .phone-card-sheet{ display: none; }
+@media (max-width: 599px), (max-height: 599px){body.background-stars #hand-panel .hand-tools{ bottom: calc(var(--safe-b) + var(--tabs-h)) !important; }
+body.background-stars #hand-panel{ overflow: visible !important; }
+body.background-stars #hand-panel .section-intro{ display: contents !important; }
+body.background-stars[data-drawer="hand"] #hand-row{ display: flex !important; flex-wrap: nowrap !important; gap: 6px !important; height: var(--peek-h) !important; margin: 0 !important; padding: 2px 2px 4px !important; overflow-x: auto !important; overflow-y: hidden !important; scroll-snap-type: x proximity; }
+body.background-stars #hand-row > .game-card{ flex: 0 0 136px !important; width: 136px !important; height: calc(var(--peek-h) - 8px) !important; min-height: 0 !important; margin: 0 !important; transform: none !important; rotate: none !important; translate: none !important; scroll-snap-align: start;
+    display: grid !important; grid-template-columns: auto minmax(0, 1fr) !important; grid-template-rows: auto auto 1fr !important; grid-template-areas: "cost name" "cost head" "eff eff" !important; align-content: start; gap: 2px 6px !important; padding: 6px 8px !important; overflow: hidden !important; border-radius: 9px !important; cursor: pointer; }
+body.background-stars #hand-row > .game-card :is(.card-type, .card-art, .card-lore, .card-buttons, .card-limit-note, .card-footer small){ display: none !important; }
+body.background-stars #hand-row > .game-card .card-name{ grid-area: name; margin: 0; font-size: 14px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.background-stars #hand-row > .game-card .card-headline{ grid-area: head; display: block; margin: 0; font-size: 11.5px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.background-stars #hand-row > .game-card .card-effect{ grid-area: eff; margin: 2px 0 0; font-size: 11px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+body.background-stars #hand-row > .game-card .card-headline ~ .card-effect{ display: none; }
+body.background-stars #hand-row > .game-card .card-footer{ grid-area: cost; margin: 0; padding: 0; border: 0; }
+body.background-stars #hand-row > .game-card .resource-chip{ min-height: 22px; padding: 0 5px 0 3px; }
+body.background-stars .phone-card-sheet:not([hidden]){ display: block; position: fixed; left: calc(var(--safe-l) + 10px); right: calc(var(--safe-r) + 10px); bottom: calc(var(--safe-b) + var(--tabs-h) + var(--actions-h) + var(--peek-h) + 18px); z-index: 85; max-height: calc(100dvh - var(--safe-t) - var(--top-h) - var(--safe-b) - var(--tabs-h) - var(--actions-h) - var(--peek-h) - 30px); overflow: auto; }
+body.background-stars .phone-card-sheet .game-card{ width: 100%; max-width: 360px; margin: 0 auto; transform: none !important; }
+body.background-stars .phone-card-sheet .card-art{ display: none; }
+body.background-stars .phone-card-close{ position: absolute; top: 4px; right: 4px; z-index: 2; width: 34px; height: 34px; border: 0; border-radius: 50%; background: #0d1a1d; color: var(--text); font-size: 20px; line-height: 1; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars.my-turn #hand-row > .game-card{ outline: 2px solid #f2c94cd9; outline-offset: 2px; filter: drop-shadow(0 0 7px #f2c94c80); transform-origin: 50% 100%; animation: hand-breathe 2.4s ease-in-out infinite; }}
+@media (prefers-reduced-motion: reduce){body.background-stars.my-turn #hand-row > .game-card{ animation: none; }}
+@media (max-width: 599px), (max-height: 599px){body.background-stars.my-turn #hand-row > .game-card{ box-shadow: 0 0 0 2px #f2c94ccc, 0 0 12px 2px #f2c94c55 !important; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within){ container-type: size; align-content: start; row-gap: 3px !important; padding: 5px 8px 6px !important; }
+body.background-stars #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-name{ font-size: 14px !important; line-height: 1.15 !important; white-space: normal !important; display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden !important; text-overflow: clip !important; }
+body.background-stars #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-headline{ display: none !important; }
+body.background-stars #market-panel #market-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{
+    grid-area: head !important; display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 1 !important; line-clamp: 1 !important;
+    white-space: normal !important; overflow: hidden !important; font-size: 12px !important; line-height: 1.3 !important;
+  }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .map-legend-corner .legend-piece .resource-dots{ justify-self: end; display: inline-flex; flex-wrap: wrap; justify-content: flex-end; gap: 2px; }
+body.background-stars .map-legend-corner .resource-chip{ min-height: 16px; padding: 0 3px 0 2px; gap: 1px; font-size: 10.5px; box-shadow: none; }
+body.background-stars .map-legend-corner .resource-symbol{ width: 11px; height: 11px; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars #market-row .game-card:not(.unavailable) .card-name{ color: #14110a !important; font-weight: 600; }
+body.background-stars #market-row .game-card:not(.unavailable) .card-effect{ color: #2b2619 !important; }
+body.background-stars #relics-panel .relic-row .game-card:not(:hover):not(:focus):not(:focus-within), body.background-stars #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within){ filter: saturate(.7) brightness(.9); }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .storage-upgrade-button .storage-each{ display: inline-flex; align-items: center; gap: 3px; font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+body.background-stars .storage-upgrade-button .storage-each::before{ content: '·'; margin: 0 1px;  opacity: .7; }
+body.background-stars .storage-upgrade-button .storage-each b{ font-weight: 800; }
+body.background-stars .storage-upgrade-button .storage-each i{ width: 6px; height: 6px; margin-left: -1px; border-radius: 50%; }
+body.background-stars .storage-upgrade-button .storage-each i:first-of-type{ margin-left: 2px; }
+body.background-stars .storage-upgrade-button .storage-each i.matter{ background: var(--matter); }
+body.background-stars .storage-upgrade-button .storage-each i.energy{ background: var(--energy); }
+body.background-stars .storage-upgrade-button .storage-each i.biomass{ background: var(--biomass); }
+body.background-stars .storage-upgrade-button .storage-each i.data{ background: var(--data); }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .market-cards #market-row > .game-card{ grid-column: span var(--tier-span, 4) !important; grid-row: var(--tier-row, auto) !important; align-self: stretch !important; justify-self: stretch; width: auto; }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within){ height: 100% !important; grid-template-rows: auto auto auto minmax(0, 1fr) auto auto !important; }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{ align-self: stretch; min-height: 0; max-height: 100%; -webkit-line-clamp: 8 !important; line-clamp: 8 !important; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); }
+body.background-stars #market-row .card-name{ hyphens: auto; overflow-wrap: break-word; }
+body.background-stars #market-row :is(.card-footer, .card-footer .resource-dots){ flex-wrap: wrap; row-gap: 2px; min-width: 0; }
+body.background-stars #market-row .card-footer .resource-chip{ min-height: 19px !important; padding: 0 3px 0 2px !important; gap: 1px !important; }
+body.background-stars #market-row .card-footer .resource-symbol{ width: 12px !important; height: 12px !important; }
+body.background-stars #market-row .card-footer .resource-chip strong{ font-size: 12px !important; }}
+body.background-stars .storage-upgrade-control{ display: none !important; }
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .upgrade-group{ flex: none; min-height: 0; margin: 0; }
+body.background-stars .upgrade-group #upgrade-market{ grid-template-columns: 18px repeat(5, minmax(0, 1fr)) !important; --utop-h: 98px !important; }
+body.background-stars .upgrade-group #open-trash{ width: 64px !important; font-size: 11px !important; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){body.background-stars #hand-panel .hand-tools{ grid-row: 5 !important; }
+body.background-stars .upgrade-group{ grid-column: 3 !important; grid-row: 6 !important; align-self: end; margin-top: 6px; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait){body.background-stars .upgrade-group{ grid-column: 1 / -1 !important; grid-row: 6 !important; align-self: center; }
+body.background-stars #hand-panel .hand-tools{ grid-row: 7 !important; }
+body.background-stars #discard-button, body.background-stars #hand-row{ grid-row: 9 !important; }
+body.background-stars .upgrade-group #upgrade-market{ grid-template-columns: repeat(5, minmax(0, 1fr)) !important; --utop-h: 96px !important; }
+body.background-stars .upgrade-group #upgrade-market::before{ display: none; }}
+@media (max-width: 599px), (max-height: 599px){body.background-stars .upgrade-group{ display: block; margin: 0 0 8px; }
+body.background-stars .upgrade-group #upgrade-market{ display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+body.background-stars .upgrade-group #upgrade-market .game-card{ min-height: 0; padding: 6px 7px; }
+body.background-stars .upgrade-group #upgrade-market :is(.card-art, .card-lore, .card-limit-note){ display: none; }}
+body.background-stars .pay-chip{ display: inline-grid; place-items: center; width: 19px; height: 19px; border-radius: 50%; }
+body.background-stars .pay-chip .resource-symbol{ width: 15px !important; height: 15px !important; margin: 0 !important; }
+body.background-stars .pay-chip.can{ box-shadow: 0 0 0 1.5px var(--gold), 0 0 5px #f2c94c88; background: #fffaf0; }
+body.background-stars .pay-chip.cannot{ opacity: .4; filter: grayscale(.8); }
+body.background-stars .upgrade-offer:not(:disabled) .pay-chip.can{ cursor: pointer; }
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .app-shell.app-shell:has(#hand-row > :nth-child(7)){ --front-h: 96px !important; }
+body.background-stars #hand-row{ --top-w: 210px !important; --strip-w: 92px; --step: min(calc(var(--strip-w) - var(--top-w)), calc((100cqw - var(--top-w)) / (var(--n) - 1) - var(--top-w))) !important; }
+body.background-stars #hand-row .game-card:not(:hover):not(:focus-within){
+    grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "type" "cost" "gain" "name" "head" "effect" "buttons" "note" !important; grid-template-rows: none !important; grid-auto-rows: auto;
+    align-content: start; row-gap: 2px !important; padding-top: 6px !important; padding-left: 8px !important;
+  }
+body.background-stars #hand-row .game-card:not(:hover):not(:focus-within) .card-footer{ grid-row: auto !important; justify-self: start; }
+body.background-stars #hand-row .game-card:not(:hover):not(:focus-within) .card-buttons{ position: absolute !important; width: 1px; height: 1px; margin: 0 !important; overflow: hidden; clip-path: inset(50%); }
+body.background-stars #hand-row .game-card:not(:hover):not(:focus-within) .card-limit-note, body.background-stars #hand-row .game-card:not(:hover):not(:focus-within):has(.card-headline) .card-effect{ display: none !important; }
+body.background-stars #hand-row .game-card:not(:hover):not(:focus-within):not(:has(.card-headline)) .card-effect{ display: block !important; font-size: 11px !important; line-height: 1.15 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin: 0 !important; }
+body.background-stars #hand-row .game-card:not(:hover):not(:focus-within) :is(.card-name, .card-headline){ font-size: 12.5px !important; line-height: 1.15 !important; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+body.background-stars #hand-row .game-card:not(:hover):not(:focus-within) .card-headline{ font-size: 11px !important; font-weight: 600; }
+body.background-stars #hand-row > .game-card{ --cf-fan: 0deg !important; }
+body.background-stars #hand-row .game-card:last-child:not(:hover):not(:focus-within){ padding-right: 8px !important; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait){body.background-stars #hand-panel .hand-tools{ grid-column: 2 !important; grid-row: 7 !important; align-self: end !important; justify-self: stretch !important; flex-wrap: wrap; justify-content: flex-start; gap: 6px; margin: 0 0 6px !important; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars #market-row > .game-card[hidden]{ display: none !important; }
+body.background-stars .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{ display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 2 !important; line-clamp: 2 !important; white-space: normal !important; overflow: hidden !important; font-size: 11px !important; line-height: 1.25 !important; }
+body.background-stars .upgrade-group #upgrade-market{ grid-template-columns: 16px repeat(3, minmax(0, 1fr)) !important; grid-template-rows: repeat(2, var(--utop-h)) !important; --utop-h: 88px !important; }
+body.background-stars .upgrade-group #upgrade-market::before{ grid-row: 1 / 3 !important; }
+body.background-stars .upgrade-group #upgrade-market > [data-upgrade-offer="move"][data-upgrade-level="2"]{ grid-column: 2; grid-row: 1; }
+body.background-stars .upgrade-group #upgrade-market > [data-upgrade-offer="construct"][data-upgrade-level="2"]{ grid-column: 3; grid-row: 1; }
+body.background-stars .upgrade-group #upgrade-market > .capacity-offer{ grid-column: 4; grid-row: 1; }
+body.background-stars .upgrade-group #upgrade-market > [data-upgrade-offer="move"][data-upgrade-level="3"]{ grid-column: 2; grid-row: 2; }
+body.background-stars .upgrade-group #upgrade-market > [data-upgrade-offer="construct"][data-upgrade-level="3"]{ grid-column: 3; grid-row: 2; }
+body.background-stars .upgrade-group #upgrade-market > .trash-pile{ grid-column: 4; grid-row: 2; box-shadow: 0 1px 0 #efe5cc, 0 2px 0 #cfc09c, 0 3px 0 #a99a77, 0 5px 0 #efe5cc, 0 6px 0 #a99a77, 0 9px 10px -3px #000a !important; }
+body.background-stars .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-name{ white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){body.background-stars .upgrade-group{ grid-row: 6 !important; margin-top: 6px; }
+body.background-stars #hand-panel .hand-tools{ grid-column: 3 !important; grid-row: 8 !important; justify-self: end !important; align-self: start !important; width: 240px !important; display: flex !important; flex-direction: column; align-items: stretch; gap: 6px; margin: 0 !important; }
+body.background-stars #hand-panel .hand-tools .button{ width: 100%; white-space: normal; text-align: center; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .relic-row > div:has(> .button) > .game-card{ height: 100% !important; }}
+body.background-stars .upgrade-group #upgrade-market > .trash-pile{ background: linear-gradient(170deg, #4a302a, #2e1d19) !important; border-color: #a77b66 !important; color: #f4e3d6 !important; filter: none !important; }
+body.background-stars .upgrade-group #upgrade-market > .trash-pile :is(.card-name, .card-effect){ color: #f4e3d6 !important; }
+body.background-stars .upgrade-group #upgrade-market > .trash-pile.unavailable{ opacity: .7; }
+body.background-stars .resource-symbol svg > :first-child, body.background-stars .resource-symbol.data svg circle{ fill: currentColor; }
+body.background-stars .resource-symbol.matter svg > :not(:first-child){ stroke: #00000070; }
+body.background-stars .vocab-icon{ display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; vertical-align: -.2em; line-height: 1; }
+body.background-stars .vocab-icon svg{ width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+body.background-stars .vocab-star{ color: #c99a1e; font-size: 1.1em; }
+body.background-stars .vocab-hit svg{ fill: none; stroke: #c4482c; stroke-width: 2.6; }
+body.background-stars .vocab-miss svg{ fill: #7ea3c4; stroke: #2e4a63; stroke-width: 1.4; }
+body.background-stars .card-icons{ display: none; }
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within){
+    grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "name cost" "head cost" !important; grid-template-rows: auto minmax(0, 1fr) !important; column-gap: 6px !important;
+  }
+body.background-stars #market-panel .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) :is(.card-type, .card-effect, .card-headline, .card-limit-note, .card-art, .card-lore){ display: none !important; }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-icons{ display: block; grid-area: head; align-self: stretch; min-height: 0; max-height: 100%; overflow: hidden; font-size: 12px; line-height: 1.3; color: #2b2619; -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); mask-image: linear-gradient(to bottom, #000 calc(100% - 6px), transparent); }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-footer{ grid-area: cost !important; display: flex !important; flex-direction: column; align-items: flex-end; align-self: start; gap: 2px; }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-footer .resource-dots{ flex-direction: column; align-items: flex-end; gap: 2px; }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-name{ grid-area: name; }}
+body.background-stars .vocab-move svg{ stroke: #2f6d8a; stroke-width: 2.4; }
+body.background-stars .vocab-limit i{ display: block; width: .8em; height: .8em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fffbe8, #f0d27a 60%, #a8842c); box-shadow: 0 1px 1px #0006; }
+body.background-stars .map-legend-corner .vocab-move svg{ stroke: #9fd0e6; }
+body.background-stars .vocab-icon, body.background-stars .vocab-icon *{ pointer-events: none; }
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){body.background-stars .app-shell.app-shell:has(#hand-row > :nth-child(7)){
+    --left-w: 250px; --band-h: 190px; --mat-w: 550px; --tools-w: 96px; --side-w: 110px;
+    grid-template-columns: var(--left-w) minmax(0, 1fr) var(--supply-w, 400px) !important;
+    grid-template-rows: auto minmax(0, 1fr) 0 0 0 0 0 0 var(--band-h) !important;
+  }
+body.background-stars #map-legend-corner .resource-chip{ min-height: 14px !important; }
+body.background-stars #upgrade-group{ display: block; grid-column: 3 !important; grid-row: 2 / 9 !important; align-self: end !important; justify-self: start !important; margin: 0 !important; }
+body.background-stars .upgrade-group #upgrade-market{ grid-template-columns: repeat(3, var(--card-w, 1fr)) !important; grid-template-rows: none !important; grid-auto-rows: var(--card-h, auto) !important; gap: 6px !important; padding: 0 !important; border: 0 !important; background: none !important; --utop-h: auto !important; }
+body.background-stars .upgrade-group #upgrade-market::before{ display: none !important; }
+body.background-stars .upgrade-group #upgrade-market > .game-card{ grid-column: auto !important; grid-row: auto !important; aspect-ratio: auto; height: var(--card-h, auto) !important; }
+body.background-stars .upgrade-group #upgrade-market > [data-upgrade-level="2"][data-upgrade-offer="move"]{ order: 1; }
+body.background-stars .upgrade-group #upgrade-market > [data-upgrade-level="2"][data-upgrade-offer="construct"]{ order: 2; }
+body.background-stars .upgrade-group #upgrade-market > .capacity-offer{ order: 3; }
+body.background-stars .upgrade-group #upgrade-market > [data-upgrade-level="3"][data-upgrade-offer="move"]{ order: 4; }
+body.background-stars .upgrade-group #upgrade-market > [data-upgrade-level="3"][data-upgrade-offer="construct"]{ order: 5; }
+body.background-stars .upgrade-group #upgrade-market > .trash-pile{ order: 6; }
+body.background-stars .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{ -webkit-line-clamp: 4 !important; line-clamp: 4 !important; }
+body.background-stars .upgrade-group #upgrade-market .pay-options{ flex-wrap: wrap; }
+body.background-stars #market-panel :is(.game-card, .section-intro){ pointer-events: auto; }
+body.background-stars .relic-row .game-card:not(:hover):not(:focus):not(:focus-within){ grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "name" "effect" !important; align-content: start; }
+body.background-stars .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) :is(.card-name, .card-effect){ white-space: normal !important; }
+body.background-stars .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{ display: -webkit-box !important; -webkit-box-orient: vertical; -webkit-line-clamp: 5; line-clamp: 5; overflow: hidden; }
+body.background-stars .market-cards #market-row > .game-card{ grid-column: auto !important; }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-icons{ line-height: 1.17; }
+body.background-stars #hand-row{ grid-column: 1 / -1 !important; grid-row: 9 !important; margin: 0 calc(var(--mat-w) + var(--tools-w) + var(--side-w) + 46px) 0 calc(52px + 3 * var(--pile-w) + 32px) !important; }
+body.background-stars #hand-panel .hand-tools{ position: relative; grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: end !important; align-self: start !important; width: var(--tools-w) !important; margin: 10px 0 0 0 !important; display: flex !important; flex-direction: column; gap: 3px; }
+body.background-stars #hand-panel .hand-tools .button{ width: 100%; min-height: 0 !important; padding: 2px 6px !important; font-size: 10.5px !important; line-height: 1.2; border-radius: 999px !important; }
+body.background-stars #hand-panel .hand-tools #convert-all-button{ position: absolute !important; right: calc(100% + var(--mat-w) + 28px); width: var(--side-w) !important; min-height: 64px !important; padding: 8px !important; font-size: 13px !important; font-weight: 700; line-height: 1.2; border-radius: 12px !important; }
+body.background-stars #hand-panel .hand-tools #convert-all-button{ top: calc(var(--band-h) / 2 - 32px); }
+body.background-stars #discard-button{ margin-right: calc((var(--tools-w) - var(--pile-w)) / 2) !important; }
+body.background-stars #resource-grid .resource-box > .resource-symbol{ width: 25px !important; height: 25px !important; }
+body.background-stars .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect{ font-size: 10.5px !important; line-height: 1.2 !important; -webkit-line-clamp: 5 !important; line-clamp: 5 !important; }
+body.background-stars .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-name{ font-size: 12px !important; line-height: 1.1 !important; }
+body.background-stars .left-tight #map-legend-corner .legend-piece .resource-dots{ flex-wrap: nowrap !important; gap: 1px !important; }
+body.background-stars .left-tight #map-legend-corner .resource-chip{ min-height: 13px !important; padding: 0 2px 0 1px !important; gap: 0 !important; font-size: 9px !important; }
+body.background-stars .left-tight #map-legend-corner .resource-symbol{ width: 9px !important; height: 9px !important; }
+body.background-stars #hand-row:has(> :nth-child(7)){ --top-w: 168px !important; }
+:root:not(.table-wide) body.background-stars #hand-panel .hand-tools #convert-all-button{ position: static !important; width: 100% !important; min-height: 40px !important; padding: 6px 8px !important; font-size: 12.5px !important; font-weight: 700; border-radius: 12px !important; }
+:root:not(.table-wide) body.background-stars #hand-panel .hand-tools{ margin-top: 2px !important; }
+:root:not(.table-wide) body.background-stars #hand-row{ margin-right: calc(var(--mat-w) + var(--tools-w) + var(--side-w) + 46px + max(0px, 200px - var(--top-w))) !important; }
+:root:not(.table-wide) body.background-stars #hand-row{ --top-w: 150px !important; }
+:root:not(.table-wide) body.background-stars #hand-row:has(> :nth-child(7)){ --top-w: 116px !important; }
+body.background-stars #hand-row{ align-self: end !important; }}
+body.background-stars .card-art.has-picture{ background: #1b2a2b; color: #ebe5ce; }
+body.background-stars .card-art.has-picture::before, body.background-stars .card-art.has-picture::after{ content: none; }
+body.background-stars .card-picture{ position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; user-select: none; -webkit-user-drag: none; }
+body.background-stars .card-emblem{ position: absolute; right: 4px; bottom: 4px; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: #0f1d1fcc; box-shadow: 0 0 0 1px #ebe5ce55; }
+body.background-stars .card-emblem .board-glyph{ width: 14px; height: 14px; stroke-width: 1.5; filter: none; }
+body.background-stars .alien-relic .card-art.has-picture{ background: #574b36; }
+@media (min-width: 600px) and (min-height: 600px){body.background-stars :is(#hand-row, #market-row, .relic-row) .card-art.has-picture{
+    display: block; grid-area: art; align-self: stretch; min-height: 0; height: auto; margin: -2px 0 0; border: 0; border-radius: 4px;
+    container-type: size; background: transparent;
+  }
+body.background-stars :is(#hand-row, #market-row, .relic-row) .card-picture{ top: 5px; height: calc(100% - 5px); border-radius: 4px; box-shadow: 0 0 0 1px #4a3f2a40; }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within){ grid-template-areas: "name cost" "head cost" "art cost" !important; grid-template-rows: auto minmax(0, max-content) minmax(0, 1fr) !important; }
+body.background-stars #market-panel .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-art.has-picture{ display: block !important; }
+body.background-stars #market-row .game-card:is(:hover, :focus, :focus-within) .card-art{ display: none; }
+body.background-stars #hand-row .game-card{ grid-template-areas: "type type" "cost name" "gain head" "effect effect" "note note" "buttons buttons" "art art"; grid-template-rows: repeat(6, max-content) minmax(0, 1fr); align-content: stretch; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){body.background-stars .relic-row .game-card:not(:hover):not(:focus):not(:focus-within){ grid-template-areas: "name" "effect" "art" !important; grid-template-rows: auto minmax(0, max-content) minmax(0, 1fr) !important; align-content: stretch !important; }
+body.background-stars .relic-row .game-card:not(:hover):not(:focus):not(:focus-within) .card-art.has-picture{ display: block !important; }
+body.background-stars .relic-row .game-card:is(:hover, :focus, :focus-within) .card-art{ display: none !important; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){body.background-stars #map-legend-corner .legend-piece .resource-dots{ flex-wrap: nowrap !important; gap: 1px !important; }
+body.background-stars #map-legend-corner .resource-chip{ min-height: 13px !important; padding: 0 2px 0 1px !important; gap: 0 !important; font-size: 9px !important; }
+body.background-stars #map-legend-corner .resource-symbol{ width: 9px !important; height: 9px !important; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .game-card{ --box-bg: color-mix(in srgb, var(--card-accent) 20%, #fffaf0); --box-line: color-mix(in srgb, var(--card-accent) 60%, #5c5442); }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within){ padding-top: 0 !important; padding-right: 0 !important; }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-name{ padding-top: 3px; }
+body.background-stars .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-footer{
+    align-self: start !important; justify-self: end; margin: 0 !important; padding: 3px 4px 4px 5px !important; gap: 1px !important;
+    background: var(--box-bg); border-left: 1.5px solid var(--box-line); border-bottom: 1.5px solid var(--box-line); border-radius: 0 7px 0 7px;
+  }
+body.background-stars :is(.market-cards #market-row, #upgrade-market) .card-footer .resource-chip{ min-height: 0 !important; padding: 0 !important; gap: 1px !important; background: none !important; box-shadow: none !important; border: 0 !important; }
+body.background-stars .market-cards #market-row .card-footer .resource-chip{ position: relative; }
+body.background-stars .market-cards #market-row .card-footer .resource-chip strong{ font-size: 12.5px !important; }
+body.background-stars .market-cards #market-row .card-footer .resource-symbol{ width: 14px !important; height: 14px !important; }
+body.background-stars .market-cards #market-row .card-footer .chip-lock{ top: -2px; right: -5px; width: 7px; height: 9px; }
+body.background-stars .market-cards #market-row .card-footer:has(.chip-lock){ padding-right: 6px !important; }
+body.background-stars .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within){
+    grid-template-columns: minmax(0, 1fr) auto !important; grid-template-areas: "name cost" "effect cost" !important; grid-template-rows: auto minmax(0, 1fr) !important; align-content: start;
+    column-gap: 5px !important; padding: 0 0 4px 7px !important; position: relative;
+  }
+body.background-stars .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) .card-name{ grid-area: name; padding-top: 5px; }
+body.background-stars .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) .card-effect{ grid-area: effect; align-self: start !important; margin-top: 3px !important; }
+body.background-stars .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) :is(.card-type, .card-limit-note, .card-art){ display: none !important; }
+body.background-stars .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) .card-footer{
+    grid-area: cost !important; align-self: start !important; justify-self: end; margin: 0 !important; padding: 3px 4px 4px 5px !important;
+    background: var(--box-bg); border-left: 1.5px solid var(--box-line); border-bottom: 1.5px solid var(--box-line); border-radius: 0 7px 0 7px;
+  }
+body.background-stars .upgrade-group #upgrade-market > .upgrade-offer .card-footer > small:not(:only-of-type){ display: none; }
+body.background-stars .upgrade-group #upgrade-market > .upgrade-offer:not(.capacity-offer) .card-footer > small{ display: none; }
+body.background-stars .upgrade-group #upgrade-market > .upgrade-offer .pay-options{ display: grid !important; grid-template-columns: repeat(2, auto); justify-items: center; gap: 2px !important; }
+body.background-stars .upgrade-group #upgrade-market > .upgrade-offer .pay-options > strong{ grid-column: 1 / -1; margin: 0 !important; line-height: 1; }
+body.background-stars .upgrade-group #upgrade-market > .capacity-offer .card-footer > small{ display: block !important; position: absolute; left: 7px; bottom: 4px; font-size: 9.5px; color: var(--ink); opacity: .8; }
+body.background-stars #hand-row .card-footer:not(:has(.resource-dots)){ display: none !important; }
+body.background-stars #hand-row .card-footer small{ display: none !important; }
+body.background-stars #hand-row .game-card .card-footer{
+    justify-self: start !important; align-self: start !important; margin: -6px 0 0 -8px !important; padding: 3px 6px 3px 7px !important;
+    background: var(--box-bg); border-right: 1.5px solid var(--box-line); border-bottom: 1.5px solid var(--box-line); border-radius: 9px 0 7px 0;
+  }
+body.background-stars #hand-row .card-footer .resource-chip{ min-height: 0 !important; padding: 0 !important; background: none !important; box-shadow: none !important; border: 0 !important; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars #hand-row{ align-items: flex-end !important; overflow: visible !important; --raise-w: 250px; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within){
+    width: var(--raise-w) !important; height: auto !important; max-height: none !important; z-index: 40;
+    
+    --shift: min(0px, calc(var(--hand-w, 100000px) - var(--slot-x, 0px) - var(--raise-w)));
+    margin-left: calc(var(--step) + var(--shift)) !important; margin-right: calc(var(--top-w) - var(--raise-w) - var(--shift)) !important; padding: 6px 12px 10px 8px !important;
+    grid-template-columns: auto minmax(0, 1fr) !important; grid-template-areas: "cost type" "cost name" "head head" "effect effect" "note note" "art art" "buttons buttons" !important;
+    grid-template-rows: auto auto auto auto auto auto auto !important; row-gap: 4px !important; align-content: start !important;
+  }
+body.background-stars #hand-row > .game-card:first-child:is(:hover, :focus-within){ margin-left: var(--shift) !important; }
+body.background-stars #hand-row > .game-card:last-child:not(:first-child):is(:hover, :focus-within){ margin-right: 0 !important; margin-left: calc(var(--step) - (var(--raise-w) - var(--top-w))) !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) :is(.card-type, .card-headline, .card-effect){ display: block !important; white-space: normal !important; overflow: visible !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-type{ grid-area: type; align-self: center; padding-left: 6px; font-size: 10px !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-name{ grid-area: name; padding-left: 6px; font-size: 18px !important; line-height: 1.15 !important; white-space: normal !important; overflow: visible !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-headline{ grid-area: head; font-size: 12.5px !important; font-weight: 650; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-effect{ grid-area: effect; margin: 0 !important; font-size: 12.5px !important; line-height: 1.4 !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-art.has-picture{ grid-area: art; height: 84px !important; min-height: 84px; margin: 0 !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-buttons{ grid-area: buttons; position: static !important; width: auto !important; height: auto !important; clip-path: none !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-footer{ grid-area: cost !important; grid-row: 1 / 3 !important; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){:root.table-wide body.background-stars #map-legend-corner .resource-chip{ min-height: 16px !important; padding: 0 3px 0 2px !important; font-size: 10.5px !important; }
+:root.table-wide body.background-stars #map-legend-corner .resource-symbol{ width: 11px !important; height: 11px !important; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait){body.background-stars #hand-row{ --raise-w: 540px; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within){
+    grid-template-columns: auto minmax(0, 1fr) 120px !important; grid-template-areas: "cost name buttons" "cost head buttons" "effect effect buttons" "note note buttons" !important;
+    grid-template-rows: auto auto auto auto !important; column-gap: 8px !important; row-gap: 2px !important; padding: 6px 10px 8px 8px !important;
+  }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) :is(.card-type, .card-art){ display: none !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-name{ font-size: 15px !important; padding-left: 0; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-effect{ font-size: 12px !important; line-height: 1.32 !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-buttons{ display: flex !important; flex-direction: column; gap: 4px; align-self: center; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-footer{ grid-row: 1 / 3 !important; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){body.background-stars #hand-row{ --raise-w: min(var(--hand-w, 100000px), max(250px, calc(215px / var(--table-zoom, 1)))); }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-effect{ font-size: max(12.5px, calc(10.5px / var(--table-zoom, 1))) !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-headline{ font-size: max(12.5px, calc(10.5px / var(--table-zoom, 1))) !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-name{ font-size: max(18px, calc(15px / var(--table-zoom, 1))) !important; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus-within) .card-buttons .button{ font-size: max(12px, calc(10.5px / var(--table-zoom, 1))) !important; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars #map-legend-corner .legend-cost-table{ grid-column: 1 / -1; width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 11px; font-variant-numeric: tabular-nums; }
+body.background-stars .legend-cost-table th:first-child{ width: 32%; text-align: left; }
+body.background-stars .legend-cost-table :is(th, td){ padding: 4px 2px; border: 1px solid #c2a76b40; text-align: center; }
+body.background-stars .legend-cost-table thead th{ font-size: 9px; font-weight: 600; background: #ffffff08; }
+body.background-stars #map-legend-corner .legend-cost-table .legend-res{ flex-direction: column; gap: 3px; white-space: normal; }
+body.background-stars .legend-cost-name{ display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+body.background-stars .legend-cost-name b{ font-weight: 600; }
+body.background-stars .legend-cost-table td{ font-size: 12px; font-weight: 700; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars .standings-head > :is(svg, .vocab-icon){ width: 10px; height: 10px; }
+body.background-stars .standings-head .vocab-icon{ font-size: 10px; }}
+@media (max-width: 599px), (max-height: 599px){body.background-stars .standings-head > :is(svg, .vocab-icon){ width: 15px; height: 15px; }}
+body.background-stars .military-dialog .military-card-grid{ grid-template-columns: repeat(auto-fit, minmax(165px, 210px)); justify-content: center; }
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){:root.table-wide body.background-stars .standings-head > :is(svg, .vocab-icon){ width: 13px; height: 13px; }
+:root.table-wide body.background-stars .standings-head .vocab-icon{ font-size: 13px; }}
+body.background-stars .card-table-battle .dialog-heading{ align-items: center; gap: 16px; margin-bottom: 10px; }
+body.background-stars .card-table-battle .dialog-heading h2{ margin: 2px 0 0; font-size: 21px; line-height: 1.15; }
+body.background-stars .card-table-battle .dialog-heading .eyebrow{ font-size: 10px; letter-spacing: .15em; }
+body.background-stars .card-table-battle .dialog-heading p{ margin: 3px 0 0; font-size: 12px; line-height: 1.3; }
+@media (max-height: 760px) and (min-width: 600px){body.background-stars .card-table-battle .dialog-heading{ margin-bottom: 7px; }}
+@media (max-width: 599px), (max-height: 599px){body.background-stars .card-table-battle .dialog-heading{ align-items: start; gap: 8px; }
+body.background-stars .card-table-battle .dialog-heading h2{ font-size: 19px; }
+body.background-stars .card-table-battle .dialog-heading p{ font-size: 11px; }}
+body.background-stars.background-stars :is(.log-panel, #map-legend-corner, #resource-grid, .phase-stepper, .topbar, .trade-panel, .phone-card-sheet){
+  background: linear-gradient(145deg, #1b2940f5, #111c2df5) !important;
+  border: 1px solid #7994bd40 !important;
+  box-shadow: 0 10px 28px #0004 !important;
+  border-radius: 14px !important;
+  color: var(--text);
+}
+body.background-stars.background-stars #hand-row > .game-card:not(.order-selected){ --cf-ring: none; }
+body.background-stars.background-stars #hand-row > .game-card.order-selected{ --cf-ring: 0 0 0 2px #a8cfff, 0 0 20px #a8cfff40; }
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){body.background-stars.background-stars .app-shell.app-shell:has(#hand-row > :nth-child(7)){
+    --left-w: 250px; --band-h: 200px;
+    grid-template-columns: var(--left-w) minmax(0, 1fr) 0 !important;
+    grid-template-rows: 0 minmax(0, 1fr) 0 0 0 0 0 0 var(--band-h) !important;
+  }
+body.background-stars.background-stars #hand-row{ margin-left: calc(44px + 3 * var(--pile-w) + 32px) !important; }}
+@media (max-width: 599px), (max-height: 599px){body.background-stars.background-stars #hand-panel .hand-tools{ background: #111e32f5 !important; border-color: #54739b66 !important; }}
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .game-card{ position: relative !important; inset: auto !important; grid-column: auto !important; grid-row: auto !important; display: grid !important; grid-template-columns: minmax(0, 1fr) auto !important; grid-template-rows: auto minmax(0, 1fr) !important; grid-template-areas: "name cost" "head cost" !important; gap: 8px 10px !important; align-content: start; align-items: start; width: 100% !important; min-width: 0 !important; min-height: 0 !important; max-height: none !important; height: 100% !important; margin: 0 !important; padding: 14px !important; border-radius: 12px !important; overflow: hidden !important; transform: none !important; --cf-ring: none; box-shadow: 0 4px 14px #0004, inset 0 3px 0 var(--card-accent) !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .card-name{ grid-area: name !important; display: block !important; white-space: normal !important; font-size: 16px !important; line-height: 1.15 !important; font-weight: 700; padding: 0 !important; overflow: visible !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) :is(.card-type, .card-art, .card-lore, .card-headline, .card-limit-note, .card-gain, .card-effect){ display: none !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .card-icons{ grid-area: head !important; display: block !important; font-size: 14px !important; line-height: 1.4 !important; white-space: normal !important; max-height: none !important; overflow: visible !important; mask-image: none !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .card-footer{ grid-area: cost !important; position: static !important; display: flex !important; flex-direction: column; align-items: flex-end; gap: 3px; padding: 0 !important; margin: 0 !important; background: transparent !important; border: 0 !important; box-shadow: none !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) .card-footer .resource-dots{ flex-direction: column; align-items: flex-end; gap: 4px; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) .card-footer small{ display: none; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) .card-footer .resource-chip{ min-height: 22px !important; padding: 0 3px !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) .game-card:not(:disabled):hover{ outline: 2px solid #aecfff; outline-offset: -2px; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) #upgrade-market .game-card, body.background-stars :is(#max-bank-dialog, .market-choice-dialog) .relic-row .game-card{ grid-template-areas: "name cost" "head head" !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) #upgrade-market .card-effect, body.background-stars :is(#max-bank-dialog, .market-choice-dialog) .relic-row .card-effect{ grid-area: head !important; display: block !important; white-space: normal !important; font-size: 15px !important; line-height: 1.45 !important; -webkit-line-clamp: unset !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) #upgrade-market .card-icons, body.background-stars :is(#max-bank-dialog, .market-choice-dialog) .relic-row .card-icons{ display: none !important; }
+@media (max-width: 850px), (max-height: 800px){body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .game-card{ padding: 9px !important; gap: 5px !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .card-name{ font-size: 13px !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .card-icons{ font-size: 12px !important; line-height: 1.25 !important; }}
+body.background-stars.background-stars.my-turn #hand-row > .game-card{ outline-color: #95bff6; filter: drop-shadow(0 0 5px #95bff650); box-shadow: 0 0 0 1px #aacfff99, 0 0 10px #8ebafa33 !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .game-card{ grid-template-areas: "name cost" "head cost" "art art" !important; grid-template-rows: auto auto minmax(0, 1fr) !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .card-effect{ display: block !important; grid-area: head !important; white-space: normal !important; font-size: 14px !important; line-height: 1.35 !important; -webkit-line-clamp: unset !important; max-height: none !important; overflow: visible !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .card-icons{ display: none !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .card-art.has-picture{ display: block !important; grid-area: art !important; position: relative; inset: auto; height: 100% !important; min-height: 0; margin: 0; overflow: hidden; border-radius: 6px; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) .card-art .card-picture{ position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: 6px; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) #upgrade-market .game-card, body.background-stars :is(#max-bank-dialog, .market-choice-dialog) .relic-row .game-card{ grid-template-areas: "name cost" "head head" "art art" !important; }
+@media (max-width: 850px), (max-height: 800px){body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .card-effect{ font-size: 12px !important; line-height: 1.25 !important; }}
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) :is(#market-row, #upgrade-market, .relic-row, .card-choice-row) .card-effect{ mask-image: none !important; -webkit-mask-image: none !important; line-clamp: unset !important; align-self: start !important; }
+body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) #market-row:has(> .max-market-tier-label) > .game-card{
+  grid-column: calc(var(--max-tier-slot) + 2) !important;
+  grid-row: calc(var(--max-tier-index) + 1) !important;
+}
+@media (max-width: 599px), (max-height: 599px){body.background-stars :is(#max-bank-dialog, .market-choice-dialog) :is(#max-bank-content, .market-choice-content) #market-row:has(> .max-market-tier-label) > .game-card{
+    grid-column: var(--max-tier-phone-column) !important;
+    grid-row: var(--max-tier-phone-row) !important;
+  }}
+body.background-stars.background-stars #resource-grid.resource-grid .resource-box > .resource-symbol{
+  align-self: end; justify-self: center; width: 28px !important; height: 28px !important;
+}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars.background-stars .app-shell.app-shell:has(#hand-row > :nth-child(7)){
+    --max-rail-w: 260px; --left-w: var(--max-rail-w); --mat-w: 0px !important;
+    grid-template-columns: var(--max-rail-w) minmax(0, 1fr) var(--max-rail-w) !important;
+    grid-template-rows: 0 minmax(0, 1fr) 0 0 0 0 0 0 var(--band-h, 200px) !important;
+  }
+body.background-stars.background-stars .app-shell #hand-row{
+    grid-column: 2 !important; grid-row: 9 !important; width: 100%; margin: 0 !important;
+  }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars.background-stars .app-shell #hand-row{ justify-content: center !important; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait){body.background-stars.background-stars #hand-panel .hand-tools{
+    grid-column: 3 !important; grid-row: 9 !important; align-self: start !important; justify-self: end !important;
+    width: 100% !important; margin-top: 6px !important;
+  }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait){body.background-stars.background-stars #hand-panel .hand-tools{ display: flex !important; flex-direction: column; align-items: stretch; gap: 5px; }
+body.background-stars.background-stars #hand-panel .hand-tools .button{ width: 100%; min-width: 0; min-height: 32px; white-space: normal; }}
+@media (min-width: 600px) and (min-height: 600px){body.background-stars.background-stars.my-turn #hand-row > .game-card{ animation-name: max-hand-breathe; }}
+body.background-stars.background-stars #hand-row{ pointer-events: none; }
+body.background-stars.background-stars #hand-row > .game-card{ pointer-events: auto; }
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){body.background-stars.background-stars .app-shell #discard-button{ margin-right: calc(50% - var(--seat-discard-offset)) !important; }
+body.background-stars.background-stars .app-shell #hand-panel .hand-tools{
+    grid-column: 1 / -1 !important; grid-row: 9 !important; justify-self: start !important; align-self: end !important;
+    width: max(110px, var(--tools-w)) !important; margin: 0 0 8px calc(50% + var(--seat-actions-offset)) !important;
+    flex-direction: column; align-items: center; gap: 8px;
+  }
+body.background-stars.background-stars .app-shell #hand-panel .hand-tools .button:not(#convert-all-button){ width: var(--tools-w) !important; }
+body.background-stars.background-stars .app-shell #hand-panel .hand-tools #convert-all-button{ position: static !important; width: max(110px, var(--tools-w)) !important; }
+:root:not(.table-wide) body.background-stars.background-stars .app-shell #hand-panel .hand-tools{ align-self: center !important; margin-bottom: 0 !important; }}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape){:root.table-wide body.background-stars.background-stars .app-shell:has(#hand-row > :nth-child(7)){ --seat-piles-offset: 610px; }
+:root.table-wide body.background-stars.background-stars .app-shell:has(#hand-row > :nth-child(10)){ --seat-piles-offset: 720px; }
+:root.table-wide body.background-stars.background-stars .app-shell:has(#hand-row > :nth-child(10)) #hand-panel .hand-tools{ align-self: center !important; margin-bottom: 48px !important; }}
+body.background-stars.background-stars #hand-row{ --n: var(--max-hand-count, 5) !important; }
+@media (min-width:600px) and (min-height:600px){body.background-stars.background-stars.max-reference-rails #map-legend-corner .legend-cost-table th:first-child{ width:36%; }}
+@media (min-width:600px) and (min-height:600px) and (orientation:portrait){body.background-stars.background-stars.max-reference-rails #map-legend-corner .legend-cost-name b{ font-size:10px; }
+body.background-stars.background-stars.max-reference-rails #map-legend-corner .legend-cost-table thead th{ font-size:10px; padding-inline:1px; }}
+body.background-stars #relic-card-dialog{ --choice-visible:3; }
+body.background-stars #relic-card-help{ margin:0; color:#afc1dc; font-size:13px; line-height:1.4; }
+body.background-stars #relic-card-options{ grid-template-rows:repeat(3,minmax(0,1fr)); gap:12px; }
+body.background-stars .card-choice-tier{ display:grid; grid-template-columns:24px 36px minmax(0,1fr) 36px; gap:6px; min-height:0; min-width:0; }
+body.background-stars .card-choice-tier-label{ writing-mode:vertical-rl; transform:rotate(180deg); place-self:center; color:#afc1dc; font-size:11px; font-weight:700; letter-spacing:.12em; text-transform:uppercase; }
+body.background-stars .card-choice-row{ --choice-columns:none; --choice-rows:minmax(0,1fr); grid-auto-flow:column; grid-auto-columns:calc((100% - (var(--choice-visible) - 1)*12px)/var(--choice-visible)); overflow-x:auto; overflow-y:hidden; scroll-snap-type:x proximity; scrollbar-width:none; overscroll-behavior-x:contain; touch-action:pan-x pan-y; }
+body.background-stars .card-choice-row > .game-card{ scroll-snap-align:start; }
+body.background-stars .card-choice-row:focus-visible{ outline:2px solid #aecfff; outline-offset:2px; }
+body.background-stars .card-choice-page{ align-self:center; min-width:0; min-height:44px; padding:4px; font-size:26px; }
+body.background-stars .card-choice-page:disabled{ opacity:.25; }
+body.background-stars .market-choice-dialog .game-card:not(:disabled){ border-color:#d6c28b; }
+body.background-stars .card-choice-footer{ display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:10px; flex:none; color:#afc1dc; font-size:12px; }
+body.background-stars .card-choice-footer p{ margin:0; }
+body.background-stars .card-choice-footer [hidden]{ display:none !important; }
+body.background-stars .card-choice-footer label{ display:flex; align-items:center; gap:8px; }
+body.background-stars .card-choice-footer select{ max-width:360px; min-height:40px; padding:6px; color:var(--text); background:#1a2a43; border:1px solid #7598c366; border-radius:6px; }
+body.background-stars .card-choice-footer button{ min-height:40px; }
+body.background-stars .card-choice-empty{ color:#afc1dc; align-self:center; text-align:center; }
+body.background-stars #relic-card-dialog[data-mode="echoes"]{ height:min(620px,calc(100dvh - 40px)); }
+body.background-stars #relic-card-dialog[data-mode="echoes"] #relic-card-options{ grid-template-rows:minmax(0,330px); align-content:center; }
+@media (max-width:900px){body.background-stars #relic-card-dialog{ --choice-visible:2; }}
+@media (max-width:599px), (max-height:599px){body.background-stars #relic-card-dialog{ --choice-visible:1; }
+body.background-stars #relic-card-options{ grid-template-rows:repeat(3,230px); flex:1; }
+body.background-stars .card-choice-tier{ grid-template-columns:18px 32px minmax(0,1fr) 32px; gap:4px; }
+body.background-stars .card-choice-tier-label{ font-size:10px; }
+body.background-stars .card-choice-footer{ gap:8px; }
+body.background-stars .card-choice-footer select{ max-width:100%; width:100%; }
+body.background-stars .card-choice-footer label{ flex-direction:column; align-items:start; max-width:100%; }
+body.background-stars #relic-card-dialog[data-mode="echoes"] #relic-card-options{ grid-template-rows:300px; }}
+body.background-stars .game-card{
+  --cf-lift: 0px;
+  --cf-ring: 0 0 #0000;
+  --cf-bevel: inset 0 1px 0 #fffffff0, inset 1px 0 0 #ffffff7a, inset -1px 0 0 #3a2f1a1f, inset 0 -2px 0 #3a2f1a26, inset 0 0 0 3px #ffffff52;
+  --cf-edge: 0 1px 0 #efe5cc, 0 2px 0 #cfc09c, 0 3px 0 #a99a77, 0 4px 0 #74684d;
+  --cf-drop: 0 6px 8px -3px #0008, 0 14px 22px -12px #000b;
+  box-shadow: var(--cf-ring), var(--cf-bevel), var(--cf-edge), var(--cf-drop) !important;
+  transform: perspective(900px) translateY(calc(var(--cf-arc, 0px) + var(--cf-lift))) rotate(var(--cf-fan, 0deg)) rotateX(var(--cf-rx, 0deg)) rotateY(var(--cf-ry, 0deg)) !important;
+  transition: transform .18s cubic-bezier(.2,.7,.25,1), box-shadow .18s ease, filter .18s ease;
+}
+body.background-stars .game-card::after{
+  content: ''; position: absolute; inset: 0; z-index: 2; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at var(--cf-mx, 28%) var(--cf-my, 0%), #ffffff66, #ffffff00 48%), linear-gradient(162deg, #ffffff33, #ffffff00 36%, #00000000 72%, #2a20101a);
+  mix-blend-mode: soft-light; opacity: .55; transition: opacity .2s ease;
+}
+body.background-stars .game-card.cf-tilting::after{ opacity: 1; }
+body.background-stars .game-card:hover:not(:disabled), body.background-stars .game-card:focus-within{ --cf-lift: -4px; --cf-drop: 0 14px 16px -8px #0008, 0 28px 40px -18px #000c; }
+body.background-stars .game-card:disabled, body.background-stars .game-card.unavailable{ --cf-edge: 0 1px 0 #c8bea6, 0 2px 0 #9d927a, 0 3px 0 #6e654f; --cf-drop: 0 3px 5px -2px #0006; }
+body.background-stars .game-card.alien-relic{ --cf-edge: 0 1px 0 #f3e3b6, 0 2px 0 #cdb174, 0 3px 0 #a1864b, 0 4px 0 #6d5a30; }
+body.background-stars .game-card.order-selected{ --cf-ring: 0 0 0 3px var(--gold), 0 0 18px #d9bd8066; }
+body.background-stars #hand-row .game-card:has(button[data-order-card]:not(:disabled)):not(.order-selected), body.background-stars .market-cards .game-card:not(:disabled){ --cf-ring: 0 0 0 2px #f2d488, 0 0 14px #f2d48866; }
+@media (prefers-reduced-motion: reduce){body.background-stars .game-card{ transition: none; }
+body.background-stars .game-card::after{ transition: none; }}
+body.background-stars #hand-row > .game-card{ transform-origin: 50% 115%; cursor: grab; user-select: none; -webkit-user-select: none; }
+body.background-stars #hand-row > .game-card:is(:hover, :focus, :focus-within){ --cf-fan: 0deg !important; --cf-arc: 0px !important; --cf-lift: -12px; --cf-drop: 0 16px 18px -8px #0009, 0 30px 44px -18px #000c; }
+@media (min-width: 1024px) and (min-height: 600px){body.background-stars #hand-row > .game-card:is(:hover, :focus-within){ margin-right: calc(var(--top-w) - max(var(--top-w), 200px)); }
+body.background-stars #hand-row > .game-card:last-child:not(:first-child):is(:hover, :focus-within){ margin-right: 0; margin-left: calc(min(-10px, calc((100cqw - var(--n) * var(--top-w)) / (var(--n) - 1))) - (max(var(--top-w), 200px) - var(--top-w))); }}
+@media (min-width: 1024px) and (min-height: 600px){body.background-stars :is(#market-row, #upgrade-market) .game-card{ grid-template-areas: "cost gain" "name name" "type type" "head head" "effect effect" "note note"; }
+body.background-stars :is(#market-row, #upgrade-market) .card-footer{ align-self: center; }
+body.background-stars :is(#market-row, #upgrade-market) .card-footer .resource-chip{ min-height: 24px; padding: 0 5px 0 3px; }
+body.background-stars :is(#market-row, #upgrade-market) .card-footer .resource-symbol{ width: 17px; height: 17px; }
+body.background-stars :is(#market-row, #upgrade-market) .card-footer .resource-chip strong{ font-size: 14.5px; }}
+body.background-stars .game-card .resource-chip.locked{ position: relative; background: repeating-linear-gradient(-45deg, #a8463a1f 0 3px, transparent 3px 6px), #f7e6dc; box-shadow: inset 0 0 0 1.5px #a8463a; }
+body.background-stars .game-card .resource-chip.locked strong{ color: #8a2f25; }
+body.background-stars .game-card .resource-chip.short{ opacity: .55; box-shadow: none; }
+body.background-stars .cf-ghost > .game-card{ width: 100%; height: 100%; min-height: 0; margin: 0 !important; overflow: hidden; --cf-fan: 0deg; --cf-arc: 0px; }
+body.background-stars .cf-ghost > .game-card{ display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 5px 8px; }
+body.background-stars .cf-ghost > .game-card > :not(.card-name, .card-headline, .card-footer){ display: none; }
+body.background-stars .cf-ghost .card-footer{ order: -1; display: flex; margin: 0; padding: 0; border: 0; }
+body.background-stars .cf-ghost .card-footer small{ display: none; }
+body.background-stars .cf-ghost .card-name{ margin: 0; font-size: 14.5px; line-height: 1.15; }
+body.background-stars .cf-ghost .card-headline{ font-size: 12px; font-weight: 650; }
+body.background-stars .cf-floater .resource-symbol{ width: 14px; height: 14px; color: var(--resource); }
+body.background-stars #hand-row > .game-card{ touch-action: none; -webkit-user-drag: none; -webkit-touch-callout: none; }
+body.background-stars #hand-row > .game-card :is(img, svg){ -webkit-user-drag: none; }
+body.background-stars .cf-held > .game-card{ --cf-ring: 0 0 0 2px var(--gold); }
+body.background-stars #hand-row > .game-card.cf-dragging{ --cf-lift: 0px !important; --cf-ring: 0 0 0 2px #f2d48866; opacity: .38; filter: saturate(.6); }
+body.background-stars #hand-row > .game-card:is(.cf-aiming, .cf-plays-here){--cf-lift: -14px; --cf-ring: 0 0 0 2.5px #f2d488, 0 0 18px #f2d488aa; }
+body.background-stars .resource-symbol{ background:transparent !important; border-radius:0 !important; padding:0 !important; color:var(--resource); }
+body.background-stars .resource-symbol.matter{ color:var(--matter); }
+body.background-stars .resource-symbol.energy{ color:var(--energy); }
+body.background-stars .resource-symbol.biomass{ color:var(--biomass); }
+body.background-stars .resource-symbol.data{ color:var(--data); }
+body.background-stars #resource-grid .mat-stars.mat-stock > i.five::before{ content:none; }
+body.background-stars #resource-grid{ position:relative; }
+body.background-stars #resource-grid .mat-stars.mat-stock > i:nth-child(6), body.background-stars #resource-grid .mat-stars.mat-stock > i:nth-child(11){ margin-bottom:9px; }
+.max-resource-dividers{ position:absolute; inset:0; pointer-events:none; }
+.max-resource-dividers > i{ position:absolute; height:0; border-top:1px dashed #a5b4cc99; }
+body.background-stars #resource-grid > .ring-key{ font-size:9px !important; letter-spacing:.04em; gap:4px !important; }
+body.background-stars #resource-grid > .ring-key .mat-key{ font-size:9px !important; letter-spacing:.06em !important; }
+@media (min-width:600px) and (min-height:600px){body.background-stars #resource-grid.resource-grid{ height:min(430px,calc(100% - 56px)) !important; }
+body.background-stars #resource-grid.resource-grid .mat-rings .mat-pips.now i{ --upright-pip:min(20px,calc((100cqh - 60px)/15)); }}
+@media (min-width:600px) and (min-height:600px){:root:has(body.background-stars){ height:100%; overflow:hidden; }
+body.background-stars #guide-switch-phone, body.background-stars #guide-switch{ display:none !important; }}
+@media (min-width:600px) and (min-height:600px){body.background-stars{ height:100dvh; min-height:0; overflow:clip; }}
+body.background-stars #map-legend-corner .legend-cost-table .legend-res > .resource-symbol { display:inline-flex; width:18px; height:18px; flex:none; }

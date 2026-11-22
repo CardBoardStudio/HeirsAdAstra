@@ -25,7 +25,7 @@ function createGalacticAdapter(e) {
       tacticStats: Object.fromEntries(Object.entries(e.MILITARY_CARDS).map(([key, c]) => [key, { attack: c.attack || 0, shield: c.shield || 0, pierce: !!c.pierce }])),
       combatVictoryPrestige: e.COMBAT_VICTORY_PRESTIGE, captureNeedsFleet: true, phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
-        id, bankExchangeResources:p.bankExchangeResources||[], bankTradeRates:Object.fromEntries(e.RESOURCES.map(r=>[r,e.bankTradeRate(id,r)])), resources: p.resources, relicsExcavated: e.excavatedRelicCount(id), combatVictories: p.combatVictories || 0, cardPrestige: p.cardPrestige || 0, military: p.military, storageUpgrades: p.storageUpgrades, storagePurchases: p.storagePurchases || 0, storageUpgradeCost: e.storageUpgradeCost(id), storage: p.storage || [],
+        id, bankExchangeResources:p.bankExchangeResources||[], bankTradeRates:Object.fromEntries(e.RESOURCES.map(r=>[r,e.bankTradeRate(id,r)])), resources: p.resources, relicsExcavated: e.excavatedRelicCount(id), combatVictories: p.combatVictories || 0, cardPrestige: p.cardPrestige || 0, cardPrestigeSources: p.cardPrestigeSources || {}, military: p.military, storageUpgrades: p.storageUpgrades, storagePurchases: p.storagePurchases || 0, storageUpgradeCost: e.storageUpgradeCost(id), storage: p.storage || [],
         prestige: e.calculatePrestige(id), capacity: e.playerCapacity(id), resourceLimits: e.resourceLimits(id),
         hand: id === seat ? p.hand : undefined, discard: p.discard, inPlay: p.inPlay,
         handCount: p.hand.length, deckCount: p.deck.length, deckContents: id === seat ? e.deckContents(p) : undefined,
@@ -156,9 +156,9 @@ function createGalacticAdapter(e) {
           });
         });
         if (def.order === 'special') {
-          if(def.tag==='alienCradle') for(const allocation of e.storageAllocations(e.RELIC_STORAGE_POINTS)) actions.push({type:'special',...base,allocation});
+          if(def.tag==='alienCradle') for(const allocation of e.capacityAllocations(seat,e.RELIC_STORAGE_POINTS)) actions.push({type:'special',...base,allocation});
           // Capacity Module: every split of its points.
-          else if(def.effect?.allocate) for(const allocation of e.storageAllocations(def.effect.allocate)) actions.push({type:'special',...base,allocation});
+          else if(def.effect?.allocate) for(const allocation of e.capacityAllocations(seat,def.effect.allocate)) actions.push({type:'special',...base,allocation});
           // Archive Purge: each choice of up to two level I starters in discard, in discard order.
           else if(def.effect?.bankRate) { if(e.canPlayExchange(seat,card.id)) for(const resource of e.RESOURCES)actions.push({type:'special',...base,resource}); }
           else if(def.effect?.trashStarters) for(const trash of e.archivePurgeChoices(seat,def.effect.trashStarters)) actions.push({type:'special',...base,trash});

@@ -52,6 +52,12 @@
     row?.style.setProperty('--max-hand-count', String(Math.max(2, cards.length)));
     if (!row) return;
     for (const name of ['--top-w', '--step', 'padding-left', 'justify-content']) row.style.removeProperty(name);
+    if(document.body.classList.contains('background-stars')) {
+      delete row.dataset.fanRoom;row.classList.remove('fan-tight');
+      const mid=(cards.length-1)/2,step=cards.length>2?1.4:0;
+      cards.forEach((card,i)=>{card.style.removeProperty('--fan-h');const offset=i-mid;card.style.setProperty('--cf-fan',`${(offset*step).toFixed(2)}deg`);card.style.setProperty('--cf-arc',`${(-Math.max(0,5-offset*offset*1.1)).toFixed(1)}px`);});
+      placeSlots();return;
+    }
     // An upright phone holds its hand in a scrolling strip; a phone held sideways fans it too (phone.css).
     const phone = globalThis.matchMedia?.('(max-width: 599px), (max-height: 599px)').matches && !globalThis.matchMedia('(max-height: 599px) and (orientation: landscape)').matches;
     const n = cards.length, mid = (n - 1) / 2;
@@ -472,7 +478,9 @@
     const render = () => {
       document.body.classList.toggle('background-stars', stars);
       button.setAttribute('aria-pressed', String(stars));
+      button.textContent=stars?'Willem’s UI':'Max’s UI';
       globalThis.galacticReachMaxUI?.sync();
+      window.dispatchEvent(new Event('galactic-reach-themechange'));
       window.dispatchEvent(new Event('resize'));
       // Refit after the live supply has returned and its measurements have settled.
       requestAnimationFrame(() => window.dispatchEvent(new Event('resize')));
@@ -607,4 +615,18 @@
   };
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init, { once: true });
   else init();
+})();
+
+// Reference visibility belongs to this browser, never a saved table or another player.
+(() => {
+  const init=()=>{
+    for(const [id,css,label] of [['statistics-toggle','hide-statistics','Statistics table'],['symbol-legend-toggle','hide-symbol-legend','Symbol legend']]){
+      const button=document.getElementById(id);if(!button)continue;
+      const key='galactic-reach-'+id;let visible=true;
+      try{visible=localStorage.getItem(key)!=='off';}catch{}
+      const render=()=>{document.body.classList.toggle(css,!visible);button.setAttribute('aria-pressed',String(visible));button.textContent=label+': '+(visible?'on':'off');window.dispatchEvent(new Event('resize'));};
+      button.addEventListener('click',()=>{visible=!visible;try{localStorage.setItem(key,visible?'on':'off');}catch{}render();});render();
+    }
+  };
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();

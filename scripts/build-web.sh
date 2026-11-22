@@ -11,6 +11,7 @@ mkdir -p dist/voidwright dist/galactic-reach dist/lab
 cp crates/web/index.html dist/voidwright/index.html
 cp crates/web/style.css dist/style.css
 cp prototypes/galactic-reach/index.html dist/galactic-reach/index.html
+cp prototypes/galactic-reach/max-ui.css dist/galactic-reach/
 cp prototypes/galactic-reach/styles.css prototypes/galactic-reach/palette.css dist/galactic-reach/
 cp prototypes/galactic-reach/card-feel.js prototypes/galactic-reach/card-feel.css dist/galactic-reach/
 # On-table guidance and the Learn to play walkthrough (index.html?tutorial=1).

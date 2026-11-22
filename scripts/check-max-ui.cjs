@@ -68,8 +68,11 @@ async function main() {
         if (!phone && (r.left < -1 || r.right > innerWidth + 1 || r.top < -1 || r.bottom > innerHeight + 1)) problems.push('outside viewport: ' + e.className);
         if (d.open && e.matches('.game-card, .card-effect') && (e.scrollHeight > e.clientHeight + 2 || e.scrollWidth > e.clientWidth + 2)) problems.push('card clips: ' + e.textContent.slice(0,35));
       }
+      if(d.open && ![...d.querySelectorAll('.game-card')].some(e=>e.checkVisibility()&&e.getBoundingClientRect().width>0))problems.push('active card bank contains no visible cards');
       if (d.open && !phone) { const c=document.querySelector('#max-bank-content'); if (c.scrollHeight > c.clientHeight+2) problems.push('bank scrolls'); }
       if (d.open && d.dataset.bank === 'market') {
+        const widths=[...d.querySelectorAll('#market-row > .game-card')].map(e=>e.getBoundingClientRect().width);
+        if(widths.length&&Math.max(...widths)-Math.min(...widths)>2)problems.push('market card columns have unequal widths');
         const labels = [...d.querySelectorAll('.max-market-tier-label')];
         if (labels.map(e=>e.textContent).join() !== 'Expensive,Moderate,Cheap') problems.push('market tier labels are missing');
         labels.forEach((label,index)=>{
@@ -79,6 +82,12 @@ async function main() {
         });
       }
       if (!d.open) {
+        const palette=getComputedStyle(document.body);
+        for(const [resource,color] of Object.entries({matter:'#a8b7c8',energy:'#62c9ff',biomass:'#70d994',data:'#c297ff'}))if(palette.getPropertyValue('--'+resource).trim()!==color)problems.push('Max resource color changed: '+resource);
+        if(document.querySelectorAll('.max-resource-dividers > i').length!==2)problems.push('Max needs exactly two full-width dividers');
+        if(document.querySelector('#hand-row .corner-button'))problems.push('Willem corner buttons leaked into Max hand');
+        if(!document.querySelector('#map-legend-corner .legend-cost-table'))problems.push('Max numeric cost reference was replaced');
+        if(document.querySelectorAll('#map-legend-corner .legend-cost-table thead .resource-symbol svg').length!==4)problems.push('cost table must use the four actual resource symbols');
         const terrainKey=document.querySelector('.max-resource-legend');
         if (!terrainKey.checkVisibility()) problems.push('board resource legend is missing');
         for (const resource of ['matter','energy','biomass','data']) {
@@ -95,6 +104,10 @@ async function main() {
             const top=dots.at(-1).getBoundingClientRect(), zoom=Number(document.documentElement.style.getPropertyValue('--table-zoom'))||1;
             if (!col.querySelector('.mat-lap') && top.top-box.top>24*zoom) problems.push('unused space above resource circles');
           }
+          const columns=[...bank.querySelectorAll('.resource-box')],firstRing=columns[0].querySelector('.mat-stock.mat-stars i').getBoundingClientRect(),lastRing=columns.at(-1).querySelector('.mat-stock.mat-stars i').getBoundingClientRect();
+          for(const line of bank.querySelectorAll('.max-resource-dividers > i')){const r=line.getBoundingClientRect();if(Math.abs(r.left-firstRing.left)>1||Math.abs(r.right-lastRing.right)>1)problems.push('divider ends must align with the outer resource circles: '+JSON.stringify({left:r.left-firstRing.left,right:r.right-lastRing.right}));}
+          const rings=columns[0].querySelectorAll('.mat-stock.mat-stars i');
+          [...bank.querySelectorAll('.max-resource-dividers > i')].forEach((line,i)=>{const r=line.getBoundingClientRect(),n=(i+1)*5,lower=rings[n-1].getBoundingClientRect(),upper=rings[n].getBoundingClientRect();if(r.top<=upper.bottom||r.bottom>=lower.top)problems.push('divider must sit in the gap between groups of five');});
           if (!phone && box.left < innerWidth * .7) problems.push('resource bank is not on the right');
         }
         if (!phone) {
@@ -115,7 +128,7 @@ async function main() {
       }
       return problems.concat(window.galacticReachRenderErrors || []);
     })()`);
-    assert.deepEqual(issues, []);
+    assert.deepEqual(issues, [], await evaluate('JSON.stringify({viewport:[innerWidth,innerHeight],document:[document.documentElement.scrollWidth,document.documentElement.scrollHeight],body:[document.body.scrollWidth,document.body.scrollHeight]})'));
     assert.deepEqual(browser.errors.filter(e=>!/seat\.js|zk\//.test(e)), []);
   }
   try {
@@ -161,6 +174,7 @@ async function main() {
         await click('#table-menu-button'); await click('#background-toggle');
         assert.equal(await evaluate('document.querySelector("#market-panel").closest("#max-bank-dialog")'), null);
         assert.equal(await evaluate('document.querySelectorAll(".max-market-tier-label").length'),0,'green market keeps its original layout');
+        assert.equal(await evaluate('getComputedStyle(document.body).getPropertyValue("--matter").trim()'),'#e9a23b','Willem keeps the P5 palette');
         assert(!(await evaluate('document.querySelector("#max-bank-nav").checkVisibility()')));
         await click('#table-menu-button'); await click('#background-toggle');
         assert(await evaluate('!!document.querySelector("#market-panel").closest("#max-bank-dialog")'));
@@ -212,6 +226,6 @@ async function main() {
     await browser.navigate(rulebook + '#card-banks'); await settle();
     assert(await evaluate('document.querySelector(":target").id==="card-banks" && document.documentElement.scrollWidth<=innerWidth+1'), 'card-bank section links work at a narrow viewport');
     console.log('ok - game Rules navigation, anonymous rulebook, card-bank anchor and narrow viewport');
-  } catch (error) { console.error(await evaluate(`({body:document.body.className,zoom:document.documentElement.style.cssText,shell:document.querySelector('.app-shell').getBoundingClientRect().toJSON(),menu:document.querySelector('#table-menu-button').getBoundingClientRect().toJSON()})`)); fs.writeFileSync('/private/tmp/max-ui-failure.png',Buffer.from((await browser.send('Page.captureScreenshot',{format:'png'})).data,'base64')); throw error; } finally {browser.close();server.close();}
+  } catch (error) { console.error(await evaluate(`({body:document.body.className,zoom:document.documentElement.style.cssText,shell:document.querySelector('.app-shell').getBoundingClientRect().toJSON(),menu:document.querySelector('#table-menu-button').getBoundingClientRect().toJSON()})`)); console.error(error); fs.writeFileSync(path.join(require('node:os').tmpdir(),'max-ui-failure.png'),Buffer.from((await browser.send('Page.captureScreenshot',{format:'png'})).data,'base64')); throw error; } finally {browser.close();server.close();}
 }
 main().catch(e=>{console.error(e);process.exitCode=1;});
