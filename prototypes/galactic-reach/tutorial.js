@@ -165,6 +165,20 @@
   // Only an open Sector Scan offers a choice (a closed one keeps its last buttons in the page).
   const scanButton = pattern => () => (scanOpen() && $$('#sector-popover button').find(b => !b.disabled && pattern.test(b.textContent.trim()))) || null;
   const hexAt = coord => coord && globalThis.galacticReachGuide.hex(coord);
+  // The battle window's next control for you, in the order you use them: Stay and fight, then a
+  // tactic (each one you may pick), then Commit.
+  function battleControl() {
+    const actions = $$('#combat-dialog #combat-options [data-combat-action]:not(:disabled)');
+    const stay = actions.find(b => /^Stay and fight$/.test(b.textContent.trim()));
+    if (stay) return { text: 'Choose Stay and fight.', lit: [stay] };
+    const commit = actions.find(b => /^Commit\b/.test(b.textContent.trim()));
+    if (commit) return { text: 'Choose Commit: both sides reveal their tactics together.', lit: [commit] };
+    const tactics = $$('#combat-dialog [data-combat-tactic]:not(:disabled)');
+    const named = b => `${b.querySelector('strong')?.textContent || 'a tactic'} (${b.querySelector('.combat-tactic-stats')?.textContent || ''})`.replace(' ()', '');
+    if (tactics.length) return { text: `Pick ${tactics.map(named).join(' or ')}.`, lit: tactics };
+    // Nothing to use yet (or no window to read): the whole battle in one line.
+    return { text: 'Choose Stay and fight. Then pick a tactic and commit it: Concentrated Fire adds 1 hit; Defensive Screen blocks 2.', lit: [] };
+  }
 
   const LESSONS = [
     { id: 'resources', title: 'Resources', steps: [
@@ -384,6 +398,8 @@
         anchor: () => $('[data-trash-pile]:not([disabled])') || $('#open-trash'), done: (state, base) => allCards(me(state)).length < base.cards },
       { id: 'finish-buy', buy: true, title: 'Finish Buy', rule: 'round',
         start: state => ({ round: state.round }),
+        // The card is gone and the Trash window is still open: its Done closes it.
+        dialogs: { '#trash-dialog': { text: 'Card removed. Choose Done to close this window.', anchor: () => $('#close-trash') } },
         text: () => 'Choose Finish Buy. The next round brings a new hand.',
         show: () => ({ callouts: [{ el: globalThis.galacticReachGuide.turnButton(), label: 'Finish Buy', side: 'left' }] }),
         anchor: () => globalThis.galacticReachGuide.turnButton(), done: (state, base) => state.round > base.round },
@@ -393,7 +409,8 @@
         prepare: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); },
         ensure: s => { ensureOwned(s, 'capacityModule'); ensureHand(s, ['capacityModule']); return 'Supplied: your Capacity Module card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'capacityModule') && !(me(state).storage || []).length,
-        dialogs: { '#storage-allocation-dialog': 'Split the 4 points as you like, then choose Play Capacity Module. Each point raises that limit by 1, for good.' },
+        dialogs: { '#storage-allocation-dialog': { text: 'Split the 4 points as you like, then choose Play Capacity Module.',
+          anchor: () => $('#storage-allocation-confirm'), marks: () => [$('#storage-allocation-options')] } },
         text: () => 'Play your Capacity Module card: point at it and choose Use order.',
         show: state => ({ callouts: [{ el: hand('capacityModule')(state), label: 'Capacity Module' }, { el: $('#storage-pile'), label: 'It ends up here', side: 'left' }] }),
         anchor: hand('capacityModule'), done: state => (me(state).storage || []).length > 0 },
@@ -417,11 +434,13 @@
         anchor: state => { const enemy = unitsAt(state, 'explorer', 1)[0]; return (myOps(state) ? hand('move')(state) : null) || hexAt(enemy); },
         done: (state, base) => Boolean(state.pendingCombat) || (me(state).combatVictories || 0) > base.wins },
       { id: 'tactics', title: 'Choose tactics', rule: 'combat-tactics', dialog: '#combat-dialog',
-        text: () => 'Choose Stay and fight. Then pick a tactic and commit it: Concentrated Fire adds 1 hit; Defensive Screen blocks 2.',
+        text: () => battleControl().text,
+        anchor: () => battleControl().lit[0] || null, lit: () => battleControl().lit.slice(1),
         done: state => !state.pendingCombat },
       { id: 'report', title: 'Victory', rule: 'combat', dialog: '#message-dialog',
         start: state => ({ wins: me(state).combatVictories || 0 }),
         text: () => 'Every enemy unit destroyed: a decisive victory, +2★. Choose Continue.',
+        anchor: () => $('#message-dialog #message-continue'),
         done: state => !state.pendingCombatReport && !modalOpen('#message-dialog') },
     ] },
     { id: 'victory', title: 'Winning', steps: [
@@ -525,9 +544,12 @@
       id: `${step.id}-stray`, eyebrow: `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${step.lesson.title}`, title: titleOf(step, state),
       text: `Close this window (Close, Done or Escape) to continue: ${typeof step.text === 'function' ? step.text(state, port) : step.text}`,
       rule: step.rule, inDialog: `#${stray.id}`, anchor: null,
-      buttons: [{ action: 'back', label: 'Back', disabled: progress.view === 0 }, { action: 'exit', label: 'Exit tutorial' }]
+      buttons: [{ action: 'back', label: 'Back', disabled: progress.view === 0 }, { action: 'exit', label: 'Exit tutorial', quiet: true },
+        ...(step.lessonIndex < LESSONS.length - 1 ? [{ action: 'skip', label: 'Skip lesson', link: true }] : [])]
     };
     const openDialog = Object.keys(step.dialogs || {}).find(modalOpen);
+    // A window the step works in: its one line, and the control in it to use (with any it names).
+    const win = openDialog ? (typeof step.dialogs[openDialog] === 'string' ? { text: step.dialogs[openDialog] } : step.dialogs[openDialog]) : null;
     const lesson = step.lesson;
     const eyebrow = `Lesson ${step.lessonIndex + 1} of ${LESSONS.length} · ${lesson.title} · step ${step.index + 1} of ${lesson.steps.length}${reviewing ? ' · done' : ''}`;
     // A step you have done, seen again with Back: its note only. Nothing on the table is lit,
@@ -549,11 +571,11 @@
         ]
       };
     }
-    let text = openDialog ? step.dialogs[openDialog] : typeof step.text === 'function' ? step.text(state, port) : step.text;
+    let text = win ? win.text : typeof step.text === 'function' ? step.text(state, port) : step.text;
 
     const buyDetour = !reviewing && !openDialog && !step.buy && myBuy(state);
     let anchor = null;
-    try { anchor = openDialog || step.dialog ? null : step.anchor?.(state, port) || null; } catch { anchor = null; }
+    try { anchor = (win ? win.anchor?.(state, port) : step.anchor?.(state, port)) || null; } catch { anchor = null; }
     // This step needs an Operations turn, but you are in Buy: finish it, then carry on next round.
     // The Sector Scan stays open after a build; when this step's control is elsewhere, close it first.
     const stepBegins = !reviewing && scanClosedFor !== progress.step;
@@ -574,7 +596,8 @@
       id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: titleOf(step, state), text, rule: step.rule, aside: !reviewing && !openDialog ? note : '',
       revealOnInspect: !reviewing && !openDialog && !step.dialog && Boolean(anchor?.matches?.('#hand-row > .game-card')),
       bringIntoView: !reviewing,
-      inDialog: openDialog || step.dialog || null, anchor, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return step.marks?.(state, port) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
+      inDialog: openDialog || step.dialog || null, anchor, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return (win ? win.marks?.(state, port) : step.marks?.(state, port)) || []; } catch { return []; } })(),
+      lit: (() => { try { return (win ? win.lit?.(state, port) : step.lit?.(state, port)) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
       buttons: [
         { action: 'back', label: 'Back', disabled: progress.view === 0 },
         // Reading steps go on with Next. A "do it yourself" step has no button that goes on or
