@@ -104,6 +104,14 @@
       }
     }
   }
+  // Make the hand exactly these cards: the rest go back on top of the deck, drawn next round.
+  function onlyHand(s, keys) {
+    ensureHand(s, keys);
+    const p = me(s.state), keep = [...keys], back = [];
+    p.hand = p.hand.filter(c => { const i = keep.indexOf(c.key); if (i < 0) { back.push(c); return false; } keep.splice(i, 1); return true; });
+    p.deck.push(...back);
+    return back.length;
+  }
   function ensureOwned(s, key) { const p = me(s.state); if (!allCards(p).some(c => c.key === key)) p.discard.push(s.makeCard(key)); }
   function ensureShipyard(s) {
     if (yard(s.state)) return yard(s.state);
@@ -127,6 +135,21 @@
   // ---- Begin with the opening cards, then explain the table the player has used. ----
   const hand = key => state => globalThis.galacticReachGuide.handCard(handHas(state, key)?.id || '');
   const lastHand = key => state => { const cards = me(state).hand.filter(c => c.key === key); return globalThis.galacticReachGuide.handCard(cards.at(-1)?.id || ''); };
+  // Hand cards that still convert without waste, and the resource each would add.
+  const gainOf = (state, port, card) => { const lim = port.limits(); return Object.keys(port.cards[card.key].resource || {}).find(r => me(state).resources[r] < lim[r]) || null; };
+  const worthConverting = (state, port) => me(state).hand.filter(c => port.canConvertCard(c) && gainOf(state, port, c));
+  // Converting one card at a time: the rightmost such card in the hand (no card covers its corner),
+  // its top-right convert corner and the mat row it adds to.
+  function nextConvert(state, port) {
+    const cards = worthConverting(state, port);
+    const el = $$('#hand-row > .game-card').filter(e => cards.some(c => c.id === e.dataset.cardId)).at(-1) || null;
+    const card = cards.find(c => c.id === el?.dataset.cardId) || null;
+    return { el, corner: el?.querySelector('[data-resource-card]') || el, row: card ? matRow(gainOf(state, port, card)) : null };
+  }
+  // The table's own word that it passed you to Buy (no cards left): its notice where the table shows
+  // one, otherwise the newest such line in the Comms feed.
+  const seen = el => Boolean(el && globalThis.galacticReachGuide.shown(el) && el.getBoundingClientRect().width > 40);
+  const autoPassNotice = () => [$('#market-notice'), $('#turn-notice'), ...$$('#game-log .log-entry')].find(el => seen(el) && /no cards left/i.test(el.textContent)) || null;
   // Only an open Sector Scan offers a choice (a closed one keeps its last buttons in the page).
   const scanButton = pattern => () => (scanOpen() && $$('#sector-popover button').find(b => !b.disabled && pattern.test(b.textContent.trim()))) || null;
   const hexAt = coord => coord && globalThis.galacticReachGuide.hex(coord);
@@ -191,17 +214,18 @@
     { id: 'round', title: 'The round', steps: [
       { id: 'convert-rest', title: 'Convert first', rule: 'resources',
         text: () => 'Unused cards are discarded at round end: convert your leftover cards to resources first.',
-        show: state => ({ ghost: { from: $('#hand-row .game-card'), to: matRow('matter') }, callouts: [{ el: $('#hand-row'), label: 'Discarded at round end if unused' }] }),
-        anchor: () => $('#convert-all-button:not([hidden])') || $('#hand-row .game-card'),
+        // One card at a time: its convert corner is lit and the ghost goes to that resource's row.
+        show: (state, port) => { const next = nextConvert(state, port); return { ghost: next.el && next.row ? { from: next.el, to: next.row } : null, callouts: [{ el: $('#hand-row'), label: 'Discarded at round end if unused' }] }; },
+        anchor: (state, port) => nextConvert(state, port).corner,
         // Done when nothing convertible is left, or when converting would only waste resources at their limit.
-        done: (state, base, port) => { const lim = port.limits(); return !me(state).hand.some(c => port.canConvertCard(c) && Object.keys(port.cards[c.key].resource || {}).some(r => me(state).resources[r] < lim[r])); } },
-      { id: 'pass', title: 'Pass & buy', rule: 'round',
-        text: () => 'Nothing else to afford: choose Pass & buy.',
-        show: () => ({ spotlight: [$('#hand-row'), globalThis.galacticReachGuide.turnButton()], callouts: [{ el: $('#hand-row'), label: 'Left in hand = discarded at round end' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Ends your turns this round', side: 'left' }] }),
-        anchor: () => globalThis.galacticReachGuide.turnButton(), start: state => ({ round: state.round }), done: (state, base) => me(state).passed || state.round > base.round },
+        done: (state, base, port) => !worthConverting(state, port).length },
+      // An empty hand passes by itself (the table says so), so this step is usually already in Buy.
+      // Cards kept back (their resource full) still need Pass & buy.
       { id: 'buy-empty', buy: true, title: 'Finish Buy', rule: 'buy',
-        text: () => 'Your Buy turn. Nothing to buy yet: choose Finish Buy.',
-        show: () => ({ callouts: [{ el: $('#market-row'), label: 'The market: buy cards here', side: 'left' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Finish Buy', side: 'left' }] }),
+        text: state => !myBuy(state) ? 'Nothing else to afford: choose Pass & buy, then Finish Buy.'
+          : me(state).hand.length ? 'Your Buy turn. Nothing to buy yet: choose Finish Buy.' : 'No cards left, so the table passed you to Buy. Nothing to buy yet: choose Finish Buy.',
+        show: state => !myBuy(state) ? { spotlight: [$('#hand-row'), globalThis.galacticReachGuide.turnButton()], callouts: [{ el: $('#hand-row'), label: 'Left in hand = discarded at round end' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Ends your turns this round', side: 'left' }] }
+          : { callouts: [...(me(state).hand.length ? [] : [{ el: autoPassNotice(), label: 'Passed for you: no cards left', side: autoPassNotice()?.closest('#game-log') ? 'right' : undefined }]), { el: $('#market-row'), label: 'The market: buy cards here', side: 'left' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Finish Buy', side: 'left' }] },
         anchor: () => globalThis.galacticReachGuide.turnButton(), start: state => ({ round: state.round }), done: (state, base) => state.round > base.round },
       { id: 'deck', title: 'A new round', rule: 'cleanup-draw', info: true, followCallouts: true, wait: state => !myOps(state),
         text: () => 'A new round: a new hand. Your resources stayed; last round’s cards went to the discard pile.',
@@ -256,7 +280,9 @@
     ] },
     { id: 'relics', title: 'Relics', steps: [
       { id: 'probe', title: 'Probe for a relic', rule: 'movement', aimAt: state => unitsAt(state, 'explorer')[0], wait: state => !myOps(state),
-        prepare: s => { ensureUnits(s, { explorer: 1 }); ensureOwned(s, 'probe'); ensureHand(s, ['probe', 'move', 'move']); },
+        // The Probe / Excavate card stays in play until the round ends, so this round's hand is only it
+        // and a Move: reaching the ◈ empties the hand, the round moves on, and nothing is thrown away.
+        prepare: s => { ensureUnits(s, { explorer: 1 }); ensureOwned(s, 'probe'); return onlyHand(s, ['probe', 'move']) ? 'Staged: this round’s hand is your Probe / Excavate card and a Move; your other cards went back on your deck.' : null; },
         ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); return 'Supplied: your Probe / Excavate card.'; },
         needsEnsure: state => myOps(state) && !handHas(state, 'probe') && !me(state).inPlay.some(c => c.key === 'probe'),
         text: () => 'Drag the Probe / Excavate card onto your Explorer and choose Probe: it finds the nearest hidden relic.',
@@ -272,9 +298,9 @@
       { id: 'excavate', title: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? 'Finish the round' : 'Excavate', rule: 'excavation', aimAt: state => unitsAt(state, 'explorer')[0],
         ensure: s => { ensureOwned(s, 'probe'); ensureHand(s, ['probe']); ensureResources(s, s.EXCAVATION_COST); return `Supplied: your Probe / Excavate card and the excavation cost (${costText(s.EXCAVATION_COST)}).`; },
         needsEnsure: (state, port) => myOps(state) && !me(state).inPlay.some(c => c.key === 'probe') && (!handHas(state, 'probe') || !port.canAfford(port.excavationCost)),
-        text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? 'Your Probe / Excavate card is in play until the round ends. Finish this round: Pass & buy, then Finish Buy.' : `Drag Probe / Excavate onto your Explorer on the ◈ and choose Excavate (${costText(port.excavationCost)}).`,
+        text: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? `Your Probe / Excavate card is in play until this round ends, so you excavate next round. ${myBuy(state) ? 'Choose Finish Buy.' : me(state).hand.length ? 'Use or convert your other cards first.' : 'Choose Pass & buy, then Finish Buy.'}` : `Drag Probe / Excavate onto your Explorer on the ◈ and choose Excavate (${costText(port.excavationCost)}).`,
         show: state => handHas(state, 'probe') ? { ghost: { from: hand('probe')(state), to: hexAt(unitsAt(state, 'explorer')[0]) }, callouts: [{ el: hexAt(unitsAt(state, 'explorer')[0]), label: 'Explorer on the ◈' }] } : { callouts: [{ el: $('#in-play-button'), label: 'Probe / Excavate: in play' }] },
-        anchor: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? globalThis.galacticReachGuide.turnButton() : (scanButton(/Excavate/)() || hand('probe')(state)),
+        anchor: state => me(state).inPlay.some(c => c.key === 'probe') && !handHas(state, 'probe') ? (me(state).hand.length && !myBuy(state) ? $('#hand-row') : globalThis.galacticReachGuide.turnButton()) : (scanButton(/Excavate/)() || hand('probe')(state)),
         done: state => me(state).relicsExcavated > 0 || state.actionMode === 'excavate' },
       { id: 'choose-relic', title: 'Choose a relic card', rule: 'alien-relics',
         // Cancelled Excavate (or never chose a card): go back and play it again.
@@ -435,6 +461,8 @@
     }
     // Lesson 1's Move conversion is now part of its first step.
     if (progress.stepId === 'convert-move') progress.stepId = 'first-construct';
+    // The Pass step is now part of Finish Buy (an empty hand passes by itself).
+    if (progress.stepId === 'pass') progress.stepId = 'buy-empty';
     if (!progress.stepId) return;
     const index = progress.stepId === 'finished' ? STEPS.length : STEPS.findIndex(s => s.id === progress.stepId);
     if (index >= 0 && index !== progress.step) { progress.step = index; progress.view = index; progress.base = null; }
