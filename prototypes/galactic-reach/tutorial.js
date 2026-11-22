@@ -193,15 +193,15 @@
         anchor: scanButton(/Harvester/), done: state => Boolean(harvester(state)) },
     ] },
     { id: 'table', title: 'Read the table', steps: [
-      { id: 'track', title: 'The score track', rule: 'shared-board', info: true, followCallouts: true,
+      { id: 'track', title: 'The score track', rule: 'shared-board', info: true,
         text: s => `Your Colony already scores 3★. When a round ends with anyone at ${s.victoryTarget || 40}★ or more, the highest score wins.`,
         show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'You: 3★', side: 'right' }, { el: $('.prestige-track-goal'), label: 'The goal', side: 'bottom' }] }),
         anchor: () => $('[data-score-player="0"]') },
-      { id: 'home', title: 'Your home world', rule: 'shared-board', info: true, followCallouts: true,
+      { id: 'home', title: 'Your home world', rule: 'shared-board', info: true,
         text: () => 'Your home world. Select any hex to see what is on it.',
         show: state => ({ spotlight: homeHexes(state), callouts: [{ el: hexAt(colony(state)), label: 'Your Colony (3★)' }] }),
         anchor: state => hexAt(colony(state)) },
-      { id: 'mat', title: 'Your mat', rule: 'player-mat', info: true, followCallouts: true,
+      { id: 'mat', title: 'Your mat', rule: 'player-mat', info: true,
         text: () => 'Your mat has one row per resource.',
         show: state => ({ spotlight: [$('#resource-grid'), hexAt(colony(state))], callouts: [{ el: matPart('matter', '.mat-pips.now'), label: 'Now: the Matter you hold' }, { el: matPart('matter', '.mat-pips.rate'), label: 'Rate: Matter made each round' }, { el: matPart('matter', '.mat-pips.now i.cap'), label: 'Limit: 4 at most' }, { el: hexAt(colony(state)), label: 'Your Colony makes that +1' }] }),
         anchor: () => $('#resource-grid') },
@@ -227,7 +227,7 @@
         show: state => !myBuy(state) ? { spotlight: [$('#hand-row'), globalThis.galacticReachGuide.turnButton()], callouts: [{ el: $('#hand-row'), label: 'Left in hand = discarded at round end' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Ends your turns this round', side: 'left' }] }
           : { callouts: [...(me(state).hand.length ? [] : [{ el: autoPassNotice(), label: 'Passed for you: no cards left', side: autoPassNotice()?.closest('#game-log') ? 'right' : undefined }]), { el: $('#market-row'), label: 'The market: buy cards here', side: 'left' }, { el: globalThis.galacticReachGuide.turnButton(), label: 'Finish Buy', side: 'left' }] },
         anchor: () => globalThis.galacticReachGuide.turnButton(), start: state => ({ round: state.round }), done: (state, base) => state.round > base.round },
-      { id: 'deck', title: 'A new round', rule: 'cleanup-draw', info: true, followCallouts: true, wait: state => !myOps(state),
+      { id: 'deck', title: 'A new round', rule: 'cleanup-draw', info: true, wait: state => !myOps(state),
         text: () => 'A new round: a new hand. Your resources stayed; last round’s cards went to the discard pile.',
         show: state => ({ spotlight: [$('#hand-row'), $('#deck-button'), $('#discard-button'), $('#resource-grid')], callouts: [{ el: $('#hand-row'), label: 'New hand of 5' }, { el: $('#deck-button'), label: 'Cards left to draw' }, { el: $('#discard-button'), label: 'Last round’s cards', side: 'left' }, ...(harvester(state) ? [{ el: matPart('data', '.mat-pips.now'), label: '+2 Data from the Harvester', side: 'left' }] : [])] }),
         anchor: () => $('#deck-button') },
@@ -429,7 +429,7 @@
         done: state => !state.pendingCombatReport && !modalOpen('#message-dialog') },
     ] },
     { id: 'victory', title: 'Winning', steps: [
-      { id: 'final-track', title: 'How to win', rule: 'victory', info: true, followCallouts: true,
+      { id: 'final-track', title: 'How to win', rule: 'victory', info: true,
         text: (state, port) => `You have ${port.prestige(0)}★. When a round ends with anyone at ${port.victoryTarget()}★ or more, the highest score wins.`,
         show: () => ({ spotlight: [$('#prestige-track')], callouts: [{ el: $('[data-score-player="0"]'), label: 'Your score', side: 'right' }, { el: $('.prestige-track-goal'), label: 'The goal', side: 'bottom' }] }),
         anchor: () => $('[data-score-player="0"]') },
@@ -557,7 +557,6 @@
     }
     let text = win ? win.text : typeof step.text === 'function' ? step.text(state, port) : step.text;
 
-    if (!reviewing && !openDialog && !step.dialog && state.activePlayer !== 0 && state.phase === 'operations' && !state.pendingCombat) text = `Rivals are taking their turns… ${text}`;
     const buyDetour = !reviewing && !openDialog && !step.buy && myBuy(state);
     let anchor = null;
     try { anchor = (win ? win.anchor?.(state, port) : step.anchor?.(state, port)) || null; } catch { anchor = null; }
@@ -577,7 +576,7 @@
       id: step.id, step: `${progress.step}:${progress.view}`, eyebrow, title: titleOf(step, state), text, rule: step.rule, aside: !reviewing && !openDialog ? note : '',
       revealOnInspect: !reviewing && !openDialog && !step.dialog && Boolean(anchor?.matches?.('#hand-row > .game-card')),
       bringIntoView: !reviewing,
-      inDialog: openDialog || step.dialog || null, anchor, followCallouts: Boolean(step.followCallouts) && !reviewing, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return (win ? win.marks?.(state, port) : step.marks?.(state, port)) || []; } catch { return []; } })(),
+      inDialog: openDialog || step.dialog || null, anchor, show: openDialog || step.dialog ? null : (() => { try { return step.show?.(state, port) || null; } catch { return null; } })(), avoid: [hexAt(step.aimAt?.(state, port))], marks: (() => { try { return (win ? win.marks?.(state, port) : step.marks?.(state, port)) || []; } catch { return []; } })(),
       lit: (() => { try { return (win ? win.lit?.(state, port) : step.lit?.(state, port)) || []; } catch { return []; } })(), progress: { lessons: LESSONS.length, current: step.lessonIndex, finishedLessons: STEPS[progress.step]?.lessonIndex ?? LESSONS.length },
       buttons: [
         { action: 'back', label: 'Back', disabled: progress.view === 0 },
