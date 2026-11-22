@@ -615,6 +615,21 @@ async function runCase(browser, origin, testCase, viewport) {
     await browser.evaluate('new Promise(r => setTimeout(r, 450))');
     steps.playsHere = hexes;
   }
+  // A real click on a raised card's button (press and release without moving) is still a click.
+  if (testCase.tap) {
+    // Point at the card's visible strip first (a held hand fans its cards), so it lifts.
+    const card = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(testCase.tap.split(' [')[0])}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 36), y: r.top + Math.min(r.height / 2, 30) }; })()`);
+    if (!card) return [`could not find ${testCase.tap}`];
+    await mouse('mouseMoved', card.x, card.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+    steps.before = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
+    const at = await centre(testCase.tap);
+    if (!at) return [`could not find ${testCase.tap}`];
+    await mouse('mouseMoved', at.x, at.y); await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y);
+    await mouse('mouseMoved', 4, 4);
+    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
+    steps.push({ arrow: true, zone: true, gain: '+1' });
+  }
   if (testCase.tabRule) {
     const state = () => browser.evaluate(`(() => { const tab = document.querySelector(${JSON.stringify(testCase.tabRule)}), card = tab?.closest('.game-card');
       return { raised: !!card?.matches(':hover, :focus-within'), used: !!document.querySelector('#hand-row .game-card.order-selected') }; })()`);
@@ -634,21 +649,6 @@ async function runCase(browser, origin, testCase, viewport) {
     }
     await press();
     if (!(await state()).used) problems0.push('pressing the raised card\'s tab did not use its order');
-  }
-  // A real click on a raised card's button (press and release without moving) is still a click.
-  if (testCase.tap) {
-    // Point at the card's visible strip first (a held hand fans its cards), so it lifts.
-    const card = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(testCase.tap.split(' [')[0])}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 36), y: r.top + Math.min(r.height / 2, 30) }; })()`);
-    if (!card) return [`could not find ${testCase.tap}`];
-    await mouse('mouseMoved', card.x, card.y);
-    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
-    steps.before = await browser.evaluate('({ hand: document.querySelectorAll("#hand-row > .game-card").length, stock: [...document.querySelectorAll(".resource-box .resource-amount")].map(e => +e.textContent) })');
-    const at = await centre(testCase.tap);
-    if (!at) return [`could not find ${testCase.tap}`];
-    await mouse('mouseMoved', at.x, at.y); await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y);
-    await mouse('mouseMoved', 4, 4);
-    await browser.evaluate('new Promise(r => setTimeout(r, 300))');
-    steps.push({ arrow: true, zone: true, gain: '+1' });
   }
   if (testCase.drag) {
     // Point at the card first, as a player does; it lifts. Then press where the case says:
