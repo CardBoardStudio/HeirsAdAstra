@@ -136,5 +136,14 @@
       return `<span class="hx-glyph hx-glyph-${name}" role="img" aria-label="${words}">${svg(name, { small })}</span>`;
     });
   }
-  return { NAMES, ALIASES, LABELS: Object.fromEntries(NAMES.map(n => [n, ICONS[n].label])), resolve, inner, svg, file, sprite, glyphs, TEXT_GLYPHS };
+  // Static pages mark a symbol's place with data-hx-slot="<name>" (data-hx-size="ghost" for 24 px
+  // and up); this fills each one once the page has loaded.
+  function fillSlots(root) {
+    for (const slot of root.querySelectorAll('[data-hx-slot]')) slot.innerHTML = svg(slot.dataset.hxSlot, { small: slot.dataset.hxSize !== 'ghost' });
+  }
+  if (typeof document !== 'undefined' && document.addEventListener) {
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', () => fillSlots(document));
+    else fillSlots(document);
+  }
+  return { fillSlots, NAMES, ALIASES, LABELS: Object.fromEntries(NAMES.map(n => [n, ICONS[n].label])), resolve, inner, svg, file, sprite, glyphs, TEXT_GLYPHS };
 });

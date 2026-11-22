@@ -11,6 +11,12 @@
   const shown = element => Boolean(element?.isConnected && element.getClientRects().length) && getComputedStyle(element).visibility !== 'hidden';
   const RESOURCE_NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Life', data: 'Data' };
   const esc = text => String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
+  // Notes write Prestige and relics as ★ and ◈ (the rules' shorthand); they show as the game's
+  // symbols (icons.js). An element keeps its words in data-raw, so shortening a note and
+  // comparing notes work on the words, never on the drawn symbols.
+  const rich = text => globalThis.heirsIcons ? globalThis.heirsIcons.glyphs(esc(text)) : esc(text);
+  const setText = (el, text) => { el.dataset.raw = text; el.innerHTML = rich(text); };
+  const rawText = el => el.dataset.raw ?? el.textContent;
   // Where each resource comes from, in the words of the rulebook's #resources and #trade.
   const SOURCES = {
     matter: 'Matter: convert a Construct card, or own Matter hexes.',
@@ -311,7 +317,7 @@
       const action = button.dataset.coach;
       if (action === 'got-it') { prefs.seen[button.dataset.id] = true; savePrefs(); }
       if (action === 'hide') setEnabled(false);
-      if (action === 'dismiss') { dismissed = `${port.turnSerial()}|${coach.querySelector('.gr-coach-title')?.textContent || ''}`; hide(); return; }
+      if (action === 'dismiss') { dismissed = `${port.turnSerial()}|${(coach.querySelector('.gr-coach-title') ? rawText(coach.querySelector('.gr-coach-title')) : '')}`; hide(); return; }
       if (action === 'learn') { prefs.seen.welcome = true; savePrefs(); location.href = `${location.pathname}?tutorial=1`; return; }
       if (action === 'more') { coach.dataset.expanded = String(coach.dataset.expanded !== 'true'); schedule(); return; }
       globalThis.galacticReachTutorial?.coachAction?.(action, button.dataset);
@@ -383,7 +389,7 @@
       delete box.dataset.full; delete box.dataset.fit;
       const buttons = [...(tip.buttons || []), { action: 'more', label: 'More' }];
       const bar = tip.progress ? `<ol class="gr-coach-progress" aria-hidden="true">${Array.from({ length: tip.progress.lessons }, (_, i) => `<li class="${i < tip.progress.finishedLessons ? 'done' : ''}${i === tip.progress.current ? ' current' : ''}"></li>`).join('')}</ol>` : '';
-      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title">${esc(tip.title)}</strong><p class="gr-coach-text">${esc(tip.text)}</p>${tip.aside ? `<p class="gr-coach-aside">${esc(tip.aside)}</p>` : ''}${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}${b.quiet ? ' gr-coach-quiet' : ''}${b.link ? ' gr-coach-link' : ''}"${b.title ? ` title="${esc(b.title)}"` : ''} data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.aria ? ` aria-label="${esc(b.aria)}"` : ''}${b.action === 'more' ? ' hidden' : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
+      box.innerHTML = `${bar}<div class="gr-coach-eyebrow">${esc(tip.eyebrow || 'Guide')}</div><strong class="gr-coach-title" data-raw="${esc(tip.title)}">${rich(tip.title)}</strong><p class="gr-coach-text" data-raw="${esc(tip.text)}">${rich(tip.text)}</p>${tip.aside ? `<p class="gr-coach-aside">${rich(tip.aside)}</p>` : ''}${tip.rule ? `<a class="gr-coach-rule" href="rulebook.html#${esc(tip.rule)}" target="_blank" rel="noopener">Rules ↗</a>` : ''}<div class="gr-coach-actions">${buttons.map(b => `<button type="button" class="button ${b.primary ? 'button-primary' : 'button-ghost'}${b.quiet ? ' gr-coach-quiet' : ''}${b.link ? ' gr-coach-link' : ''}"${b.title ? ` title="${esc(b.title)}"` : ''} data-coach="${esc(b.action)}"${b.id ? ` data-id="${esc(b.id)}"` : ''}${b.aria ? ` aria-label="${esc(b.aria)}"` : ''}${b.action === 'more' ? ' hidden' : ''}${b.disabled ? ' disabled' : ''}>${esc(b.label)}</button>`).join('')}</div><span class="gr-coach-arrow" aria-hidden="true"></span>`;
       if (!tip.quiet && tip.text !== lastAnnounced) lastAnnounced = tip.text;
     }
     box.hidden = false;
@@ -414,10 +420,10 @@
       const text = box.querySelector('.gr-coach-text');
       const over = Math.max(host.getBoundingClientRect().bottom - innerHeight + 8, host.scrollHeight - host.clientHeight);
       const more = box.querySelector('[data-coach="more"]');
-      if (box.dataset.expanded === 'true') { if (text && box.dataset.full) text.textContent = box.dataset.full; if (more) { more.hidden = false; more.textContent = 'Less'; } }
+      if (box.dataset.expanded === 'true') { if (text && box.dataset.full) setText(text, box.dataset.full); if (more) { more.hidden = false; more.textContent = 'Less'; } }
       else {
         // With a lit control the window scrolls to it instead, so the one line naming it stays whole.
-        const cut = text && over > 0 && !anchor && !box.dataset.full ? fitText(box, text, Math.max(60, box.offsetHeight - over)) : Boolean(box.dataset.full && text?.textContent !== box.dataset.full);
+        const cut = text && over > 0 && !anchor && !box.dataset.full ? fitText(box, text, Math.max(60, box.offsetHeight - over)) : Boolean(box.dataset.full && text && rawText(text) !== box.dataset.full);
         if (more) { more.hidden = !cut; more.textContent = 'More'; }
       }
       // The lit control is on screen: a window that scrolls moves once, as the note appears, and only
@@ -465,18 +471,18 @@
 
   // A long docked note shows its first whole sentences until you choose More, so nothing is cut.
   function fitText(box, text, room) {
-    const full = box.dataset.full || text.textContent;
+    const full = box.dataset.full || rawText(text);
     box.dataset.full = full;
-    text.textContent = full;
+    setText(text, full);
     if (box.offsetHeight <= room) return false;
     const sentences = full.split(/(?<=[.!?])\s+/);
     for (let count = sentences.length - 1; count >= 1; count--) {
-      text.textContent = `${sentences.slice(0, count).join(' ')} …`;
+      setText(text, `${sentences.slice(0, count).join(' ')} …`);
       if (box.offsetHeight <= room) return true;
     }
     const words = sentences[0].split(/\s+/);
     for (let count = words.length - 1; count >= 4; count--) {
-      text.textContent = `${words.slice(0, count).join(' ')} …`;
+      setText(text, `${words.slice(0, count).join(' ')} …`);
       if (box.offsetHeight <= room) return true;
     }
     return true;
@@ -556,7 +562,7 @@
     });
     stage.querySelector('.gr-stage-rings').innerHTML = rings.join('');
     const layer = stage.querySelector('.gr-stage-labels');
-    layer.innerHTML = labels.map(l => `<span class="gr-stage-label active" style="${labelStyle(l.r, l.side, W)}">${esc(l.label)}</span>`).join('');
+    layer.innerHTML = labels.map(l => `<span class="gr-stage-label active" style="${labelStyle(l.r, l.side, W)}">${rich(l.label)}</span>`).join('');
     // Labels shown together: one that would lie over an earlier label, the note or its arrow takes
     // another side of its part, or failing that rises above it until it is clear. The same parts
     // always give the same places.
@@ -634,7 +640,7 @@
         // Too little room even for one sentence: drop the eyebrow and Rules link first.
         box.classList.toggle('tight', !expanded && room < 150);
         box.classList.remove('bare');
-        let cut = expanded ? (text.textContent = box.dataset.full || text.textContent, false) : fitText(box, text, room);
+        let cut = expanded ? (setText(text, box.dataset.full || rawText(text)), false) : fitText(box, text, room);
         // Not even one sentence fits: keep the title and buttons; More shows the rest.
         if (!expanded && box.offsetHeight > room) { box.classList.add('bare', 'tight'); cut = true; }
         if (more) { more.hidden = !cut && !expanded; more.textContent = expanded ? 'Less' : 'More'; }

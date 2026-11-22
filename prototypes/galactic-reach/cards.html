@@ -121,6 +121,7 @@
     <footer class="site-footer"><span id="site-footer-version">Heirs Ad Astra</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="#card-art-credits">Credits</a></footer>
   </main>
   <script>globalThis.drawingBoardTableBoot = true;</script>
+  <script src="icons.js?v=1"></script>
   <script src="app.js?v=cheaper-cards-32-37"></script>
   <script>
   'use strict';
@@ -191,7 +192,7 @@
           ${card.relic ? '' : `<div class="gallery-cost">${catalog.cornerDots ? catalog.cornerDots(card.cost) : catalog.resourceDots ? catalog.resourceDots(card.cost) : chips(card.cost)}</div>`}
           <p class="effect" title="${esc(card.text)}"><span class="effect-symbols" aria-hidden="true">${catalog.iconText ? catalog.iconText(card.text) : esc(card.text)}</span><span class="sr-only">${esc(card.text)}</span></p>
           </div>
-          ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.BOARD_ICONS?.[card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase'] || ''}</figure>`}
+          ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.boardGlyph?.(card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase', false) || ''}</figure>`}
           <p class="needs"><span class="code" title="Card id for feedback">${card.code}</span>${card.relic ? ' · Excavation reward · no market price' : card.military ? ' · Military deck' : ''}${!card.relic && needs(card) ? ` · Needs ${esc(needs(card))}` : ''}</p>
           <div class="gallery-feedback" ${feedbackVisible ? '' : 'hidden'}>
           <div class="vote" role="group" aria-label="Your verdict on ${esc(card.name)}">

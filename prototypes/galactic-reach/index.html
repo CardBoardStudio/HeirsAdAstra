@@ -67,7 +67,7 @@
 
     <nav class="max-bank-nav" id="max-bank-nav" aria-label="Card banks">
       <span class="max-bank-label">CARD BANKS</span>
-      <button type="button" data-card-bank="relics" aria-haspopup="dialog" aria-controls="max-bank-dialog" aria-expanded="false"><span aria-hidden="true">◈</span>Relics<span aria-hidden="true">↗</span></button>
+      <button type="button" data-card-bank="relics" aria-haspopup="dialog" aria-controls="max-bank-dialog" aria-expanded="false"><span class="hx-slot" data-hx-slot="excavate" aria-hidden="true"></span>Relics<span aria-hidden="true">↗</span></button>
       <button type="button" data-card-bank="market" aria-haspopup="dialog" aria-controls="max-bank-dialog" aria-expanded="false"><span aria-hidden="true">▤</span>Market<span aria-hidden="true">↗</span></button>
       <button type="button" data-card-bank="basics" aria-haspopup="dialog" aria-controls="max-bank-dialog" aria-expanded="false"><span aria-hidden="true">⌘</span>Basics<span aria-hidden="true">↗</span></button>
     </nav>
@@ -443,7 +443,7 @@
           <span><i class="resource-swatch energy"></i>Energy</span>
           <span><i class="resource-swatch biomass"></i>Life</span>
           <span><i class="resource-swatch data"></i>Data</span>
-          <span>◈ Located relic</span><span>● Gray moon · no production</span><span>Fog hides unvisited worlds</span>
+          <span><span class="hx-slot" data-hx-slot="excavate" aria-hidden="true"></span>Located relic</span><span>● Gray moon · no production</span><span>Fog hides unvisited worlds</span>
         </div>
         <div class="map-legend symbol-legend" id="symbol-legend" role="group" aria-label="Ship and building symbol legend"></div>
         <div class="map-legend card-frame-legend" role="group" aria-label="Card frame colours">
@@ -483,6 +483,7 @@
   </dialog>
 
   <script src="channel.js"></script>
+  <script src="icons.js?v=1"></script>
   <script src="table.js?v=construct-iii-38-43"></script>
   <script src="tabletop-controls.js"></script>
   <script src="shared.js?v=construct-iii-38-43"></script>
