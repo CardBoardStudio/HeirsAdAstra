@@ -605,6 +605,7 @@ fn router(app: App) -> Router {
         .route("/tabletop/board.html", get(tabletop::board_page))
         .route("/tabletop/board.js", get(tabletop::board_script))
         .route("/tabletop/board.css", get(tabletop::board_style))
+        .route("/tabletop/icons.js", get(tabletop::board_icons))
         .route("/api/tabletop/{id}/board-grant", post(tabletop::issue_board))
         .route("/api/tabletop/{id}/board-revoke", post(tabletop::revoke_board))
         .route("/api/tabletop/{id}/redeem", post(tabletop::redeem))

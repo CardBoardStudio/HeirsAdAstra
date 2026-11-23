@@ -77,11 +77,9 @@ pub async fn list(
         let shared = crate::shared::status(&db, &id)?;
         let (status, url) = if let Some(shared) = shared.as_deref() {
             (shared, crate::shared::url(&id))
-        } else if waiting && crate::tabletop::enabled(&db, &id)? {
-            // Played with others: back to the waiting screen that holds its link.
-            ("waiting", format!("/tabletop/host.html?table={id}"))
         } else if waiting {
-            ("waiting", crate::lobby::url(&id))
+            // Played with others: back to the waiting screen that holds its link.
+            ("waiting", crate::lobby::host_url(&db, &id)?)
         } else {
             (status, table_url("galactic-reach", &id))
         };
@@ -212,6 +210,9 @@ pub async fn get(
     let lobby = crate::lobby::status(&db, &id)?;
     let settings = crate::lobby::table_settings(&db, &id)?;
     let shared = crate::shared::status(&db, &id)?.map(|_| crate::shared::url(&id));
+    // The game page sends a table still waiting here, so it reaches the same waiting
+    // screen as Your tables, never one whose Start cannot open the game.
+    let lobby_url = crate::lobby::host_url(&db, &id)?;
     drop(db);
     let save: serde_json::Value = state
         .as_deref()
@@ -229,7 +230,7 @@ pub async fn get(
         .filter(|r| channel.engine(r).is_some())
         .map(|r| channel.client_path(r));
     Ok(Json(
-        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"dev_rules":dev_rules,"dev_client":dev_client,"save":save,"lobby":lobby,"lobby_url":crate::lobby::url(&id),"settings":settings,"shared_url":shared}),
+        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"dev_rules":dev_rules,"dev_client":dev_client,"save":save,"lobby":lobby,"lobby_url":lobby_url,"settings":settings,"shared_url":shared}),
     ))
 }
 #[derive(Deserialize)]

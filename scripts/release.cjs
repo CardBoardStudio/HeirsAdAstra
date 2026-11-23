@@ -26,7 +26,7 @@ const LIB = 'crates/galactic-reach/src/lib.rs';
 const NOTES = 'docs/releases.md';
 // The released browser and engine files an archive keeps (as for v32-*).
 const ARCHIVED = ['app.js', 'adapter.js', 'index.html', 'styles.css', 'rulebook.html', 'rulebook.css', 'replay.js',
-  'playtest-notes.js', 'playtest-notes.css', 'shared.js', 'cards.html'];
+  'playtest-notes.js', 'playtest-notes.css', 'shared.js', 'cards.html', 'icons.js'];
 // Files that assert or declare the current `galactic-reach/<save>.<rev>`.
 const DECLARES = [`${GAME}/adapter.js`, `${GAME}/replay.js`, 'crates/server/src/arena.rs', 'scripts/smoke.py'];
 // Player-facing labels that name the current version and release.
@@ -109,7 +109,9 @@ function bump(ref, from, to) {
   // 1. Archive the released files exactly as the stable branch has them, except that
   //    styles.css takes its palette.css inline (scripts/lib/palette.cjs).
   const hashes = {};
-  for (const asset of ARCHIVED) {
+  // A release made before a file existed (icons.js arrived after 38.43) archives without it.
+  const archived = ARCHIVED.filter(asset => { try { execFileSync('git', ['cat-file', '-e', `${ref}:${GAME}/${asset}`], { cwd: ROOT, stdio: 'ignore' }); return true; } catch (_) { return false; } });
+  for (const asset of archived) {
     const rel = `crates/galactic-reach/rules/v${from.save}-${asset}`;
     const text = show(ref, `${GAME}/${asset}`);
     write(rel, asset === 'styles.css' ? inlinePalette(text, () => show(ref, `${GAME}/palette.css`)) : text);
@@ -153,7 +155,7 @@ function bump(ref, from, to) {
     const marker = '# Testnet seat';
     build = build.replace(marker, `# Preserve the exact ${from.label} ${from.name.replace(/ playtest$/, '')} browser and shared-table engine.
 mkdir -p dist/galactic-reach/rules/${from.label}
-for asset in ${ARCHIVED.join(' ')}; do
+for asset in ${archived.join(' ')}; do
   cp "crates/galactic-reach/rules/v${from.save}-$asset" "dist/galactic-reach/rules/${from.label}/$asset"
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/${from.label}/table.js

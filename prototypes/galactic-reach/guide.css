@@ -170,6 +170,7 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
 .scan-site { color: #f7f0dd; }
 .scan-site .vocab-icon { width: 15px; height: 15px; vertical-align: 0; }
 .scan-relic { color: #f2d488; font-size: 14px; }
+.scan-relic .hx-icon { width: 15px; height: 15px; }
 .scan-ship { display: inline-flex; align-items: center; gap: 1px; }
 .scan-ship b { color: #f7f0dd; font-size: 11px; font-weight: 750; }
 .scan-portal .board-glyph { width: 13px; height: 13px; }

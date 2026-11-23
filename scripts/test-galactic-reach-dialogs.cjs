@@ -22,6 +22,7 @@ function useEngine(prefix) {
   CURRENT_RULES_REVISION = Number(source.match(/const RULES_REVISION = (\d+);/)[1]);
 }
 useEngine(CURRENT_ENGINE);
+const iconsSource = fs.readFileSync(path.resolve(__dirname, '../prototypes/galactic-reach/icons.js'), 'utf8');
 function archived(body) {
   return () => { useEngine(ARCHIVED_30); try { body(); } finally { useEngine(CURRENT_ENGINE); } };
 }
@@ -197,6 +198,8 @@ function boot(storage, seed = 20261013, location = {hostname:'localhost',search:
     ...globals
   });
   bootWarnings = [];
+  // The page loads icons.js (the symbol set) before app.js.
+  vm.runInContext(iconsSource, context);
   vm.runInContext(`${adapterSource}\n${source}`, context, { filename: sourcePath });
   const client=context.createGalacticReach(engineOptions);
   const game = {
@@ -1033,8 +1036,8 @@ test('development reveal exposes moons and relics then restores normal public-wo
   assert.equal(game.dom.element('development-tools').hidden,false);
   const toggle=game.dom.element('reveal-entire-map'),hex=game.dom.hex(coord);
   assert(!hex.className.includes('moon'));assert.equal(hex.querySelector('.special').textContent,'');
-  toggle.checked=true;fire(toggle,'change');assert(hex.className.includes('moon'));assert.equal(hex.querySelector('.special').textContent,'◈');
-  toggle.checked=false;fire(toggle,'change');assert(!hex.className.includes('moon'));assert.equal(hex.querySelector('.special').textContent,'');
+  toggle.checked=true;fire(toggle,'change');assert(hex.className.includes('moon'));assert.match(hex.querySelector('.special').innerHTML,/data-icon="excavate"/);
+  toggle.checked=false;fire(toggle,'change');assert(!hex.className.includes('moon'));assert.equal(hex.querySelector('.special').innerHTML,'');
   assert(hex.querySelector('.hex-fleets').innerHTML);assert.equal(storage.getItem(SAVE_KEY),before);
   assert.equal(boot(storage,20261013,{hostname:'drawing-board-p0g3.onrender.com',search:'?dev=1'}).dom.element('development-tools').hidden,true);
 });
@@ -1049,7 +1052,7 @@ test('public worlds show resources and buildings while unlocated relics stay hid
   assert(!hex.getAttribute('aria-label').includes('relic'));
   for(const world of state.clusters.filter(c=>c.kind==='world')) for(const key of world.coords) assert(!game.dom.hex(key).className.includes('unknown-world'));
   state.clusters[4].scannedBy=[0];writeSave(storage,state);const located=boot(storage);
-  assert.equal(located.dom.hex(coord).querySelector('.special').textContent,'◈');assert(located.dom.element('inspect-facts').innerHTML.includes('Relic site'));
+  assert.match(located.dom.hex(coord).querySelector('.special').innerHTML,/data-icon="excavate"/);assert(located.dom.element('inspect-facts').innerHTML.includes('Relic site'));
 });
 
 test('Deck opens grouped remaining cards without draw order or save changes', () => {
