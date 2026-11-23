@@ -5308,7 +5308,7 @@ function createGalacticReach(options = {}) {
     // Shown only when it can do something: you may convert now and hold a level I starter.
     convertAll.hidden = !canConvertCards() || !player.hand.some(canConvertCard);
     convertAll.disabled = convertAll.hidden;
-    convertAll.innerHTML = `<span>Convert level I starters</span><span class="conversion-symbols" aria-hidden="true">${['matter','energy'].map(resource => resourceDot(resource)).join('')}</span>`;
+    convertAll.innerHTML = `<span>Convert all</span><span class="conversion-symbols" aria-hidden="true">${['matter','energy'].map(resource => resourceDot(resource)).join('')}</span>`;
     $('#finish-construct').hidden=replayMode || !state.pendingConstruct || state.activePlayer!==ME;
     $('#skip-colony-build').hidden=replayMode || !state.pendingColonyBuild || state.activePlayer!==ME;
     if (replayMode) {
@@ -5587,7 +5587,8 @@ function createGalacticReach(options = {}) {
     const primary = $('#board-primary');
     const pass = !$('#pass-button').hidden, finish = !$('#hand-finish-buy-button').hidden;
     primary.hidden = replayMode || !(pass || finish);
-    primary.textContent = pass ? 'Pass & buy' : 'Finish Buy';
+    // Word groups that never break inside, so a narrow layout can stack them (phone.css).
+    primary.innerHTML = pass ? '<span class="word">Pass &amp;</span> <span class="word">buy</span>' : '<span class="word">Finish</span> <span class="word">Buy</span>';
     primary.className = `button board-primary ${pass ? 'button-danger' : 'button-primary'}`;
     primary.dataset.target = pass ? 'pass-button' : 'hand-finish-buy-button';
   }
@@ -6185,7 +6186,8 @@ function createGalacticReach(options = {}) {
     row.addEventListener('click', event => {
       if (!phoneLayout() || event.target.closest('button')) return;
       const card = event.target.closest('.game-card');
-      if (!card) return;
+      // Learn to play may keep this card in the hand, its lit corner pressable (guide.js keepCardInHand).
+      if (!card || card.classList.contains('gr-card-stays')) return;
       sheet.innerHTML = `<button type="button" class="phone-card-close" aria-label="Close">×</button>${card.outerHTML}`;
       sheet.hidden = false;
       sheet.querySelector('.phone-card-close').focus();
@@ -6204,7 +6206,8 @@ function createGalacticReach(options = {}) {
     const key = `${state.round}:${state.phase}:${state.activePlayer}`;
     if (phoneLayout() && !replayMode && key !== drawerPhase) {
       drawerPhase = key;
-      if (state.activePlayer === ME && state.phase === 'operations') setDrawer('hand');
+      // A drawer a note has open stays open; the hand comes back when the note is over.
+      if (state.activePlayer === ME && state.phase === 'operations') { if (drawerNeeds.size) drawerNeedFrom = 'hand'; else setDrawer('hand'); }
     }
     // Choosing a relic for Excavate needs the relics on screen.
     needMarket('excavate', !replayMode && state.phase === 'operations' && state.activePlayer === ME && state.actionMode === 'excavate' ? 'relics' : null);
@@ -6326,11 +6329,27 @@ function createGalacticReach(options = {}) {
     if (want === phoneMarket) return;
     const was = phoneMarket;
     phoneMarket = want;
+    // A phone held sideways shows your Buy turn's market wide (phone.css).
+    document.body.classList.toggle('phone-buy', want === 'buy');
     if (want) {
       if (!was) phoneMarketFrom = document.body.dataset.drawer || '';
       setDrawer('supply');
       switchTab(want === 'relics' ? 'relics' : 'market');
     } else if (document.body.dataset.drawer === 'supply') setDrawer(phoneMarketFrom);
+  }
+  // A note about a part in a closed drawer (your mat, the score track, the comms log) opens that
+  // drawer while the note lasts, on a phone held sideways (guide.js); when it is over the drawer
+  // you had comes back. Choosing a drawer yourself ends it.
+  const drawerNeeds = new Map();
+  let drawerNeedFrom = null;
+  function needDrawer(reason, name) {
+    if (typeof document === 'undefined' || !document.body?.dataset) return;
+    if (name) drawerNeeds.set(reason, name); else drawerNeeds.delete(reason);
+    const want = [...drawerNeeds.values()].at(-1) || null;
+    if (want) {
+      if (drawerNeedFrom === null) drawerNeedFrom = document.body.dataset.drawer || '';
+      if (document.body.dataset.drawer !== want) setDrawer(want);
+    } else if (drawerNeedFrom !== null) { setDrawer(drawerNeedFrom); drawerNeedFrom = null; }
   }
   function setupMarketDrawer() {
     const handle = $('#market-handle'), size = $('#market-size');
@@ -6345,13 +6364,14 @@ function createGalacticReach(options = {}) {
     });
     // On a phone, choosing another drawer is the player's own choice too.
     $$('.phone-drawers [data-drawer]').forEach(button => button.addEventListener('click', () => {
+      drawerNeeds.clear(); drawerNeedFrom = null;
       if (!phoneMarket || button.dataset.drawer === 'supply') return;
       for (const reason of marketNeeds.keys()) marketDeclined.add(reason);
       marketNeeds.clear();
       phoneMarket = myBuyTurn() ? 'buy' : null;
     }));
     window.addEventListener('resize', () => { mapFitFor = null; showMarket(); });
-    globalThis.galacticReachMarket = { need: needMarket, view: () => marketShown };
+    globalThis.galacticReachMarket = { need: needMarket, view: () => marketShown, drawer: needDrawer };
     // A card design whose picture is missing shows its text in the picture's place.
     document.addEventListener('error', event => { if (event.target?.matches?.('img.card-picture')) event.target.parentElement?.classList.remove('has-picture'); }, true);
   }
