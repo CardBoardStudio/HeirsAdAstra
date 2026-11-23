@@ -231,6 +231,10 @@
     fanHand();
     syncAim();
     fitNames();
+    fitHandNameSizes();
+    watchHandNames();
+    keepRaisedNames();
+    for (const card of $$('#hand-row > .game-card')) if (raisedNow(card)) fitRaised(card);
     const before = view, saved = previous;
     view = next; previous = null;
     if (before && saved && !next.replay && !still() && !drag) animate(before, next, saved);
@@ -240,22 +244,30 @@
   // corners stay in its corners. A corner acts only on a raised card: on a touch screen the tap
   // that raises a resting card does not also press the corner under the finger. ----
   const raisedNow = card => card.matches(':hover, :focus-within');
-  const raisedBy = new WeakMap();
+  // The raised card is remembered by its card id: the tap that raises it can redraw the hand, and the
+  // next tap, on the redrawn card, must act.
+  const raisedIds = new Set(), raisedBy = new WeakMap();
+  const markRaised = card => { if (card?.dataset.cardId) raisedIds.add(card.dataset.cardId); };
   document.addEventListener('pointerdown', event => {
     const card = event.target.closest?.('#hand-row > .game-card');
-    if (card && event.pointerType === 'touch' && !card.dataset.cfRaised) raisedBy.set(card, performance.now());
+    if (card && event.pointerType === 'touch' && !raisedIds.has(card.dataset.cardId)) raisedBy.set(card, performance.now());
   }, true);
-  const raiseFrom = event => { if (event.pointerType === 'touch') return; const card = event.target.closest?.('#hand-row > .game-card'); if (card && raisedNow(card)) card.dataset.cfRaised = '1'; };
+  const raiseFrom = event => { if (event.pointerType === 'touch') return; const card = event.target.closest?.('#hand-row > .game-card'); if (card && raisedNow(card)) markRaised(card); };
   document.addEventListener('pointerover', raiseFrom);
   document.addEventListener('focusin', raiseFrom);
   document.addEventListener('click', event => {
     if (event.detail === 0) return;
-    const corner = event.target.closest?.('#hand-row .corner-button'), card = corner?.closest('.game-card');
-    // (Learn to play's lit corner on a card it keeps in the hand acts at once: guide.js keepCardInHand.)
-    if (!card || !raisedBy.has(card) || corner.classList.contains('gr-coach-corner')) return;
+    // The raising tap's click may land anywhere on the card, which grows under the finger: it
+    // presses nothing there, and the card counts as raised from then on.
+    const card = event.target.closest?.('#hand-row > .game-card');
+    if (!card || !raisedBy.has(card)) return;
     raisedBy.delete(card);
+    markRaised(card);
+    const button = event.target.closest('button');
+    // (Learn to play's lit corner on a card it keeps in the hand acts at once: guide.js keepCardInHand.)
+    if (!button || button.classList.contains('gr-coach-corner')) return;
     event.preventDefault(); event.stopPropagation();
-    corner.focus({ preventScroll: true });
+    button.focus({ preventScroll: true });
   }, true);
   // A card's name sits between its two corners, wrapping only between words and to two lines at
   // most (rules #card-corners); a name that does not fit there moves under the corners.
@@ -268,8 +280,89 @@
     cards.forEach(([card], index) => { card.classList.remove('name-probe'); card.classList.toggle('name-under', under[index]); });
   }
   addEventListener('resize', () => requestAnimationFrame(fitNames));
+  // A resting hand card's name is never cut off (rules #card-corners): it wraps between words onto
+  // two lines at most, inside the card; where it does not fit, it gets smaller in half-pixel steps
+  // down to NAME_MIN. A name that does not fit even then is left to the raised card (styles.css
+  // keeps it for screen readers). All cards step together, so a pass costs one layout per size.
+  const NAME_MIN = 9;
+  // Max's table (body.background-stars) draws its own cards and keeps their names as they are.
+  const maxTable = () => document.body.classList.contains('background-stars');
+  function fitHandNameSizes(onlyNew = false) {
+    if (maxTable()) return;
+    const cards = $$('#hand-row > .game-card').filter(card => !raisedNow(card) && !(onlyNew && card.dataset.nameFit));
+    for (const card of cards) { card.style.removeProperty('--name-fs'); card.classList.remove('name-tucked', 'rules-tucked'); }
+    // Fits: no word wider than its box, two lines at most, not squeezed in its row, and above the
+    // card's bottom padding. At NAME_MIN, on a card top too narrow for two lines (the smallest
+    // sideways phone), a third line and the bottom padding are allowed before the name is left out.
+    const fits = ([card, name]) => {
+      const style = getComputedStyle(name), line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.25;
+      const last = size.get(card) <= NAME_MIN, lines = last ? 3 : 2;
+      const floor = card.clientHeight - (last ? 0 : parseFloat(getComputedStyle(card).paddingBottom) || 0);
+      return name.scrollWidth <= name.clientWidth + 1 && name.scrollHeight <= line * lines + 2 && name.scrollHeight <= name.clientHeight + 1 && name.offsetTop + name.scrollHeight <= floor + 1;
+    };
+    let open = cards.map(card => [card, card.querySelector(':scope > .card-name')])
+      .filter(([, name]) => name?.getClientRects().length && getComputedStyle(name).clipPath === 'none');
+    const size = new Map(open.map(([card, name]) => [card, parseFloat(getComputedStyle(name).fontSize)]));
+    while (open.length) {
+      open = open.filter(item => !fits(item));
+      for (const item of open) {
+        const [card] = item, next = size.get(card) - .5;
+        if (next < NAME_MIN) { card.classList.add('name-tucked'); item.done = true; continue; }
+        size.set(card, next); card.style.setProperty('--name-fs', `${next}px`);
+      }
+      open = open.filter(item => !item.done);
+    }
+    // A resting card's one rules line shows only where it fits whole: inside its own box and above
+    // the card's bottom padding (rules #card-corners). Read every card, then write.
+    const cut = cards.map(card => {
+      const floor = card.clientHeight - (parseFloat(getComputedStyle(card).paddingBottom) || 0);
+      return [...card.querySelectorAll(':scope > :is(.card-headline, .card-effect)')].some(line => line.getClientRects().length
+        && (line.scrollWidth > line.clientWidth + 1 || line.scrollHeight > line.clientHeight + 1 || line.offsetTop + line.offsetHeight > floor + 1));
+    });
+    cards.forEach((card, index) => card.classList.toggle('rules-tucked', cut[index]));
+    for (const card of cards) card.dataset.nameFit = '1';
+  }
+  addEventListener('resize', () => requestAnimationFrame(() => fitHandNameSizes()));
+  // A card whose box changes after it was drawn (the fan sets widths and heights) is measured again.
+  const nameObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
+    if (entries.some(entry => entry.target.isConnected && !raisedNow(entry.target))) fitHandNameSizes();
+  }) : null;
+  function watchHandNames() {
+    if (!nameObserver) return;
+    nameObserver.disconnect();
+    for (const card of $$('#hand-row > .game-card')) nameObserver.observe(card);
+  }
+  // A web font arriving after the hand was drawn changes every name's width: measure again.
+  document.fonts?.addEventListener?.('loadingdone', () => requestAnimationFrame(() => fitHandNameSizes()));
+  document.fonts?.ready?.then(() => requestAnimationFrame(() => fitHandNameSizes()));
+  // The raised card's corners leave less room between them than most names need: its name is
+  // measured at the raised width as the card rises, by the same rule.
+  // A redraw replaces the card, so each card's answer is kept by its id and put back on the new one.
+  const raisedNames = new Map();
+  function fitRaised(card) {
+    if (document.body.classList.contains('background-stars')) return;
+    const name = card.querySelector(':scope > .card-name');
+    if (!name?.getClientRects().length) return;
+    card.classList.remove('name-under-raised'); card.classList.add('name-probe');
+    const line = parseFloat(getComputedStyle(name).lineHeight) || name.offsetHeight;
+    const under = name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > line * 2 + 2;
+    card.classList.remove('name-probe'); card.classList.toggle('name-under-raised', under);
+    if (card.dataset.cardId) raisedNames.set(card.dataset.cardId, under);
+  }
+  function keepRaisedNames() {
+    for (const card of $$('#hand-row > .game-card[data-card-id]')) if (raisedNames.has(card.dataset.cardId)) card.classList.toggle('name-under-raised', raisedNames.get(card.dataset.cardId));
+  }
+  addEventListener('resize', () => raisedNames.clear());
+  // Measured as the card rises and again a frame later, after anything that redraws it settles.
+  const fitRaisedFrom = event => {
+    const card = event.target.closest?.('#hand-row > .game-card');
+    if (card && raisedNow(card)) fitRaised(card);
+    requestAnimationFrame(() => { for (const raised of $$('#hand-row > .game-card')) if (raisedNow(raised)) fitRaised(raised); });
+  };
+  document.addEventListener('pointerover', fitRaisedFrom);
+  document.addEventListener('focusin', fitRaisedFrom);
   function settle() {
-    requestAnimationFrame(() => { for (const card of $$('#hand-row > .game-card[data-cf-raised]')) if (!raisedNow(card)) delete card.dataset.cfRaised; });
+    requestAnimationFrame(() => { for (const id of raisedIds) { const card = $(`#hand-row > .game-card[data-card-id="${CSS.escape(id)}"]`); if (!card || !raisedNow(card)) raisedIds.delete(id); } fitHandNameSizes(true); });
   }
   document.addEventListener('pointerout', settle);
   document.addEventListener('focusout', settle);

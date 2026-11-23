@@ -132,7 +132,7 @@
   :root body #hand-row#hand-row > .game-card .card-symbols { font-size: 1em; }
   :root body #hand-row#hand-row > .game-card .card-footer { font-size: 1em; }
   :root body #hand-row#hand-row > .game-card .card-footer .resource-symbol { width: 1em; height: 1em; }
-  :root body #hand-row#hand-row > .game-card .card-name { font-size: 12px; align-self: end; }
+  :root body #hand-row#hand-row > .game-card .card-name { font-size: var(--name-fs, 12px); align-self: end; }
   :root body #hand-row#hand-row > .game-card.has-symbols .card-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
   :root body #hand-row#hand-row > .game-card :is(.card-headline, .card-effect) { display: none !important; }
   :root body #hand-row#hand-row > .game-card:not(.has-symbols) .card-name { grid-row: 1 / -1; grid-column: 1 / -1; align-self: start; white-space: normal; -webkit-line-clamp: 2; }
