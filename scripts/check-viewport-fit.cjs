@@ -182,6 +182,10 @@ function sharedView(state) {
 const LONG_NAMES = ['aegisOfSilentArchitects', 'warSongOfHollowStars', 'firstDawnEchoes', 'obeliskOfAnnihilation', 'monumentOfAccord', 'hyperspaceVaults', 'slipstreamCharts', 'tacticalBriefing', 'starfarersCompass', 'exchangeProtocol'];
 const fanHand = size => Array.from({ length: size }, (_, i) => ['move', 'construct', ...MARKET.filter(c => c.code.startsWith('N')).map(c => c.key)][i % 12]);
 const longHand = ['move', 'construct', ...MARKET.filter(c => c.code.startsWith('N')).slice(0, 6).map(c => c.key)];
+// Every card design, starters first, in hands of at most 11.
+const EVERY_CARD = ['move', 'construct', 'probe', ...MARKET.map(c => c.key)];
+const RAISED_NAME_HANDS = Array.from({ length: Math.ceil(EVERY_CARD.length / 11) }, (_, i) => EVERY_CARD.slice(i * 11, i * 11 + 11));
+const RAISED_NAME_SIZES = ['1280x720', '1440x900', '1180x820', '820x1180', '844x390', '667x375'];
 // A real market is three cards from each price row (rulebook #market-tiers). Four pages cycle every
 // design through its row, heaviest text first, so page 1 is each row's worst case.
 const { MARKET_TIERS, marketTier } = vm.runInContext(source + ';createGalacticReach({catalog:true})', vm.createContext({}));
@@ -198,6 +202,10 @@ const CASES = [
   // The longest names, half of them on cards with no corner symbols: no resting text ends in an
   // ellipsis, and each card shows its symbols, a whole rules line, its name or its picture.
   ...[5, 10].map(size => ({ name: `operations, ${size} long-named cards`, save: operationsState(LONG_NAMES.slice(0, size)), expect: 'fan', devices: true })),
+  // Every card raised in turn, with reduced motion on and off: its name is whole and never under a
+  // corner tab (rules #card-corners), on desktop, tablet and a phone held sideways.
+  ...RAISED_NAME_HANDS.flatMap((hand, index) => ['reduce', 'no-preference'].map(motion => ({ name: `operations, every name raised ${index + 1}/${RAISED_NAME_HANDS.length} (${motion === 'reduce' ? 'reduced' : 'full'} motion)`,
+    save: operationsState(hand), motion, expect: 'raisedNames', devices: true, sizes: RAISED_NAME_SIZES }))),
   { name: 'operations, raised hand card (long text)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), focus: '#hand-row .game-card:nth-child(3) button' },
   { name: 'operations, 8-card hand raised', save: operationsState(longHand), focus: '#hand-row .game-card:nth-child(5) button' },
   // A chosen order shows a toast; it must not cover the hand or any control.
@@ -627,7 +635,8 @@ async function runCase(browser, origin, testCase, viewport) {
   await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: scale, mobile: touch, screenWidth: width, screenHeight: height });
   await browser.send('Emulation.setTouchEmulationEnabled', { enabled: touch, maxTouchPoints: touch ? 5 : 1 });
   // Measure a still table: your hand's turn pulse (and other motion) rests under reduced motion.
-  await browser.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
+  // A case may ask for full motion ('no-preference') instead.
+  await browser.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: testCase.motion || 'reduce' }] });
   if (testCase.lobby) {
     await browser.navigate(`${origin}/?game=galactic-reach#lobby/${TABLE_ID}`);
   } else {
@@ -915,6 +924,43 @@ async function runCase(browser, origin, testCase, viewport) {
     }
     return problems.slice(0, 6);
   })()`));
+  if (testCase.expect === 'raisedNames') {
+    const count = await browser.evaluate('document.querySelectorAll("#hand-row > .game-card").length');
+    for (let index = 0; index < count; index++) {
+      // Rest the hand: close an opened card and point (or tap) at a spot with nothing to press.
+      const calm = await browser.evaluate(`(() => { document.querySelector('.phone-card-sheet:not([hidden]) .phone-card-close')?.click(); document.activeElement?.blur?.();
+        return [[4, 4], [innerWidth / 2, 4], [innerWidth - 4, innerHeight / 2], [4, innerHeight / 2]].map(([x, y]) => ({ x, y }))
+          .find(({ x, y }) => { const e = document.elementFromPoint(x, y); return e && !e.closest('button, a, input, select, label, summary, [tabindex], .hex, .game-card'); }) || null; })()`);
+      if (!calm) return ['no spot without a control to rest the hand from'];
+      await mouse('mouseMoved', calm.x, calm.y);
+      if (touch) { await mouse('mousePressed', calm.x, calm.y); await mouse('mouseReleased', calm.x, calm.y); }
+      await browser.evaluate('new Promise(r => setTimeout(r, 200))');
+      // Raise the card from a point it shows on top in the fan, away from its corner tabs if it can.
+      const at = await browser.evaluate(`(() => { const card = document.querySelectorAll('#hand-row > .game-card')[${index}]; card.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+        const r = card.getBoundingClientRect(), points = [];
+        for (const y of [r.top + r.height * 0.6, r.top + 24, r.bottom - 8]) for (let x = r.left + 4; x < r.right - 2; x += 4) points.push({ x, y });
+        const own = ({ x, y }) => { const e = document.elementFromPoint(x, y); return e?.closest('#hand-row > .game-card') === card ? e : null; };
+        const point = points.find(p => own(p) && !own(p).closest('button')) || points.find(own);
+        return point && { ...point, name: card.querySelector('.card-name')?.textContent.trim() }; })()`);
+      if (!at) { problems.push(`hand card ${index + 1} shows no point to raise it from`); continue; }
+      await mouse('mouseMoved', at.x, at.y);
+      if (touch) { await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y); }
+      await browser.evaluate(`new Promise(r => setTimeout(r, ${testCase.motion === 'no-preference' ? 400 : 200})).then(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))`);
+      problems.push(...await browser.evaluate(`(() => {
+        // A phone held sideways opens the tapped card whole; elsewhere the card itself rises.
+        const card = document.querySelector('.phone-card-sheet:not([hidden]) .game-card') || document.querySelector('#hand-row > .game-card:is(:hover, :focus-within)');
+        const name = card?.querySelector(':scope > .card-name'), wanted = ${JSON.stringify(at.name)};
+        if (!name || name.textContent.trim() !== wanted) return ['could not raise ' + wanted];
+        const text = document.createRange(); text.selectNodeContents(name);
+        const tabs = [...card.querySelectorAll(':scope > :is(.corner-button, .card-symbols, .card-footer)')].filter(t => t.getClientRects().length).map(t => t.getBoundingClientRect());
+        const under = [...text.getClientRects()].some(a => tabs.some(t => a.left < t.right - 1 && a.right > t.left + 1 && a.top < t.bottom - 1 && a.bottom > t.top + 1));
+        const problems = [];
+        if (under) problems.push('raised name under a corner tab: ' + wanted);
+        if (name.scrollWidth > name.clientWidth + 1) problems.push('raised name cut: ' + wanted + ' ' + name.scrollWidth + ' > ' + name.clientWidth);
+        return problems;
+      })()`));
+    }
+  }
   if (testCase.expect === 'inspect') problems.push(...await browser.evaluate(`(() => {
     const card = document.querySelector('#hand-row > .game-card:hover'), problems = [];
     if (document.querySelector('#card-inspect, .card-inspect')) problems.push('a separate inspect copy opened');
@@ -1015,6 +1061,7 @@ async function main() {
     for (const [viewport, testCase] of runs) {
       if (only && !only.test(`${viewportName(viewport)} ${testCase.name}`)) continue;
       if (process.env.CHECK_ORIGIN && (testCase.lobby || testCase.table || testCase.shared)) continue;
+      if (testCase.sizes && !testCase.sizes.includes(viewportName(viewport))) continue;
       checks++;
       browser.errors.length = 0;
       const problems = await runCase(browser, origin, testCase, viewport);
