@@ -4,6 +4,10 @@
 //   3. The game references every one: app.js names each, the engine's catalog draws them, the
 //      rulebook's sprite carries them all and the card gallery lists them.
 //   4. No shipped page keeps an old symbol: none of the previous drawings, and no ★ or ◈ drawn as text.
+//   5. No interface control takes a game symbol: the table's own glyphs (portal, limit lock, the
+//      comms events outside the twenty, the walkthrough pointer) keep their drawings, and only
+//      buttons whose symbol means that game thing (card corners, cards, resource choices, the
+//      Relics bank) may draw one.
 //   node scripts/check-icons.cjs   (CI runs it from scripts/check-emblem.cjs)
 'use strict';
 const assert = require('node:assert/strict');
@@ -97,5 +101,43 @@ for (const file of SHIPPED) {
 assert.deepEqual(left, [], `old symbols remain:\n  ${left.join('\n  ')}`);
 // The walkthrough draws its ★ and ◈ through the icon set.
 assert.match(read('prototypes/galactic-reach/guide.js'), /heirsIcons\.glyphs\(/, 'guide.js draws ★ and ◈ as icons');
+
+// 5. An interface control never takes a game symbol. The twenty stand for game things; the
+//    table's own controls and marks keep their own drawings.
+//    a. The interface glyphs that are not among the twenty draw nothing from the set.
+const DRAWS_FROM_SET = /hx-|data-hx-slot|\bicon\(|boardGlyph|boardIcon|vocabIcon|resourceDots?\(|cornerDots|cardSymbol|BOARD_ICONS|VOCAB_ICONS|RELIC_ICON|PRESTIGE_MARK|heirsIcons/;
+const constant = (file, name) => read(file).match(new RegExp(`const ${name} = (\\{[\\s\\S]*?\\n  \\};|[^\\n]*;)`))?.[1];
+for (const [file, name, what] of [['prototypes/galactic-reach/app.js', 'PORTAL_GLYPH', 'the corner portal ring'], ['prototypes/galactic-reach/app.js', 'LOCK_ICON', 'the limit lock on a price chip'],
+  ['prototypes/galactic-reach/app.js', 'LOG_ICONS', 'comms events with no counterpart among the twenty']]) {
+  const body = constant(file, name);
+  assert.ok(body, `${file} defines ${name} (${what})`);
+  assert.doesNotMatch(body, DRAWS_FROM_SET, `${name} (${what}) is an interface glyph and must keep its own drawing`);
+}
+// The comms feed draws a star icon only for events that are one of the twenty.
+assert.deepEqual(Object.keys(vm.runInNewContext(`(${constant('prototypes/galactic-reach/app.js', 'LOG_ICONS').slice(0, -1)})`)).sort(), ['buy', 'convert', 'event', 'pass', 'production', 'trash', 'upgrade'], 'LOG_ICONS keeps only the events with no star icon');
+assert.match(read('prototypes/galactic-reach/guide.js'), /pointer\.innerHTML = '<svg viewBox="0 0 28 30">/, 'the walkthrough pointer keeps its arrow');
+//    b. Every button that draws a game symbol is one whose symbol means that game thing: card
+//       corners and cards, a resource choice, the bank's resources, the Relics card bank. A new
+//       control drawing a symbol fails here until it is added with its game meaning.
+const SYMBOL_BUTTONS = [
+  [/corner-button/, 'a card corner: the card\'s order or conversion (rules #card-corners)'],
+  [/class="game-card\b/, 'a card: its corners, price and text'],
+  [/data-consortium-gain=/, 'a choice of resource to gain'],
+  [/bank-resource-button/, 'a resource to give or take at the bank'],
+  [/data-card-bank="relics"/, 'the Relics card bank (relics are excavated: Excavate)'],
+];
+const symbolButtons = [];
+for (const file of ['prototypes/galactic-reach/app.js', 'prototypes/galactic-reach/index.html', 'prototypes/galactic-reach/guide.js', 'prototypes/galactic-reach/tutorial.js',
+  'prototypes/galactic-reach/card-feel.js', 'prototypes/galactic-reach/phone.js', 'prototypes/galactic-reach/cards.html', 'prototypes/galactic-reach/table.js', 'prototypes/galactic-reach/tabletop-controls.js']) {
+  for (const m of read(file).matchAll(/<button\b([^>]*)>([\s\S]*?)<\/button>/g)) {
+    if (!DRAWS_FROM_SET.test(m[2])) continue;
+    const kind = SYMBOL_BUTTONS.find(([attr]) => attr.test(m[1]));
+    assert.ok(kind, `${file}: an interface control draws a game symbol: <button${m[1].slice(0, 80)}>; give it its own glyph, or add it to SYMBOL_BUTTONS with its game meaning`);
+    symbolButtons.push(kind[1]);
+  }
+}
+//    c. A static page fills symbol slots only where its symbol is that game thing.
+const SLOTS = { 'prototypes/galactic-reach/index.html': ['excavate', 'excavate'] };
+for (const [page, names] of Object.entries(SLOTS)) assert.deepEqual([...read(page).matchAll(/data-hx-slot="([a-z]+)"/g)].map(m => m[1]), names, `${page}: symbol slots are the Relics card bank and the map key's located relic`);
 
 console.log(`Icons: all ${TWENTY.length} defined, generated copies current, each drawn by the game; no old symbol in ${SHIPPED.length} shipped files.`);
