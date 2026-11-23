@@ -9,6 +9,8 @@ const { findChrome, launch } = require('./check-viewport-fit.cjs');
 const root = path.resolve(__dirname, '..');
 const game = path.join(root, 'prototypes/galactic-reach');
 const context = vm.createContext({});
+// The gallery loads icons.js before app.js, so its descriptions draw the same symbols.
+vm.runInContext(fs.readFileSync(path.join(game, 'icons.js'), 'utf8'), context);
 vm.runInContext(fs.readFileSync(path.join(game, 'app.js'), 'utf8'), context);
 const catalog = context.createGalacticReach({ catalog: true });
 const market = catalog.MARKET_CARDS, relics = catalog.RELIC_CARDS;

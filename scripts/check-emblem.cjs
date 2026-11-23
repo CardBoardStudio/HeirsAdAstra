@@ -41,3 +41,6 @@ assert.match(build, /cp prototypes\/lab\/heirs-emblem\.svg prototypes\/lab\/heir
 for (const file of ['/lab/heirs-emblem.svg', '/lab/heirs-emblem-round.svg', '/lab/heirs-emblem-mark.svg', '/lab/heirs-emblem-favicon.svg'])
   assert.ok(read('crates/server/src/access.rs').includes(`"${file}"`), `${file} must be public: the invite-only landing page shows it`);
 console.log('Emblem: speed lines match the resource colours', colours.join(' '), '| mark and favicon rims match the round emblem');
+
+// The game's twenty symbols are checked in the same CI step: scripts/check-icons.cjs.
+require('./check-icons.cjs');

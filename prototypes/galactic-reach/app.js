@@ -42,24 +42,19 @@ function createGalacticReach(options = {}) {
   const MAX_RESOURCE_LIMIT = 15;
   const RESOURCES = ['matter', 'energy', 'biomass', 'data'];
   const RESOURCE_NAMES = { matter: 'Matter', energy: 'Energy', biomass: 'Life', data: 'Data' };
+  // Every symbol is one of the twenty in icons.js, the set's one source. Symbols drawn under 24 px
+  // use its small rendering (solid joins, fuller stars); larger ones its ghost lines. A headless
+  // engine (the server, the test harness) has no icon set and draws none.
+  const ICON_SET = globalThis.heirsIcons || null;
+  const icon = (name, { small = true, className = '' } = {}) => ICON_SET ? ICON_SET.svg(name, { small, className }) : '';
   const RESOURCE_DETAILS = {
-    matter: {
-      purpose: 'Build ships and structures',
-      icon: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m12 2 8 7-3 11H7L4 9z"></path><path d="m4 9 8 4 8-4M12 13v7M8 6l4 7 4-7"></path></svg>'
-    },
-    energy: {
-      purpose: 'Fund fleets and card purchases',
-      icon: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M13.5 2 5 13h6l-.5 9L19 10h-6z"></path></svg>'
-    },
-    biomass: {
-      purpose: 'Found colonies and sustain growth',
-      icon: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20 4C11 4 5 8.5 5 15c0 2.8 2.2 5 5 5 6.5 0 10-7 10-16Z"></path><path d="M4 21c2.6-5.1 6.3-8.8 11-11"></path></svg>'
-    },
-    data: {
-      purpose: 'Research, buy, and upgrade cards',
-      icon: '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="12" cy="5" r="2.5"></circle><circle cx="6" cy="18" r="2.5"></circle><circle cx="18" cy="18" r="2.5"></circle><path d="m10.7 7.2-3.4 8.6M13.3 7.2l3.4 8.6M8.5 18h7"></path></svg>'
-    }
+    matter: { purpose: 'Build ships and structures', icon: icon('matter') },
+    energy: { purpose: 'Fund fleets and card purchases', icon: icon('energy') },
+    biomass: { purpose: 'Found colonies and sustain growth', icon: icon('life') },
+    data: { purpose: 'Research, buy, and upgrade cards', icon: icon('data') }
   };
+  // A card's corner tab sizes its symbols (rules #card-corners), so they carry both renderings.
+  const CORNER_RESOURCE_ICONS = { matter: icon('matter', { small: 'auto' }), energy: icon('energy', { small: 'auto' }), biomass: icon('life', { small: 'auto' }), data: icon('data', { small: 'auto' }) };
   const PLAYER_COLORS = ['#55d9f4', '#ff9f6e', '#a58cff', '#f2cf66'];
   const PLAYER_NAMES = ['You', 'Ember Directorate', 'Violet Assembly', 'Helios Compact'];
   const PLAYER_STRATEGIES = ['human', 'military', 'economy', 'expansion'];
@@ -144,14 +139,14 @@ function createGalacticReach(options = {}) {
     harvester: 'Produces 2 of its hex’s resource per round. Buildings have no upgrades.',
     starbase: 'Commissions ships and defends its hex with 3 attack and 3 hull. Cannot be upgraded.',
   };
-  const BOARD_ICONS = {
-    settler: '<svg class="board-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><polygon points="12 2 19 21 12 17 5 21 12 2"></polygon></svg>',
-    explorer: '<svg class="board-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="9" cy="8" r="3"></circle><path d="M4 21v-3a5 5 0 0 1 10 0v3"></path><path d="m15 11 2 2 4-5"></path></svg>',
-    fleet: '<svg class="board-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"></path><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09"></path><path d="M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z"></path><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05"></path></svg>',
-    colony: '<svg class="board-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"></path><path d="M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg>',
-    harvester: '<svg class="board-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m14 13-8.381 8.38a1 1 0 0 1-3.001-3L11 9.999"></path><path d="M15.973 4.027A13 13 0 0 0 5.902 2.373c-1.398.342-1.092 2.158.277 2.601a19.9 19.9 0 0 1 5.822 3.024"></path><path d="M16.001 11.999a19.9 19.9 0 0 1 3.024 5.824c.444 1.369 2.26 1.676 2.603.278A13 13 0 0 0 20 8.069"></path><path d="M18.352 3.352a1.205 1.205 0 0 0-1.704 0l-5.296 5.296a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l5.296-5.296a1.205 1.205 0 0 0 0-1.704z"></path></svg>',
-    starbase: '<svg class="board-glyph" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M20.341 6.484A10 10 0 0 1 10.266 21.85"></path><path d="M3.659 17.516A10 10 0 0 1 13.74 2.152"></path><circle cx="12" cy="12" r="3"></circle><circle cx="19" cy="5" r="2"></circle><circle cx="5" cy="19" r="2"></circle></svg>',
-  };
+  // Units and buildings by their game keys (a Shipyard is a starbase in saved state).
+  const BOARD_ICON_NAMES = { settler: 'settler', explorer: 'explorer', fleet: 'fleet', colony: 'colony', harvester: 'harvester', starbase: 'shipyard' };
+  const boardGlyph = (type, small = true) => icon(BOARD_ICON_NAMES[type], { small, className: 'board-glyph' });
+  const BOARD_ICONS = Object.fromEntries(Object.keys(BOARD_ICON_NAMES).map(type => [type, boardGlyph(type)]));
+  // A relic site on the map and in the reports: Excavate's diamond.
+  const RELIC_ICON = icon('excavate');
+  // Prestige beside a number ("30★" in the rules' shorthand): the Prestige symbol, named for screen readers.
+  const PRESTIGE_MARK = ICON_SET ? ICON_SET.glyphs('★') : '';
   const DIRECTIONS = [[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]];
 
   const BASIC_CARDS = {
@@ -611,16 +606,18 @@ function createGalacticReach(options = {}) {
   Object.assign(CARD_BY_TAG,Object.fromEntries([...Object.values(ADVANCED_CARDS),...Object.values(RETIRED_RELIC_CARDS),...Object.values(RELIC_CARDS)].filter(def=>def.tag).map(def=>[def.tag,def])));
   const ALL_CARDS = { ...BASIC_CARDS, ...ADVANCED_CARDS, ...MARKET_MILITARY, ...SUPPLY_CARDS, ...RETIRED_RELIC_CARDS, ...RELIC_CARDS };
 
-  // The card vocabulary: one glyph per idea that recurs in card text.
+  // The card vocabulary: one symbol per idea that recurs in card text (a Miss is a Shield).
+  // Card text and the keys draw them small; in a card corner the tab sizes them (styles.css).
+  const vocabIcon = (name, kind = '') => `<span class="vocab-icon${kind ? ` vocab-${kind}` : ''}" aria-hidden="true">${icon(name, { small: 'auto' })}</span>`;
   const VOCAB_ICONS = {
-    prestige: '<span class="vocab-icon vocab-star" aria-hidden="true">★</span>',
-    draw: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><rect x="5" y="3" width="11" height="15" rx="2"></rect><path d="M9 21h8a2 2 0 0 0 2-2V7"></path></svg></span>',
-    hit: '<span class="vocab-icon vocab-hit" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 5l14 14M19 5 5 19"></path><path d="M3 9l3-3M15 21l3-3M21 9l-3-3M9 21l-3-3"></path></svg></span>',
-    miss: '<span class="vocab-icon vocab-miss" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z"></path></svg></span>',
-    colonize: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M5 21V4"></path><path d="M5 4h12l-2.5 4L17 12H5"></path></svg></span>',
-    build: '<span class="vocab-icon" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="m14 4 6 6-3 3-6-6z"></path><path d="m11 7-8 8 3 3 8-8"></path></svg></span>',
-    move: '<span class="vocab-icon vocab-move" aria-hidden="true"><svg viewBox="0 0 24 24" focusable="false"><path d="M4 12h13"></path><path d="m13 6 6 6-6 6"></path></svg></span>',
-    limit: '<span class="vocab-icon vocab-limit" aria-hidden="true"><i></i></span>',
+    prestige: vocabIcon('prestige', 'star'),
+    draw: vocabIcon('draw'),
+    hit: vocabIcon('hit', 'hit'),
+    miss: vocabIcon('shield', 'miss'),
+    colonize: vocabIcon('colonize'),
+    build: vocabIcon('build'),
+    move: vocabIcon('move', 'move'),
+    limit: vocabIcon('limit', 'limit'),
   };
   const VOCAB_LABELS = [['prestige','Prestige'],['draw','Draw a card'],['move','Move'],['hit','Hit'],['miss','Miss'],['limit','Limit'],['colonize','Colonize'],['build','Build']];
   const COUNT_WORDS = { one: 1, two: 2, three: 3, four: 4, five: 5 };
@@ -682,7 +679,7 @@ function createGalacticReach(options = {}) {
     // Market prices keep their "; " list (they may carry a limit note); other amounts read as a list.
     const label = (prefix ? prefix + ' ' : '') + present.map(resource => `${amounts[resource]} ${RESOURCE_NAMES[resource]}${marks[resource]?.label || ''}`).join(Object.keys(marks).length ? '; ' : ', ');
     const repeat = n => n > 1 && n <= CORNER_REPEAT_MAX ? ` data-repeat="${n}"` : '';
-    const chips = present.map(resource => `<span class="resource-chip ${resource} ${marks[resource]?.mark || ''}"${repeat(amounts[resource])} title="${marks[resource]?.title || `${amounts[resource]} ${RESOURCE_NAMES[resource]}`}">${cornerRepeat(resourceDot(resource), amounts[resource])}${marks[resource]?.icon || ''}</span>`).join('');
+    const chips = present.map(resource => `<span class="resource-chip ${resource} ${marks[resource]?.mark || ''}"${repeat(amounts[resource])} title="${marks[resource]?.title || `${amounts[resource]} ${RESOURCE_NAMES[resource]}`}">${cornerRepeat(resourceDot(resource, '', true), amounts[resource])}${marks[resource]?.icon || ''}</span>`).join('');
     return `<span class="resource-dots corner-dots" role="img" aria-label="${label}">${chips}</span>`;
   }
 
@@ -691,7 +688,7 @@ function createGalacticReach(options = {}) {
     rulesVersion: `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`, MARKET_CARDS, ADVANCED_CARDS, MARKET_MILITARY, BASIC_TACTICS, BASIC_CARDS, RELIC_CARDS,
     MARKET_SIZE, MARKET_COPIES, MARKET_TIERS, MARKET_TIER_SLOTS, marketTier, STARTING_LIMIT, DEFAULT_VICTORY_TARGET, VICTORY_TARGET_CHOICES, RESOURCES, RESOURCE_NAMES,
     // Shared, state-free presentation for the gallery's costs and card descriptions.
-    resourceDots, iconText, BOARD_ICONS, cardSymbols, cornerDots, costClusters, cardEffectParts, cardEffectLabel
+    resourceDots, iconText, BOARD_ICONS, boardGlyph, cardSymbols, cornerDots, costClusters, cardEffectParts, cardEffectLabel
   };
 
 
@@ -1289,8 +1286,8 @@ function createGalacticReach(options = {}) {
     return true;
   }
 
-  function resourceDot(resource, className = '') {
-    return `<span class="resource-symbol ${resource} ${className}" aria-hidden="true">${RESOURCE_DETAILS[resource].icon}</span>`;
+  function resourceDot(resource, className = '', corner = false) {
+    return `<span class="resource-symbol ${resource} ${className}" aria-hidden="true">${corner ? CORNER_RESOURCE_ICONS[resource] : RESOURCE_DETAILS[resource].icon}</span>`;
   }
 
   function resourceDots(cost) {
@@ -4565,10 +4562,11 @@ function createGalacticReach(options = {}) {
     setTimeout(()=>node.remove(),2600);
   }
 
-  function boardIcon(type, count = 1) {
+  // Pieces on the map are small; a battle draws them at 28-42 px, with ghost lines (small = false).
+  function boardIcon(type, count = 1, small = true) {
     // Hex labels already announce each unit's type and quantity. Keep the
     // separate visual badges from concatenating into a false label like "22".
-    return `<span class="board-icon" aria-hidden="true">${BOARD_ICONS[type]}${count > 1 ? `<b class="board-icon-count" data-count="${count}"></b>` : ''}</span>`;
+    return `<span class="board-icon" aria-hidden="true">${boardGlyph(type, small)}${count > 1 ? `<b class="board-icon-count" data-count="${count}"></b>` : ''}</span>`;
   }
 
   function fleetSymbolsAt(key) {
@@ -4643,7 +4641,7 @@ function createGalacticReach(options = {}) {
   }
 
   function renderMaxSymbolLegend() {
-    $('#resource-legend').innerHTML = `<strong class="legend-heading">Map key</strong>${RESOURCES.map(resource=>`<span>${resourceDot(resource)}${RESOURCE_NAMES[resource]}</span>`).join('')}<span>${TERRITORY_SWATCH}Owner’s colour rings each held planet and marks its buildings</span><span>◈ Located relic</span><span>● Gray moon · no production</span><span>Worlds are public · Moons and relics start hidden</span>`;
+    $('#resource-legend').innerHTML = `<strong class="legend-heading">Map key</strong>${RESOURCES.map(resource=>`<span>${resourceDot(resource)}${RESOURCE_NAMES[resource]}</span>`).join('')}<span>${TERRITORY_SWATCH}Owner’s colour rings each held planet and marks its buildings</span><span>${RELIC_ICON}Located relic</span><span>● Gray moon · no production</span><span>Worlds are public · Moons and relics start hidden</span>`;
     const entries = [
       ['settler','Settler'],['explorer','Explorer'],['fleet','Fleet'],
       ['colony','Colony'],['harvester','Harvester'],['starbase','Shipyard']
@@ -4655,17 +4653,17 @@ function createGalacticReach(options = {}) {
     const costRow = (icon, label, cost) => `<tr><th scope="row"><span class="legend-cost-name">${icon}<b>${label}</b></span></th>${RESOURCES.map(resource => `<td>${cost?.[resource] || ''}</td>`).join('')}</tr>`;
     if (corner) corner.innerHTML = `<table class="legend-cost-table" aria-label="Resource costs"><thead><tr><th scope="col">Build</th>${RESOURCES.map(resource => `<th scope="col" aria-label="${RESOURCE_NAMES[resource]}"><span class="legend-res ${resource}">${resourceDot(resource)}<span class="legend-resource-name">${RESOURCE_NAMES[resource]}</span><span class="legend-resource-short" aria-hidden="true">${RESOURCE_NAMES[resource][0]}</span></span></th>`).join('')}</tr></thead><tbody>`
       + entries.map(([type,label]) => costRow(BOARD_ICONS[type], label, pieceCost(type))).join('')
-      + costRow('<span class="legend-icon">◈</span>', 'Excavate', EXCAVATION_COST)
+      + costRow(icon('excavate', { className: 'board-glyph legend-icon' }), 'Excavate', EXCAVATION_COST)
       + `</tbody></table><span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
     $('#symbol-legend').innerHTML = `<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) => {
       const cost = type === 'colony' ? { biomass: COLONY_LIFE_COST } : SHIP_STATS[type]?.cost || STRUCTURES[type]?.cost;
-      return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-cost">${resourceDots(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
+      return `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${boardGlyph(type, false)}${label}</span><span class="symbol-legend-cost">${resourceDots(cost)}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`;
     }).join('')}<strong class="legend-heading">Card icons</strong><span class="legend-vocab symbol-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
   }
 
   function renderSymbolLegend() {
     if(globalThis.document?.body?.classList?.contains('background-stars'))return renderMaxSymbolLegend();
-    $('#resource-legend').innerHTML = `<strong class="legend-heading">Map key</strong>${RESOURCES.map(resource=>`<span>${resourceDot(resource)}${RESOURCE_NAMES[resource]}</span>`).join('')}<span>${TERRITORY_SWATCH}Owner’s colour rings each held planet and marks its buildings</span><span>◈ Located relic</span><span>● Gray moon · no production</span><span>Worlds are public · Moons and relics start hidden</span>`;
+    $('#resource-legend').innerHTML = `<strong class="legend-heading">Map key</strong>${RESOURCES.map(resource=>`<span>${resourceDot(resource)}${RESOURCE_NAMES[resource]}</span>`).join('')}<span>${TERRITORY_SWATCH}Owner’s colour rings each held planet and marks its buildings</span><span>${RELIC_ICON}Located relic</span><span>● Gray moon · no production</span><span>Worlds are public · Moons and relics start hidden</span>`;
     const entries = [
       ['settler','Settler'],['explorer','Explorer'],['fleet','Fleet'],
       ['colony','Colony'],['harvester','Harvester'],['starbase','Shipyard']
@@ -4679,10 +4677,10 @@ function createGalacticReach(options = {}) {
     const costRow = (kind, icon, label, cost) => `<div class="legend-cost-row" data-cost-kind="${kind}"><dt class="legend-cost-name">${icon}<b>${label}</b></dt><dd>${costClusters(cost)}</dd></div>`;
     const costList = `<dl class="legend-cost-list" aria-label="Resource costs">`
       + entries.map(([type,label]) => costRow(type, BOARD_ICONS[type], label, pieceCost(type))).join('')
-      + costRow('excavate', '<span class="legend-icon">◈</span>', 'Excavate', EXCAVATION_COST) + '</dl>';
+      + costRow('excavate', icon('excavate', { className: 'board-glyph legend-icon' }), 'Excavate', EXCAVATION_COST) + '</dl>';
     if (corner) corner.innerHTML = costList + `<span class="legend-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
     $('#symbol-legend').innerHTML = `<strong class="legend-heading">Costs</strong>${costList}<strong class="legend-heading">Units &amp; buildings</strong>${entries.map(([type,label]) =>
-      `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${BOARD_ICONS[type]}${label}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`
+      `<span class="tooltip-anchor symbol-legend-item" role="group" tabindex="0" data-tooltip="${LEGEND_TOOLTIPS[type]}" aria-label="${label}. ${LEGEND_TOOLTIPS[type]}"><span class="symbol-legend-name">${boardGlyph(type, false)}${label}</span><span class="symbol-legend-description">${LEGEND_TOOLTIPS[type]}</span></span>`
     ).join('')}<strong class="legend-heading">Card icons</strong><span class="legend-vocab symbol-vocab">${VOCAB_LABELS.map(([key,label]) => `<span>${VOCAB_ICONS[key]}${label}</span>`).join('')}</span>`;
   }
 
@@ -4760,7 +4758,7 @@ function createGalacticReach(options = {}) {
       fleets.innerHTML = fleetSymbolsAt(key);
       if (planet) {
         buildings.innerHTML = known ? buildingSymbols(planet) : '';
-        special.textContent = relicSignal ? (planet.relicClaimed?'◇':'◈') : '';
+        special.innerHTML = relicSignal ? `<span class="hex-relic${planet.relicClaimed ? ' relic-claimed' : ''}">${RELIC_ICON}</span>` : '';
         const buildingText = hasBuilding(planet) ? `, ${buildingLabel(planet)}` : '';
         const fleetText = fleetAriaAt(key);
         hex.setAttribute('aria-label',known?`${planet.name}, ${planet.type}, ${planet.owner===null?'unclaimed':state.players[planet.owner].name}${buildingText}${fleetText ? `, fleet ${fleetText}` : ''}${relicSignal?', relic site':''}`:relicSignal?`Alien relic signal at ${key}; surrounding terrain unknown${fleetText?', fleet '+fleetText:''}`:`Space ${key}${fleetText?', fleet '+fleetText:''}`);
@@ -4798,7 +4796,7 @@ function createGalacticReach(options = {}) {
     ['colony', 'Colonies', 'Colonies: 3 Prestige each', () => BOARD_ICONS.colony],
     ['harvester', 'Harvesters', 'Harvesters: each produces 2 of its hex’s resource per round', () => BOARD_ICONS.harvester],
     ['starbase', 'Shipyards', 'Shipyards: commission ships and defend their hex', () => BOARD_ICONS.starbase],
-    ['relics', 'Excavated relics', 'Excavated relics: 2 Prestige each', () => '<span class="standings-glyph" aria-hidden="true">◈</span>'],
+    ['relics', 'Excavated relics', 'Excavated relics: 2 Prestige each', () => `<span class="standings-glyph" aria-hidden="true">${RELIC_ICON}</span>`],
     ['cards', 'Cards bought', 'Cards bought from the market (normal and military)', () => VOCAB_ICONS.draw],
   ];
   function standingsRow(id) {
@@ -4832,14 +4830,14 @@ function createGalacticReach(options = {}) {
       const eloText = elo ? ` · Elo ${Math.round(elo.before)} → ${Math.round(elo.after)} (${elo.after>=elo.before?'+':''}${(elo.after-elo.before).toFixed(1)})` : '';
       const colonies = colonyPlanets(id).length, breakdown = prestigeBreakdown(id), points = breakdown.total, at = Math.min(100, points / target * 100);
       const sources = [['Colonies', breakdown.colonies], ['Relics', breakdown.relics], ['Battles', breakdown.combat], ['Cards', breakdown.cards]];
-      const overview = `<div class="score-overview" id="score-overview-${id}" role="tooltip"><strong class="score-overview-title"><span>${esc(player.name)} <i>${status}</i></span><b>${points} of ${target}★</b></strong><dl>${sources.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}★</dd></div>`).join('')}</dl><p>${colonies} ${colonies===1?'colony':'colonies'} · ${player.cardsPurchased||0} cards bought · ${strongestFleet(id)} fleet power${eloText}</p></div>`;
+      const overview = `<div class="score-overview" id="score-overview-${id}" role="tooltip"><strong class="score-overview-title"><span>${esc(player.name)} <i>${status}</i></span><b>${points} of ${target}${PRESTIGE_MARK}</b></strong><dl>${sources.map(([label,value])=>`<div><dt>${label}</dt><dd>${value}${PRESTIGE_MARK}</dd></div>`).join('')}</dl><p>${colonies} ${colonies===1?'colony':'colonies'} · ${player.cardsPurchased||0} cards bought · ${strongestFleet(id)} fleet power${eloText}</p></div>`;
       const label = `${esc(player.name)}, ${status}: ${points} of ${target} Prestige. Show point breakdown`;
       return `<div class="prestige-lane${at>70?' flip':''}" style="--player:${player.color};--at:${at}%"><button type="button" class="prestige-marker${active?' acting':''}${replayMode&&id===viewSeat?' viewing':''}" data-score-player="${id}" aria-label="${label}" aria-describedby="score-overview-${id}" aria-haspopup="dialog"><b>${points}</b><span class="prestige-name">${esc(tag(player,id))}</span></button>${overview}</div>`;
     }).join('');
     // Each lane starts with its faction's name (the first word; the full name on hover and in the
     // standings table's row header for screen readers).
     const names = state.players.map((player,id) => `<span class="prestige-lane-name${state.activePlayer===id && state.winner===null?' acting':''}" style="--player:${player.color}" title="${esc(player.name)}">${esc(id===ME && !replayMode ? 'You' : player.name.split(/\s+/)[0])}</span>`).join('');
-    $('#prestige-track').innerHTML = `<span class="prestige-track-goal">${target}★</span><div class="prestige-names" aria-hidden="true">${names}</div><div class="prestige-line">${ticks}${lanes}</div>${standingsTable(tag)}`;
+    $('#prestige-track').innerHTML = `<span class="prestige-track-goal">${target}${PRESTIGE_MARK}</span><div class="prestige-names" aria-hidden="true">${names}</div><div class="prestige-line">${ticks}${lanes}</div>${standingsTable(tag)}`;
     $('.app-shell')?.style.setProperty('--lanes', state.players.length);
     $$('[data-score-player]').forEach(button=>button.addEventListener('click',()=>showPrestigeBreakdown(Number(button.dataset.scorePlayer))));
     renderHistoryStatus();
@@ -5047,7 +5045,7 @@ function createGalacticReach(options = {}) {
     const actualPlanet = state.planets[key];
     const planet = actualPlanet && (knownToViewer(state.clusters[actualPlanet.cluster]) || relicKnownToViewer(actualPlanet)) ? actualPlanet : null;
     const exit=portalExit(key),portalFact=exit?scanSymbol(`Corner portal: aligned exit ${exit}, crossing costs 2 movement`,PORTAL_GLYPH,'scan-portal'):'';
-    const relicFact=planet&&relicKnownToViewer(planet)?scanSymbol(knownToViewer(state.clusters[planet.cluster])?'Relic site: available':'Relic site: located privately, available','◈','scan-relic'):'';
+    const relicFact=planet&&relicKnownToViewer(planet)?scanSymbol(knownToViewer(state.clusters[planet.cluster])?'Relic site: available':'Relic site: located privately, available',RELIC_ICON,'scan-relic'):'';
     if (planet && !knownToViewer(state.clusters[planet.cluster])) {
       title.textContent = 'Alien relic signal';
       detail.textContent = 'The surrounding terrain remains unknown.';
@@ -5141,28 +5139,22 @@ function createGalacticReach(options = {}) {
     ['prestige', /prestige|won with/i],
     ['pass', /passed|could not/i],
   ];
+  // Kinds of event that are one of the twenty symbols draw that symbol; the rest keep a line drawing.
+  const LOG_STAR_ICONS = { battle: 'hit', trade: 'trade', relic: 'excavate', colonize: 'colonize', build: 'build', move: 'move', draw: 'draw', prestige: 'prestige' };
   const LOG_ICONS = {
     production: '<circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3M6 6l2.1 2.1M15.9 15.9 18 18M6 18l2.1-2.1M15.9 8.1 18 6"/>',
-    battle: '<path d="M4 4l11 11M20 4 9 15M13 17l4-4M11 17l-4-4M16.5 16.5 20 20M7.5 16.5 4 20"/>',
-    trade: '<path d="M4 8h15M15 4l4 4-4 4M20 16H5M9 12l-4 4 4 4"/>',
     upgrade: '<path d="M6 13l6-6 6 6M6 19l6-6 6 6"/>',
     trash: '<path d="M4 7h16M9 7V4h6v3M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>',
     buy: '<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M12 8v8M8 12h8"/>',
     convert: '<path d="M19 9a7.5 7.5 0 0 0-13.4-2M5 15a7.5 7.5 0 0 0 13.4 2"/><path d="M5.6 3v4h4M18.4 21v-4h-4"/>',
-    relic: '<path d="M7 4h10l4 5-9 11L3 9zM3 9h18M12 20 9 9l3-5 3 5z"/>',
-    colonize: '<path d="M6 21V4M6 4h12l-3 4.5 3 4.5H6"/>',
-    build: '<path d="M4 20h16M6 20V10l6-5 6 5v10M10 20v-5h4v5"/>',
-    move: '<path d="M3 12h16M13 6l6 6-6 6"/>',
-    draw: '<rect x="9" y="3" width="11" height="15" rx="2"/><path d="M6 6.5 4.6 7a2 2 0 0 0-1.2 2.5l3.6 10.2a2 2 0 0 0 2.6 1.2L15 19"/>',
-    prestige: '<path d="M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/>',
     pass: '<path d="M9 5v14M15 5v14"/>',
     event: '<circle cx="12" cy="12" r="3.5"/>',
   };
-  const logIcon = kind => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LOG_ICONS[kind]}</svg>`;
+  const logIcon = kind => LOG_STAR_ICONS[kind] && ICON_SET ? icon(LOG_STAR_ICONS[kind]) : `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${LOG_ICONS[kind] || LOG_ICONS.event}</svg>`;
   const LOG_RESOURCE = { Matter:'matter', Energy:'energy', Life:'biomass', Biomass:'biomass', Data:'data' };
   function logVisual(text) {
     return esc(text)
-      .replace(/(\d+) (?:permanent )?Prestige/g, (_, n) => `<span class="log-prestige">${n}★</span>`)
+      .replace(/(\d+) (?:permanent )?Prestige/g, (_, n) => `<span class="log-prestige">${n}${PRESTIGE_MARK}</span>`)
       .replace(/(\d+) (Matter|Energy|Life|Biomass|Data)\b/g, (_, n, name) => `<span class="log-res ${LOG_RESOURCE[name]}">${resourceDot(LOG_RESOURCE[name])}<b>${n}</b></span>`);
   }
   // On the table the log is a small card of the latest LOG_RECENT entries until it is opened.
@@ -5196,7 +5188,7 @@ function createGalacticReach(options = {}) {
       || (definition.kind === 'Expansion' || definition.affinity === 'Settlement' ? 'colony' : 'starbase');
     const art = CARD_ART_KEYS.get(definition);
     if (art) return `<span class="card-art has-picture" aria-hidden="true"><img class="card-picture" src="card-art/${art}.webp" alt="" loading="lazy" decoding="async" draggable="false"><span class="card-emblem">${BOARD_ICONS[motif]}</span></span>`;
-    return `<span class="card-art" aria-hidden="true"><span class="card-orbit"></span>${BOARD_ICONS[motif]}<span class="card-registration">HEIRS AD ASTRA</span></span>`;
+    return `<span class="card-art" aria-hidden="true"><span class="card-orbit"></span>${boardGlyph(motif, false)}<span class="card-registration">HEIRS AD ASTRA</span></span>`;
   }
 
   function maxCardMarkup(card, location) {
@@ -5908,7 +5900,7 @@ function createGalacticReach(options = {}) {
     return `<div class="combat-units">${shown.map(piece => {
       const name = SHIP_STATS[piece.type]?.name || 'Shipyard', hull = Math.max(0, piece.hull - piece.damage), destroyed = hull === 0;
       const label = `${piece.count > 1 ? `${piece.count} × ` : ''}${name}: ${destroyed ? 'destroyed' : `${piece.power} attack, ${hull}/${piece.hull} hull${piece.count > 1 ? ' each' : ''}`}`;
-      return `<figure class="combat-unit${destroyed ? ' destroyed' : ''}" aria-label="${esc(label)}">${boardIcon(piece.type)}<figcaption><strong>${esc(name)}${piece.count > 1 ? ` ×${piece.count}` : ''}</strong><span>${destroyed ? 'Destroyed' : `<b>${piece.power}</b> attack · <b>${hull}/${piece.hull}</b> hull${piece.count > 1 ? ' each' : ''}`}</span></figcaption><span class="combat-hull" aria-hidden="true"><span style="width:${100 * hull / piece.hull}%"></span></span></figure>`;
+      return `<figure class="combat-unit${destroyed ? ' destroyed' : ''}" aria-label="${esc(label)}">${boardIcon(piece.type, 1, false)}<figcaption><strong>${esc(name)}${piece.count > 1 ? ` ×${piece.count}` : ''}</strong><span>${destroyed ? 'Destroyed' : `<b>${piece.power}</b> attack · <b>${hull}/${piece.hull}</b> hull${piece.count > 1 ? ' each' : ''}`}</span></figcaption><span class="combat-hull" aria-hidden="true"><span style="width:${100 * hull / piece.hull}%"></span></span></figure>`;
     }).join('') || '<p class="muted">No units remain.</p>'}</div>`;
   }
 
