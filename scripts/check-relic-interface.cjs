@@ -39,6 +39,10 @@ function fixture(kind){const g=game(),{s,p,e}=g;
  }
  return plain(s);
 }
+// Every size runs every case. CHECK_SHARD=k/n keeps every nth size from the kth, so CI can run the
+// sizes in n parallel jobs that together cover the whole list.
+const SIZES=[[1280,720,false],[1440,900,false],[1024,768,true],[768,1024,true],[390,844,false],[844,390,true],[667,375,true]];
+function shard(sizes){const [k,n]=(process.env.CHECK_SHARD||'1/1').split('/').map(Number);assert(Number.isInteger(k)&&Number.isInteger(n)&&k>=1&&k<=n,'CHECK_SHARD is k/n with 1 <= k <= n');return sizes.filter((_,i)=>i%n===k-1);}
 const types={'.js':'text/javascript','.css':'text/css','.html':'text/html','.json':'application/json','.webp':'image/webp','.svg':'image/svg+xml'};
 const server=http.createServer((req,res)=>{
  const u=new URL(req.url,'http://localhost');
@@ -67,7 +71,7 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
  try{
   await b.send('Emulation.setFocusEmulationEnabled',{enabled:true});
   await b.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
-  for(const [width,height,touch] of (process.env.CHECK_SIZES?process.env.CHECK_SIZES.split(',').map(v=>{const [w,h]=v.split('x').map(Number);return [w,h,w<1200];}):[[1280,720,false],[1440,900,false],[1024,768,true],[768,1024,true],[390,844,false],[844,390,true],[667,375,true]])){
+  for(const [width,height,touch] of (process.env.CHECK_SIZES?process.env.CHECK_SIZES.split(',').map(v=>{const [w,h]=v.split('x').map(Number);return [w,h,w<1200];}):shard(SIZES))){
    await b.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:touch});await b.send('Emulation.setTouchEmulationEnabled',{enabled:touch,maxTouchPoints:1});
    await load('echoes');await click('[data-order-card]');await wait('document.querySelector("#relic-action-dialog").open');await fit();
    await select('#relic-choice-options','Construct III + Folded Warehouse');await shot(`echoes-${width}x${height}`);
