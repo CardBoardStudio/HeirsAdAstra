@@ -1346,6 +1346,9 @@ body.background-stars .board-stage.map-zoomed .max-resource-legend {
 .upgrade-options .button small { margin-left: 6px; color: var(--muted); font-weight: 500; }
 /* Board-edge HUD and card headlines appear only in the desktop layout below. */
 .phase-stepper, .prestige-track, .board-primary, .card-headline { display: none; }
+/* The turn's main button keeps its word groups whole ("Pass &" / "buy"), so a narrow layout can stack them. */
+.board-primary { column-gap: .3em; }
+.board-primary .word { white-space: nowrap; }
 
 /* Trade opens as a dialog from the button beside the tabs. */
 .console-nav { display: flex; align-items: stretch; gap: 3px; }

@@ -46,7 +46,7 @@
   // upper corners of every card show. The fan fills the room the hand already has: a small hand
   // keeps full-width cards, a large one narrows them, down to FAN_MIN_W; only beyond that do
   // neighbours overlap (a card's right corner then lies under its neighbour).
-  const FAN_GAP = 6, FAN_MIN_W = 56, FAN_MAX_DEG = 3.2, FAN_SPREAD_DEG = 14, FAN_SAG = 10;
+  const FAN_GAP = 6, FAN_MIN_W = 56, FAN_MAX_DEG = 3.2, FAN_SPREAD_DEG = 14, FAN_SAG = 10, FAN_TAP_W = 46;
   function fanHand() {
     const row = $('#hand-row'), cards = $$('#hand-row > .game-card');
     row?.style.setProperty('--max-hand-count', String(Math.max(2, cards.length)));
@@ -58,10 +58,15 @@
       cards.forEach((card,i)=>{card.style.removeProperty('--fan-h');const offset=i-mid;card.style.setProperty('--cf-fan',`${(offset*step).toFixed(2)}deg`);card.style.setProperty('--cf-arc',`${(-Math.max(0,5-offset*offset*1.1)).toFixed(1)}px`);});
       placeSlots();return;
     }
-    const phone = globalThis.matchMedia?.('(max-width: 599px), (max-height: 599px)').matches;
+    // An upright phone holds its hand in a scrolling strip; a phone held sideways fans it too (phone.css).
+    const phone = globalThis.matchMedia?.('(max-width: 599px), (max-height: 599px)').matches && !globalThis.matchMedia('(max-height: 599px) and (orientation: landscape)').matches;
     const n = cards.length, mid = (n - 1) / 2;
-    if (phone || !n) { delete row.dataset.fanRoom; row.classList.remove('fan-tight'); cards.forEach(card => ['--cf-fan', '--cf-arc'].forEach(name => card.style.removeProperty(name))); placeSlots(); return; }
+    if (phone || !n) { delete row.dataset.fanRoom; row.classList.remove('fan-tight', 'fan-scroll'); row.style.removeProperty('--hand-end'); cards.forEach(card => ['--cf-fan', '--cf-arc'].forEach(name => card.style.removeProperty(name))); placeSlots(); return; }
     const zoom = Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1;
+    // A phone held sideways (phone.css) has the turn's buttons at the right end of the hand's band:
+    // the hand ends just before them.
+    const sideways = globalThis.matchMedia?.('(max-height: 599px) and (orientation: landscape)').matches;
+    if (sideways) { const tools = $('#hand-panel .hand-tools')?.getBoundingClientRect(); row.style.setProperty('--hand-end', `${Math.ceil(tools?.width ? innerWidth - tools.left + 6 : 6)}px`); }
     // The room ends before any control that shares the hand's band (in some layouts the turn's
     // buttons sit inside the hand's box), so no card covers one.
     const box = row.getBoundingClientRect(), styles = getComputedStyle(row);
@@ -73,20 +78,24 @@
     const full = parseFloat(styles.getPropertyValue('--top-w')) || 168;
     let width = Math.min(full, (room + FAN_GAP) / n - FAN_GAP), step = FAN_GAP;
     if (width < FAN_MIN_W) { width = FAN_MIN_W; step = n > 1 ? (room - n * width) / (n - 1) : 0; }
+    // There every card keeps a finger's width in view; a hand too big for that scrolls sideways, flat.
+    const scroll = sideways && n > 1 && width + step < FAN_TAP_W;
+    if (scroll) step = FAN_TAP_W - width;
+    row.classList.toggle('fan-scroll', scroll);
     row.classList.remove('fan-tight');
-    const lead = Math.max(0, (room - (n * width + (n - 1) * step)) / 2);
+    const lead = scroll ? 0 : Math.max(0, (room - (n * width + (n - 1) * step)) / 2);
     row.style.setProperty('--top-w', `${width.toFixed(1)}px`, 'important');
     row.style.setProperty('--step', `${step.toFixed(1)}px`, 'important');
     // The fan centres itself in its room (some layouts centre the row as well, which would count twice).
     row.style.setProperty('padding-left', `${lead.toFixed(1)}px`, 'important');
     row.style.setProperty('justify-content', 'flex-start', 'important');
-    const turn = n > 1 ? Math.min(FAN_MAX_DEG, FAN_SPREAD_DEG / (n - 1)) : 0;
+    const turn = n > 1 && !scroll ? Math.min(FAN_MAX_DEG, FAN_SPREAD_DEG / (n - 1)) : 0;
     // The arc comes from each card's height, not a shift: a card further out is shorter, so its top
     // sits lower while its foot stays on the hand's floor, and the corner its turn lowers stays above it.
     cards.forEach(card => card.style.removeProperty('--fan-h'));
     const floor = cards[0].offsetHeight;
     cards.forEach((card, index) => {
-      const offset = index - mid, angle = offset * turn * Math.PI / 180, sag = mid ? FAN_SAG * (offset / mid) ** 2 : 0;
+      const offset = index - mid, angle = offset * turn * Math.PI / 180, sag = mid && !scroll ? FAN_SAG * (offset / mid) ** 2 : 0;
       card.style.setProperty('--cf-fan', `${(offset * turn).toFixed(2)}deg`);
       const height = Math.max(0, (floor - sag - width / 2 * Math.abs(Math.sin(angle))) / Math.cos(angle));
       card.style.setProperty('--fan-h', `${height.toFixed(1)}px`);
@@ -96,7 +105,8 @@
     // Beyond the fan's room (neighbours overlap, or a card's corners are wider than the card), each
     // card stacks its symbols in the strip that shows.
     const cramped = card => { const sym = card.querySelector(':scope > .card-symbols'), foot = card.querySelector(':scope > .card-footer');
-      return Boolean(sym) && sym.offsetLeft + sym.offsetWidth > (foot?.offsetWidth ? foot.offsetLeft : card.clientWidth) + 1; };
+      return (Boolean(sym) && sym.offsetLeft + sym.offsetWidth > (foot?.offsetWidth ? foot.offsetLeft : card.clientWidth) + 1)
+        || (Boolean(foot?.offsetWidth) && foot.offsetLeft + foot.offsetWidth > card.clientWidth + 1); };
     row.classList.toggle('fan-tight', step < 0 || cards.some(card => !raisedNow(card) && cramped(card)));
     placeSlots();
   }
@@ -241,7 +251,8 @@
   document.addEventListener('click', event => {
     if (event.detail === 0) return;
     const corner = event.target.closest?.('#hand-row .corner-button'), card = corner?.closest('.game-card');
-    if (!card || !raisedBy.has(card)) return;
+    // (Learn to play's lit corner on a card it keeps in the hand acts at once: guide.js keepCardInHand.)
+    if (!card || !raisedBy.has(card) || corner.classList.contains('gr-coach-corner')) return;
     raisedBy.delete(card);
     event.preventDefault(); event.stopPropagation();
     corner.focus({ preventScroll: true });
