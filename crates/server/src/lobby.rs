@@ -83,6 +83,20 @@ pub fn url(id: &str) -> String {
     format!("/?game=galactic-reach#lobby/{id}")
 }
 
+/// Where the host waits for a table that has not started: the waiting screen that
+/// holds its player link once it is played with others, else this waiting room.
+pub fn host_url(db: &Connection, id: &str) -> ApiResult<String> {
+    Ok(if crate::tabletop::enabled(db, id)? {
+        format!("/tabletop/host.html?table={id}")
+    } else {
+        url(id)
+    })
+}
+
+/// Why Start waits at a table played with others (rulebook #shared-tables): the same
+/// condition `tabletop::check_start` refuses, in words that say what to do instead.
+pub const NEEDS_A_SECOND_PERSON: &str = "Playing with others starts once a second person joins; computer rivals never count as one. Send the link, or play alone instead.";
+
 /// The waiting-room status of a table, if it was created with one.
 pub fn status(db: &Connection, table_id: &str) -> ApiResult<Option<String>> {
     db.query_row(
@@ -126,6 +140,8 @@ struct Lobby {
     guests: Vec<(String, String)>,
     /// Started as a shared table (friends seated), not a solo browser table.
     shared: bool,
+    /// Played with others (it has a tabletop room): Start needs a second person.
+    paired: bool,
 }
 impl Lobby {
     fn humans(&self) -> u32 {
@@ -136,7 +152,9 @@ impl Lobby {
     }
     /// Why Start cannot open this configuration yet, if it cannot.
     fn blocked(&self) -> Option<&'static str> {
-        if self.humans() + self.ai_rivals != SEATS {
+        if self.paired && self.guests.is_empty() {
+            Some(NEEDS_A_SECOND_PERSON)
+        } else if self.humans() + self.ai_rivals != SEATS {
             Some("The current rules always seat four factions.")
         } else if self.difficulty != "standard" {
             Some("Easy rivals (Wanderer) play in the AI arena but not yet in the browser game.")
@@ -164,6 +182,7 @@ fn load(db: &Connection, id: &str) -> ApiResult<Lobby> {
                     victory_target: r.get(7)?,
                     guests: vec![],
                     shared: false,
+                    paired: false,
                 })
             },
         )
@@ -182,6 +201,7 @@ fn load(db: &Connection, id: &str) -> ApiResult<Lobby> {
         .collect::<Result<_, _>>()
         .map_err(internal)?;
     lobby.shared = crate::shared::status(db, id)?.is_some();
+    lobby.paired = crate::tabletop::enabled(db, id)?;
     // Rivals are not a host choice (captain, 2026-11-14): Standard AI rivals fill
     // every seat a person has not taken. Fewer or Easy rivals return once built.
     lobby.ai_rivals = SEATS - lobby.humans();
@@ -207,7 +227,7 @@ fn view(app: &App, id: &str, lobby: &Lobby, me: &str) -> serde_json::Value {
         "victory_target":lobby.victory_target,"victory_targets":VICTORY_TARGETS,
         "max_ai_rivals":SEATS-lobby.humans(),"min_ai_rivals":u32::from(lobby.humans()==1),
         "difficulties":DIFFICULTIES.iter().map(|(id,name,about)|json!({"id":id,"name":name,"description":about})).collect::<Vec<_>>(),
-        "seats":seats,"blocked":lobby.blocked(),
+        "seats":seats,"blocked":lobby.blocked(),"paired":lobby.paired,
         "invite_url":host.then(|| format!("{}/?game=galactic-reach#lobby/{id}/{}", app.origin, lobby.invite)),
         "shared": lobby.shared,
         "table_url":(lobby.status=="started").then(|| if lobby.shared { crate::shared::url(id) } else { format!("/galactic-reach/?table={id}") }),

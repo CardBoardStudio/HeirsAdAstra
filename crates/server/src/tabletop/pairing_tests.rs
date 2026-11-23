@@ -708,3 +708,58 @@ async fn waiting_screen_learns_whether_its_invitation_is_live_but_never_the_link
     assert_eq!(code, StatusCode::OK, "{started}");
     assert_eq!(requests(&app, &id, &host).await["invite_live"], false);
 }
+
+/// A table played with others and only its host seated: the waiting room says Start
+/// waits for a second person instead of offering a Start the server refuses, and the
+/// game page sends the host to the same waiting screen as Your tables.
+#[tokio::test]
+async fn waiting_room_says_start_waits_for_a_second_person() {
+    let (app, host, id) = setup().await;
+    let lobby = format!("/api/tables/{id}/lobby");
+    let room = call(&app, "GET", &lobby, &host, json!({})).await.2;
+    assert!(room["blocked"].is_null(), "no tabletop room yet: {room}");
+    assert_eq!(room["paired"], false);
+    let (_, _, invite) = scoped(&app, &id, "phone-invite", &host, json!({})).await;
+    let room = call(&app, "GET", &lobby, &host, json!({})).await.2;
+    assert_eq!(room["paired"], true);
+    assert_eq!(room["blocked"], crate::lobby::NEEDS_A_SECOND_PERSON);
+    assert_eq!(
+        room["seats"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|s| s["kind"] == "ai")
+            .count(),
+        3
+    );
+    let refused = call(&app, "POST", &format!("{lobby}/start"), &host, json!({})).await;
+    assert_eq!(refused.0, StatusCode::BAD_REQUEST, "{}", refused.2);
+    let waiting = format!("/tabletop/host.html?table={id}");
+    let table = call(&app, "GET", &format!("/api/tables/{id}"), &host, json!({}))
+        .await
+        .2;
+    assert_eq!(table["lobby_url"], waiting.as_str());
+    let shelf = call(&app, "GET", "/api/tables", &host, json!({})).await.2;
+    let listed = shelf
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|t| t["id"] == id.as_str())
+        .unwrap();
+    assert_eq!(listed["url"], waiting.as_str());
+    // Once someone is let in, Start opens the game.
+    join_phone(&app, &id, &invite, "Bea").await;
+    let participant = requests(&app, &id, &host).await["requests"][0]["participant"].clone();
+    scoped(
+        &app,
+        &id,
+        "approve",
+        &host,
+        json!({"participant":participant,"approve":true}),
+    )
+    .await;
+    let room = call(&app, "GET", &lobby, &host, json!({})).await.2;
+    assert!(room["blocked"].is_null(), "{room}");
+    let (code, _, started) = call(&app, "POST", &format!("{lobby}/start"), &host, json!({})).await;
+    assert_eq!(code, StatusCode::OK, "{started}");
+}

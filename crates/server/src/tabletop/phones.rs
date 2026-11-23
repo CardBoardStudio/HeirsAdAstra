@@ -322,6 +322,7 @@ pub async fn requests(
 }
 /// The existing lobby start endpoint still owns random seating and AI fill.
 /// This guard also protects starts made through the older account UI.
+/// The waiting room reports the same condition before Start (`lobby::NEEDS_A_SECOND_PERSON`).
 pub fn check_start(db: &Connection, id: &str) -> ApiResult<()> {
     let tabletop: bool = db
         .query_row(
