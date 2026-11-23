@@ -543,7 +543,7 @@ test('Only level I starters show conversion controls; bulk conversion preserves 
  const game=boot(storage),before=game.saved();
  assert.deepEqual(game.dom.lastQuery('[data-resource-card]').map(b=>b.dataset.resourceCard),['level-I']);
  assert.equal(game.dom.element('convert-all-button').disabled,false);
- assert.equal(game.dom.element('convert-all-button').hidden,false,'Convert level I starters is shown while the hand holds one');
+ assert.equal(game.dom.element('convert-all-button').hidden,false,'Convert all is shown while the hand holds a level I starter');
  game.click('convert-all-button');const after=game.saved();
  assert.deepEqual(after.players[0].hand.map(c=>c.id),before.players[0].hand.filter(c=>c.id!=='level-I').map(c=>c.id));
  assert.equal(after.players[0].resources.energy,1);assert.equal(after.phase,'operations');assert.equal(after.activePlayer,0);

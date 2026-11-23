@@ -35,9 +35,12 @@ const TALL_VIEWPORTS = [[1440, 1200], [1600, 1600], [1800, 2000]];
 const ZOOM_VIEWPORTS = [0.67, 1.25, 1.5, 2].map(zoom => [Math.round(1440 / zoom), Math.round(900 / zoom), zoom, `1440x900@${Math.round(zoom * 100)}%`]);
 const viewportName = viewport => viewport[3] || `${viewport[0]}x${viewport[1]}`;
 // Touch devices (mobile emulation with touch on): iPads in landscape and portrait must fit with no
-// page scroll, like the desktop; phones may scroll vertically (drawers) but never sideways.
+// page scroll, like the desktop; phones may scroll inside drawers but never sideways. Phones are
+// played sideways (rulebook #shared-board): a small, a common and a large phone held sideways. Held
+// upright, a phone shows only the prompt to turn it (the 'phone held upright' case).
 const TABLET_VIEWPORTS = [[1024, 768], [1180, 820], [1366, 1024], [768, 1024], [820, 1180], [1024, 1366]];
-const PHONE_VIEWPORTS = [[390, 844], [844, 390]];
+const PHONE_VIEWPORTS = [[844, 390], [932, 430], [667, 375]];
+const UPRIGHT_PHONE = [390, 844];
 const isPhone = ([width, height]) => Math.min(width, height) < 600;
 const TABLE_ID = 'a'.repeat(32);
 const SHOTS = process.env.SHOTS;
@@ -266,6 +269,26 @@ const CASES = [
   { name: 'shared table, hand', shared: sharedView(operationsState(['move', 'construct', 'probe', 'construct', 'move'])), devices: true },
   { name: 'shared table, market', shared: sharedView(buyState(chunks[1])), click: ['#market-tab'] },
   { name: 'waiting room', lobby: true },
+  // Phones held sideways (rulebook #shared-board): the drawers open from the left edge as sheets,
+  // a tapped hand card opens whole over the map, Learn to play's note has its own column, and the
+  // map has most of the screen while the market is closed.
+  { name: 'mat drawer (phones)', save: midGameState(), click: ['.phone-drawers [data-drawer="mat"]'], devices: 'phone' },
+  { name: 'comms drawer (phones)', save: midGameState(), click: ['.phone-drawers [data-drawer="comms"]'], devices: 'phone' },
+  { name: 'tapped hand card opens whole (phones)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), phoneTap: '#hand-row .game-card:nth-child(3)', devices: 'phone' },
+  // Learn to play keeps the step's card in the fan (its lit corner does the step), so neither the
+  // opened card nor the label lies over the mat row the step lights.
+  { name: 'Learn to play, first step (phones)', tutorial: true, cueTap: true, devices: 'phone' },
+  // A phone joined to a shared table as "my hand" or as "the whole game" (rulebook #phone-pairing):
+  // held sideways both show the map and the hand's fan, with no drawer over them.
+  ...['hand', 'game'].map(view => ({ name: `shared table, this device: ${view === 'hand' ? 'my hand' : 'the whole game'} (phones)`, shared: sharedView(operationsState(['move', 'construct', 'probe', 'construct', 'move'])), storage: { [`heirs-device:${TABLE_ID}`]: view }, deviceView: view, devices: 'phone' })),
+  { name: 'map share, market closed, guidance off (phones)', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), mapShare: 0.6, guidanceOff: true, devices: 'phone' },
+];
+// Held upright, a phone shows only the prompt to turn it; turning it removes the prompt at once with
+// the game as it was. A narrow desktop window and the waiting room never show it.
+const UPRIGHT_CASES = [
+  { name: 'phone held upright: turn it sideways', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), upright: true, device: true },
+  { name: 'narrow desktop window, upright (no turn prompt)', save: operationsState(['move', 'construct', 'move', 'construct', 'move']) },
+  { name: 'waiting room on a phone held upright', lobby: true, device: true },
 ];
 
 // ---- A tiny static server with just enough API for the table bar and waiting room. ----
@@ -342,15 +365,55 @@ const MEASURE = `(() => {
   const shown = e => e.checkVisibility({ visibilityProperty: true, opacityProperty: false });
   const doc = document.scrollingElement;
   const phone = window.__fitMode === 'phone';
-  if ((!phone && doc.scrollHeight > H + 1) || doc.scrollWidth > W + 1) problems.push('page scrolls: ' + doc.scrollWidth + 'x' + doc.scrollHeight);
+  // A phone held sideways (rulebook #shared-board) is one screen like the desktop: only its drawers
+  // and the map scroll, and every control is on screen.
+  const sideways = phone && W > H;
+  if (((!phone || sideways) && doc.scrollHeight > H + 1) || doc.scrollWidth > W + 1) problems.push('page scrolls: ' + doc.scrollWidth + 'x' + doc.scrollHeight);
+  // Only a phone held upright shows the prompt to turn it (phone.js): never a tablet or a desktop window.
+  if (document.querySelector('#rotate-prompt')?.checkVisibility()) problems.push('the turn-sideways prompt shows');
   // Containers allowed to scroll their own reference content.
-  const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region' + (phone ? ', .board-map-region, .console, .resource-panel, .board-shared, .phase-stepper, #hand-panel .hand-tools, .trade-panel' : '') + '';
+  const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region'
+    + (sideways ? ', .board-map-region, #market-panel, #relics-panel, .resource-panel, .board-shared, .prestige-track, .trade-panel, .phase-stepper, body.menu-open .topbar, .phone-card-sheet .game-card, .card-table-battle .combat-card-row'
+      : phone ? ', .board-map-region, .console, .resource-panel, .board-shared, .phase-stepper, #hand-panel .hand-tools, .trade-panel' : '');
+  if (sideways) {
+    // Finger-sized controls: the rail, the map tools, the turn's buttons, an opened card's corners,
+    // the supply's tabs and a battle's buttons are at least 44 px each way; each hand card shows a
+    // strip at least that wide.
+    for (const e of document.querySelectorAll('.phone-drawers button, #open-trade, #table-menu-button, .map-tools .button, #hand-panel .hand-tools .button, .phone-card-close, .phone-card-sheet .corner-button, body[data-drawer="supply"] .console-tab, .combat-options .button')) {
+      if (!shown(e)) continue;
+      const r = e.getBoundingClientRect();
+      if (r.width > 1 && (r.width < 43.5 || r.height < 43.5)) problems.push('tap target under 44 px: ' + label(e) + ' ' + Math.round(r.width) + 'x' + Math.round(r.height));
+    }
+    // The turn's buttons are narrow ("Pass &" over "buy") and no taller than the hand's band; an open
+    // mat's pile counts end above the hand.
+    const band = document.querySelector('#hand-row')?.getBoundingClientRect();
+    for (const e of document.querySelectorAll('#hand-panel .hand-tools .button')) if (shown(e) && band && e.getBoundingClientRect().height > band.height + 0.5) problems.push('turn button taller than the hand: ' + label(e));
+    const primary = document.querySelector('#board-primary');
+    if (shown(primary) && primary.getBoundingClientRect().width > 80) problems.push('main turn button not stacked narrow: ' + Math.round(primary.getBoundingClientRect().width) + ' px');
+    if (document.body.dataset.drawer === 'mat') for (const count of document.querySelectorAll('.pile-stats > button[id] strong')) if (band && count.getBoundingClientRect().bottom > band.top + 0.5) problems.push('mat pile count under the hand: ' + label(count.closest('button')));
+    // (A hand too big for that scrolls sideways: the cards in view are judged.)
+    const strip = document.querySelector('#hand-row')?.getBoundingClientRect();
+    const hand = [...document.querySelectorAll('#hand-row > .game-card')].filter(card => { const r = card.getBoundingClientRect(); return shown(card) && r.left >= strip.left - 1 && r.left < strip.right - 2; });
+    hand.forEach((card, i) => { const r = card.getBoundingClientRect(), next = hand[i + 1]?.getBoundingClientRect(); const strip = next && next.left > r.left ? Math.min(r.width, next.left - r.left) : r.width;
+      if (strip < 43.5 || r.height < 43.5) problems.push('hand card under 44 px: ' + label(card).slice(0, 40) + ' ' + Math.round(strip) + 'x' + Math.round(r.height)); });
+    // A note has one place, the column at the right edge: never over the map or an opened card.
+    const note = document.querySelector('#gr-coach:popover-open:not(.in-dialog)');
+    if (note && getComputedStyle(note).visibility !== 'hidden') {
+      const n = note.getBoundingClientRect(), overlaps = r => r.width > 1 && r.left < n.right - 1 && r.right > n.left + 1 && r.top < n.bottom - 1 && r.bottom > n.top + 1;
+      if (n.right > W + 1 || n.bottom > H + 1 || n.top < -1) problems.push('guidance note outside viewport: ' + [n.left, n.top, n.right, n.bottom].map(Math.round));
+      if (overlaps(document.querySelector('.board-map-region').getBoundingClientRect())) problems.push('guidance note lies over the map');
+      const sheet = document.querySelector('.phone-card-sheet:not([hidden]) .game-card');
+      if (sheet && overlaps(sheet.getBoundingClientRect())) problems.push('guidance note lies over the opened card');
+      for (const e of document.querySelectorAll('#hand-panel .hand-tools .button, .map-tools .button')) if (shown(e) && overlaps(e.getBoundingClientRect())) { problems.push('guidance note covers ' + label(e)); break; }
+    }
+  }
   const modal = document.querySelector('dialog[open], body.menu-open');
   const scope = modal || document;
   // Hand cards are held as card tops that clip on purpose; a raised (pointed-at or focused)
   // card is checked like any other. Each top must still show its name and gain/cost row.
   const FOLDED = ':is(#hand-row, .market-cards, .relic-row) .game-card:not(:hover):not(:focus):not(:focus-within)';
-  const folded = e => e.closest(FOLDED);
+  // A phone held sideways shows only card tops in its hand (a tap opens a card whole in its own sheet).
+  const folded = e => e.closest(FOLDED) || (sideways && e.closest('#hand-row'));
   // Card tops exist in the table layout; a phone shows whole cards in its drawers.
   for (const top of phone ? [] : document.querySelectorAll(FOLDED)) {
     if (!shown(top)) continue;
@@ -397,7 +460,7 @@ const MEASURE = `(() => {
     if (clips && !(phone && getComputedStyle(e).textOverflow === 'ellipsis') && ((!phoneBattleScroll && e.scrollHeight > e.clientHeight + 2) || e.scrollWidth > e.clientWidth + 2) && !getComputedStyle(e).clipPath.includes('inset(50%)') && !e.matches('.board-map-region, .galaxy-board, .score-name, .card-type, .card-art, input, textarea') && !e.closest('[aria-hidden="true"]'))
       problems.push('clipped content: ' + label(e) + ' ' + e.scrollWidth + 'x' + e.scrollHeight + ' in ' + e.clientWidth + 'x' + e.clientHeight);
     if (e.matches('button, a[href], select, input, textarea, .game-card, .score-card, .resource-box, .hex, dialog[open], .lobby-seat') && !e.closest('.sr-only, .skip-link, .skip')) {
-      if (r.left < -1 || r.right > W + 1 || (!phone && (r.top < -1 || r.bottom > H + 1))) problems.push('outside viewport: ' + label(e) + ' [' + [r.left, r.top, r.right, r.bottom].map(Math.round) + ']');
+      if (r.left < -1 || r.right > W + 1 || ((!phone || sideways) && (r.top < -1 || r.bottom > H + 1))) problems.push('outside viewport: ' + label(e) + ' [' + [r.left, r.top, r.right, r.bottom].map(Math.round) + ']');
     }
     // Cards may not clip their own text (buttons hide overflow inside their box).
     if (e.matches('.game-card, .military-card, .combat-tactic, .trade-offer, .score-card, .resource-box, .combat-options .button') && !e.matches('.score-card:is(:hover, :focus-within)') && e.scrollHeight > e.clientHeight + 2)
@@ -410,15 +473,16 @@ const MEASURE = `(() => {
     }
   }
   // Every button on a raised card must be reachable: nothing may lie over its centre.
+  // (A phone opens a tapped card whole in its own sheet instead: its hand cards do not rise.)
   for (const button of document.querySelectorAll(':is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within) :is(.card-buttons .button, .corner-button)')) {
-    if (!shown(button) || modal) continue;
+    if (!shown(button) || modal || sideways) continue;
     const b = button.getBoundingClientRect(), hit = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
     if (!hit || !button.contains(hit)) problems.push('raised card button covered: ' + label(button) + ' by ' + (hit ? label(hit) : 'nothing'));
   }
   // A raised card may lie over the map and over cards in its own hand or supply, never over
   // another control (the bank, the piles, the turn's buttons, standings or menus).
   for (const raised of document.querySelectorAll(':is(#hand-row, .market-cards, .relic-row) .game-card:is(:hover, :focus, :focus-within)')) {
-    if (modal) break;
+    if (modal || sideways) break;
     const home = raised.closest('#hand-row, #market-panel, #relics-panel'), own = raised.closest('#market-panel, #relics-panel') ? '#market-panel, #relics-panel' : '#hand-row';
     const r = raised.getBoundingClientRect();
     const under = [...document.querySelectorAll('button, a[href], select, input, textarea, summary, .game-card, .score-card, .resource-box')]
@@ -544,7 +608,8 @@ const MEASURE = `(() => {
 async function runCase(browser, origin, testCase, viewport) {
   const [width, height, scale = 1] = viewport;
   const touch = testCase.device || false;
-  await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: scale, mobile: touch });
+  // The screen is the window's size: a phone's screen is phone-sized, a tablet's is not (phone.js).
+  await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: scale, mobile: touch, screenWidth: width, screenHeight: height });
   await browser.send('Emulation.setTouchEmulationEnabled', { enabled: touch, maxTouchPoints: touch ? 5 : 1 });
   // Measure a still table: your hand's turn pulse (and other motion) rests under reduced motion.
   await browser.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] });
@@ -552,13 +617,13 @@ async function runCase(browser, origin, testCase, viewport) {
     await browser.navigate(`${origin}/?game=galactic-reach#lobby/${TABLE_ID}`);
   } else {
     await browser.navigate(`${origin}/galactic-reach/rulebook.html`);
-    await browser.evaluate(`localStorage.clear(); ${process.env.CHECK_BACKGROUND === 'stars' ? "localStorage.setItem('galactic-reach-background','stars');" : ''} ${testCase.table ? '' : `localStorage.setItem(${JSON.stringify(SAVE_KEY)}, ${JSON.stringify(JSON.stringify(testCase.save))});`} true`);
+    await browser.evaluate(`localStorage.clear(); ${process.env.CHECK_BACKGROUND === 'stars' ? "localStorage.setItem('galactic-reach-background','stars');" : ''} ${testCase.guidanceOff ? "localStorage.setItem('galactic-reach-guide-v1', JSON.stringify({ enabled: false, seen: {} }));" : ''} ${Object.entries(testCase.storage || {}).map(([k, v]) => `localStorage.setItem(${JSON.stringify(k)}, ${JSON.stringify(v)});`).join(' ')} ${testCase.table || testCase.tutorial ? '' : `localStorage.setItem(${JSON.stringify(SAVE_KEY)}, ${JSON.stringify(JSON.stringify(testCase.save))});`} true`);
     tableSave = testCase.table ? { state: clone(testCase.save), turnHistory: { pending: null, undo: null } } : null;
     sharedTable = testCase.shared || null;
-    await browser.navigate(`${origin}/galactic-reach/${testCase.table ? `?table=${TABLE_ID}` : testCase.shared ? `?shared=${TABLE_ID}` : ''}`);
+    await browser.navigate(`${origin}/galactic-reach/${testCase.table ? `?table=${TABLE_ID}` : testCase.shared ? `?shared=${TABLE_ID}` : testCase.tutorial ? '?tutorial=1' : ''}`);
   }
   // A shared or saved table loads its seats after the page, then fits again: let it settle.
-  await browser.evaluate(`new Promise(r => setTimeout(r, ${testCase.shared || testCase.table ? 900 : 400}))`);
+  await browser.evaluate(`new Promise(r => setTimeout(r, ${testCase.shared || testCase.table ? 900 : testCase.tutorial ? 1500 : 400}))`);
   // Web fonts change the panels' sizes, and the table re-fits when they are ready: measure it after.
   await browser.evaluate('(document.fonts ? document.fonts.ready : Promise.resolve()).then(() => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))))');
   for (const selector of testCase.click || []) {
@@ -622,6 +687,76 @@ async function runCase(browser, origin, testCase, viewport) {
     if (!testCase.device) await mouse('mouseMoved', 4, 4);
     await browser.evaluate('new Promise(r => setTimeout(r, 450))');
     steps.playsHere = hexes;
+  }
+  // A phone held upright shows only the prompt to turn it, and nothing under it takes a touch;
+  // turning the phone removes the prompt at once, with the same game (no reload).
+  if (testCase.upright) {
+    problems0.push(...await browser.evaluate(`(() => {
+      const problems = [], prompt = document.querySelector('#rotate-prompt');
+      if (!prompt || !prompt.checkVisibility()) return ['the turn-sideways prompt does not show'];
+      const r = prompt.getBoundingClientRect();
+      if (r.left > 0 || r.top > 0 || r.right < innerWidth || r.bottom < innerHeight) problems.push('the prompt does not cover the screen');
+      if (!prompt.contains(document.elementFromPoint(innerWidth / 2, innerHeight * 0.85))) problems.push('the table takes touches under the prompt');
+      if (!document.querySelector('.app-shell').inert) problems.push('the table is not inert under the prompt');
+      if (!/sideways/i.test(prompt.textContent)) problems.push('the prompt does not say to turn the phone');
+      if (!(prompt.querySelector('img')?.naturalWidth > 0)) problems.push('the prompt shows no emblem');
+      window.__sameGame = document.querySelectorAll('#hand-row > .game-card').length;
+      return problems;
+    })()`));
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: height, height: width, deviceScaleFactor: scale, mobile: true, screenWidth: height, screenHeight: width, screenOrientation: { type: 'landscapePrimary', angle: 90 } });
+    await browser.evaluate('new Promise(r => setTimeout(r, 400))');
+    problems0.push(...await browser.evaluate(`(() => {
+      const problems = [];
+      if (document.querySelector('#rotate-prompt')?.checkVisibility()) problems.push('the prompt stays after turning the phone');
+      if (document.querySelector('.app-shell').inert) problems.push('the table stays inert after turning the phone');
+      if (!window.__sameGame || window.__sameGame !== document.querySelectorAll('#hand-row > .game-card').length) problems.push('turning the phone reloaded or changed the game');
+      return problems;
+    })()`));
+  }
+  // Phones: a tap on a hand card's visible strip opens the whole card over the map, wholly on
+  // screen without scrolling.
+  if (testCase.phoneTap) {
+    const at = await browser.evaluate(`(() => { const e = document.querySelector(${JSON.stringify(testCase.phoneTap)}); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 22), y: r.top + Math.min(r.height / 2, 22) }; })()`);
+    if (!at) return [`could not find ${testCase.phoneTap}`];
+    await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 400))');
+    problems0.push(...await browser.evaluate(`(() => {
+      const card = document.querySelector('.phone-card-sheet:not([hidden]) .game-card');
+      if (!card) return ['tapping a hand card did not open it whole'];
+      const r = card.getBoundingClientRect(), problems = [];
+      if (r.top < 0 || r.bottom > innerHeight || r.left < 0 || r.right > innerWidth) problems.push('the opened card is not wholly on screen');
+      if (card.scrollHeight > card.clientHeight + 2) problems.push('the opened card scrolls: ' + card.scrollHeight + ' > ' + card.clientHeight);
+      return problems;
+    })()`));
+  }
+  // Learn to play on a phone: tapping the cued card reveals the note and keeps the card in the
+  // fan; its lit corner is on top and converts it; the step's mat row, the hand and the note do not overlap.
+  if (testCase.cueTap) {
+    // (Tap the card's visible strip at its foot, below its corners: a lit corner acts on the first tap.)
+    const at = await browser.evaluate(`(() => { const e = document.querySelector('#hand-row .game-card.gr-coach-card-cue'); if (!e) return null; const r = e.getBoundingClientRect(); return { x: r.left + Math.min(r.width / 2, 20), y: Math.min(innerHeight - 3, r.bottom - 6) }; })()`);
+    if (!at) return ['no cued card in Learn to play'];
+    await mouse('mousePressed', at.x, at.y); await mouse('mouseReleased', at.x, at.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 600))');
+    const seen = await browser.evaluate(`(() => {
+      const problems = [], over = (a, b) => a && b && a.left < b.right - 1 && a.right > b.left + 1 && a.top < b.bottom - 1 && a.bottom > b.top + 1;
+      if (document.querySelector('.phone-card-sheet:not([hidden])')) problems.push('the step opened the card whole over the table');
+      const corner = document.querySelector('#hand-row .gr-card-stays .gr-coach-corner');
+      if (!corner) return [...problems, 'the step does not light the card corner that does it'];
+      const c = corner.getBoundingClientRect();
+      if (!corner.contains(document.elementFromPoint(c.left + c.width / 2, c.top + c.height / 2))) problems.push('the lit corner is covered');
+      const row = document.querySelector('.resource-panel .resource-box.energy, #resource-grid .resource-box[data-resource="energy"]')?.getBoundingClientRect();
+      if (!row || !row.width) problems.push('the step does not show the mat row');
+      const note = document.querySelector('#gr-coach:popover-open')?.getBoundingClientRect();
+      for (const label of document.querySelectorAll('.gr-stage-label')) { const l = label.getBoundingClientRect(); if ([...document.querySelectorAll('#hand-row > .game-card')].some(card => over(l, card.getBoundingClientRect()))) problems.push('a callout label lies over your hand'); }
+      if (over(note, row)) problems.push('the note lies over the mat row');
+      window.__energy = +document.querySelector('#resource-grid .resource-box[data-resource="energy"] .resource-amount')?.textContent;
+      return { problems, x: c.left + c.width / 2, y: c.top + c.height / 2 };
+    })()`);
+    if (Array.isArray(seen)) return seen;
+    problems0.push(...seen.problems);
+    await mouse('mousePressed', seen.x, seen.y); await mouse('mouseReleased', seen.x, seen.y);
+    await browser.evaluate('new Promise(r => setTimeout(r, 500))');
+    if (!(await browser.evaluate('+document.querySelector(\'#resource-grid .resource-box[data-resource="energy"] .resource-amount\')?.textContent > window.__energy'))) problems0.push('pressing the lit corner did not convert the card');
   }
   // A real click on a raised card's button (press and release without moving) is still a click.
   if (testCase.tap) {
@@ -708,6 +843,12 @@ async function runCase(browser, origin, testCase, viewport) {
   // zoom) it may scroll vertically, like a phone.
   await browser.evaluate(`window.__fitMode = ${JSON.stringify(isPhone([width, height]) || (testCase.lobby && height < 700) ? 'phone' : 'fit')}; true`);
   const { problems, slack } = await browser.evaluate(MEASURE);
+  // Held sideways with the market closed, the map has most of the screen: the share of points
+  // where a tap lands on the map rather than on a panel, button or your hand.
+  if (testCase.mapShare) {
+    const share = await browser.evaluate(`(() => { let map = 0, all = 0; for (let y = 3; y < innerHeight; y += 6) for (let x = 3; x < innerWidth; x += 6) { all++; const hit = document.elementFromPoint(x, y); if (hit?.closest('.board-map-region') && !hit.closest('.map-tools')) map++; } return map / all; })()`);
+    if (share < testCase.mapShare) problems.push(`the map has ${Math.round(share * 100)}% of the screen (at least ${Math.round(testCase.mapShare * 100)}% expected)`);
+  }
   // The market drawer's state: the table's view (closed, side, full; an upright table has no
   // whole-card view, so its Buy turn opens the band), or on a phone whether the Supply drawer is open.
   if (testCase.marketView) {
@@ -811,6 +952,20 @@ async function runCase(browser, origin, testCase, viewport) {
   lastSlack = slack;
   if (testCase.lobby && !(await browser.evaluate('!!document.querySelector(".lobby-seats")'))) problems.push('waiting room did not render');
   if (testCase.shared && !(await browser.evaluate('!!document.querySelector("#shared-seats li") && !document.querySelector(".app-shell").inert'))) problems.push('shared table did not open');
+  if (testCase.deviceView) problems.push(...await browser.evaluate(`(() => {
+    const problems = [], view = ${JSON.stringify(testCase.deviceView)}, shown = e => e && e.checkVisibility() && e.getBoundingClientRect().height > 8;
+    if (document.body.dataset.deviceView !== view) problems.push('this device is ' + document.body.dataset.deviceView + ', not ' + view);
+    if (!/my hand|the whole game/.test(document.querySelector('#device-view-button')?.textContent || '')) problems.push('the menu has no This device switch');
+    if (!shown(document.querySelector('#hand-row > .game-card'))) problems.push('the hand is not on the table');
+    if (!shown(document.querySelector('.board-map-region .hex'))) problems.push('the map is not on the table');
+    const drawerOpen = () => document.querySelector('body:is([data-drawer="mat"], [data-drawer="comms"], [data-drawer="table"], [data-drawer="supply"])');
+    if (drawerOpen()) problems.push('a drawer is open over the table: ' + document.body.dataset.drawer);
+    // The game menu's switch changes the view at once, still with no drawer over the table.
+    document.querySelector('#device-view-button')?.click();
+    if (document.body.dataset.deviceView === view) problems.push('the This device switch did not change the view');
+    if (drawerOpen() || !shown(document.querySelector('#hand-row > .game-card'))) problems.push('switching the view covered the table or hid the hand');
+    return problems;
+  })()`));
   if (!testCase.lobby && testCase.save?.pendingCombat && !(await browser.evaluate('document.querySelector("#combat-dialog").open'))) problems.push('battle dialog did not open');
   if (SHOTS) {
     fs.mkdirSync(SHOTS, { recursive: true });
@@ -836,10 +991,12 @@ async function main() {
   try {
     // CHECK_SIZES=WxH,WxH runs every case at just those desktop sizes (for sweeping window shapes).
     const sizes = process.env.CHECK_SIZES?.split(',').map(size => size.split('x').map(Number));
-    const runs = sizes ? sizes.flatMap(viewport => CASES.map(testCase => [viewport, testCase])) : [...[...VIEWPORTS, ...TALL_VIEWPORTS].flatMap(viewport => CASES.map(testCase => [viewport, testCase])),
-      ...EXTRA_VIEWPORTS.flatMap(viewport => CASES.filter(testCase => testCase.extraSizes).map(testCase => [viewport, testCase])),
-      ...ZOOM_VIEWPORTS.flatMap(viewport => CASES.filter(testCase => !isPhone(viewport) || testCase.devices === true).map(testCase => [viewport, testCase])),
-      ...[...TABLET_VIEWPORTS, ...PHONE_VIEWPORTS].flatMap(viewport => CASES.filter(testCase => testCase.devices === true || (testCase.devices === 'tablet' && !isPhone(viewport))).map(testCase => [viewport, { ...testCase, device: true, name: `${testCase.name} (touch)` }]))];
+    const desk = CASES.filter(testCase => testCase.devices !== 'phone');
+    const runs = sizes ? sizes.flatMap(viewport => desk.map(testCase => [viewport, testCase])) : [...[...VIEWPORTS, ...TALL_VIEWPORTS].flatMap(viewport => desk.map(testCase => [viewport, testCase])),
+      ...EXTRA_VIEWPORTS.flatMap(viewport => desk.filter(testCase => testCase.extraSizes).map(testCase => [viewport, testCase])),
+      ...ZOOM_VIEWPORTS.flatMap(viewport => desk.filter(testCase => !isPhone(viewport) || testCase.devices === true).map(testCase => [viewport, testCase])),
+      ...[...TABLET_VIEWPORTS, ...PHONE_VIEWPORTS].flatMap(viewport => CASES.filter(testCase => testCase.devices === true || (testCase.devices === 'tablet' && !isPhone(viewport)) || (testCase.devices === 'phone' && isPhone(viewport))).map(testCase => [viewport, { ...testCase, device: true, name: `${testCase.name} (touch)` }])),
+      ...UPRIGHT_CASES.map(testCase => [UPRIGHT_PHONE, testCase.device ? { ...testCase, name: `${testCase.name} (touch)` } : testCase])];
     for (const [viewport, testCase] of runs) {
       if (only && !only.test(`${viewportName(viewport)} ${testCase.name}`)) continue;
       if (process.env.CHECK_ORIGIN && (testCase.lobby || testCase.table || testCase.shared)) continue;

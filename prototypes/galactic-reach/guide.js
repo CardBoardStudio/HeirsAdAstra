@@ -771,6 +771,8 @@
         }
       }
     } catch (error) { console.error('Guidance could not read the table.', error); tip = null; }
+    tip = drawerTip(tip);
+    keepCardInHand(tip);
     const stepKey = tip?.bringIntoView ? JSON.stringify([tip.id, tip.step]) : '';
     cueCard = tip?.revealOnInspect && shown(tip.anchor) ? tip.anchor : null;
     cueKey = cueCard ? JSON.stringify([tip.id, tip.step, cueCard.dataset.cardId]) : '';
@@ -783,7 +785,7 @@
       hide();
       cueCard.classList.add('gr-coach-target', 'gr-coach-card-cue');
       targeted.push(cueCard);
-    } else if (tip) { tip = supplyTip(tip); pendingShow = null; place(tip); setShow(pendingShow); settle(); } else hide();
+    } else if (tip) { tip = supplyTip(tip); pendingShow = null; place(tip); setShow(pendingShow); settle(); revealOnMap(tip); } else hide();
     if (!tip) supplyTip(null);
     syncMenu();
   }
@@ -807,11 +809,75 @@
   // The market drawer may hold the supply closed. A note about a supply card (a relic, a market
   // card, an Upgrade) opens it when the note first appears; if you close it again, the note points
   // at the Market handle instead. No note points at a hidden card.
+  // On a phone held sideways (phone.css) the mat (with the piles and the Upgrades), the score
+  // track and the comms log are drawers on the left edge. A Learn to play note opens the drawer that
+  // holds what it points at or where its card should go, when the note first appears (app.js puts back the drawer
+  // you had once it is over); a part it only mentions opens a drawer too, unless the note is about
+  // the map, which a drawer would cover. A part left in a closed drawer is shown by that drawer's
+  // handle instead, lit and labelled with where it is.
+  const DRAWERS = [['.resource-panel', 'mat', 'Mat'], ['#prestige-track', 'table', 'Table'], ['.board-shared', 'comms', 'Comms'], ['#relics-panel, #market-panel', 'supply', 'Supply']];
+  const sideways = () => matchMedia('(max-height: 599px) and (orientation: landscape)').matches;
+  const drawerOf = el => DRAWERS.find(([sel]) => el?.closest?.(sel));
+  const drawerHandle = drawer => { const handle = drawer && $(`.phone-drawers [data-drawer="${drawer[1]}"]`); return handle && shown(handle) ? handle : null; };
+  let drawerKey = '';
+  function drawerTip(tip) {
+    const need = globalThis.galacticReachMarket?.drawer;
+    const key = tip && sideways() ? JSON.stringify([tip.id, tip.title, tip.step]) : '';
+    if (key !== drawerKey) {
+      drawerKey = key;
+      // Only Learn to play opens drawers; in your own games a note lights the handle instead. (A drawer
+      // is asked for even when it is already open: the drawer the step before opened stays.)
+      const teaching = key && globalThis.galacticReachTutorial?.active;
+      const present = el => el?.isConnected, opens = el => drawerOf(el)?.[1] !== 'supply' && drawerOf(el)?.[1];
+      const primary = teaching ? [tip.anchor, tip.show?.ghost?.to] : [];
+      const onMap = teaching && [tip.anchor, tip.show?.ghost?.to, ...(tip.marks || [])].some(el => el?.closest?.('.board-map-region'));
+      const mentioned = teaching && !onMap ? (tip.show?.callouts || []).map(c => c?.el) : [];
+      need?.('guide', [...primary, ...mentioned].filter(present).map(opens).find(Boolean) || null);
+    }
+    if (!key) return tip;
+    let next = tip;
+    if (tip.anchor && !shown(tip.anchor) && drawerHandle(drawerOf(tip.anchor))) {
+      const drawer = drawerOf(tip.anchor);
+      next = { ...next, anchor: drawerHandle(drawer), text: `${tip.text} Open ${drawer[2]} on the left edge to see it.` };
+    }
+    const callouts = tip.show?.callouts;
+    if (callouts?.some(c => c?.el && !shown(c.el) && drawerHandle(drawerOf(c.el)))) {
+      next = { ...next, show: { ...tip.show, callouts: callouts.map(c => c?.el && !shown(c.el) && drawerHandle(drawerOf(c.el)) ? { el: drawerHandle(drawerOf(c.el)), label: `${c.label} (${drawerOf(c.el)[2]})`, side: 'right' } : c) } };
+    }
+    return next;
+  }
+  // A Learn to play step that shows a card's path from your hand keeps that card in the fan on a
+  // phone held sideways: a tap does not open it whole over the map (where it would lie over the
+  // mat row, the hex or the path), and the corner that does the step is lit and pressable: the
+  // conversion corner when the path ends on your mat, the effect (Use order) corner when it ends on
+  // the map. app.js and phone.css read the marks.
+  let stayingCard = null, litCorner = null;
+  function keepCardInHand(tip) {
+    const g = tip?.show?.ghost, card = sideways() && globalThis.galacticReachTutorial?.active && g?.from?.closest?.('#hand-row > .game-card') && g.to ? g.from.closest('#hand-row > .game-card') : null;
+    const corner = card && (drawerOf(g.to) ? card.querySelector(':scope > .card-footer.corner-button') : card.querySelector(':scope > .card-symbols.corner-button'));
+    if (stayingCard !== card) { stayingCard?.classList.remove('gr-card-stays'); card?.classList.add('gr-card-stays'); stayingCard = card; }
+    if (litCorner !== corner) { litCorner?.classList.remove('gr-coach-corner'); corner?.classList.add('gr-coach-corner'); litCorner = corner; }
+    // A render replaces the hand's cards: mark the new ones.
+    if (card && !card.classList.contains('gr-card-stays')) card.classList.add('gr-card-stays');
+    if (corner && !corner.classList.contains('gr-coach-corner')) corner.classList.add('gr-coach-corner');
+  }
+  // The map scrolls under the note's column: the hex a step names is brought into the open map once per step.
+  let revealedKey = '';
+  function revealOnMap(tip) {
+    if (!sideways()) return;
+    const hex = [tip.anchor, ...(tip.marks || [])].find(el => el?.closest?.('.board-map-region'));
+    const key = hex ? JSON.stringify([tip.id, tip.step, hex.dataset?.coord]) : '';
+    if (!hex || key === revealedKey) return;
+    revealedKey = key;
+    requestAnimationFrame(() => bringIntoView(hex));
+  }
   const SUPPLY = '#relics-panel, #market-panel, #upgrade-group';
   let supplyKey = '';
   function supplyTip(tip) {
     const drawer = globalThis.galacticReachMarket;
-    const parts = tip ? [tip.anchor, ...(tip.show?.callouts || []).map(c => c?.el), ...(tip.show?.spotlight || [])].filter(el => el?.closest?.(SUPPLY)) : [];
+    // On a phone the Upgrades lie on the mat, which drawerTip opens instead.
+    const phone = matchMedia('(max-width: 599px), (max-height: 599px)').matches;
+    const parts = tip ? [tip.anchor, ...(tip.show?.callouts || []).map(c => c?.el), ...(tip.show?.spotlight || [])].filter(el => el?.closest?.(SUPPLY) && !(phone && el.closest('.resource-panel'))) : [];
     const key = tip ? JSON.stringify([tip.id, tip.title, tip.step]) : '';
     if (key !== supplyKey) {
       supplyKey = key;

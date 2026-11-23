@@ -22,8 +22,15 @@
   <link rel="stylesheet" href="tabletop-controls.css">
   <link rel="stylesheet" href="market-drawer.css?v=1">
   <link rel="stylesheet" href="max-ui.css?v=1">
+  <link rel="stylesheet" href="phone.css?v=2">
 </head>
 <body>
+  <!-- Phones are played sideways (rules #shared-board): held upright, a phone sees only this (phone.js). -->
+  <div class="rotate-prompt" id="rotate-prompt" role="dialog" aria-modal="true" aria-labelledby="rotate-prompt-text" aria-hidden="true">
+    <img class="rotate-prompt-emblem" src="/lab/heirs-emblem-mark.svg" alt="" width="56" height="56">
+    <svg class="rotate-prompt-icon" viewBox="0 0 96 96" aria-hidden="true" focusable="false"><rect class="rotate-from" x="33" y="12" width="30" height="54" rx="6"/><rect class="rotate-to" x="21" y="48" width="58" height="32" rx="6"/><path class="rotate-arrow" d="M70 18c8 5 13 13 14 23"/><path class="rotate-arrow" d="m78 39 6 4 4-7"/></svg>
+    <p id="rotate-prompt-text">Turn your phone sideways to play.</p>
+  </div>
   <a class="skip-link" href="#console">Skip to player controls</a>
   <div class="starfield" aria-hidden="true"></div>
   <main class="app-shell">
@@ -224,7 +231,7 @@
           <div class="hand-panel" id="hand-panel" role="region" aria-labelledby="hand-title">
             <div class="section-intro">
               <div><div class="eyebrow">YOUR NEXT MOVE</div><h2 id="hand-title">Your hand</h2><p id="hand-help">Convert cards during Operations or Buy, including off turn. Play orders on your Operations turn.</p><p class="turn-notice" id="turn-notice" role="status" hidden></p></div>
-              <div class="hand-tools"><button class="button guide-switch guide-switch-phone" type="button" id="guide-switch-phone" data-guide-switch aria-pressed="true" aria-label="Guidance"><svg class="guide-switch-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="guide-switch-bubble" d="M3 2.5h10A1.5 1.5 0 0 1 14.5 4v6a1.5 1.5 0 0 1-1.5 1.5H8.2L5 14v-2.5H3A1.5 1.5 0 0 1 1.5 10V4A1.5 1.5 0 0 1 3 2.5z"/><path class="guide-switch-lines" d="M4.5 5.5h7M4.5 8.2h4.5"/><path class="guide-switch-slash" d="M1.8 1.8l12.4 12.4"/></svg><span class="guide-switch-text" aria-hidden="true">Guidance <span class="guide-switch-state"><span class="guide-switch-on">on</span><span class="guide-switch-off">off</span></span></span></button><button class="button button-danger" id="pass-button" type="button" hidden>Pass &amp; buy</button><button class="button button-primary" id="hand-finish-buy-button" type="button" hidden>Finish Buy</button><a class="table-jump" href="#table-board">Board ↑</a><button class="button" id="convert-all-button" type="button" title="Converts cards from left to right and automatically discards excess above each resource’s limit. Includes Buy and reaction cards.">Convert level I starters</button><button class="button" id="finish-construct" hidden>Finish after one build</button><button class="button" id="skip-colony-build" hidden>Finish without building</button><button class="button board-primary" id="board-primary" type="button" hidden>Pass &amp; buy</button>
+              <div class="hand-tools"><button class="button guide-switch guide-switch-phone" type="button" id="guide-switch-phone" data-guide-switch aria-pressed="true" aria-label="Guidance"><svg class="guide-switch-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="guide-switch-bubble" d="M3 2.5h10A1.5 1.5 0 0 1 14.5 4v6a1.5 1.5 0 0 1-1.5 1.5H8.2L5 14v-2.5H3A1.5 1.5 0 0 1 1.5 10V4A1.5 1.5 0 0 1 3 2.5z"/><path class="guide-switch-lines" d="M4.5 5.5h7M4.5 8.2h4.5"/><path class="guide-switch-slash" d="M1.8 1.8l12.4 12.4"/></svg><span class="guide-switch-text" aria-hidden="true">Guidance <span class="guide-switch-state"><span class="guide-switch-on">on</span><span class="guide-switch-off">off</span></span></span></button><button class="button button-danger" id="pass-button" type="button" hidden>Pass &amp; buy</button><button class="button button-primary" id="hand-finish-buy-button" type="button" hidden>Finish Buy</button><a class="table-jump" href="#table-board">Board ↑</a><button class="button" id="convert-all-button" type="button" aria-label="Convert all level I starters" title="Convert all level I starters, left to right">Convert all</button><button class="button" id="finish-construct" hidden>Finish after one build</button><button class="button" id="skip-colony-build" hidden>Finish without building</button><button class="button board-primary" id="board-primary" type="button" hidden>Pass &amp; buy</button>
               </div>
             </div>
             <div class="card-row" id="hand-row"></div>
@@ -485,12 +492,13 @@
     </div>
   </dialog>
 
+  <script src="phone.js?v=1"></script>
   <script src="channel.js"></script>
   <script src="table.js?v=construct-iii-38-43"></script>
   <script src="tabletop-controls.js"></script>
   <script src="shared.js?v=construct-iii-38-43"></script>
   <script src="replay.js?v=construct-iii-38-43"></script>
-  <script src="card-feel.js?v=2"></script>
+  <script src="card-feel.js?v=3"></script>
   <script src="tutorial.js?v=2"></script>
   <script src="guide.js?v=4"></script>
   <script src="app.js?v=construct-iii-38-43"></script>
