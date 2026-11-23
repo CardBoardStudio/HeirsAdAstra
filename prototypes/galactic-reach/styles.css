@@ -4181,6 +4181,22 @@ body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-c
 body:not(.background-stars) #hand-row > .game-card > .card-name { transition: none !important; }
 body:not(.background-stars) #hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { white-space: normal !important; text-overflow: clip !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; min-height: min-content !important; flex-shrink: 0; }
 body:not(.background-stars) #hand-row > .game-card.name-tucked:not(:hover):not(:focus-within) > .card-name { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }
+/* A resting card never shows text cut with an ellipsis: its one rules line shows only where it fits
+   whole (card-feel.js marks the card rules-tucked otherwise), kept for screen readers. */
+body:not(.background-stars) #hand-row > .game-card:not(:hover):not(:focus-within) > :is(.card-headline, .card-effect) { text-overflow: clip !important; }
+body:not(.background-stars) #hand-row > .game-card.rules-tucked:not(:hover):not(:focus-within) > :is(.card-headline, .card-effect) { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; margin: 0 !important; }
+/* A card with no corner symbols whose name cannot show (a hand squeezed past the fan's room) is
+   known by its picture, or by its emblem where it has none, across the card's top. */
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art {
+  display: grid !important; place-items: center; position: absolute !important; inset: 6px 6px auto !important; height: calc(100% - 12px) !important; max-height: 72px; min-height: 0 !important; margin: 0 !important;
+  border: 0 !important; border-radius: 5px !important; container-type: normal !important;
+}
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art.has-picture .card-picture { display: block !important; inset: 0 !important; top: 0 !important; height: 100% !important; border-radius: 5px; }
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art.has-picture .card-emblem,
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art:not(.has-picture) :is(.card-picture, .card-registration) { display: none !important; }
+/* (A picture that fails to load drops has-picture, app.js: the emblem shows instead.) */
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art:not(.has-picture) .card-emblem { position: static; width: 34px; height: 34px; }
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art:not(.has-picture) .card-emblem .board-glyph { width: 20px; height: 20px; }
 
 /* Playtest refinements: stable controls, five-count guides and optional references. */
 body.hide-statistics .standings-stats { display:none !important; }

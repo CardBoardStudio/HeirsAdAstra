@@ -290,7 +290,7 @@
   function fitHandNameSizes(onlyNew = false) {
     if (maxTable()) return;
     const cards = $$('#hand-row > .game-card').filter(card => !raisedNow(card) && !(onlyNew && card.dataset.nameFit));
-    for (const card of cards) { card.style.removeProperty('--name-fs'); card.classList.remove('name-tucked'); }
+    for (const card of cards) { card.style.removeProperty('--name-fs'); card.classList.remove('name-tucked', 'rules-tucked'); }
     // Fits: no word wider than its box, two lines at most, not squeezed in its row, and above the
     // card's bottom padding. At NAME_MIN, on a card top too narrow for two lines (the smallest
     // sideways phone), a third line and the bottom padding are allowed before the name is left out.
@@ -312,6 +312,14 @@
       }
       open = open.filter(item => !item.done);
     }
+    // A resting card's one rules line shows only where it fits whole: inside its own box and above
+    // the card's bottom padding (rules #card-corners). Read every card, then write.
+    const cut = cards.map(card => {
+      const floor = card.clientHeight - (parseFloat(getComputedStyle(card).paddingBottom) || 0);
+      return [...card.querySelectorAll(':scope > :is(.card-headline, .card-effect)')].some(line => line.getClientRects().length
+        && (line.scrollWidth > line.clientWidth + 1 || line.scrollHeight > line.clientHeight + 1 || line.offsetTop + line.offsetHeight > floor + 1));
+    });
+    cards.forEach((card, index) => card.classList.toggle('rules-tucked', cut[index]));
     for (const card of cards) card.dataset.nameFit = '1';
   }
   addEventListener('resize', () => requestAnimationFrame(() => fitHandNameSizes()));

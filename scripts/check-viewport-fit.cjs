@@ -179,6 +179,7 @@ function sharedView(state) {
 }
 
 // A hand of any size, mixing starters (with their conversion corner) and bought cards.
+const LONG_NAMES = ['aegisOfSilentArchitects', 'warSongOfHollowStars', 'firstDawnEchoes', 'obeliskOfAnnihilation', 'monumentOfAccord', 'hyperspaceVaults', 'slipstreamCharts', 'tacticalBriefing', 'starfarersCompass', 'exchangeProtocol'];
 const fanHand = size => Array.from({ length: size }, (_, i) => ['move', 'construct', ...MARKET.filter(c => c.code.startsWith('N')).map(c => c.key)][i % 12]);
 const longHand = ['move', 'construct', ...MARKET.filter(c => c.code.startsWith('N')).slice(0, 6).map(c => c.key)];
 // A real market is three cards from each price row (rulebook #market-tiers). Four pages cycle every
@@ -194,6 +195,9 @@ const CASES = [
   // The hand is a fan (rules #card-corners): every card shows both upper corners, for the smallest,
   // a typical and the largest hands, on desktop, tablet and phone.
   ...[1, 5, 10, 12].map(size => ({ name: `operations, fan of ${size}`, save: operationsState(fanHand(size)), expect: 'fan', devices: true })),
+  // The longest names, half of them on cards with no corner symbols: no resting text ends in an
+  // ellipsis, and each card shows its symbols, a whole rules line, its name or its picture.
+  ...[5, 10].map(size => ({ name: `operations, ${size} long-named cards`, save: operationsState(LONG_NAMES.slice(0, size)), expect: 'fan', devices: true })),
   { name: 'operations, raised hand card (long text)', save: operationsState(['move', 'construct', 'probe', 'construct', 'move']), focus: '#hand-row .game-card:nth-child(3) button' },
   { name: 'operations, 8-card hand raised', save: operationsState(longHand), focus: '#hand-row .game-card:nth-child(5) button' },
   // A chosen order shows a toast; it must not cover the hand or any control.
@@ -421,7 +425,16 @@ const MEASURE = `(() => {
     if (t.top < -1 || t.bottom > H + 1 || t.left < -1 || t.right > W + 1) problems.push('card top outside viewport: ' + label(top));
     // A top shows its one-line headline, its effect in icons, or its effect, whichever it shows.
     // A card's summary: its corner symbols where it has them (rules #card-corners), else its one-line effect.
-    const summary = [top.querySelector('.card-symbols'), top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(e => e && e.getClientRects().length) || top.querySelector('.card-symbols') || top.querySelector('.card-headline') || top.querySelector('.card-effect');
+    // A resting hand card never shows text cut with an ellipsis: a rules line that does not fit whole
+    // and a name that does not fit are visually hidden, and a card with neither symbols nor name
+    // shows its picture (or emblem) instead.
+    const inHand = Boolean(top.closest('#hand-row'));
+    const seen = e => e && e.getClientRects().length && !(inHand && getComputedStyle(e).clipPath.includes('inset(50%)'));
+    const summary = [top.querySelector('.card-symbols'), top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(seen)
+      || (inHand ? null : top.querySelector('.card-symbols') || top.querySelector('.card-headline') || top.querySelector('.card-effect'));
+    if (inHand) for (const e of top.querySelectorAll(':scope > :is(.card-name, .card-headline, .card-effect)')) {
+      if (seen(e) && getComputedStyle(e).textOverflow === 'ellipsis' && e.scrollWidth > e.clientWidth + 1) problems.push('hand text cut with an ellipsis: ' + label(e) + ' in ' + label(top));
+    }
     // Overlapping tops must leave each card's gain badge visible, not under its neighbour.
     // An open Sector Scan (a popover over the map) or Trade panel may cover card tops while it is open.
     if (!document.querySelector(':is(dialog[open], body.menu-open, .sector-popover:popover-open, .trade-drawer.open, :is(#hand-row, .market-cards) .game-card:is(:hover, :focus, :focus-within))')) for (const chip of top.querySelectorAll('.card-footer .resource-chip')) {
@@ -430,7 +443,9 @@ const MEASURE = `(() => {
     }
     // A resting hand card shows only its symbols (rules #card-corners): its name is for screen readers then.
     const symbols = top.querySelector(':scope > .card-symbols'), nameEl = top.querySelector('.card-name');
-    const nameShown = !(symbols && symbols.getClientRects().length && nameEl && getComputedStyle(nameEl).clipPath.includes('inset(50%)'));
+    const nameShown = inHand ? Boolean(seen(nameEl)) : !(symbols && symbols.getClientRects().length && nameEl && getComputedStyle(nameEl).clipPath.includes('inset(50%)'));
+    // A resting hand card is always identifiable: by its symbols, a rules line, its name or its picture.
+    if (inHand && !summary && !nameShown && !seen(top.querySelector(':scope > .card-art'))) problems.push('card top shows nothing: ' + label(top));
     // Only level I starters print a gain badge; an empty footer has nothing to show.
     const footer = top.querySelector('.card-footer');
     // In the hand, a top's text and badges must end before its right-hand neighbour begins.
