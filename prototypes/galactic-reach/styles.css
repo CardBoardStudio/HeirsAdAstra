@@ -2355,7 +2355,8 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   body #hand-row > .game-card .card-headline { grid-area: head; display: block; margin: 0; font-size: 11.5px; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   body #hand-row > .game-card .card-effect { grid-area: eff; margin: 2px 0 0; font-size: 11px; line-height: 1.3; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
   body #hand-row > .game-card .card-headline ~ .card-effect { display: none; }
-  body #hand-row > .game-card .card-footer { grid-area: cost; margin: 0; padding: 0; border: 0; }
+  body #hand-row > .game-card .card-footer { grid-area: cost; }
+  body #hand-row > .game-card .card-footer:not(.corner-button) { margin: 0; padding: 0; border: 0; }
   body #hand-row > .game-card .resource-chip { min-height: 22px; padding: 0 5px 0 3px; }
   /* The tapped card, whole, in a sheet over the map. */
   .phone-card-sheet:not([hidden]) { display: block; position: fixed; left: calc(var(--safe-l) + 10px); right: calc(var(--safe-r) + 10px); bottom: calc(var(--safe-b) + var(--tabs-h) + var(--actions-h) + var(--peek-h) + 18px); z-index: 85; max-height: calc(100dvh - var(--safe-t) - var(--top-h) - var(--safe-b) - var(--tabs-h) - var(--actions-h) - var(--peek-h) - 30px); overflow: auto; }
@@ -3098,7 +3099,7 @@ body.background-stars .galaxy-board::before {
     padding: var(--pad) var(--pad) calc(var(--pad) + 2px) !important;
     /* The header is one line: the effect button left, the name between, the convert button
        right. The rules text, picture and any other buttons follow on one left edge. */
-    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) !important; grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" "art art art" "buttons buttons buttons" !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" "art art art" "buttons buttons buttons" !important;
     grid-template-rows: auto !important; column-gap: var(--far) !important; row-gap: 0 !important; align-content: start !important; align-items: center !important;
   }
   #hand-row > .game-card:first-child:is(:hover, :focus-within) { margin-left: var(--shift) !important; }
@@ -3141,7 +3142,7 @@ body.background-stars .galaxy-board::before {
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
   #hand-row { --raise-w: 540px; }
   #hand-row > .game-card:is(:hover, :focus-within) {
-    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important;
+    grid-template-columns: auto minmax(0, 1fr) auto auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important;
     grid-template-rows: auto auto auto 1fr !important; column-gap: 8px !important; row-gap: 2px !important; padding: 8px 10px 8px 8px !important;
   }
   #hand-row > .game-card:is(:hover, :focus-within) :is(.card-type, .card-art) { display: none !important; }
@@ -3905,19 +3906,38 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 .corner-count { margin-left: 1px; font: 800 .8em/1 system-ui, sans-serif; font-variant-numeric: tabular-nums; }
 .corner-dots .resource-chip { gap: 1px !important; }
 .corner-dots .resource-chip .corner-count { font-size: 12.5px; }
-/* The two actions: a button-shaped frame around each corner, with hover, focus, pressed (an order
-   in use; press again to cancel) and disabled states. */
+/* The two actions are tabs that read as buttons, resting and raised alike: a fill and an edge set
+   off from the card face, a ledge along the bottom that flattens when pressed, hover and focus
+   states, and a disabled look (the action is not open now) that keeps the symbols in view. The
+   effect tab is tinted with the card's colour; the convert tab is filled with its resource's
+   colour with the dark symbol on it, like the chip. Pressed marks an order in use (press again to
+   cancel). The tab never moves when pressed: it shares its edges with the card. */
+/* Each state sets only the tab's custom properties, which the one tab rule reads, so a state
+   looks the same whichever layout rule placed the tab. */
+:where(.game-card .corner-button) {
+  --tab-fill: color-mix(in srgb, var(--card-accent, #8d8268) 34%, #fff6e2);
+  --tab-edge: color-mix(in srgb, var(--card-accent, #8d8268) 50%, #3b3326);
+  --tab-tint: none;
+  --tab-shadow: inset 0 -3px 0 color-mix(in srgb, var(--tab-edge) 55%, transparent), inset 0 1.5px 0 #ffffff8c;
+}
 .game-card .corner-button, #hand-row .game-card .card-footer.corner-button {
   appearance: none; display: inline-flex; align-items: center; justify-content: center; gap: 2px; min-width: 38px; min-height: 34px; margin: 0; padding: 3px 9px;
-  border: 1.5px solid color-mix(in srgb, var(--card-accent, #8d8268) 70%, #4a4234); border-radius: 8px; background: color-mix(in srgb, var(--card-accent, #8d8268) 14%, #fffaf0);
-  color: var(--ink, #253436); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; box-shadow: 0 2px 0 color-mix(in srgb, var(--card-accent, #8d8268) 55%, #2a2418);
-  transition: background-color .12s, border-color .12s, box-shadow .12s, transform .12s;
+  border: 1.5px solid var(--tab-edge); border-radius: 8px; background: var(--tab-tint) var(--tab-fill);
+  color: var(--ink, #253436); font: inherit; font-size: 20px; line-height: 1; cursor: pointer; box-shadow: var(--tab-shadow);
+  transition: background-color .12s, border-color .12s, box-shadow .12s;
 }
-.game-card .corner-button:hover:not(:disabled) { background: color-mix(in srgb, var(--card-accent, #8d8268) 32%, #fffaf0); border-color: #2a2418; }
-.game-card .corner-button:focus-visible { outline: 3px solid #315955; outline-offset: 2px; }
-.game-card .corner-button:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 0 0 transparent; }
-.game-card .corner-button[aria-pressed="true"] { background: #f2d488; border-color: #6b5420; box-shadow: inset 0 2px 4px #0004; transform: translateY(1px); }
-.game-card .corner-button:disabled { cursor: not-allowed; opacity: .6; border-style: dashed; background: transparent; box-shadow: none; }
+.game-card .card-footer.corner-button:where(.tab-matter) { --tab-fill: var(--matter); --tab-edge: color-mix(in srgb, var(--matter) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(.tab-energy) { --tab-fill: var(--energy); --tab-edge: color-mix(in srgb, var(--energy) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(.tab-biomass) { --tab-fill: var(--biomass); --tab-edge: color-mix(in srgb, var(--biomass) 45%, #2a2418); }
+.game-card .card-footer.corner-button:where(.tab-data) { --tab-fill: var(--data); --tab-edge: color-mix(in srgb, var(--data) 45%, #2a2418); }
+/* On an enabled convert tab the symbol sits straight on the tab's colour. */
+.game-card .corner-button:not(:disabled) .resource-symbol { background: none !important; }
+.game-card .corner-button:hover:not(:disabled) { --tab-tint: linear-gradient(#ffffff59, #ffffff59); --tab-edge: #2a2418; }
+.game-card .corner-button:focus-visible { outline: 3px solid #1d3533; outline-offset: -5px; }
+.game-card .corner-button[aria-pressed="true"] { --tab-fill: #f2d488; --tab-edge: #6b5420; --tab-shadow: inset 0 2px 5px #0006; }
+.game-card .corner-button:active:not(:disabled) { --tab-tint: linear-gradient(#0000001f, #0000001f); --tab-shadow: inset 0 2px 5px #0006; }
+.game-card .corner-button:disabled { --tab-fill: color-mix(in srgb, var(--card-accent, #8d8268) 5%, #f4eddc); --tab-edge: #8d8268b3; --tab-shadow: none; cursor: default; border-style: dashed; }
+.game-card .corner-button:disabled > * { opacity: .6; }
 .game-card .corner-button .resource-chip { min-height: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
 .game-card .corner-button .resource-symbol { width: 1em !important; height: 1em !important; }
 @media (prefers-reduced-motion: reduce) { .game-card .corner-button { transition: none; } }
@@ -3933,7 +3953,8 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) > * { grid-column: 1 / -1; }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols { grid-column: 1; grid-row: 1; justify-self: start; }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) > .card-name { grid-column: 2; grid-row: 1; margin: 0; text-align: center; }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { grid-column: 3; grid-row: 1; justify-self: end; margin: 0; padding: 3px 7px; border: 1.5px solid var(--box-line, #a89d83); border-radius: 8px; background: var(--box-bg, #fffaf0); }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { grid-column: 3; grid-row: 1; justify-self: end; margin: 0; padding: 3px 7px; border-radius: 8px; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer:not(.corner-button) { border: 1.5px solid var(--box-line, #a89d83); background: var(--box-bg, #fffaf0); }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer .resource-chip { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; }
 /* An opened card on a phone: the actions are full-size touch targets. */
 .phone-card-sheet .game-card .corner-button { min-width: 48px; min-height: 44px; font-size: 22px; }
@@ -3954,18 +3975,20 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   }
   #hand-row .game-card:not(:hover):not(:focus-within) .card-symbols { grid-area: sym; font-size: 1em; gap: 1px .2em; }
   #hand-row .game-card:not(:hover):not(:focus-within) .card-symbols .vocab-star { display: inline-grid; place-items: center; width: 1.1em; height: 1.1em; font-size: 1em; overflow: hidden; }
-  #hand-row .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer) { margin: -8px 0 0 !important; font-size: 1em; }
-  #hand-row .game-card:not(:hover):not(:focus-within) > .card-symbols { margin-left: -8px !important; justify-self: start; padding: 6px 5px 4px 8px; }
+  #hand-row .game-card:not(:hover):not(:focus-within) { --pad: 8px; }
+  #hand-row .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer) { font-size: 1em; }
+  /* A corner without a tab (no action) sits at the tab's place. The tabs are placed with the
+     raised card's (below). */
+  #hand-row .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer):not(.corner-button) { margin: -8px 0 0 !important; }
+  #hand-row .game-card:not(:hover):not(:focus-within) > .card-symbols:not(.corner-button) { margin-left: -8px !important; justify-self: start; padding: 6px 5px 4px 8px; }
   #hand-row .game-card:last-child:not(:hover):not(:focus-within) { padding-right: 8px !important; }
-  #hand-row .game-card:not(:hover):not(:focus-within) > .card-footer {
-    grid-area: cost !important; grid-row: 1 !important; justify-self: end !important; margin-right: -8px !important; padding: 6px 8px 4px 5px !important;
+  #hand-row .game-card:not(:hover):not(:focus-within) > .card-footer { grid-area: cost !important; grid-row: 1 !important; justify-self: end !important; }
+  #hand-row .game-card:not(:hover):not(:focus-within) > .card-footer:not(.corner-button) {
+    margin-right: -8px !important; padding: 6px 8px 4px 5px !important;
     border: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important;
   }
   #hand-row .game-card:not(:hover):not(:focus-within) .card-footer .resource-symbol { width: 1.1em !important; height: 1.1em !important; }
-  /* A corner the player can press is a tab: framed on its inner edges, flush with the card's. */
-  #hand-row .game-card:not(:hover):not(:focus-within) > .corner-button { min-width: 0; min-height: 0; font-size: 1em; box-shadow: none; }
-  #hand-row .game-card:not(:hover):not(:focus-within) > .card-symbols.corner-button { border-width: 0 1.5px 1.5px 0; border-radius: 7px 0 8px 0; }
-  #hand-row .game-card:not(:hover):not(:focus-within) > .card-footer.corner-button { border-style: solid !important; border-color: color-mix(in srgb, var(--card-accent, #8d8268) 70%, #4a4234) !important; border-width: 0 0 1.5px 1.5px !important; border-radius: 0 7px 0 8px !important; background: color-mix(in srgb, var(--card-accent, #8d8268) 14%, #fffaf0) !important; }
+  #hand-row .game-card:not(:hover):not(:focus-within) > .corner-button { min-width: 0; min-height: 0; font-size: 1em; }
   #hand-row .game-card:not(:hover):not(:focus-within) :is(.card-name, .card-headline, .card-effect) { font-size: 12.5px; contain: inline-size; }
   #hand-row .game-card:not(:hover):not(:focus-within).has-symbols .card-effect { display: none !important; }
 
@@ -3989,10 +4012,12 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
 @media (max-width: 599px), (max-height: 599px) {
   body #hand-row > .game-card { grid-template-columns: max-content minmax(0, 1fr) max-content !important; grid-template-rows: auto auto 1fr !important; grid-template-areas: "sym . cost" "name name name" "head head head" !important; column-gap: 6px !important; }
   body #hand-row > .game-card .card-symbols { grid-area: sym; align-self: center; font-size: 26px; }
-  body #hand-row > .game-card .card-footer { grid-area: cost; justify-self: end; align-self: center; margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; font-size: 26px; }
+  body #hand-row > .game-card .card-footer { grid-area: cost; justify-self: end; align-self: center; font-size: 26px; }
+  body #hand-row > .game-card .card-footer:not(.corner-button) { margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; }
   body #hand-row > .game-card .card-footer .resource-chip { min-height: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; }
   body #hand-row > .game-card .card-footer .resource-symbol { width: 26px; height: 26px; }
-  body #hand-row > .game-card .corner-button { pointer-events: none; min-width: 0; min-height: 0; padding: 0; border-color: transparent; background: none; box-shadow: none; }
+  /* A resting tab is not a separate target here: a tap anywhere on the card opens it whole. */
+  body #hand-row > .game-card .corner-button { pointer-events: none; min-width: 0; min-height: 0; }
   body #hand-row > .game-card .card-effect { display: none !important; }
   body #hand-row > .game-card:not(.has-symbols):not(.has-headline) .card-effect { display: -webkit-box !important; grid-area: head; }
   .phone-card-sheet .phone-card-close { top: auto; bottom: 4px; }
@@ -4014,47 +4039,60 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
   .upgrade-group #upgrade-market > .upgrade-offer.name-under:not(:hover):not(:focus):not(:focus-within).has-symbols { grid-template-areas: "sym sym cost" "name name cost" "effect effect cost" !important; grid-template-rows: auto auto minmax(0, 1fr) !important; }
 }
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.name-under > .card-name { grid-column: 1 / -1 !important; grid-row: 2 !important; }
-/* Phone card tops: the conversion symbol bare, without the corner box's edges. */
+/* Phone card tops: a conversion without a tab is bare, without the corner box's edges. */
 @media (max-width: 599px), (max-height: 599px) {
-  body #hand-row > .game-card .card-footer.corner-button, body #hand-row > .game-card .card-footer { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+  body #hand-row > .game-card .card-footer:not(.corner-button) { border: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
 }
 
 /* ==== The corner buttons sit flush in their corners (rules #card-corners): each shares its two
    outer edges with the card, its outer corner follows the card's, and only its inner corner is
    rounded, like a tab cut from the corner. Its inner padding matches the card's, so the symbol
-   still lines up with the text. Focus and hover are drawn inside the tab. ==== */
+   still lines up with the text. Focus and hover are drawn inside the tab. One construction for
+   every hand card, resting in the fan or raised, on every layout: only the card's padding
+   (--pad-t on top, --pad-x at the sides) differs. ==== */
 .game-card .corner-button:focus-visible { outline-offset: -4px; }
+#hand-row > .game-card { --pad-t: var(--pad, 8px); --pad-x: var(--pad, 8px); }
+#hand-row > .game-card > .corner-button { align-self: start !important; padding-top: var(--pad-t) !important; padding-bottom: 7px !important; }
+#hand-row > .game-card > .card-symbols.corner-button {
+  justify-self: start !important; margin: calc(-1 * var(--pad-t)) 0 0 calc(-1 * var(--pad-x)) !important; padding-left: var(--pad-x) !important; padding-right: 9px !important;
+  border-width: 0 1.5px 1.5px 0 !important; border-style: solid; border-radius: 7px 0 9px 0 !important;
+}
+#hand-row > .game-card > .card-footer.corner-button {
+  justify-self: end !important; margin: calc(-1 * var(--pad-t)) calc(-1 * var(--pad-x)) 0 0 !important; padding-right: var(--pad-x) !important; padding-left: 9px !important;
+  border-width: 0 0 1.5px 1.5px !important; border-style: solid; border-radius: 0 7px 0 9px !important;
+}
+#hand-row > .game-card > .corner-button:disabled { border-style: dashed; }
 @media (min-width: 600px) and (min-height: 600px) {
-  #hand-row > .game-card:is(:hover, :focus-within) .corner-button { align-self: start !important; min-height: 0; padding-top: var(--pad); padding-bottom: 7px; box-shadow: none; }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-symbols.corner-button {
-    margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)) !important; padding-left: var(--pad); padding-right: 9px;
-    border-width: 0 1.5px 1.5px 0; border-radius: 7px 0 9px 0;
-  }
-  #hand-row > .game-card:is(:hover, :focus-within) .card-footer.corner-button {
-    margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0 !important; padding-right: var(--pad) !important; padding-left: 9px !important;
-    border-width: 0 0 1.5px 1.5px !important; border-style: solid !important; border-radius: 0 7px 0 9px !important;
-  }
-  /* A corner with nothing to press (converting is not possible right now) has no tab. */
+  /* A corner with nothing to press (converting is not possible for this card) has no tab. */
   #hand-row > .game-card:is(:hover, :focus-within) .card-footer:not(.corner-button) { border: 0 !important; background: none !important; box-shadow: none !important; padding: 0 !important; }
-  #hand-row > .game-card:is(:hover, :focus-within) .corner-button[aria-pressed="true"] { transform: none; }
-  #hand-row > .game-card:is(:hover, :focus-within) .corner-button:active:not(:disabled) { transform: none; }
+}
+/* On a touch screen a raised card's tabs, the ones that act, are at least 44 px, growing inward. */
+@media (min-width: 600px) and (min-height: 600px) and (pointer: coarse) {
+  #hand-row > .game-card:is(:hover, :focus-within) > .corner-button { min-width: calc(44px / var(--table-zoom, 1)); min-height: calc(44px / var(--table-zoom, 1)); }
+}
+/* Phones (upright, and held sideways): the card tops have 6px by 8px of padding. */
+@media (max-width: 599px), (max-height: 599px) {
+  body #hand-row > .game-card { --pad-t: 6px; --pad-x: 8px; }
+  body #hand-row > .game-card > .corner-button { padding-bottom: 6px !important; }
 }
 /* Upright, the price/convert corner is the header's last column and the other buttons sit under it. */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
   #hand-row > .game-card:is(:hover, :focus-within) { --pad: 8px;
-    grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) !important; grid-template-areas: "sym name cost" "head head buttons" "effect effect buttons" "note note buttons" !important;
+    grid-template-columns: auto minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "head head buttons" "effect effect buttons" "note note buttons" !important;
     padding: var(--pad) !important;
   }
   #hand-row > .game-card:is(:hover, :focus-within) .card-buttons { justify-self: end; }
   #hand-row > .game-card:is(:hover, :focus-within):not(.has-buttons) { grid-template-areas: "sym name cost" "head head head" "effect effect effect" "note note note" !important; }
   /* A card with text buttons keeps them in a column down the right beside every row, so it is no taller. */
-  #hand-row > .game-card:is(:hover, :focus-within).has-buttons { grid-template-columns: minmax(min-content, 1fr) auto minmax(min-content, 1fr) auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
+  #hand-row > .game-card:is(:hover, :focus-within).has-buttons { grid-template-columns: auto minmax(0, 1fr) auto auto !important; grid-template-areas: "sym name cost buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
 }
 /* An opened card on a phone and the plain card faces: the same tabs, the phone's at least 44 px. */
 :where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card:is(.has-symbols, .has-corner-dots) { --pad: 12px; }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols.corner-button { align-self: start; margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)); padding: var(--pad) 10px 8px var(--pad); border-width: 0 1.5px 1.5px 0; border-radius: 8px 0 9px 0; box-shadow: none; }
-:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { align-self: start; margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0; padding: var(--pad) var(--pad) 8px 10px; border-width: 0 0 1.5px 1.5px; border-style: solid; border-radius: 0 8px 0 9px; box-shadow: none; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card > .card-symbols.corner-button { align-self: start; margin: calc(-1 * var(--pad)) 0 0 calc(-1 * var(--pad)); padding: var(--pad) 10px 8px var(--pad); border-width: 0 1.5px 1.5px 0; border-radius: 8px 0 9px 0; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer { align-self: start; margin: calc(-1 * var(--pad)) calc(-1 * var(--pad)) 0 0; padding: var(--pad) var(--pad) 8px 10px; border-width: 0 0 1.5px 1.5px; border-style: solid; border-radius: 0 8px 0 9px; }
+:where(.phone-card-sheet, #deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.has-corner-dots > .card-footer:not(.corner-button) { box-shadow: none; }
 .phone-card-sheet .game-card > .corner-button { min-height: 44px; min-width: 52px; }
+.phone-card-sheet .game-card > .corner-button:disabled { border-style: dashed; }
 
 /* With colour chips (a resource symbol is a chip in its colour, dark symbol on top), the convert
    tab stays a neutral button that frames its chip; the effect symbols stay in the card's ink. */
@@ -4070,11 +4108,107 @@ body.background-stars .combat-many-ships #combat-help { margin:4px 0; }
     grid-template-columns: minmax(0, 1fr) !important; grid-template-areas: "sym" "cost" "name" "head" "effect" "buttons" "note" !important;
     font-size: clamp(10px, calc((var(--top-w) + min(0px, var(--step)) - 14px) / 3.6), 18px) !important; row-gap: 3px !important;
   }
-  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer) { justify-self: start !important; margin: 0 !important; padding: 0 !important; border-color: transparent !important; background: none !important; }
+  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer) { justify-self: start !important; margin: 0 !important; padding: 0 !important; }
+  #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer):not(.corner-button) { border-color: transparent !important; background: none !important; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-footer { grid-row: 2 !important; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-symbols { max-width: 100%; }
   #hand-row.fan-tight .game-card:not(:hover):not(:focus-within) > .card-symbols .corner-group { flex-wrap: wrap; }
 }
+/* Stacked (a hand past the fan's room, on any layout), a tab is a small button of its own under
+   the one above it. The strip that shows can be a few pixels wide, so its frame takes no room:
+   an edge and a ledge drawn inside the symbols' own box. */
+#hand-row.fan-tight > .game-card:not(:hover):not(:focus-within) > .corner-button {
+  justify-self: start !important; min-width: 0 !important; min-height: 0 !important; margin: 0 !important; padding: 0 !important; border-width: 0 !important; border-radius: 5px !important;
+  box-shadow: inset 0 0 0 1.5px var(--tab-edge), inset 0 -2px 0 color-mix(in srgb, var(--tab-edge) 55%, transparent) !important;
+}
+#hand-row.fan-tight > .game-card:not(:hover):not(:focus-within) > .corner-button:disabled { box-shadow: inset 0 0 0 1px var(--tab-edge) !important; }
+
+/* ==== Corner size (rules #card-corners): a hand card's corner tab is about a third of the card's
+   width and square, its symbol most of it: the symbol is 0.29 of the card's width and the tab's
+   padding 0.03 of it on each side. Every symbol in a corner is 1em square, so a square icon drops
+   in. A resting card also keeps its symbols under 32% of its height, so its name fits below. An
+   effect corner of several symbols shrinks them to fit across the card (--glyphs, from app.js).
+   A raised card is measured at its raised width, up to 280px; the wide, short raised card of an
+   upright tablet at 200px; the opened card on a phone at 170px. A hand past the fan's room keeps
+   its stacked sizes. ==== */
+body:not(.background-stars) #hand-row > .game-card { --card-w: var(--top-w, 136px); --corner-cap: calc(var(--fan-h, 200px) * .32); }
+body:not(.background-stars) #hand-row > .game-card:is(:hover, :focus-within) { --card-w: min(var(--raise-w, 250px), 280px); --corner-cap: 999px; }
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  body:not(.background-stars) #hand-row > .game-card:is(:hover, :focus-within) { --card-w: 200px; }
+}
+/* The opened card on a phone is wide but short (a sideways phone has about 150px over the hand):
+   its tabs take the chosen size for a 170px card, about 60px, not a third of its width. */
+.phone-card-sheet .game-card { --card-w: 170px; --corner-cap: 999px; }
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) {
+  --tab-pad: max(3px, calc(var(--card-w) * .03));
+  --icon: min(calc(var(--card-w) * .29), var(--corner-cap), calc((var(--card-w) - 2 * var(--pad-x, 8px) - 2 * var(--tab-pad)) / var(--glyphs, 1)));
+  font-size: var(--icon) !important;
+}
+/* Each part reads the size itself rather than inheriting it: a fan that changes a card's height
+   (--fan-h) left inherited font sizes stale in Chrome. */
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.corner-group, .corner-dots, .resource-dots, .resource-chip, .vocab-icon, .vocab-star, .resource-symbol) { font-size: var(--icon) !important; }
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.vocab-icon, .vocab-star, .resource-symbol) { width: var(--icon) !important; height: var(--icon) !important; }
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) :is(.corner-group, .resource-chip) { gap: 0 !important; }
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > :is(.card-symbols, .card-footer) .corner-count { font-size: calc(var(--icon) * .5) !important; }
+body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-card-sheet .game-card) > .corner-button {
+  min-width: auto !important; min-height: auto !important; gap: calc(var(--icon) * .12) !important;
+  padding: var(--tab-pad) !important; padding-bottom: calc(var(--tab-pad) + 3px) !important;
+}
+/* A name that does not fit between corners this big moves under them on the raised card too
+   (card-feel.js measures it as the card rises), as it does at rest. */
+@media (min-width: 600px) and (min-height: 600px) {
+  body:not(.background-stars) #hand-row > .game-card.name-under-raised:is(:hover, :focus-within) { grid-template-areas: "sym . cost" "name name name" "head head head" "effect effect effect" "note note note" "art art art" "buttons buttons buttons" !important; }
+  body:not(.background-stars) #hand-row > .game-card.name-under-raised:is(:hover, :focus-within) > .card-name { margin-top: var(--box, 10px) !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  body:not(.background-stars) #hand-row > .game-card.name-under-raised:is(:hover, :focus-within):not(.has-buttons) { grid-template-areas: "sym . cost" "name name name" "head head head" "effect effect effect" "note note note" !important; }
+  body:not(.background-stars) #hand-row > .game-card.name-under-raised:is(:hover, :focus-within).has-buttons { grid-template-areas: "sym . cost buttons" "name name name buttons" "head head head buttons" "effect effect effect buttons" "note note note buttons" !important; }
+}
+/* A resting card's name sits clear of its bigger corners. Its empty rows (effect, buttons, notes:
+   hidden at rest) take no gap, so the corners and the name keep the card's height; a card without
+   corners keeps a small space between its name and the line under it. */
+@media (min-width: 600px) and (min-height: 600px) {
+  body:not(.background-stars) #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within) { row-gap: 0 !important; }
+  body:not(.background-stars) #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within) > .card-name ~ :is(.card-headline, .card-effect) { margin-top: 3px !important; }
+  body:not(.background-stars) #hand-row:not(.fan-tight) > .game-card:not(:hover):not(:focus-within):is(.has-symbols, .has-corner-dots) > .card-name { margin-top: 5px !important; }
+}
+/* On a phone a resting card's corners may use more of its height: a fanned phone hand shows the
+   symbols without the name (a card without symbols shows its name instead). */
+@media (max-width: 599px), (max-height: 599px) {
+  body:not(.background-stars) #hand-row > .game-card { --corner-cap: calc(var(--fan-h, 200px) * .6); }
+}
+
+/* ==== A resting hand card's name is never cut off (rules #card-corners): it wraps between words
+   onto two lines at most and, where it still does not fit, gets smaller (card-feel.js sets
+   --name-fs, down to 9px). A name that does not fit even then, in a hand squeezed past the fan's
+   room, is left to the raised card and kept for screen readers. ==== */
+@media (min-width: 600px) and (min-height: 600px) {
+  body:not(.background-stars) #hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { font-size: var(--name-fs, 12.5px) !important; }
+}
+@media (max-width: 599px), (max-height: 599px) {
+  body:not(.background-stars) #hand-row > .game-card > .card-name { font-size: var(--name-fs, 14px); }
+}
+/* A name never animates its size: under reduced motion every property gets a 0.01ms transition,
+   and a measurement in the same frame would still read the old size. */
+body:not(.background-stars) #hand-row > .game-card > .card-name { transition: none !important; }
+body:not(.background-stars) #hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { white-space: normal !important; text-overflow: clip !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; min-height: min-content !important; flex-shrink: 0; }
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(:hover):not(:focus-within) > .card-name { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }
+/* A resting card never shows text cut with an ellipsis: its one rules line shows only where it fits
+   whole (card-feel.js marks the card rules-tucked otherwise), kept for screen readers. */
+body:not(.background-stars) #hand-row > .game-card:not(:hover):not(:focus-within) > :is(.card-headline, .card-effect) { text-overflow: clip !important; }
+body:not(.background-stars) #hand-row > .game-card.rules-tucked:not(:hover):not(:focus-within) > :is(.card-headline, .card-effect) { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; margin: 0 !important; }
+/* A card with no corner symbols whose name cannot show (a hand squeezed past the fan's room) is
+   known by its picture, or by its emblem where it has none, across the card's top. */
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art {
+  display: grid !important; place-items: center; position: absolute !important; inset: 6px 6px auto !important; height: calc(100% - 12px) !important; max-height: 72px; min-height: 0 !important; margin: 0 !important;
+  border: 0 !important; border-radius: 5px !important; container-type: normal !important;
+}
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art.has-picture .card-picture { display: block !important; inset: 0 !important; top: 0 !important; height: 100% !important; border-radius: 5px; }
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art.has-picture .card-emblem,
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art:not(.has-picture) :is(.card-picture, .card-registration) { display: none !important; }
+/* (A picture that fails to load drops has-picture, app.js: the emblem shows instead.) */
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art:not(.has-picture) .card-emblem { position: static; width: 34px; height: 34px; }
+body:not(.background-stars) #hand-row > .game-card.name-tucked:not(.has-symbols):not(:hover):not(:focus-within) > .card-art:not(.has-picture) .card-emblem .board-glyph { width: 20px; height: 20px; }
 
 /* Playtest refinements: stable controls, five-count guides and optional references. */
 body.hide-statistics .standings-stats { display:none !important; }
