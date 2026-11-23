@@ -53,6 +53,8 @@ function createGalacticReach(options = {}) {
     biomass: { purpose: 'Found colonies and sustain growth', icon: icon('life') },
     data: { purpose: 'Research, buy, and upgrade cards', icon: icon('data') }
   };
+  // A card's corner tab sizes its symbols (rules #card-corners), so they carry both renderings.
+  const CORNER_RESOURCE_ICONS = { matter: icon('matter', { small: 'auto' }), energy: icon('energy', { small: 'auto' }), biomass: icon('life', { small: 'auto' }), data: icon('data', { small: 'auto' }) };
   const PLAYER_COLORS = ['#55d9f4', '#ff9f6e', '#a58cff', '#f2cf66'];
   const PLAYER_NAMES = ['You', 'Ember Directorate', 'Violet Assembly', 'Helios Compact'];
   const PLAYER_STRATEGIES = ['human', 'military', 'economy', 'expansion'];
@@ -605,7 +607,8 @@ function createGalacticReach(options = {}) {
   const ALL_CARDS = { ...BASIC_CARDS, ...ADVANCED_CARDS, ...MARKET_MILITARY, ...SUPPLY_CARDS, ...RETIRED_RELIC_CARDS, ...RELIC_CARDS };
 
   // The card vocabulary: one symbol per idea that recurs in card text (a Miss is a Shield).
-  const vocabIcon = (name, kind = '') => `<span class="vocab-icon${kind ? ` vocab-${kind}` : ''}" aria-hidden="true">${icon(name)}</span>`;
+  // Card text and the keys draw them small; in a card corner the tab sizes them (styles.css).
+  const vocabIcon = (name, kind = '') => `<span class="vocab-icon${kind ? ` vocab-${kind}` : ''}" aria-hidden="true">${icon(name, { small: 'auto' })}</span>`;
   const VOCAB_ICONS = {
     prestige: vocabIcon('prestige', 'star'),
     draw: vocabIcon('draw'),
@@ -676,7 +679,7 @@ function createGalacticReach(options = {}) {
     // Market prices keep their "; " list (they may carry a limit note); other amounts read as a list.
     const label = (prefix ? prefix + ' ' : '') + present.map(resource => `${amounts[resource]} ${RESOURCE_NAMES[resource]}${marks[resource]?.label || ''}`).join(Object.keys(marks).length ? '; ' : ', ');
     const repeat = n => n > 1 && n <= CORNER_REPEAT_MAX ? ` data-repeat="${n}"` : '';
-    const chips = present.map(resource => `<span class="resource-chip ${resource} ${marks[resource]?.mark || ''}"${repeat(amounts[resource])} title="${marks[resource]?.title || `${amounts[resource]} ${RESOURCE_NAMES[resource]}`}">${cornerRepeat(resourceDot(resource), amounts[resource])}${marks[resource]?.icon || ''}</span>`).join('');
+    const chips = present.map(resource => `<span class="resource-chip ${resource} ${marks[resource]?.mark || ''}"${repeat(amounts[resource])} title="${marks[resource]?.title || `${amounts[resource]} ${RESOURCE_NAMES[resource]}`}">${cornerRepeat(resourceDot(resource, '', true), amounts[resource])}${marks[resource]?.icon || ''}</span>`).join('');
     return `<span class="resource-dots corner-dots" role="img" aria-label="${label}">${chips}</span>`;
   }
 
@@ -1283,8 +1286,8 @@ function createGalacticReach(options = {}) {
     return true;
   }
 
-  function resourceDot(resource, className = '') {
-    return `<span class="resource-symbol ${resource} ${className}" aria-hidden="true">${RESOURCE_DETAILS[resource].icon}</span>`;
+  function resourceDot(resource, className = '', corner = false) {
+    return `<span class="resource-symbol ${resource} ${className}" aria-hidden="true">${corner ? CORNER_RESOURCE_ICONS[resource] : RESOURCE_DETAILS[resource].icon}</span>`;
   }
 
   function resourceDots(cost) {

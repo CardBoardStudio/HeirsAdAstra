@@ -121,9 +121,12 @@
     return cache.get(id);
   };
   // An inline <svg> for a page. It fills the box it is given; colour comes from `color`.
+  // small: 'auto' carries both renderings for a box whose size the page's CSS decides (the card
+  // corners): styles.css shows the ghost lines once the box is 24 px or larger.
   function svg(name, { small = false, className = '' } = {}) {
     const key = resolve(name);
-    return `<svg class="hx-icon${className ? ` ${className}` : ''}" data-icon="${key}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${inner(key, small)}</svg>`;
+    const body = small === 'auto' ? `<g class="hx-r-small">${inner(key, true)}</g><g class="hx-r-ghost">${inner(key, false)}</g>` : inner(key, small);
+    return `<svg class="hx-icon${small === 'auto' ? ' hx-auto' : ''}${className ? ` ${className}` : ''}" data-icon="${key}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
   }
   // A standalone SVG file (design exports): one rendering, drawn in `color` at 24 px.
   function file(name, { small = false, color = '#f4e3bd' } = {}) {

@@ -2796,6 +2796,15 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
 .hx-icon { overflow: visible; }
 .hx-glyph, .hx-slot { display: inline-block; width: 1em; height: 1em; vertical-align: -.14em; line-height: 1; }
 .hx-glyph .hx-icon, .hx-slot .hx-icon { display: block; width: 100%; height: 100%; }
+/* A symbol carrying both renderings (icons.js small: 'auto') shows the small one unless its box
+   says otherwise. In a card corner (rules #card-corners) the tab sizes each symbol's box: a box of
+   24 px or more shows the ghost lines. A resource chip draws its symbol at 72% of the box, so its
+   ghost lines start at 34 px. */
+.hx-auto > .hx-r-ghost { display: none; }
+:is(.card-symbols, .card-footer) .vocab-icon { container: hx-box / size; }
+:is(.card-symbols, .card-footer) .resource-symbol { container: hx-chip / size; }
+@container hx-box (min-width: 24px) { .hx-auto > .hx-r-ghost { display: inline; } .hx-auto > .hx-r-small { display: none; } }
+@container hx-chip (min-width: 34px) { .hx-auto > .hx-r-ghost { display: inline; } .hx-auto > .hx-r-small { display: none; } }
 .vocab-icon { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; vertical-align: -.2em; line-height: 1; }
 .vocab-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .vocab-star { color: #c99a1e; font-size: 1.1em; }
