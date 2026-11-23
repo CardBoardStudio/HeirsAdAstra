@@ -33,9 +33,9 @@ async function sized(browser, label, sizes) {
   }
 }
 const SIZES = [[390,844],[844,390],[1280,720]];
-// A phone, as the person holds it: mobile viewport, touch and a phone browser's user agent.
+// A phone, as the person holds it: a phone-sized screen and viewport, touch and a phone browser's user agent.
 async function phone(browser, width, height) {
-  await browser.send('Emulation.setDeviceMetricsOverride', {width, height, deviceScaleFactor:2, mobile:true, screenOrientation: width > height ? {type:'landscapePrimary', angle:90} : {type:'portraitPrimary', angle:0}});
+  await browser.send('Emulation.setDeviceMetricsOverride', {width, height, deviceScaleFactor:2, mobile:true, screenWidth:width, screenHeight:height, screenOrientation: width > height ? {type:'landscapePrimary', angle:90} : {type:'portraitPrimary', angle:0}});
   await browser.send('Emulation.setTouchEmulationEnabled', {enabled:true, maxTouchPoints:5});
   await browser.send('Emulation.setUserAgentOverride', {userAgent:'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1', platform:'iPhone'});
 }
@@ -67,6 +67,7 @@ async function phoneWaitingRoom(chrome) {
       assert.match(await host.evaluate("document.querySelector('.lobby-blocked').textContent"), /second person/);
       assert(await host.evaluate("document.querySelector('#notice').hidden"), 'no error notice');
       await sized(host, `phone-waiting-room`, [[width, height]]);
+      await phone(host, width, height); // sized() measures without the phone's screen; hold the phone again.
       await host.evaluate("document.querySelector('#lobby-alone').click()");
       await wait(host, "location.hash==='#alone' && !!document.querySelector('#alone-form')");
       await host.evaluate("document.querySelector('#alone-form').requestSubmit()");
@@ -74,6 +75,8 @@ async function phoneWaitingRoom(chrome) {
       const alone = (await request(host, `/api/tables/${await host.evaluate("new URLSearchParams(location.search).get('table')")}`)).data;
       assert.equal(alone.lobby, null, 'Play alone from the waiting room starts a game with no waiting room');
       assert.equal(alone.save.state.players.length, 4, 'against three computer rivals');
+      // Phones are played sideways (rules #shared-board): held sideways the game takes input; upright it asks to turn.
+      assert.equal(await host.evaluate("document.documentElement.classList.contains('rotate-now')"), height > width, 'sideways plays; upright asks to turn');
     }
     assert.deepEqual(host.errors, []);
   } finally { host.close(); }
@@ -122,5 +125,5 @@ async function phoneWaitingRoom(chrome) {
     console.log('ok - two start choices at phone and desktop sizes; Play alone starts a saved game at the chosen target with no waiting room, invitation or shared table; a visitor gets the New game choices; resume sits beneath');
   } finally { player.close(); visitor.close(); }
   await phoneWaitingRoom(chrome);
-  console.log('ok - on a phone, upright and sideways, a game for others with nobody else seated never offers a Start it refuses: the game page opens its waiting screen, and the older waiting room says why and offers Play alone, which starts against three computer rivals');
+  console.log('ok - on a phone, upright and sideways, a game for others with nobody else seated never offers a Start it refuses: the game page opens its waiting screen, and the older waiting room says why and offers Play alone, which starts against three computer rivals and plays sideways');
 })().catch(error=>{console.error(error);process.exit(1);});
