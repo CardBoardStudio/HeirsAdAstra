@@ -57,10 +57,12 @@
     trade: { label: 'Trade', stars: [[4, 8, DOT], [20, 8, MD], [16, 4, DOT], [20, 16, DOT], [4, 16, MD], [8, 20, DOT]], joins: [[0, 1], [1, 2], [3, 4], [4, 5]] },
     // Parent and child: a bright star with a small one beside it.
     settler: { label: 'Settler', stars: [[10, 9, 4], [10, 20, DOT], [16.5, 14, SM], [16.5, 20, DOT]], joins: [[0, 1], [2, 3], [0, 2]] },
-    // A comet: a bright head and a tail of fading stars.
-    explorer: { label: 'Explorer', stars: [[18, 6, 4], [13.2, 10.2, SM, .9], [9.6, 13.6, 2, .75], [6.6, 16.6, DOT, .6], [4.2, 19.2, 1.2, .45]], joins: [] },
-    // A leader with a small star off each shoulder, unjoined.
-    fleet: { label: 'Fleet', stars: [[12, 8, HERO], [5.5, 16.5, SM], [18.5, 16.5, SM]], joins: [] },
+    // A comet: a bright head and a tail of fading stars. Small: the tail's stars are larger and
+    // fade less, so it still trails the head at 16 px.
+    explorer: { label: 'Explorer', stars: [[18, 6, 4], [13.2, 10.2, SM, .9], [9.6, 13.6, 2, .75], [6.6, 16.6, DOT, .6], [4.2, 19.2, 1.2, .45]], joins: [], small: { min: 2.7, waist: .42, minOpacity: .82 } },
+    // A leader with a small star off each shoulder, unjoined. Small: with no lines to hold them,
+    // its stars grow more and fill out, so the three still read as one group at 16 px.
+    fleet: { label: 'Fleet', stars: [[12, 8, HERO], [5.5, 16.5, SM], [18.5, 16.5, SM]], joins: [], small: { scale: 1.45, waist: .4 } },
     // A dome of stars on its ground line, bright at the top.
     colony: { label: 'Colony', stars: [...arc(12, 18, 8, 180, 360, 7).map(([x, y], i) => [x, y, i === 3 ? LG : 1.2]), [3, 18, 1.2], [21, 18, 1.2]], joins: [...chain(7), [7, 8]] },
     // A sheaf: three stalks tied low, fanning to stars at the heads. The tie sits lower than the
@@ -90,15 +92,19 @@
     const k = r * waist, f = n => round(n);
     return `M${f(x)} ${f(y - r)}L${f(x + k)} ${f(y - k)}L${f(x + r)} ${f(y)}L${f(x + k)} ${f(y + k)}L${f(x)} ${f(y + r)}L${f(x - k)} ${f(y + k)}L${f(x - r)} ${f(y)}L${f(x - k)} ${f(y - k)}Z`;
   };
-  // Small: every star grows by a quarter and no star is under 2.1, so dots read as stars;
-  // the prestige sun and other big stars grow less, so the icon keeps its balance.
+  // Small: every star grows, by 0.6 units up to a quarter of its size, so dots read as stars;
+  // the prestige sun keeps its size, so the icon keeps its balance. An icon may set its own
+  // `small` growth (scale), smallest star (min), fullness (waist) and faintest opacity where that is not enough.
   const smallRadius = r => r >= 6 ? r : Math.min(r * 1.25, Math.max(2.1, r + .6));
   const render = (name, small) => {
     const icon = ICONS[name];
     const groups = new Map();
-    for (const [x, y, r, o] of icon.stars) {
+    const own = small ? icon.small || {} : {};
+    for (const [x, y, r, o0] of icon.stars) {
+      const o = own.minOpacity ? Math.max(o0, own.minOpacity) : o0;
+      const radius = !small ? r : own.scale ? round(r * own.scale) : Math.max(smallRadius(r), own.min || 0);
       const key = String(o);
-      groups.set(key, (groups.get(key) || '') + star(x, y, small ? smallRadius(r) : r, small ? .34 : .26));
+      groups.set(key, (groups.get(key) || '') + star(x, y, radius, small ? own.waist || .34 : .26));
     }
     const joins = icon.joins.map(([a, b]) => `M${icon.stars[a][0]} ${icon.stars[a][1]}L${icon.stars[b][0]} ${icon.stars[b][1]}`).join('');
     const line = !joins ? '' : small
