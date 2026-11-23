@@ -665,11 +665,16 @@ function createGalacticReach(options = {}) {
   function cardSymbolGroups(parts) {
     return parts.map(part => `<span class="corner-group">${cornerRepeat(VOCAB_ICONS[part.key], part.count)}</span>`).join('');
   }
+  // How many symbols wide a corner is (a number counts as most of one, a gap between groups as a
+  // quarter), so a hand card's corner tab can size its symbols to fit the card (styles.css).
+  function cornerGlyphs(parts) {
+    return +(parts.reduce((n, part) => n + (part.count <= CORNER_REPEAT_MAX ? part.count : 1.7), 0) + (parts.length - 1) * .25).toFixed(2);
+  }
   function cardSymbols(definition, card = {}) {
     const parts = cardEffectParts(definition, card);
     if (!parts.length) return '';
     const label = cardEffectLabel(parts);
-    return `<span class="card-symbols" role="img" aria-label="${label}" title="${label}">${cardSymbolGroups(parts)}</span>`;
+    return `<span class="card-symbols" role="img" aria-label="${label}" title="${label}" style="--glyphs:${cornerGlyphs(parts)}">${cardSymbolGroups(parts)}</span>`;
   }
   // The top-right corner's resources: one symbol per unit, the amount in the accessible name.
   function cornerDots(amounts, prefix = '', marks = {}) {
@@ -5224,9 +5229,17 @@ function createGalacticReach(options = {}) {
     const parts=cardEffectParts(definition,card), effectLabel=parts.length?cardEffectLabel(parts):'';
     const iconOrder=canOrder&&parts.length>0&&!buyExchange&&card.key!=='probe';
     const orderPressed=isSelectedOrder&&state.actionMode!=='excavate';
-    const effectCorner=!parts.length?'':iconOrder?`<button type="button" class="card-symbols corner-button${orderPressed?' pressed':''}" data-order-card="${card.id}" aria-pressed="${orderPressed}" aria-label="${orderPressed?'Cancel order':'Use order'}: ${effectLabel}" title="${orderPressed?'Cancel order':'Use order'}: ${effectLabel}">${cardSymbolGroups(parts)}</button>`:cardSymbols(definition,card);
+    // A hand card's corner whose action is not open right now (a rival's turn, another phase or
+    // stage) is the same tab, disabled, so the card still shows what it does. A corner with no
+    // action at all (battle and Buy cards, Probe / Excavate's empty corner, an upgraded starter's
+    // missing conversion) has no tab.
+    const orderTab=location==='hand'&&parts.length>0&&definition.order&&!definition.battleRelic&&!definition.reaction&&!definition.buyEffect&&card.key!=='probe';
+    const effectCorner=!parts.length?'':iconOrder?`<button type="button" class="card-symbols corner-button${orderPressed?' pressed':''}" style="--glyphs:${cornerGlyphs(parts)}" data-order-card="${card.id}" aria-pressed="${orderPressed}" aria-label="${orderPressed?'Cancel order':'Use order'}: ${effectLabel}" title="${orderPressed?'Cancel order':'Use order'}: ${effectLabel}">${cardSymbolGroups(parts)}</button>`
+      :orderTab?`<button type="button" class="card-symbols corner-button" style="--glyphs:${cornerGlyphs(parts)}" disabled aria-label="Use order: ${effectLabel} (not now)" title="Use order: ${effectLabel} (not now)">${cardSymbolGroups(parts)}</button>`:cardSymbols(definition,card);
     const gain=canConvertCard(card)?conversionGain(card):null, gainText=gain?RESOURCES.filter(r=>gain[r]).map(r=>`${gain[r]} ${RESOURCE_NAMES[r]}`).join(', '):'';
-    const convertCorner=!gain?'':canResource?`<button type="button" class="card-footer corner-button" data-resource-card="${card.id}" aria-label="Convert to ${gainText}${canStoreCard?'':' (choose excess resources first)'}" title="${canStoreCard?`Convert to ${gainText}`:'Choose excess resources first'}" ${canStoreCard?'':'disabled'}>${cornerDots(gain,'Converts to')}</button>`:`<div class="card-footer">${cornerDots(gain,'Converts to')}</div>`;
+    const gainTab=gain?RESOURCES.filter(r=>gain[r]).map(r=>` tab-${r}`).join(''):'';
+    const convertCorner=!gain?'':canResource?`<button type="button" class="card-footer corner-button${gainTab}" data-resource-card="${card.id}" aria-label="Convert to ${gainText}${canStoreCard?'':' (choose excess resources first)'}" title="${canStoreCard?`Convert to ${gainText}`:'Choose excess resources first'}" ${canStoreCard?'':'disabled'}>${cornerDots(gain,'Converts to')}</button>`
+      :location==='hand'?`<button type="button" class="card-footer corner-button${gainTab}" disabled aria-label="Convert to ${gainText} (not now)" title="Convert to ${gainText} (not now)">${cornerDots(gain,'Converts to')}</button>`:`<div class="card-footer">${cornerDots(gain,'Converts to')}</div>`;
     const textButtons=location!=='hand'?'':`${canOrder&&!iconOrder?`<button class="button ${isSelectedOrder?'button-danger':'button-primary'}" data-order-card="${card.id}" ${card.key==='probe'?'data-order-mode="probe"':''} aria-pressed="${isSelectedOrder&&state.actionMode!=='excavate'}">${isSelectedOrder&&state.actionMode!=='excavate'?'Cancel order':buyExchange?'Use 2:1':card.key==='probe'?'Probe':'Use order'}</button>`:''}${canOrder&&canConstructDraw(ME,card.id)?`<button class="button button-primary" data-construct-draw="${card.id}" aria-label="Play Construct III to draw one card without building">Draw 1 only</button>`:''}${canOrder&&canOrderDraw(ME,card.id)?`<button class="button button-primary" data-order-draw="${card.id}" aria-label="Play Seed Ark to draw two cards instead of colonizing">Draw 2 instead</button>`:''}${canOrder&&card.key==='probe'?`<button class="button button-primary" data-order-card="${card.id}" data-order-mode="excavate" aria-pressed="${isSelectedOrder&&state.actionMode==='excavate'}">${isSelectedOrder&&state.actionMode==='excavate'?'Cancel Excavate':'Excavate'}</button>`:''}${canBuyEffect?`<button class="button button-primary" data-buy-effect="${card.id}">Use in Buy</button>`:''}${canTrash?`<button class="button" data-trash-hand="${card.id}" aria-label="Trash ${esc(definition.name)}: choose a payment">Trash…</button>`:''}${definition.battleRelic?'<span class="muted">Play during battle</span>':definition.reaction&&isHumanOps?'<span class="muted">Automatic reaction</span>':''}`;
     return `<article class="game-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''}${parts.length?' has-symbols':''}${gain?' has-corner-dots':''}${textButtons?' has-buttons':''}${cardHeadline(card)&&!parts.length?' has-headline':''}" style="--card-accent:${definition.accent}"${card.id?` data-card-id="${card.id}"`:''}${location==='hand'&&definition.order?` data-order="${definition.order}"`:''}>${effectCorner}<span class="card-name">${definition.name}${starterLevel(card)===3?' III':card.upgraded?' II':''}</span>${convertCorner}${cardHeadline(card)&&!parts.length?`<span class="card-headline"><span aria-hidden="true">${iconText(cardHeadline(card))}</span><span class="sr-only">${cardHeadline(card)}</span></span>`:''}${cardIllustration(definition)}${definition.lore?`<span class="card-lore">${esc(definition.lore)}</span>`:''}<span class="card-effect">${resourceText(definition.text)}${card.upgraded?` ${starterLevel(card)===3?'III':'II'}: ${upgradedOrderText(card)}${starterLevel(card)===3&&card.key!=='construct'?' Draw one card when using the order.':''}`:''}</span>${textButtons?`<div class="card-buttons">${textButtons}</div>`:''}</article>`;
 
