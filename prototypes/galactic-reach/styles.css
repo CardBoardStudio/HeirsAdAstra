@@ -190,7 +190,8 @@ p { line-height: 1.55; }
 .hex.fog.scanned::before { box-shadow: inset 0 0 0 1px rgba(143,167,189,.18); }
 .hex.relic-signal { background: color-mix(in srgb, var(--gold) 72%, #fff); }
 .hex.relic-signal::before { box-shadow: inset 0 0 0 1px rgba(242,207,102,.42), inset 0 0 18px rgba(242,207,102,.12); }
-.hex.relic-signal .special { top: 50%; right: 50%; transform: translate(50%,-50%); font-size: 16px; text-shadow: 0 0 12px rgba(242,207,102,.85); }
+.hex.relic-signal .special { top: 50%; right: 50%; transform: translate(50%,-50%); font-size: 16px; }
+.hex.relic-signal .special .hex-relic { filter: drop-shadow(0 0 5px rgba(242,207,102,.85)); }
 .hex.relic-signal .hex-buildings:not(:empty) + .special { top: 24%; right: 20%; transform: none; font-size: 10px; }
 .hex > * { position: relative; z-index: 1; pointer-events: none; }
 .hex-fleets, .hex-buildings { position: absolute; left: 50%; display: flex; align-items: center; justify-content: center; white-space: nowrap; }
@@ -203,6 +204,10 @@ p { line-height: 1.55; }
 .board-icon-count { position: absolute; top: -5px; right: -5px; min-width: 11px; height: 11px; padding: 0 2px; display: grid; place-items: center; border-radius: 6px; background: #f7fbff; color: #07101a; font-size: 7px; font-weight: 750; line-height: 1; }
 
 .hex .special { position: absolute; top: 18%; right: 18%; color: var(--gold); font-size: 10px; line-height: 1; }
+/* A relic site: Excavate's diamond, 1em square; an excavated one stays as a faint mark. */
+.hex-relic { display: block; width: 1em; height: 1em; }
+.hex-relic .hx-icon { display: block; width: 100%; height: 100%; }
+.hex-relic.relic-claimed { opacity: .45; }
 @keyframes target-pulse { 50% { filter: brightness(1.45); } }
 
 .map-legend { display: flex; justify-content: center; flex-wrap: wrap; gap: 10px 15px; padding: 10px; border: 1px solid var(--line); background: rgba(13,20,33,.96); color: var(--muted); font-size: 12px; line-height: 1.35; }
@@ -2578,7 +2583,7 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
   .map-legend-corner .resource-chip { min-height: 16px; padding: 0 3px 0 2px; gap: 1px; font-size: 10.5px; box-shadow: none; }
   .map-legend-corner .resource-symbol { width: 11px; height: 11px; }
   .map-legend-corner .board-glyph { flex: none; width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; }
-  .map-legend-corner .legend-icon { font-size: 12px; text-align: center; color: var(--gold); }
+  .map-legend-corner .legend-icon { color: var(--gold); }
 }
 /* Upright: in the map's bottom-right corner. */
 @media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
@@ -2791,13 +2796,25 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
 /* ==== Filled resource icons everywhere, a shared icon vocabulary for card effects (Prestige,
    Draw, Hit, Miss, Colonize, Build), and supply cards laid out like printed cards: name and text
    from the top-left, the cost stacked down the right edge. ==== */
-.resource-symbol svg > :first-child, .resource-symbol.data svg circle { fill: currentColor; }
-.resource-symbol.matter svg > :not(:first-child) { stroke: #00000070; }
+/* The star icons (icons.js) draw their own fills and lines in currentColor: a placement sets the
+   colour and the box, and the icon fills the box. */
+.hx-icon { overflow: visible; }
+.hx-glyph, .hx-slot { display: inline-block; width: 1em; height: 1em; vertical-align: -.14em; line-height: 1; }
+.hx-glyph .hx-icon, .hx-slot .hx-icon { display: block; width: 100%; height: 100%; }
+/* A symbol carrying both renderings (icons.js small: 'auto') shows the small one unless its box
+   says otherwise. In a card corner (rules #card-corners) the tab sizes each symbol's box: a box of
+   24 px or more shows the ghost lines. A resource chip draws its symbol at 72% of the box, so its
+   ghost lines start at 34 px. */
+.hx-auto > .hx-r-ghost { display: none; }
+:is(.card-symbols, .card-footer) .vocab-icon { container: hx-box / size; }
+:is(.card-symbols, .card-footer) .resource-symbol { container: hx-chip / size; }
+@container hx-box (min-width: 24px) { .hx-auto > .hx-r-ghost { display: inline; } .hx-auto > .hx-r-small { display: none; } }
+@container hx-chip (min-width: 34px) { .hx-auto > .hx-r-ghost { display: inline; } .hx-auto > .hx-r-small { display: none; } }
 .vocab-icon { display: inline-grid; place-items: center; width: 1.15em; height: 1.15em; vertical-align: -.2em; line-height: 1; }
 .vocab-icon svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .vocab-star { color: #c99a1e; font-size: 1.1em; }
-.vocab-hit svg { fill: none; stroke: #c4482c; stroke-width: 2.6; }
-.vocab-miss svg { fill: #7ea3c4; stroke: #2e4a63; stroke-width: 1.4; }
+.vocab-hit { color: #c4482c; }
+.vocab-miss { color: #7ea3c4; }
 .card-icons { display: none; }
 @media (min-width: 600px) and (min-height: 600px) {
   .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) {
@@ -2812,10 +2829,11 @@ body.background-stars #resource-grid > .ring-key .unavailable i { background: #4
   .map-legend-corner .legend-vocab { display: grid; grid-template-columns: repeat(2, max-content); justify-content: start; gap: 4px 16px; margin-top: 4px; padding-top: 8px; border-top: 1px solid #d9bd8030; font-size: 14px; }
   .map-legend-corner .legend-vocab > span { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
 }
-/* Move: an arrow; the resource limit: a gold pip, as on the mat. */
-.vocab-move svg { stroke: #2f6d8a; stroke-width: 2.4; }
-.vocab-limit i { display: block; width: .8em; height: .8em; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fffbe8, #f0d27a 60%, #a8842c); box-shadow: 0 1px 1px #0006; }
-.map-legend-corner .vocab-move svg { stroke: #9fd0e6; }
+/* Move in blue; the resource limit in gold, as on the mat. */
+.vocab-move { color: #2f6d8a; }
+.vocab-limit { color: #a8842c; }
+.map-legend-corner .vocab-move { color: #9fd0e6; }
+.map-legend-corner .vocab-limit { color: var(--gold); }
 /* The card icons never take the pointer: pressing one presses the card under it. */
 .vocab-icon, .vocab-icon * { pointer-events: none; }
 .symbol-vocab { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 12px; grid-column: 1 / -1; }
@@ -3204,7 +3222,8 @@ span.cost-clusters { --cost-symbol: 1em; display: inline-flex; flex-wrap: wrap; 
    columns. The faction name is the lane's marker, so the row header is for screen readers. ==== */
 .standings-stats { display: none; }
 .standings-head .board-glyph { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 2; }
-.standings-glyph { font-size: 1.05em; line-height: 1; }
+.standings-glyph { display: inline-block; width: 1.05em; height: 1.05em; line-height: 1; }
+.standings-glyph .hx-icon { display: block; width: 100%; height: 100%; }
 @media (min-width: 600px) and (min-height: 600px) {
   .app-shell { --stat-w: 16px; --stats-w: calc(9 * var(--stat-w)); }
   .standings-stats { position: absolute; top: 0; left: calc(100% + 36px); display: flex; flex-direction: column; width: var(--stats-w); color: #dfe6e0; font-size: 9.5px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1; }
@@ -3471,6 +3490,7 @@ body.background-stars .max-bank-nav { display: flex; flex-direction: column; gap
 .max-bank-label { font: 700 10px/1.3 ui-sans-serif, system-ui, sans-serif; letter-spacing: .16em; color: #a5b4cc; margin: 0 0 3px 4px; }
 .max-bank-nav button { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 48px; padding: 10px 16px; text-align: left; border: 1px solid #718eb552; border-radius: 12px; background: linear-gradient(115deg, #253954f5, #17263cf5); color: #e3eeff; font: 600 15px/1.3 ui-sans-serif, system-ui, sans-serif; box-shadow: 0 5px 16px #0003; cursor: pointer; }
 .max-bank-nav button span:first-child { width: 20px; font-size: 20px; color: #adcfff; }
+.max-bank-nav button .hx-slot { height: 20px; }
 .max-bank-nav button span:last-child { margin-left: auto; color: #9aafce; font-size: 16px; }
 .max-bank-nav button:hover { background: #30496b; border-color: #a1c2f1; }
 @media (min-width: 600px) and (min-height: 600px) {
@@ -3501,6 +3521,7 @@ body.background-stars .max-bank-nav { display: flex; flex-direction: column; gap
   body.background-stars .max-bank-label { display: none; }
   .max-bank-nav button { min-height: 44px; padding: 8px; gap: 5px; font-size: 13px; }
   .max-bank-nav button span:first-child { width: 15px; font-size: 16px; }
+  .max-bank-nav button .hx-slot { height: 15px; }
   .max-bank-nav button span:last-child { display: none; }
   body.background-stars .phone-drawers, body.background-stars #hand-panel .hand-tools { background: #111e32f5 !important; border-color: #54739b66 !important; }
   body.background-stars[data-drawer] :is(.console, .resource-panel, .board-shared) { background-color: #142237 !important; }

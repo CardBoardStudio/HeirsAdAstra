@@ -72,6 +72,17 @@
     .gallery-art-symbol .board-glyph { width: 48px; height: 48px; }
     .gallery-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
     .gallery-art figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 10px 5px; background: linear-gradient(transparent, #000c); color: #f1ead6; font-size: .72rem; line-height: 1.3; }
+    /* The twenty symbols, by name, at the sizes the game draws them: 16 and 22 px with the small
+       rendering, 32 and 50 px with ghost lines. */
+    .icon-set { margin-top: 36px; border-top: 1px solid var(--line); padding-top: 8px; }
+    .icon-set .lede { margin-top: 0; }
+    .icon-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+    .icon-tile { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+    .icon-tile h3 { margin: 0; font-size: .95rem; }
+    .icon-tile small { color: var(--muted); font-weight: 400; }
+    .icon-sizes { display: flex; align-items: center; gap: 12px; min-height: 50px; color: var(--icon, var(--text)); }
+    .icon-sizes .hx-icon { flex: none; display: block; }
+    .icon-sizes .on-paper { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; background: var(--paper); color: var(--ink); }
     .credits { margin-top: 36px; border-top: 1px solid var(--line); padding-top: 8px; }
     .credits .lede { margin-top: 0; }
     .credits h3 { margin: 22px 0 10px; font-size: 1rem; color: var(--gold); letter-spacing: .04em; text-transform: uppercase; }
@@ -98,6 +109,7 @@
       <nav class="links" aria-label="Heirs Ad Astra">
         <a class="button button-ghost" href="./" style="text-decoration:none">← Back to the game</a>
         <a class="button button-ghost" href="rulebook.html#cards" style="text-decoration:none">Card rules</a>
+        <a class="button button-ghost" href="#icon-set" style="text-decoration:none">Symbols</a>
       </nav>
     </header>
     <div class="toolbar">
@@ -113,6 +125,11 @@
       <div class="save-row"><button class="button" id="copy-feedback" type="button">Copy all feedback</button><span class="save-state" id="copy-state" role="status"></span></div>
       <textarea id="feedback-text" readonly aria-label="All card feedback as text"></textarea>
     </section>
+    <section class="icon-set" id="icon-set" aria-labelledby="icon-set-title">
+      <h2 id="icon-set-title">Symbols</h2>
+      <p class="lede">The twenty symbols the game, the rulebook and these cards draw, each a small constellation. Each is shown at 16 and 22 px with solid lines (the rendering for small sizes), at 32 and 50 px with ghost lines, and at 16 px in a card's ink.</p>
+      <ul class="icon-grid" id="icon-grid"></ul>
+    </section>
     <section class="credits" id="card-art-credits" aria-labelledby="credits-title">
       <h2 id="credits-title">Card art credits</h2>
       <p class="lede">Every card design shows a public-domain painting, print or photograph from the <a href="https://www.nga.gov/open-access-images.html">National Gallery of Art, Washington</a>, released as open access under CC0. The Gallery asks for a credit, given here. Use of these works does not imply endorsement by the Gallery. The art is decoration only: a card does what its text says (<a href="rulebook.html#card-art">rulebook</a>).</p>
@@ -121,11 +138,19 @@
     <footer class="site-footer"><span id="site-footer-version">Heirs Ad Astra</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="#card-art-credits">Credits</a></footer>
   </main>
   <script>globalThis.drawingBoardTableBoot = true;</script>
+  <script src="icons.js?v=1"></script>
   <script src="app.js?v=cheaper-cards-32-37"></script>
   <script>
   'use strict';
   (() => {
     const catalog = createGalacticReach({ catalog: true });
+    // Symbols: every icon in icons.js, by name, in its colour on the table.
+    const ICON_COLOURS = { matter: 'var(--matter)', energy: 'var(--energy)', life: 'var(--biomass)', data: 'var(--data)', limit: 'var(--gold)' };
+    const icons = globalThis.heirsIcons;
+    if (icons) document.querySelector('#icon-grid').innerHTML = icons.NAMES.map(name => {
+      const at = (size, small) => icons.svg(name, { small }).replace('<svg ', `<svg width="${size}" height="${size}" `);
+      return `<li class="icon-tile" data-icon-name="${name}"><h3>${icons.LABELS[name]} <small>${name}</small></h3><div class="icon-sizes" style="--icon:${ICON_COLOURS[name] || 'var(--text)'}">${at(16, true)}${at(22, true)}${at(32, false)}${at(50, false)}<span class="on-paper">${at(16, true)}</span></div></li>`;
+    }).join('');
     // The label follows the engine this page loaded, so an archived copy names its own rules.
     const version = catalog.rulesVersion.split('/').pop();
     document.querySelector('#gallery-version').textContent = `HEIRS AD ASTRA · ${version} · CARD GALLERY`;
@@ -191,7 +216,7 @@
           ${card.relic ? '' : `<div class="gallery-cost">${catalog.cornerDots ? catalog.cornerDots(card.cost) : catalog.resourceDots ? catalog.resourceDots(card.cost) : chips(card.cost)}</div>`}
           <p class="effect" title="${esc(card.text)}"><span class="effect-symbols" aria-hidden="true">${catalog.iconText ? catalog.iconText(card.text) : esc(card.text)}</span><span class="sr-only">${esc(card.text)}</span></p>
           </div>
-          ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.BOARD_ICONS?.[card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase'] || ''}</figure>`}
+          ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.boardGlyph?.(card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase', false) || ''}</figure>`}
           <p class="needs"><span class="code" title="Card id for feedback">${card.code}</span>${card.relic ? ' · Excavation reward · no market price' : card.military ? ' · Military deck' : ''}${!card.relic && needs(card) ? ` · Needs ${esc(needs(card))}` : ''}</p>
           <div class="gallery-feedback" ${feedbackVisible ? '' : 'hidden'}>
           <div class="vote" role="group" aria-label="Your verdict on ${esc(card.name)}">

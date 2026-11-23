@@ -17,7 +17,7 @@ cp prototypes/galactic-reach/card-feel.js prototypes/galactic-reach/card-feel.cs
 # On-table guidance and the Learn to play walkthrough (index.html?tutorial=1).
 cp prototypes/galactic-reach/guide.js prototypes/galactic-reach/guide.css prototypes/galactic-reach/tutorial.js dist/galactic-reach/
 cp prototypes/galactic-reach/rulebook.html prototypes/galactic-reach/rulebook.css dist/galactic-reach/
-cp prototypes/galactic-reach/app.js dist/galactic-reach/app.js
+cp prototypes/galactic-reach/app.js prototypes/galactic-reach/icons.js dist/galactic-reach/
 cp prototypes/galactic-reach/playtest-notes.js prototypes/galactic-reach/playtest-notes.css dist/galactic-reach/
 cp prototypes/galactic-reach/change-queue.js prototypes/galactic-reach/change-queue.css dist/galactic-reach/
 cp prototypes/galactic-reach/table.js dist/galactic-reach/table.js

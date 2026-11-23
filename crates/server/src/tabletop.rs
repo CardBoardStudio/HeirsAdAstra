@@ -101,6 +101,7 @@ pub fn delegated_path(path: &str) -> bool {
         "/tabletop/board.html"
             | "/tabletop/board.js"
             | "/tabletop/board.css"
+            | "/tabletop/icons.js"
             | "/tabletop/phone.html"
             | "/tabletop/pairing.js"
     ) {
@@ -307,6 +308,13 @@ pub async fn board_script() -> impl IntoResponse {
     (
         [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
         include_str!("../../../prototypes/tabletop/board.js"),
+    )
+}
+/// The game's symbol set, so the public board draws the same relic mark as the table.
+pub async fn board_icons() -> impl IntoResponse {
+    (
+        [(header::CONTENT_TYPE, "text/javascript; charset=utf-8")],
+        include_str!("../../../prototypes/galactic-reach/icons.js"),
     )
 }
 pub async fn board_style() -> impl IntoResponse {
