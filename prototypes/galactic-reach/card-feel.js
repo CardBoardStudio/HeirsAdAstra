@@ -292,11 +292,13 @@
     const cards = $$('#hand-row > .game-card').filter(card => !raisedNow(card) && !(onlyNew && card.dataset.nameFit));
     for (const card of cards) { card.style.removeProperty('--name-fs'); card.classList.remove('name-tucked'); }
     // Fits: no word wider than its box, two lines at most, not squeezed in its row, and above the
-    // card's bottom padding.
+    // card's bottom padding. At NAME_MIN, on a card top too narrow for two lines (the smallest
+    // sideways phone), a third line and the bottom padding are allowed before the name is left out.
     const fits = ([card, name]) => {
       const style = getComputedStyle(name), line = parseFloat(style.lineHeight) || parseFloat(style.fontSize) * 1.25;
-      const floor = card.clientHeight - (parseFloat(getComputedStyle(card).paddingBottom) || 0);
-      return name.scrollWidth <= name.clientWidth + 1 && name.scrollHeight <= line * 2 + 2 && name.scrollHeight <= name.clientHeight + 1 && name.offsetTop + name.scrollHeight <= floor + 1;
+      const last = size.get(card) <= NAME_MIN, lines = last ? 3 : 2;
+      const floor = card.clientHeight - (last ? 0 : parseFloat(getComputedStyle(card).paddingBottom) || 0);
+      return name.scrollWidth <= name.clientWidth + 1 && name.scrollHeight <= line * lines + 2 && name.scrollHeight <= name.clientHeight + 1 && name.offsetTop + name.scrollHeight <= floor + 1;
     };
     let open = cards.map(card => [card, card.querySelector(':scope > .card-name')])
       .filter(([, name]) => name?.getClientRects().length && getComputedStyle(name).clipPath === 'none');
