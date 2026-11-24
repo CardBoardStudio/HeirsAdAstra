@@ -3,7 +3,7 @@
 //   2. The rulebook's sprite and the design exports (design/icons/) are generated from it and current.
 //   3. The game references every one: app.js names each, the engine's catalog draws them, the
 //      rulebook's sprite carries them all and the card gallery lists them.
-//   4. No shipped page keeps an old symbol: none of the previous drawings, and no ★ or ◈ drawn as text.
+//   4. Only Max's four resource alternatives retain old drawings; Willem's set stays intact.
 //   5. No interface control takes a game symbol: the table's own glyphs (portal, limit lock, the
 //      comms events outside the twenty, the walkthrough pointer) keep their drawings, and only
 //      buttons whose symbol means that game thing (card corners, cards, resource choices, the
@@ -76,7 +76,13 @@ for (const file of ['scripts/build-web.sh']) assert.match(read(file), /icons\.js
 assert.ok(read('crates/server/src/access.rs').includes('"/galactic-reach/icons.js"'), 'icons.js is public: the landing page draws Prestige with it');
 assert.ok(read('crates/server/src/tabletop.rs').includes('"/tabletop/icons.js"'), 'the public board can load icons.js');
 
-// 4. No old symbol remains in a shipped page (archived engines keep theirs).
+// 4. Max explicitly keeps his four earlier resource shapes. Only that constant
+// may contain them; all other shipped drawings still use the shared set.
+const maxShapes=app.match(/const MAX_RESOURCE_SHAPES = \{([\s\S]*?)\n  \};/)?.[0];
+assert.ok(maxShapes,'Max resource alternatives are scoped to their own constant');
+for(const shape of ['m12 2 8 7-3 11H7L4 9z','M13.5 2 5 13h6l-.5 9L19 10h-6z','M20 4C11 4 5 8.5 5 15','m10.7 7.2-3.4 8.6'])assert.ok(maxShapes.includes(shape));
+assert.match(read('prototypes/galactic-reach/max-ui.css'),/body\.background-stars svg\[data-max-resource\] > \.max-resource-shape \{ display:inline;/);
+// No other old symbol remains in a shipped page (archived engines keep theirs).
 const OLD = ['m12 2 8 7-3 11H7L4 9z', 'M13.5 2 5 13h6l-.5 9L19 10h-6z', 'M20 4C11 4 5 8.5 5 15', 'm10.7 7.2-3.4 8.6', '12 2 19 21 12 17 5 21 12 2',
   'M4 21v-3a5 5 0 0 1 10 0v3', 'M9 12a22 22 0 0 1 2-3.95', 'M3 10a2 2 0 0 1 .709-1.528', 'm14 13-8.381 8.38', 'M20.341 6.484A10 10 0 0 1 10.266 21.85',
   'M12 2v7M12 15v7M2 12h7', 'rect x="5" y="3" width="11" height="15" rx="2"', 'M3 9l3-3M15 21l3-3', 'M12 2 4 5v6c0 5 3.4 9.3 8 11', 'M5 4h12l-2.5 4L17 12H5',
@@ -91,6 +97,7 @@ const TOKEN_FILES = new Set(['prototypes/galactic-reach/guide.js', 'prototypes/g
 const left = [];
 for (const file of SHIPPED) {
   let text = read(file);
+  if(file==='prototypes/galactic-reach/app.js')text=text.replace(maxShapes,'');
   for (const sig of OLD) if (text.includes(sig)) left.push(`${file}: old drawing ${sig}`);
   if (TOKEN_FILES.has(file)) continue;
   if (file.endsWith('/index.html')) text = text.replace(/<details class="playtest-changes"[\s\S]*?<\/details>/, '');

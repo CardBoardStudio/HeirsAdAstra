@@ -65,7 +65,7 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
  const evaluate=x=>b.evaluate(x),wait=x=>evaluate(`new Promise((resolve,reject)=>{const start=Date.now();const poll=()=>{if(${x})resolve(true);else if(Date.now()-start>6000)reject(new Error('Relic UI did not settle'));else setTimeout(poll,30);};poll();})`);
  const saved=()=>evaluate('JSON.parse(localStorage.getItem("galactic-reach-save-v38"))');
  const click=selector=>evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)throw new Error('Missing control '+${JSON.stringify(selector)});e.click();})()`);
- const pointer=async(selector,touch)=>{const point=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)throw new Error('Missing enabled control '+${JSON.stringify(selector)});e.scrollIntoView({block:'nearest',inline:'nearest'});const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()`);
+ const pointer=async(selector,touch)=>{const point=await evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e||e.disabled)throw new Error('Missing enabled control '+${JSON.stringify(selector)});e.scrollIntoView({block:'nearest',inline:'nearest'});const r=e.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y);if(!e.contains(hit))throw new Error('Covered control '+${JSON.stringify(selector)}+' at '+JSON.stringify({x,y,hit:hit?.outerHTML.slice(0,250)}));return {x,y};})()`);
   if(touch){await b.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});await b.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
   else{await b.send('Input.dispatchMouseEvent',{type:'mousePressed',button:'left',clickCount:1,...point});await b.send('Input.dispatchMouseEvent',{type:'mouseReleased',button:'left',clickCount:1,...point});}
  };
@@ -96,7 +96,7 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
     assert(await evaluate('document.querySelector(".hex[data-coord=\\"2,0\\"]").classList.contains("target")'));
     assert(!await evaluate('document.querySelector(".hex[data-coord=\\"5,0\\"]").classList.contains("target")'));
     await pointer('.hex[data-coord="2,0"]',touch);await wait('document.querySelector("#relic-map-units")');await select('#relic-map-units','1 Fleet');
-    assert.deepEqual(await saved(),before,'Map and count selection spend nothing');
+    assert.deepEqual(await saved(),before,'Map and count selection spend nothing');await shot(`gravity-controls-${stars?'max':'willem'}-${width}x${height}`);
     await pointer('#relic-map-reset',touch);await wait('document.querySelectorAll(".hex.target").length===1');assert.deepEqual(await evaluate('[...document.querySelectorAll(".hex.target")].map(e=>e.dataset.coord)'),['0,0']);
     await pointer('#relic-map-cancel',touch);await wait('document.querySelector("#relic-map-controls").hidden');assert.deepEqual(await saved(),before);
     await click('[data-order-card]');await pointer('.hex[data-coord="0,0"]',touch);await wait('document.querySelector("#relic-map-controls").textContent.includes("destination within")');await pointer('.hex[data-coord="2,0"]',touch);await wait('document.querySelector("#relic-map-units")');
