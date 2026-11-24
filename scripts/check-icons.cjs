@@ -55,6 +55,7 @@ vm.runInContext(fs.readFileSync(path.join(game, 'app.js'), 'utf8'), context);
 const catalog = context.createGalacticReach({ catalog: true });
 const drawn = html => new Set([...String(html).matchAll(/data-icon="([a-z]+)"/g)].map(m => m[1]));
 assert.deepEqual([...drawn(catalog.resourceDots({ matter: 1, energy: 1, biomass: 1, data: 1 }))], ['matter', 'energy', 'life', 'data'], 'resources draw their icons');
+assert.match(catalog.resourceDots({matter:1}), /class="max-resource-shape" display="none"/, 'Max alternatives default to hidden even in the gallery, which does not load max-ui.css');
 assert.deepEqual([...drawn(Object.values(catalog.BOARD_ICONS).join(''))].sort(), ['colony', 'explorer', 'fleet', 'harvester', 'settler', 'shipyard'], 'units and buildings draw their icons');
 const vocab = drawn(catalog.iconText('Build or commission. Move one group, +1 movement. Colonize. Add 2 hits. Prevent 1 hit. Draw two cards. Gain 2 Prestige. Raise each resource limit by 1.'));
 for (const name of ['build', 'move', 'colonize', 'hit', 'shield', 'draw', 'prestige', 'limit']) assert.ok(vocab.has(name), `card text draws ${name}`);

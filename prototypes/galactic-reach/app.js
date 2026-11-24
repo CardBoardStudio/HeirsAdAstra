@@ -57,7 +57,7 @@ function createGalacticReach(options = {}) {
   const icon = (name, { small = true, className = '' } = {}) => {
     if (!ICON_SET) return '';
     const svg=ICON_SET.svg(name, { small, className }),shape=MAX_RESOURCE_SHAPES[name];
-    return shape ? svg.replace('viewBox=', 'data-max-resource="true" viewBox=').replace('</svg>', `<g class="max-resource-shape" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${shape}</g></svg>`) : svg;
+    return shape ? svg.replace('viewBox=', 'data-max-resource="true" viewBox=').replace('</svg>', `<g class="max-resource-shape" display="none" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${shape}</g></svg>`) : svg;
   };
   const RESOURCE_DETAILS = {
     matter: { purpose: 'Build ships and structures', icon: icon('matter') },

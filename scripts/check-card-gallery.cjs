@@ -53,6 +53,7 @@ async function main() {
     await browser.send('Page.addScriptToEvaluateOnNewDocument',{source:"if(location.protocol==='http:'&&!localStorage.getItem('galactic-reach-card-feedback-31-36'))localStorage.setItem('galactic-reach-card-feedback-31-36',JSON.stringify({R01:{vote:'like',note:'Retired relic history'},N17:{vote:'neutral',note:'Retired starter-trash history'}}));"});
     await browser.navigate(`${origin}/galactic-reach/cards.html`);
     await wait('document.querySelectorAll(".gallery-art img").length === ' + artCount + ' && document.querySelector("#store-status").textContent.includes("Saving is on")');
+    assert(await evaluate('document.querySelectorAll(".max-resource-shape").length > 0 && [...document.querySelectorAll(".max-resource-shape")].every(e=>getComputedStyle(e).display==="none")'), 'The shared gallery keeps constellation resources without loading Max’s stylesheet');
     assert(await evaluate('document.querySelector("#toggle-feedback").getAttribute("aria-expanded")==="false" && [...document.querySelectorAll(".gallery-feedback")].every(e=>e.hidden) && document.querySelector("#feedback-export").hidden'), 'A first visit starts compact');
     const initial = await cards();
     assert.deepEqual(initial.map(c => c.key).sort(), allKeys, 'Every market card and relic appears exactly once');
