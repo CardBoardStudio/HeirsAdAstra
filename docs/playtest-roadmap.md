@@ -1,5 +1,14 @@
 # Playtest roadmap
 
+## Scepter and UI follow-up
+
+- Gravity Scepter highlights enemy source hexes first, then legal destinations, including ordinary space. Choose any nonempty subset of the enemy ships; leave the rest behind.
+- Fleets fight automatically. Ask about staying only when a legal, affordable Explorer escape is available.
+- Restore the earlier four resource shapes only in Max's UI, retaining Willem's constellation symbols.
+- Keep mixed ship-count badges inside the clipped hex, including two-digit Fleet counts.
+
+Implementation and validation are tracked in the accompanying change PR. The combat redesign below remains separate.
+
 ## Combat discussion — not authorized for implementation
 
 The proposed hull/attack rebalance, unit-based tactic allowance and opening-only base attack remain discussion notes. They are not implemented or approved by this refinement request. Existing combat resolution remains in place; the requested relic targeting, interface and rival-targeting improvements do not adopt that redesign. See the canonical [combat rules](../prototypes/galactic-reach/rulebook.html#combat).

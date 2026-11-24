@@ -1250,6 +1250,9 @@ body.background-stars .board-stage.map-zoomed .max-resource-legend {
   align-items:center; justify-items:center; gap:0;
 }
 .hex[data-markers="1"] .hex-pieces { inset:12% 8%; }
+/* Pull the lower row into the straight sides of a crowded hex, so a full
+   two-digit badge cannot be cut by the hexagon's sloping bottom edge. */
+.hex:is([data-markers="3"],[data-markers="4"]) .hex-pieces { inset:24% 10%; }
 .hex .hex-pieces :is(.hex-fleets,.hex-buildings,.hex-fleet-group) { display:contents; }
 .hex .hex-pieces .board-icon {
   position:relative; display:grid; place-items:center; width:100%; height:100%; min-width:0;
@@ -1261,6 +1264,10 @@ body.background-stars .board-stage.map-zoomed .max-resource-legend {
   padding:0 1px; font:800 10px/11px ui-sans-serif,system-ui,sans-serif;
   background:#fff7df; color:#102126; border-radius:3px;
 }
+.hex:is([data-markers="3"],[data-markers="4"]) .board-icon[data-marker-row="0"] .board-icon-count { bottom:-1px; }
+.hex:is([data-markers="3"],[data-markers="4"]) .board-icon[data-marker-row="1"] .board-icon-count { bottom:3px; }
+.hex:is([data-markers="3"],[data-markers="4"]) .board-icon-count[data-count="10"] { font-size:9px; }
+.hex:is([data-markers="3"],[data-markers="4"]) .board-icon[data-marker-row="1"] .board-icon-count[data-count="10"] { right:-2px; }
 .hex .hex-pieces .special {
   position:static; display:grid; place-items:center; width:100%; height:100%;
   transform:none; font-size:clamp(12px,1.7vw,24px); line-height:1; color:var(--gold);
@@ -4246,7 +4253,9 @@ body.background-stars .combat-many-ships .combat-fleet { grid-template-columns:m
   }
 }
 @media (max-width:599px), (max-height:599px) {
-  .relic-map-controls { bottom:74px; max-height:45dvh; overflow:auto; font-size:12px; padding:8px; }
+  /* The phone board uses display:contents and pans independently. Keep its
+     controls attached to the viewport, beside the drawer rail. */
+  .relic-map-controls { position:fixed; top:8px; bottom:auto; left:calc(var(--rail,0px) + 8px); transform:none; z-index:65; width:min(320px,calc(100vw - var(--rail,0px) - 16px)); max-height:45dvh; overflow:auto; font-size:12px; padding:8px; }
 }
 /* Keep full armies centered and inside short desktop windows across font metrics. */
 body.background-stars .combat-many-ships .combat-units { gap:4px 6px; }

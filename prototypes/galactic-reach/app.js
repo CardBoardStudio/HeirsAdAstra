@@ -46,7 +46,19 @@ function createGalacticReach(options = {}) {
   // use its small rendering (solid joins, fuller stars); larger ones its ghost lines. A headless
   // engine (the server, the test harness) has no icon set and draws none.
   const ICON_SET = globalThis.heirsIcons || null;
-  const icon = (name, { small = true, className = '' } = {}) => ICON_SET ? ICON_SET.svg(name, { small, className }) : '';
+  // CSS chooses Max's earlier resource shapes without changing Willem's symbols,
+  // including when switching themes without a reload.
+  const MAX_RESOURCE_SHAPES = {
+    matter: '<path fill="currentColor" d="m12 2 8 7-3 11H7L4 9z"/><path d="m4 9 8 4 8-4M12 13v7M8 6l4 7 4-7"/>',
+    energy: '<path fill="currentColor" d="M13.5 2 5 13h6l-.5 9L19 10h-6z"/>',
+    life: '<path fill="currentColor" d="M20 4C11 4 5 8.5 5 15c0 2.8 2.2 5 5 5 6.5 0 10-7 10-16Z"/><path d="M4 21c2.6-5.1 6.3-8.8 11-11"/>',
+    data: '<circle fill="currentColor" cx="12" cy="5" r="2.5"/><circle fill="currentColor" cx="6" cy="18" r="2.5"/><circle fill="currentColor" cx="18" cy="18" r="2.5"/><path d="m10.7 7.2-3.4 8.6M13.3 7.2l3.4 8.6M8.5 18h7"/>'
+  };
+  const icon = (name, { small = true, className = '' } = {}) => {
+    if (!ICON_SET) return '';
+    const svg=ICON_SET.svg(name, { small, className }),shape=MAX_RESOURCE_SHAPES[name];
+    return shape ? svg.replace('viewBox=', 'data-max-resource="true" viewBox=').replace('</svg>', `<g class="max-resource-shape" display="none" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${shape}</g></svg>`) : svg;
+  };
   const RESOURCE_DETAILS = {
     matter: { purpose: 'Build ships and structures', icon: icon('matter') },
     energy: { purpose: 'Fund fleets and card purchases', icon: icon('energy') },
@@ -574,7 +586,7 @@ function createGalacticReach(options = {}) {
     "accent": "var(--gold)",
     "name": "Gravity Scepter",
     "affinity": "Military",
-    "text": "Summon one entire enemy ship group up to three hexes to an empty hex or your ships, with no building. Landing on your ships starts combat: they attack, you defend. This ignores routes and never changes ship ownership.",
+    "text": "Summon any chosen ships from one enemy group up to three hexes to an empty hex or your ships, with no building. Leave unchosen ships behind. Landing on your ships starts combat: they attack, you defend. This ignores routes and never changes ship ownership.",
     "relicAbility": "gravity",
     "order": "special",
     "newRelic": true
@@ -1177,7 +1189,8 @@ function createGalacticReach(options = {}) {
 
   // Rules #movement (33.38): a Move order moves any chosen units of one faction on one hex.
   // `units` counts each type; without it, `moveGroup` names the whole group (all combat
-  // ships, or the Explorer team). Combat ships and Explorers never move in the same order.
+  // ships, or the Explorer team). Ordinary orders keep those groups separate; Gravity
+  // Scepter can displace a mixed subset.
   function moveSelection(fleet, options = {}) {
     if (!fleet) return null;
     const requested = options.units || fleetGroup(fleet, options.moveGroup || (combatShipCount(fleet) ? 'ships' : 'explorer'));
@@ -1187,7 +1200,7 @@ function createGalacticReach(options = {}) {
       if (!Number.isInteger(amount) || amount < 0 || amount > (fleet[type] || 0)) return null;
       chosen[type] = amount;
     }
-    if (!fleetCount(chosen) || (chosen.explorer && combatShipCount(chosen))) return null;
+    if (!fleetCount(chosen) || (chosen.explorer && combatShipCount(chosen) && !options.relicDisplacement)) return null;
     return chosen;
   }
 
@@ -2107,8 +2120,13 @@ function createGalacticReach(options = {}) {
 
   // Canonical relic commands: UI, shared authority and browser rivals use these same choices.
   const RELIC_SHIP_CAPS = {settler:8, explorer:5, fleet:10};
-  function relicGroups(fleet) {
+  function relicGroups(fleet, mixed = false) {
     const groups=[];
+    if(mixed) {
+      for(let settler=fleet?.settler||0;settler>=0;settler--)for(let ships=fleet?.fleet||0;ships>=0;ships--)for(let explorer=fleet?.explorer||0;explorer>=0;explorer--)
+        if(settler+ships+explorer)groups.push({settler,explorer,fleet:ships});
+      return groups;
+    }
     for(let settler=fleet?.settler||0;settler>=0;settler--)for(let ships=fleet?.fleet||0;ships>=0;ships--)
       if(settler+ships)groups.push({settler,explorer:0,fleet:ships});
     for(let explorer=fleet?.explorer||0;explorer>0;explorer--)groups.push({settler:0,explorer,fleet:0});
@@ -2157,10 +2175,16 @@ function createGalacticReach(options = {}) {
           for(const destination of destinations)if(source!==destination&&(ability==='compass'||hexDistance(source,destination)<=6))add({source,destination,units});
         }
       } else if(ability==='gravity') {
-        const destinations=coords.filter(at=>!hasBuilding(state.planets[at])&&!Object.entries(state.fleets[at]||{}).some(([owner,fleet])=>+owner!==seat&&fleetCount(fleet)));
         for(const [source,group] of Object.entries(state.fleets))for(const [owner,fleet] of Object.entries(group)) {
           if(+owner===seat||!fleetCount(fleet))continue;
-          for(const destination of destinations)if(source!==destination&&hexDistance(source,destination)<=3)add({owner:+owner,source,destination});
+          // Include ordinary space, not just the terrain entries in state.planets.
+          const [q,r]=parseCoord(source),destinations=[];
+          for(let dq=-3;dq<=3;dq++)for(let dr=-3;dr<=3;dr++) {
+            const at=coordKey(q+dq,r+dr);
+            if(at!==source&&boardHas(at)&&hexDistance(source,at)<=3&&!hasBuilding(state.planets[at])&&!Object.entries(state.fleets[at]||{}).some(([owner,fleet])=>+owner!==seat&&fleetCount(fleet)))destinations.push(at);
+          }
+          for(const destination of destinations)
+            for(const units of relicGroups(fleet,true))add({owner:+owner,source,destination,units});
         }
       }
     }
@@ -2216,7 +2240,7 @@ function createGalacticReach(options = {}) {
       revealClusterAt(action.destination,seat);
     } else if(action.ability==='gravity') {
       state.pendingMove={playerId:seat,source:action.source,destination:action.destination,cardId:card.id,message:`${p.name} used ${def.name} to summon enemy ships.`};
-      executeMove(action.owner,action.source,action.destination);
+      executeMove(action.owner,action.source,action.destination,{units:action.units,relicDisplacement:true});
       finishMoveOrder();render();saveGame();return true;
     } else if(action.ability==='compass'||action.ability==='horizon') {
       state.pendingMove={playerId:seat,source:action.source,destination:action.destination,cardId:card.id,message:`${p.name} used ${def.name} to bring ${formatFleet(action.units)} to ${nameForCoord(action.destination)}.`};
@@ -2257,7 +2281,7 @@ function createGalacticReach(options = {}) {
     b[field] ||= {attacker:false,defender:false};
     for(const side of ['attacker','defender'])if(!battleRelicActions(b[`${side}Id`]).length)b[field][side]=true;
     if(b[field].attacker&&b[field].defender) {
-      if(b.stage==='opening'){if(!aliveCombatPieces(b.attackerPieces).length||!aliveCombatPieces(b.defenderPieces).length)finishCombat();else b.stage='escape';}else finalizeCombat();
+      if(b.stage==='opening'){if(!aliveCombatPieces(b.attackerPieces).length||!aliveCombatPieces(b.defenderPieces).length)finishCombat();else {b.stage='escape';advanceCombatEscapes();}}else finalizeCombat();
     }
   }
   function useBattleRelic(seat,action) {
@@ -2344,7 +2368,7 @@ function createGalacticReach(options = {}) {
   let relicMapDraft=null;
   function relicMapTargets() {
     if(!relicMapDraft)return [];
-    const d=relicMapDraft,first=d.ability==='compass'?'source':'destination',second=first==='source'?'destination':'source';
+    const d=relicMapDraft,first=d.ability==='horizon'?'destination':'source',second=first==='source'?'destination':'source';
     const actions=availableRelicChoices();
     return [...new Set(actions.filter(a=>!d.anchor||a[first]===d.anchor).map(a=>a[d.anchor?second:first]))];
   }
@@ -2359,11 +2383,11 @@ function createGalacticReach(options = {}) {
     if(!panel){panel=document.createElement('section');panel.id='relic-map-controls';panel.className='relic-map-controls';panel.setAttribute('aria-label','Relic map targeting');$('.board-stage').appendChild(panel);}
     panel.hidden=!relicMapDraft;
     if(!relicMapDraft)return;
-    const d=relicMapDraft,first=d.ability==='compass'?'source':'destination',second=first==='source'?'destination':'source';
+    const d=relicMapDraft,first=d.ability==='horizon'?'destination':'source',second=first==='source'?'destination':'source';
     const card=state.players[ME].hand.find(c=>c.id===relicChoiceCard);
     const actions=availableRelicChoices().filter(a=>(!d.anchor||a[first]===d.anchor)&&(!d.target||a[second]===d.target));
     if(!card||!actions.length){relicMapDraft=null;relicChoiceCard=null;panel.hidden=true;return;}
-    const help=!d.anchor?d.ability==='compass'?'Choose your Explorer group.':'Choose the receiving host or destination.':!d.target?d.ability==='compass'?'Choose a highlighted located relic site.':'Choose the highlighted group to summon.':'Choose the ships, then confirm.';
+    const help=!d.anchor?d.ability==='compass'?'Choose your Explorer group.':d.ability==='gravity'?'Choose a highlighted enemy ship hex.':'Choose the receiving host.':!d.target?d.ability==='compass'?'Choose a highlighted located relic site.':d.ability==='gravity'?'Choose a highlighted destination within three hexes.':'Choose the highlighted group to summon.':'Choose how many ships to move, then confirm.';
     panel.innerHTML=`<strong>${esc(ALL_CARDS[card.key].name)}</strong><span role="status">${help}</span>${d.target?`<select id="relic-map-units" aria-label="Ships to move">${actions.map((a,i)=>`<option value="${i}">${esc(a.units?formatFleet(a.units):formatFleet(getFleet(a.source,a.owner)))}</option>`).join('')}</select><button type="button" class="button button-primary" id="relic-map-confirm">Confirm move</button>`:''}<button type="button" class="button" id="relic-map-reset">Choose again</button><button type="button" class="button" id="relic-map-cancel">Cancel</button>`;
     $('#relic-map-reset').onclick=()=>{d.anchor=null;d.target=null;render();};
     $('#relic-map-cancel').onclick=()=>{relicMapDraft=null;relicChoiceCard=null;clearAction();render();};
@@ -3010,12 +3034,8 @@ function createGalacticReach(options = {}) {
       }])),summary:battle.summary,volleys:battle.volleys});
   }
 
-  function combatActions(seat) {
-    const battle=state.pendingCombat, side=combatSide(seat);
-    if (!battle || combatActor()!==seat || !side) return [];
-    if(battle.stage==='opening'||battle.stage==='aftermath')return [...battleRelicActions(seat),{type:'combat_continue'}];
-    if (battle.stage==='tactic') return [...battleRelicActions(seat),...Object.keys(MILITARY_CARDS).filter(key=>battle.hands[side][key]>0).map(tactic=>({type:'combat_tactic',tactic}))];
-    const actions=[{type:'combat_stay'}];
+  function combatEscapeActions(seat,side) {
+    const battle=state.pendingCombat,actions=[];
     const explorers=aliveCombatPieces(battle[`${side}Pieces`]).filter(p=>p.type==='explorer').length;
     for (const destination of adjacentKeys(battle.coord)) {
       if (hostileAt(destination,seat)) continue;
@@ -3023,6 +3043,26 @@ function createGalacticReach(options = {}) {
       for (let amount=1;amount<=max;amount++) actions.push({type:'combat_escape',destination,amount});
     }
     return actions;
+  }
+
+  // #explorer-escape: a side with no paid escape has no decision to make.
+  // Advance in the authority, before either a local UI or a shared observer sees it.
+  function advanceCombatEscapes() {
+    const battle=state.pendingCombat;
+    if(battle?.stage!=='escape')return;
+    for(const side of ['attacker','defender']) {
+      if(!battle.escapeDone[side]&&!combatEscapeActions(battle[`${side}Id`],side).length)battle.escapeDone[side]=true;
+      if(!battle.escapeDone[side])break;
+    }
+    if(battle.escapeDone.attacker&&battle.escapeDone.defender)battle.stage='tactic';
+  }
+
+  function combatActions(seat) {
+    const battle=state.pendingCombat, side=combatSide(seat);
+    if (!battle || combatActor()!==seat || !side) return [];
+    if(battle.stage==='opening'||battle.stage==='aftermath')return [...battleRelicActions(seat),{type:'combat_continue'}];
+    if (battle.stage==='tactic') return [...battleRelicActions(seat),...Object.keys(MILITARY_CARDS).filter(key=>battle.hands[side][key]>0).map(tactic=>({type:'combat_tactic',tactic}))];
+    return [{type:'combat_stay'},...combatEscapeActions(seat,side)];
   }
 
   function finishMoveOrder() {
@@ -3159,7 +3199,7 @@ function createGalacticReach(options = {}) {
       }
       b.escapeDone[side]=true;
       if (!aliveCombatPieces(b.attackerPieces).length || !aliveCombatPieces(b.defenderPieces).length) finishCombat();
-      else if (b.escapeDone.attacker && b.escapeDone.defender) b.stage='tactic';
+      else advanceCombatEscapes();
     }
     render();saveGame();scheduleCombatAi();
     return true;
@@ -4768,6 +4808,7 @@ function createGalacticReach(options = {}) {
         hex.setAttribute('aria-label',`Space ${key}${fleetText?', fleet '+fleetText:''}`);
       }
       if (portalExit(key)) hex.setAttribute('aria-label',hex.getAttribute('aria-label')+`, corner portal to ${portalExit(key)}, crossing costs 2 movement`);
+      hex.querySelectorAll('.hex-pieces .board-icon').forEach((piece,index)=>{piece.dataset.markerRow=String(Math.floor(index/columns));});
     });
   }
 

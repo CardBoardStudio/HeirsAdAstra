@@ -471,7 +471,7 @@ test('a shared battle at seat two selects locally and sends one explicit commit'
 });
 
 test('paid Explorer escape stays a preview until its explicit confirmation',()=>{
-  const storage=combatStorage(0,'escape'),state=JSON.parse(storage.getItem(SAVE_KEY));
+  const storage=combatStorage(0,'escape'),state=JSON.parse(storage.getItem(SAVE_KEY));state.pendingCombat.stage='escape';state.pendingCombat.escapeDone={attacker:false,defender:true};
   state.players[0].resources.energy=2;state.fleets['9,-10'][0].explorer=2;
   state.pendingCombat.attackerPieces.push({type:'explorer',hull:1,power:1,damage:0},{type:'explorer',hull:1,power:1,damage:0});
   writeSave(storage,state);const game=boot(storage),before=JSON.stringify(game.saved());
