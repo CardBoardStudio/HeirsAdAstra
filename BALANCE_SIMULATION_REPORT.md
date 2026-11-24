@@ -1,4 +1,4 @@
-# Galactic Reach balance simulation — balance pass 1
+# Heirs Ad Astra balance simulation — balance pass 1
 
 Date: October 11, 2026
 
@@ -10,7 +10,7 @@ Date: October 11, 2026
 - Every 10 unspent influence grants 1 Prestige.
 - Each Colony grants 1 Prestige, with a 1-Prestige frontier bonus for every two Colonies beyond the home world.
 - Every pair of Shipyards grants 1 Prestige.
-- Fleet Supremacy and Occupation Mandate grant 2 Prestige; Galactic Reach grants 1.
+- Fleet Supremacy and Occupation Mandate grant 2 Prestige; the award for presence across the most worlds grants 1.
 - Expansion AI prioritizes replacement Scouts instead of Dreadnoughts.
 
 ## Method

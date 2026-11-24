@@ -10,7 +10,7 @@ const LABEL: &str = "drawing-board-change";
 const MARKER: &str = "<!-- drawing-board-change-queue:v1 ";
 const API_VERSION: &str = "2022-11-28";
 const REQUIRED_CHECKS: [&str; 4] = [
-    "Galactic Reach JavaScript checks",
+    "Heirs Ad Astra JavaScript checks",
     "Rust checks and Wasm",
     "Preview container smoke",
     "Rules contract",
@@ -725,6 +725,27 @@ mod tests {
     }
     fn ready_checks() -> Value {
         json!({"total_count":4,"check_runs":REQUIRED_CHECKS.iter().map(|name|json!({"name":name,"status":"completed","conclusion":"success","head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","app":{"slug":"github-actions"}})).collect::<Vec<_>>()})
+    }
+    #[test]
+    fn required_checks_match_workflows_and_queue_preview() {
+        let workflows = [
+            include_str!("../../../.github/workflows/ci.yml"),
+            include_str!("../../../.github/workflows/rules.yml"),
+        ];
+        let preview = include_str!("../../../tools/accessibility/queue-fixture.cjs");
+        for name in REQUIRED_CHECKS {
+            let declaration = format!("name: {name}");
+            assert!(
+                workflows
+                    .iter()
+                    .any(|workflow| workflow.lines().any(|line| line.trim() == declaration)),
+                "Required check {name} must be produced by a workflow"
+            );
+            assert!(
+                preview.contains(&format!("'{name}'")),
+                "Queue preview must show the required check {name}"
+            );
+        }
     }
     #[test]
     fn only_complete_current_head_evidence_allows_merge() {

@@ -54,7 +54,7 @@ jobs:
           path: dist/
           retention-days: 7
   javascript:
-    name: Galactic Reach JavaScript checks
+    name: Heirs Ad Astra JavaScript checks
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
