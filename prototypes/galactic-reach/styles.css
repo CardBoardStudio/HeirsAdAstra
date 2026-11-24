@@ -1267,6 +1267,7 @@ body.background-stars .board-stage.map-zoomed .max-resource-legend {
 .hex:is([data-markers="3"],[data-markers="4"]) .board-icon[data-marker-row="0"] .board-icon-count { bottom:-1px; }
 .hex:is([data-markers="3"],[data-markers="4"]) .board-icon[data-marker-row="1"] .board-icon-count { bottom:3px; }
 .hex:is([data-markers="3"],[data-markers="4"]) .board-icon-count[data-count="10"] { font-size:9px; }
+.hex:is([data-markers="3"],[data-markers="4"]) .board-icon[data-marker-row="1"] .board-icon-count[data-count="10"] { right:-2px; }
 .hex .hex-pieces .special {
   position:static; display:grid; place-items:center; width:100%; height:100%;
   transform:none; font-size:clamp(12px,1.7vw,24px); line-height:1; color:var(--gold);
