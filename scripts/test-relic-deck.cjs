@@ -73,13 +73,13 @@ function tactics(g,t0='concentratedFire',t1='concentratedFire'){
  g.s.activePlayer=0;g.p.passed=false;g.p.hand.push(...g.p.inPlay.splice(g.p.inPlay.findIndex(c=>c.key==='hourglassOfTwoSuns'),1));assert(!legal(g).some(a=>a.ability==='hourglass'));
 }
 {
- const g=battle({attackCards:['crownOfTheUsurper'],attacker:1,defender:2});assert.equal(g.s.pendingCombat.stage,'opening');act(g,'combat_relic',a=>a.ability==='crown');assert.equal(g.s.fleets[g.coord][0].fleet,2);assert.equal(g.s.fleets[g.coord][1].fleet,1);assert.equal(g.s.pendingCombat.stage,'escape');checkpoint(g);
+ const g=battle({attackCards:['crownOfTheUsurper'],attacker:1,defender:2});assert.equal(g.s.pendingCombat.stage,'opening');act(g,'combat_relic',a=>a.ability==='crown');assert.equal(g.s.fleets[g.coord][0].fleet,2);assert.equal(g.s.fleets[g.coord][1].fleet,1);assert.equal(g.s.pendingCombat.stage,'tactic');checkpoint(g);
 }
 {
  const g=battle({defendCards:['horizonSail']}),near=Object.keys(g.s.planets).find(c=>c!==g.coord&&g.e.travelDistance(c,g.coord)<=6);g.s.fleets[near]={1:{fleet:2,explorer:0,settler:0}};
  // The opening was established before the reinforcement source existed; refresh eligible windows.
  g.s.pendingCombat.stage='opening';g.s.pendingCombat.relicDone={attacker:true,defender:false};
- act(g,'combat_relic',a=>a.ability==='horizon'&&a.units.fleet===2,1);assert.equal(g.s.fleets[g.coord][1].fleet,5);assert(!g.s.fleets[near]?.[1]);assert.equal(g.s.pendingCombat.stage,'escape');checkpoint(g);
+ act(g,'combat_relic',a=>a.ability==='horizon'&&a.units.fleet===2,1);assert.equal(g.s.fleets[g.coord][1].fleet,5);assert(!g.s.fleets[near]?.[1]);assert.equal(g.s.pendingCombat.stage,'tactic');checkpoint(g);
 }
 {
  const g=battle({attackCards:['warSongOfHollowStars'],attacker:5,defender:5});tactics(g);assert(g.s.pendingCombat.used.attacker.includes('concentratedFire'));
@@ -113,7 +113,7 @@ function tactics(g,t0='concentratedFire',t1='concentratedFire'){
 {
  const g=setup('crownOfTheUsurper'),at=g.s.clusters[4].center,near=Object.keys(g.s.planets).find(c=>c!==at&&g.e.travelDistance(c,at)<=6);
  g.s.players[1].hand=[card('horizonSail')];g.s.fleets[at]={0:{fleet:1,explorer:0,settler:0},1:{fleet:1,explorer:0,settler:0}};g.s.fleets[near]={1:{fleet:2,explorer:0,settler:0}};
- g.e.executeMove(0,at,at,{units:{fleet:1,explorer:0,settler:0},moveGroup:'ships'});act(g,'combat_relic',a=>a.ability==='crown');assert.equal(g.e.combatActor(),1);assert.equal(g.s.pendingCombat.stage,'opening');act(g,'combat_relic',a=>a.ability==='horizon'&&a.units.fleet===2,1);assert.equal(g.s.pendingCombat.defenderPieces.length,2);assert.equal(g.s.pendingCombat.stage,'escape');
+ g.e.executeMove(0,at,at,{units:{fleet:1,explorer:0,settler:0},moveGroup:'ships'});act(g,'combat_relic',a=>a.ability==='crown');assert.equal(g.e.combatActor(),1);assert.equal(g.s.pendingCombat.stage,'opening');act(g,'combat_relic',a=>a.ability==='horizon'&&a.units.fleet===2,1);assert.equal(g.s.pendingCombat.defenderPieces.length,2);assert.equal(g.s.pendingCombat.stage,'tactic');
  const sole=battle({attackCards:['crownOfTheUsurper'],attacker:1,defender:1});act(sole,'combat_relic',a=>a.ability==='crown');assert(!sole.s.pendingCombat);assert.equal(sole.s.lastCombat.volleys.length,0);assert.equal(sole.s.lastCombat.prestigeWinner,null);
 }
 // A Reservoir rival finishes its private allocation instead of stalling its turn.

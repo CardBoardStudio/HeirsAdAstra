@@ -5,6 +5,11 @@ const root=path.resolve(__dirname,'..'),dir=path.join(root,'prototypes/galactic-
 const plain=x=>JSON.parse(JSON.stringify(x));let serial=0;const card=key=>({key,id:`ui-relic-${serial++}`});
 function game(){const c=vm.createContext({});vm.runInContext(adapter+app,c);let e,n=4;const create=c.createGalacticAdapter;c.createGalacticAdapter=p=>{e=p;return create(p);};c.createGalacticReach({headless:true,random:()=>((n=(Math.imul(n,1664525)+1013904223)>>>0)/2**32)});const s=e.state;s.phase='operations';s.activePlayer=0;s.turnStage='prep';s.pendingCombat=null;s.fleets={};for(const p of s.players){p.hand=[];p.deck=[];p.discard=[];p.inPlay=[];p.passed=false;}return {e,s,p:s.players[0]};}
 function fixture(kind){const g=game(),{s,p,e}=g;
+ if(kind==='gravity'){
+  p.hand=[card('gravityScepter')];
+  for(const at of ['0,0','2,0'])if(s.planets[at])Object.assign(s.planets[at],{owner:null,hasColony:false,upgrade:null});
+  s.fleets['0,0']={1:{settler:2,explorer:3,fleet:10}};
+ }
  if(kind==='echoes'){p.hand=[card('firstDawnEchoes')];p.inPlay=[{...card('construct'),starter:true,upgraded:true,level:3},card('foldedWarehouse')];}
  if(kind==='keepers'){p.hand=[card('keepersArchive')];p.resources={matter:10,energy:10,biomass:10,data:10};p.resourceLimits={matter:20,energy:20,biomass:20,data:20};s.market=[card('worldEngine')];}
  if(kind==='reservoir'||kind==='reservoir-draft'){p.hand=[card('prismaticReservoir')];p.resourceLimits={matter:4,energy:4,biomass:4,data:8};p.resources={matter:0,energy:0,biomass:0,data:5};}
@@ -73,6 +78,32 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
   await b.send('Emulation.setEmulatedMedia',{features:[{name:'prefers-reduced-motion',value:'reduce'}]});
   for(const [width,height,touch] of (process.env.CHECK_SIZES?process.env.CHECK_SIZES.split(',').map(v=>{const [w,h]=v.split('x').map(Number);return [w,h,w<1200];}):shard(SIZES))){
    await b.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:touch});await b.send('Emulation.setTouchEmulationEnabled',{enabled:touch,maxTouchPoints:1});
+   for(const stars of [false,true]){
+    await load('gravity',stars);
+    const shapes=await evaluate(`(()=>{const svg=document.querySelector('#resource-grid .resource-symbol svg[data-max-resource]');return {classic:getComputedStyle(svg.querySelector('.max-resource-shape')).display,modern:getComputedStyle(svg.querySelector(':scope > :not(.max-resource-shape)')).display};})()`);
+    assert.equal(shapes.classic!=='none',stars);assert.equal(shapes.modern!=='none',!stars);
+    // Switching the preference changes these same, already-rendered symbols immediately.
+    await evaluate('document.body.classList.toggle("background-stars")');
+    assert.equal(await evaluate('getComputedStyle(document.querySelector("#resource-grid .max-resource-shape")).display!=="none"'),!stars);
+    await evaluate('document.body.classList.toggle("background-stars")');
+    const badges=await evaluate(`(()=>{const hex=document.querySelector('.hex[data-coord="0,0"]'),h=hex.getBoundingClientRect();return [...hex.querySelectorAll('.board-icon-count')].map(e=>{const r=e.getBoundingClientRect();return {count:e.dataset.count,clipped:e.scrollWidth>e.clientWidth+1,corners:[[r.left,r.top],[r.right,r.top],[r.left,r.bottom],[r.right,r.bottom]].map(([x,y])=>[(x-h.left)/h.width,(y-h.top)/h.height])};});})()`);
+    assert.deepEqual(badges.map(b=>b.count).sort(),['10','2','3']);
+    for(const badge of badges){assert(!badge.clipped,'Full mixed ship count fits');for(const [x,y] of badge.corners){const inset=y<.25?.5-2*y:y>.75?2*y-1.5:0;assert(x>=inset-.02&&x<=1-inset+.02&&y>=0&&y<=1,'Mixed ship count stays inside the hex: '+JSON.stringify(badge));}}
+    const before=await saved();await click('[data-order-card]');
+    assert.deepEqual(await evaluate('[...document.querySelectorAll(".hex.target")].map(e=>e.dataset.coord)'),['0,0'],'Start by highlighting enemy ships only');
+    assert((await evaluate('document.querySelector("#relic-map-controls").textContent')).includes('enemy ship hex'));
+    await pointer('.hex[data-coord="0,0"]',touch);await wait('document.querySelector("#relic-map-controls").textContent.includes("destination within")');
+    assert(await evaluate('document.querySelector(".hex[data-coord=\\"2,0\\"]").classList.contains("target")'));
+    assert(!await evaluate('document.querySelector(".hex[data-coord=\\"5,0\\"]").classList.contains("target")'));
+    await pointer('.hex[data-coord="2,0"]',touch);await wait('document.querySelector("#relic-map-units")');await select('#relic-map-units','1 Fleet');
+    assert.deepEqual(await saved(),before,'Map and count selection spend nothing');
+    await pointer('#relic-map-reset',touch);await wait('document.querySelectorAll(".hex.target").length===1');assert.deepEqual(await evaluate('[...document.querySelectorAll(".hex.target")].map(e=>e.dataset.coord)'),['0,0']);
+    await pointer('#relic-map-cancel',touch);await wait('document.querySelector("#relic-map-controls").hidden');assert.deepEqual(await saved(),before);
+    await click('[data-order-card]');await pointer('.hex[data-coord="0,0"]',touch);await wait('document.querySelector("#relic-map-controls").textContent.includes("destination within")');await pointer('.hex[data-coord="2,0"]',touch);await wait('document.querySelector("#relic-map-units")');
+    await evaluate('(()=>{const e=document.querySelector("#relic-map-units");e.value=[...e.options].find(o=>o.textContent==="1 Fleet").value;})()');
+    await shot(`gravity-${stars?'max':'willem'}-${width}x${height}`);await pointer('#relic-map-confirm',touch);await wait('document.querySelector("#relic-map-controls").hidden');
+    const after=await saved();assert.deepEqual(after.fleets['0,0'][1],{settler:2,explorer:3,fleet:9});assert.deepEqual(after.fleets['2,0'][1],{settler:0,explorer:0,fleet:1});
+   }
    await load('echoes');await click('[data-order-card]');await wait('document.querySelector("#relic-action-dialog").open');await fit();
    await select('#relic-choice-options','Construct III + Folded Warehouse');await shot(`echoes-${width}x${height}`);
    if(touch){const p=await evaluate('(()=>{const r=document.querySelector("#relic-choice-confirm").getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()');await b.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[p]});await b.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}
@@ -121,7 +152,7 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
    await load('battle-many',true);await wait('document.querySelector("#combat-dialog").open');await fit();assert.equal(await evaluate('document.querySelectorAll(".combat-enemy .combat-unit").length'),23);assert.equal(await evaluate('document.querySelectorAll(".combat-own .combat-unit").length'),23);await shot(`battle-many-${width}x${height}`);
    await load('tactics');await wait('document.querySelector("#combat-dialog").open');await fit();await evaluate('[...document.querySelectorAll("#combat-options .combat-relic-action")].find(e=>e.textContent.includes("War-Song")).click()');s=await saved();assert.equal(s.pendingCombat.hands.attacker.defensiveScreen,2);
    await evaluate('[...document.querySelectorAll("#combat-options .combat-relic-action")].find(e=>e.textContent.includes("The Silent Hour")).click()');s=await saved();assert(s.pendingCombat.silent.attacker);await shot(`battle-relics-${width}x${height}`);
-   await load('reinforce');await wait('document.querySelector("#battle-relic-option")');await fit();await select('#battle-relic-option','2 Fleets');if(touch){const point=await evaluate('(()=>{const e=document.querySelector("#battle-relic-confirm");e.scrollIntoView({block:"center"});const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()');await b.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});await b.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}else await click('#battle-relic-confirm');s=await saved();assert.equal(s.pendingCombat.defenderPieces.filter(p=>p.type==='fleet').length,3);assert.equal(s.pendingCombat.stage,'escape');
+   await load('reinforce');await wait('document.querySelector("#battle-relic-option")');await fit();await select('#battle-relic-option','2 Fleets');if(touch){const point=await evaluate('(()=>{const e=document.querySelector("#battle-relic-confirm");e.scrollIntoView({block:"center"});const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()');await b.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});await b.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}else await click('#battle-relic-confirm');s=await saved();assert.equal(s.pendingCombat.defenderPieces.filter(p=>p.type==='fleet').length,3);assert.equal(s.pendingCombat.stage,'tactic');
    console.log(`ok - relic choices, native ${touch?'touch':'keyboard'}, capacity draft/reload, battle plays and defense ${width}×${height}`);
   }
   assert.deepEqual(b.errors,[],'No runtime exceptions');

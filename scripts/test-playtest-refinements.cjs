@@ -34,6 +34,21 @@ function game(key){const g=freshEngine(171);g.s=g.state;g.e=g.engine;g.p=g.s.pla
  assert.equal(g.p.cardPrestigeSources.ascendancyCodex,2);assert.equal(g.p.cardPrestige,2);
  const snap=g.adapter.snapshotState();assert.equal(snap.state.players[0].cardPrestigeSources.ascendancyCodex,2);
 }
+// #relic-targeting: every nonempty subset is legal, ownership and unchosen ships stay put.
+for(const units of [{settler:0,explorer:0,fleet:1},{settler:1,explorer:1,fleet:1}]) {
+ const g=game('gravityScepter'),source='0,0',destination='2,0';
+ for(const at of [source,destination])if(g.s.planets[at])Object.assign(g.s.planets[at],{owner:null,hasColony:false,upgrade:null});
+ g.s.fleets[source]={1:{settler:1,explorer:1,fleet:2}};
+ const choices=g.e.relicOperations(0).filter(a=>a.source===source&&a.destination===destination);
+ assert.equal(choices.length,11);const choice=choices.find(a=>JSON.stringify(a.units)===JSON.stringify(units));assert(choice);
+ const before=JSON.stringify(g.s);
+ for(const invalid of [{...choice,owner:0},{...choice,source:'1,0'},{...choice,destination:'5,0'},{...choice,units:{settler:0,explorer:0,fleet:0}},{...choice,units:{settler:0,explorer:0,fleet:3}}])assert(!g.e.applyRelicAction(0,invalid));
+ assert.equal(JSON.stringify(g.s),before);
+ assert(g.e.applyRelicAction(0,choice));assert.deepEqual(plain(g.s.fleets[destination][1]),units);
+ assert.deepEqual(plain(g.s.fleets[source][1]),{settler:1-units.settler,explorer:1-units.explorer,fleet:2-units.fleet});
+ assert.equal(g.p.inPlay.filter(c=>c.key==='gravityScepter').length,1);assert.equal(g.s.activePlayer,1);
+ const snapshot=JSON.parse(JSON.stringify(g.adapter.snapshotState()));Object.assign(g.s,snapshot.state);assert.deepEqual(plain(g.s.fleets[destination][1]),units);
+}
 {
  const g=game('move');g.s.players[1].cardPrestige=10;assert.equal(g.e.aiLeaderPressure(0,1),24);assert.equal(g.e.aiLeaderPressure(0,2),0);
  g.s.players[2].cardPrestige=10;assert.equal(g.e.aiLeaderPressure(0,2),24);assert.equal(g.e.aiLeaderPressure(1,2),0);

@@ -87,11 +87,18 @@ for(const attacker of [0,1]){
  choose(g,{type:'combat_escape',destination:'2,0',amount:1});assert.equal(g.s.players[0].resources.energy,0);assert.equal(g.s.fleets['2,0'][0].explorer,1);assert.equal(g.s.fleets['1,0'][0].explorer,1);assert.equal(g.s.pendingCombat.attackerPieces.length,2);finish(g);
 }
 {
- const g=fixture({d:{explorer:2}});g.s.players[1].resources.energy=2;g.start();choose(g,{type:'combat_stay'});choose(g,{type:'combat_escape',destination:'2,0',amount:2});assert(!g.s.pendingCombat);assert.equal(g.s.lastCombat.volleys.length,0);assert.match(g.s.lastCombat.outcome,/won the battle/);assert.equal(g.s.fleets['2,0'][1].explorer,2);
+ const g=fixture({d:{explorer:2}});g.s.players[1].resources.energy=2;g.start();assert.equal(g.e.combatActor(),1);choose(g,{type:'combat_escape',destination:'2,0',amount:2});assert(!g.s.pendingCombat);assert.equal(g.s.lastCombat.volleys.length,0);assert.match(g.s.lastCombat.outcome,/won the battle/);assert.equal(g.s.fleets['2,0'][1].explorer,2);
+}
+// No-choice escapes advance in the authoritative engine, including when the other side can escape.
+for(const reason of ['fleets','no-energy','blocked']) {
+ const g=fixture({a:reason==='fleets'?{fleet:1}:{fleet:1,explorer:1}});
+ if(reason==='blocked') {g.s.players[0].resources.energy=1;for(const at of ['2,0','2,-1','1,-1','0,0','0,1','1,1'])g.s.fleets[at]={2:{fleet:1}};g.s.fleets['0,0']={0:{fleet:1,explorer:1},2:{fleet:1}};}
+ g.start();assert.equal(g.s.pendingCombat.stage,'tactic',reason);assert(g.e.combatActions(0).every(a=>a.type==='combat_tactic'));
+ const before=JSON.stringify(g.s);assert(!g.e.applyCombatAction(0,{type:'combat_stay'}));assert.equal(JSON.stringify(g.s),before);
 }
 {
- const g=fixture({a:{explorer:1}});g.start();assert.deepEqual(plain(g.e.combatActions(0)),[{type:'combat_stay'}]);
- g.s.players[0].resources.energy=1;for(const coord of ['2,0','2,-1','1,-1','0,0','0,1','1,1'])g.s.fleets[coord]={2:{fleet:1}};assert.deepEqual(plain(g.e.combatActions(0)),[{type:'combat_stay'}]);
+ const g=fixture({a:{fleet:1},d:{fleet:1,explorer:1}});g.s.players[1].resources.energy=1;g.start();
+ assert.equal(g.s.pendingCombat.stage,'escape');assert.equal(g.e.combatActor(),1);assert(g.s.pendingCombat.escapeDone.attacker);choose(g,{type:'combat_stay'});assert.equal(g.s.pendingCombat.stage,'tactic');
 }
 // Relic/regular reactions and Fleet-only offensive bonuses are consumed at reveal.
 // Targeting Algorithms and Ablative Plating left the market in 31.36; they remain in the 30.35 archive.
@@ -110,7 +117,7 @@ for(const [units,bonus] of [[{settler:1},1],[{fleet:1},3]]){
 }
 // A JSON roundtrip resumes escape, a hidden commitment, and later damaged volleys.
 for(const stage of ['escape','committed','later']){
- const g=fixture({card:true});g.start();if(stage!=='escape'){stays(g);choose(g,{type:'combat_tactic',tactic:'defensiveScreen'});}if(stage==='later'){choose(g,{type:'combat_tactic',tactic:'defensiveScreen'});volley(g,'concentratedFire','defensiveScreen');}
+ const g=fixture({card:true,a:{fleet:1,explorer:1}});g.s.players[0].resources.energy=1;g.start();if(stage!=='escape'){stays(g);choose(g,{type:'combat_tactic',tactic:'defensiveScreen'});}if(stage==='later'){choose(g,{type:'combat_tactic',tactic:'defensiveScreen'});volley(g,'concentratedFire','defensiveScreen');}
  const saved=JSON.stringify(g.s),resumed=fixture();Object.assign(resumed.s,JSON.parse(saved));const a=resumed.adapter();assert.equal(a.activeSeat(),g.e.combatActor());assert.deepEqual(plain(a.observe(a.activeSeat())),plain(g.adapter().observe(g.e.combatActor())));finish(resumed);assert.equal(resumed.s.activePlayer,1);assert.equal(resumed.s.players[0].inPlay.filter(c=>c.id==='battle-move').length,1);
 }
 // Enumerate all36 three-tactic sequence pairs: both choices have strategic use,
@@ -164,7 +171,7 @@ for(const tag of [null,'overdrive']){
 }
 // A defending structure remains after all Explorers escape, so battle continues.
 {
- const g=fixture({d:{explorer:1}});g.s.planets['1,0']={owner:1,upgrade:'starbase',upgradeLevel:1,cluster:0};g.s.players[1].resources.energy=1;g.start();choose(g,{type:'combat_stay'});choose(g,{type:'combat_escape',destination:'2,0',amount:1});assert(g.s.pendingCombat);assert.equal(g.s.pendingCombat.defenderPieces[0].type,'starbase');assert.equal(g.s.pendingCombat.stage,'tactic');
+ const g=fixture({d:{explorer:1}});g.s.planets['1,0']={owner:1,upgrade:'starbase',upgradeLevel:1,cluster:0};g.s.players[1].resources.energy=1;g.start();assert.equal(g.e.combatActor(),1);choose(g,{type:'combat_escape',destination:'2,0',amount:1});assert(g.s.pendingCombat);assert.equal(g.s.pendingCombat.defenderPieces[0].type,'starbase');assert.equal(g.s.pendingCombat.stage,'tactic');
 }
 // Old14.19 assets are a byte-for-byte archive of the previous release.
 const archived14Hashes={"app.js": "3d47c5cfb623a84781790ce8586bfba852eca308f360e0ecce959a5556d6aace", "adapter.js": "711b6584e86520b6c816a37d46df315386a84d09d3bbaf18d2691ad0d7662cd2", "index.html": "6e793ede4cdb28217e6ef8e940591a11c074b1a35e8bf6c8d1b7eafba00e1979", "styles.css": "da5262231b48446f5dc22cb55502ceaed6c764d2095d06a33fd29a88c9fe0004", "rulebook.html": "234c8050203b68327aae8270893bc7938700bc900564e12b8888f70f43df3c8b", "rulebook.css": "c89d7ff15fc902e2dda07d2ef54213e9ec09796a736c596dbc411c12fa5c1e5b", "replay.js": "b7b14140bd6c87aa41d73e2fa26d3f4c43b10168137f66afb7b7935428952c95"};

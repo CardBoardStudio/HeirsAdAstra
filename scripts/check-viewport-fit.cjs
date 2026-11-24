@@ -162,6 +162,7 @@ function combatState(stage, military = false) {
 }
 function combatEscapeState() {
   const state = combatState('escape');
+  state.pendingCombat.stage = 'escape'; state.pendingCombat.escapeDone = {attacker:false,defender:true};
   state.players[0].resources.energy = 3;
   state.fleets['9,-10'][0].explorer = 3;
   state.pendingCombat.attackerPieces.push(...Array.from({length:3}, () => ({type:'explorer', hull:1, power:1, damage:0})));

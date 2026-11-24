@@ -1,6 +1,10 @@
 /* Max-owned card, price and reference presentation restored from 79955af.
    Shared bank containers stay in styles.css; only card faces are overridden here. */
 body.background-stars{ --matter:#a8b7c8; --energy:#62c9ff; --biomass:#70d994; --data:#c297ff; }
+/* These extra shapes are hidden in Willem's UI, whose original SVG children stay intact. */
+.max-resource-shape { display:none; }
+body.background-stars svg[data-max-resource] > :not(.max-resource-shape) { display:none !important; }
+body.background-stars svg[data-max-resource] > .max-resource-shape { display:inline; }
 body.background-stars .game-card:focus-visible{ outline: 2px solid var(--cyan); outline-offset: 2px; }
 body.background-stars .symbol-legend{ border-top: 0; padding-top: 10px; padding-bottom: 10px; gap: 12px 18px; align-items: flex-start; }
 body.background-stars .symbol-legend .legend-heading{ flex: 0 0 100%; text-align: center; }
