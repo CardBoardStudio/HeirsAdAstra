@@ -1189,7 +1189,8 @@ function createGalacticReach(options = {}) {
 
   // Rules #movement (33.38): a Move order moves any chosen units of one faction on one hex.
   // `units` counts each type; without it, `moveGroup` names the whole group (all combat
-  // ships, or the Explorer team). Combat ships and Explorers never move in the same order.
+  // ships, or the Explorer team). Ordinary orders keep those groups separate; Gravity
+  // Scepter can displace a mixed subset.
   function moveSelection(fleet, options = {}) {
     if (!fleet) return null;
     const requested = options.units || fleetGroup(fleet, options.moveGroup || (combatShipCount(fleet) ? 'ships' : 'explorer'));
@@ -4807,6 +4808,7 @@ function createGalacticReach(options = {}) {
         hex.setAttribute('aria-label',`Space ${key}${fleetText?', fleet '+fleetText:''}`);
       }
       if (portalExit(key)) hex.setAttribute('aria-label',hex.getAttribute('aria-label')+`, corner portal to ${portalExit(key)}, crossing costs 2 movement`);
+      hex.querySelectorAll('.hex-pieces .board-icon').forEach((piece,index)=>{piece.dataset.markerRow=String(Math.floor(index/columns));});
     });
   }
 

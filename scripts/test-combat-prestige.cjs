@@ -38,12 +38,12 @@ for(const attacker of [0,1])for(const unit of ['settler','explorer','fleet']){
 }
 // Partial and total paid escapes disqualify the opponent's award.
 for(const d of [{explorer:1},{explorer:1,settler:1}]){
- const g=fixture({d});g.s.players[1].resources.energy=1;g.start();choose(g,{type:'combat_stay'});choose(g,{type:'combat_escape',destination:'2,0',amount:1});
+ const g=fixture({d});g.s.players[1].resources.energy=1;g.start();assert.equal(g.e.combatActor(),1);choose(g,{type:'combat_escape',destination:'2,0',amount:1});
  if(g.s.pendingCombat){assert.equal(g.s.pendingCombat.escapedUnits.defender,1);finish(g);}
  awards(g,[0,0,0,0]);assert.equal(g.s.lastCombat.prestigeWinner,null);assert.equal(g.s.fleets['2,0'][1].explorer,1);
 }
 {
- const g=fixture({a:{explorer:1,settler:1},d:{fleet:1}});g.s.players[0].resources.energy=1;g.start();choose(g,{type:'combat_escape',destination:'0,0',amount:1});choose(g,{type:'combat_stay'});finish(g);awards(g,[0,0,0,0]);
+ const g=fixture({a:{explorer:1,settler:1},d:{fleet:1}});g.s.players[0].resources.energy=1;g.start();choose(g,{type:'combat_escape',destination:'0,0',amount:1});assert.equal(g.s.pendingCombat.stage,'tactic');finish(g);awards(g,[0,0,0,0]);
 }
 // A legal withdrawal, an Emergency Jump, and mutual destruction award no points.
 {
@@ -74,8 +74,8 @@ for(const upgrade of [null,'starbase']){
 }
 // Serializing after an escape or a secret commitment preserves eligibility exactly.
 for(const escaped of [false,true]){
- const g=fixture({d:escaped?{explorer:1,settler:1}:{settler:1}});g.s.players[1].resources.energy=1;g.start();choose(g,{type:'combat_stay'});
- choose(g,escaped?{type:'combat_escape',destination:'2,0',amount:1}:{type:'combat_stay'});choose(g,{type:'combat_tactic',tactic:'concentratedFire'});
+ const g=fixture({d:escaped?{explorer:1,settler:1}:{settler:1}});g.s.players[1].resources.energy=1;g.start();
+ if(escaped)choose(g,{type:'combat_escape',destination:'2,0',amount:1});choose(g,{type:'combat_tactic',tactic:'concentratedFire'});
  const resumed=fixture();Object.assign(resumed.s,plain(g.s));finish(g);finish(resumed);
  assert.deepEqual(plain(resumed.s.players.map(p=>p.combatVictories)),plain(g.s.players.map(p=>p.combatVictories)));
  assert.equal(resumed.s.players[0].combatVictories,escaped?0:1);assert.deepEqual(plain(resumed.s.lastCombat),plain(g.s.lastCombat));
