@@ -324,8 +324,12 @@
   }
   addEventListener('resize', () => requestAnimationFrame(() => fitHandNameSizes()));
   // A card whose box changes after it was drawn (the fan sets widths and heights) is measured again.
+  // A card that rises changes its box too: its name is measured then, at the raised card's own
+  // layout, however it was raised (a tap raises a card only after the pointer events below).
   const nameObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(entries => {
-    if (entries.some(entry => entry.target.isConnected && !raisedNow(entry.target))) fitHandNameSizes();
+    const live = entries.map(entry => entry.target).filter(card => card.isConnected);
+    for (const card of live) if (raisedNow(card)) fitRaised(card);
+    if (live.some(card => !raisedNow(card))) fitHandNameSizes();
   }) : null;
   function watchHandNames() {
     if (!nameObserver) return;

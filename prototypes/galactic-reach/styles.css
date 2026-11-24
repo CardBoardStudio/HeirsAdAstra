@@ -414,12 +414,17 @@ button.choice-card, label.choice-card { position: relative; display: flex; min-h
 .toast { position: fixed; z-index: 30; right: 18px; bottom: 18px; max-width: 360px; padding: 12px 15px; border: 1px solid var(--cyan); background: #0d1a26; box-shadow: 0 14px 50px rgba(0,0,0,.45); font-size: 12px; animation: toast-in .2s ease-out; display: flex; align-items: center; gap: 7px; }
 @keyframes toast-in { from { transform: translateY(8px); opacity: 0; } }
 
+/* Reduced motion: changes land at once. Transitions take no time at all rather than a tiny one:
+   every element's transition-property defaults to all, so any duration would start a transition
+   on every property that changes, and a layout read in that frame (a raised card measuring its
+   name between its corners) would see the old sizes. */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     scroll-behavior: auto !important;
     animation-duration: .01ms !important;
     animation-iteration-count: 1 !important;
-    transition-duration: .01ms !important;
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
   }
 }
 
@@ -4197,9 +4202,6 @@ body:not(.background-stars) :is(#hand-row:not(.fan-tight) > .game-card, .phone-c
 @media (max-width: 599px), (max-height: 599px) {
   body:not(.background-stars) #hand-row > .game-card > .card-name { font-size: var(--name-fs, 14px); }
 }
-/* A name never animates its size: under reduced motion every property gets a 0.01ms transition,
-   and a measurement in the same frame would still read the old size. */
-body:not(.background-stars) #hand-row > .game-card > .card-name { transition: none !important; }
 body:not(.background-stars) #hand-row > .game-card:not(:hover):not(:focus-within) > .card-name { white-space: normal !important; text-overflow: clip !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; min-height: min-content !important; flex-shrink: 0; }
 body:not(.background-stars) #hand-row > .game-card.name-tucked:not(:hover):not(:focus-within) > .card-name { position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; white-space: nowrap !important; }
 /* A resting card never shows text cut with an ellipsis: its one rules line shows only where it fits
