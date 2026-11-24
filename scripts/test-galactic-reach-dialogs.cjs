@@ -1575,6 +1575,17 @@ test('MaxBot is optional, previewed by name and retained through reload',()=>{
  const reload=boot(storage);assert.equal(reload.saved().players[max.id].name,'MaxBot');reload.click('new-game-button');assert(reload.dom.element('new-game-maxbot').checked);
  reload.dom.element('new-game-maxbot').checked=false;reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();assert(!reload.saved().players.some(p=>p.strategy==='maxbot'));
 });
+test('Military Focused is optional, previewed and retained without replacing Military by default',()=>{
+ const storage=createStorage(),game=boot(storage);assert(game.saved().players.some(p=>p.strategy==='military'));assert(!game.saved().players.some(p=>p.strategy==='militaryFocused'));
+ game.click('new-game-button');game.dom.element('new-game-military-profile').value='militaryFocused';
+ game.dom.element('new-game-military-profile').listeners.change.forEach(fn=>fn({type:'change'}));
+ assert(game.dom.element('new-game-neighbor').textContent.includes('Military Focused'));
+ game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();assert(game.saved().players.some(p=>p.strategy==='military'));
+ game.click('new-game-button');game.dom.element('new-game-military-profile').value='militaryFocused';game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
+ const focused=game.saved().players.find(p=>p.strategy==='militaryFocused');assert(focused);assert.equal(game.saved().players.filter(p=>p.strategy==='militaryFocused').length,1);
+ const reload=boot(storage);assert.equal(reload.saved().players[focused.id].strategy,'militaryFocused');reload.click('new-game-button');assert.equal(reload.dom.element('new-game-military-profile').value,'militaryFocused');
+ reload.dom.element('new-game-military-profile').value='military';reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();assert(reload.saved().players.some(p=>p.strategy==='military'));assert(!reload.saved().players.some(p=>p.strategy==='militaryFocused'));
+});
 for (const { name, body } of tests) {
   try {
     body();

@@ -5,8 +5,9 @@ const root=path.resolve(__dirname,'..'),sources=Object.fromEntries(['app','adapt
 const archive=JSON.parse(fs.readFileSync(path.join(root,'docs/rules/archived-rust-policy.json'),'utf8'));
 assert.equal(require('node:crypto').createHash('sha256').update(fs.readFileSync(path.join(root,archive.source))).digest('hex'),archive.sha256,'Archived native policy is immutable');
 const directory=process.env.GR_SIMULATION_ARCHIVE_DIR||path.join(root,'output/browser-policy-fixtures');
-function game(browserPolicy){let seed=1729;const g=factory(sources.app,sources.adapter)({browserPolicy,victoryTarget:30,archiveDirectory:directory,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});g.e.state.players.forEach((p,id)=>p.strategy=['market','military','economy','expansion'][id]);return g;}
-const direct=game(false),server=game(true);
+function game(browserPolicy,profiles){let seed=1729;const g=factory(sources.app,sources.adapter)({browserPolicy,victoryTarget:30,archiveDirectory:directory,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});g.e.state.players.forEach((p,id)=>p.strategy=profiles[id]);return g;}
+for(const profiles of [['market','military','economy','expansion'],['militaryFocused','military','economy','expansion']]){
+const direct=game(false,profiles),server=game(true,profiles);
 try{
  for(let step=0;step<60;step++){
   assert.equal(JSON.stringify(server.a.snapshotState()),JSON.stringify(direct.a.snapshotState()));
@@ -22,8 +23,9 @@ try{
   assert.equal(JSON.stringify(server.a.snapshotState()),JSON.stringify(direct.a.snapshotState()),`Browser/server policy drift at ${step}`);
  }
 }finally{direct.archive.finish({reason:'parity-fixture',incomplete:true});server.archive.finish({reason:'parity-fixture',incomplete:true});}
+}
 const {bridge}=require('./native-investment-study.cjs');const prior=process.env.GR_ALLOW_ARCHIVED_RUST_BOTS;delete process.env.GR_ALLOW_ARCHIVED_RUST_BOTS;
 try{assert.throws(()=>bridge('/never-spawn-this'),/Rust bots are archived/);}finally{if(prior!==undefined)process.env.GR_ALLOW_ARCHIVED_RUST_BOTS=prior;}
-const result=play({id:0,seed:1729,target:30,maxRound:2,maxSteps:3,profiles:['market','military','economy','expansion']},sources,directory);
+const result=play({id:0,seed:1729,target:30,maxRound:2,maxSteps:3,profiles:['militaryFocused','military','economy','expansion']},sources,directory);
 assert.equal(result.policyFamily,'browser');assert.equal(result.steps,3);assert(!result.completed);assert(fs.existsSync(path.join(result.archive,'manifest.json')));
-console.log('Browser policies: 60 matched decisions/state/counter parity, forged profiles and wrong seats rejected, stale-command cache invalidated, native bridge blocked, bounded incomplete history retained.');
+console.log('Browser policies: 120 matched decisions/state/counter parity including both military profiles, forged profiles and wrong seats rejected, stale-command cache invalidated, native bridge blocked, bounded incomplete history retained.');

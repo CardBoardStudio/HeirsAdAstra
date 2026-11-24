@@ -347,7 +347,7 @@ function createGalacticAdapter(e) {
   // Server-only entry point: a registered AI seat uses the unmodified browser policy.
   // Invalidate cached native commands before and after direct browser mutations.
   function browserStep(seat, profile) {
-    if (activeSeat() !== seat || !['military','economy','market','expansion'].includes(profile)) throw new Error('Invalid browser policy seat or profile');
+    if (activeSeat() !== seat || !['military','militaryFocused','economy','market','expansion'].includes(profile)) throw new Error('Invalid browser policy seat or profile');
     cached = null;
     s().players[seat].strategy = profile;
     try {
