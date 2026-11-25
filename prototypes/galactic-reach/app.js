@@ -4103,7 +4103,7 @@ function createGalacticReach(options = {}) {
           add(source,{settler:f.settler,explorer:0,fleet:0},world.center,120,'ships',true);
       }
       const fleets=f.fleet||0;
-      const minimum=state.round<=policy.earlyRaidUntil?policy.minRaid:5;
+      const minimum=policy.earlyRaidUntil===null||state.round<=policy.earlyRaidUntil?policy.minRaid:5;
       if(fleets>=minimum) {
         for(const [at,other] of Object.entries(state.fleets)) {
           const defender=findDefender(at,playerId),enemy=defender===null?null:other[defender];
@@ -4118,7 +4118,7 @@ function createGalacticReach(options = {}) {
             if(!aiCanFight(playerId,hunters,at))continue;
             const turns=Math.ceil(travelDistance(source,at)/movementRange(hunters,card));
             const value=125-fleetPower(enemy)*4-(yardDefense?12:0)-(escape?(policy.escapePenalty??40):0)-turns*policy.distancePenalty-count*policy.countPenalty;
-            if(add(source,hunters,at,value,'ships',cannotAttack,policy.maxRisk))break;
+            if(add(source,hunters,at,value,'ships',cannotAttack,policy.maxRisk,count<5&&policy.immediateSmallRaid))break;
           }
         }
       }
@@ -4137,7 +4137,7 @@ function createGalacticReach(options = {}) {
     const p=state.players[playerId],military=p.strategy==='military'||maxBotLate(playerId),expansion=['expansion','maxbot'].includes(p.strategy),economy=['economy','market','maxbot'].includes(p.strategy);
     const groups=Object.entries(state.fleets).filter(([,g])=>fleetCount(g[playerId]));
     const targets=[],defense=aiColonyDefense(playerId);
-    const add=(source,moving,goal,value,moveGroup,cannotAttack,maxRisk=Infinity)=>{
+    const add=(source,moving,goal,value,moveGroup,cannotAttack,maxRisk=Infinity,immediateOnly=false)=>{
       if (source===goal) return;
       value+=moveGroup==='ships'?(p.strategy==='militaryFocused'?FOCUSED_MILITARY_POLICY.leaderPressure:1)*(aiLeaderPressure(playerId,state.planets[goal]?.owner)+Math.max(0,...Object.keys(state.fleets[goal]||{}).map(owner=>aiLeaderPressure(playerId,+owner)))):0;
       const range=movementRange(moving,card),path=aiPath(source,goal,playerId,moving,cannotAttack,range,routeCache);
@@ -4146,6 +4146,7 @@ function createGalacticReach(options = {}) {
       for(const at of path){const cost=portalExit(previous)===at?PORTAL_MOVEMENT_COST:1;if(spent+cost>range)break;segment.push(at);spent+=cost;previous=at;if(hostileAt(at,playerId))break;}
       if(!segment.length)return;
       const destination=segment[segment.length-1],pathCost=pathMovementCost(source,path);
+      if(immediateOnly&&(pathCost>range||destination!==goal))return;
       const threatRange=p.strategy==='militaryFocused'?(FOCUSED_MILITARY_POLICY.enemyRange||3):3;
       const risk=moveGroup==='ships'?aiThreat(playerId,moving,destination,source,threatRange):0;
       const current=moveGroup==='ships'?aiThreat(playerId,moving,source,source,threatRange):0;

@@ -1,12 +1,34 @@
 # Military Focused: a majority through combat
 
-The shorter-hunt Military Focused policy won **783 of 1,152 games (68.0%)** across three independent fresh-map cohorts, with a stratified whole-map bootstrap 95% interval of **65.1–70.7%**. It won 265/384 (69.0%), 258/384 (67.2%) and 260/384 (67.7%) in the three cohorts. Combat victories and Victory Doctrine supplied **86.2% of its points**. The two-world combat plan remains intact. These figures describe the frozen evaluated policy; a small-raid routing correction is awaiting its own fresh comparison below.
+The route-corrected Military Focused policy won **530/768 games (69.0%)** across two independent cohorts: 192 fresh maps with all starting seats. Its stratified whole-map bootstrap 95% interval is **65.9–72.1%**. Combat victories and Victory Doctrine supplied **87.4% of its points**. The two-world plan and cohesive five-to-ten-Fleet groups remain selected.
+
+## Actual-route correction: selected
+
+Small early raids must reach the enemy by the legal route they actually take. A stronger enemy may block the direct route even when the target is close by distance. Four Fleets now wait or regroup when that detour would need another Move. Full hunting groups can still take longer approaches. The intended clarification was written before implementing the fix, and the blocked-route fixture was found before inspecting the preceding eight-Fleet confirmation outcomes.
+
+A frozen **96-map × four-seat × three-policy = 1,152-game** comparison completed without failures, unfinished games or exclusions. The old uncorrected policy and corrected incumbent both won **256/384 (66.7%)**. The corrected eight-Fleet challenger won **266/384 (69.3%)**, a paired gain of **2.6 percentage points**, 95% whole-map interval **−2.1–7.0**. That strength change did not meet the predeclared positive-gain gate. Adopt only the mandatory route correction; do not promote the larger observed percentage. The corrected incumbent's own interval was 62.0–71.1%, entirely above 50%.
+
+A second independent **96-map × four-seat × two-policy = 768-game** comparison gave the exact same corrected incumbent **274/384 wins (71.4%)**, versus **271/384 (70.6%)** for the preselected five-Fleet challenger. The challenger's paired difference was **−0.8 percentage points**, interval **−6.5–4.9**. Reject that group change. All 768 games completed and passed audits with no excluded or unfinished attempts. Combining only the identical corrected incumbent across these two tests gives 530/768; 20,000 stratified whole-map resamples with seed 2026112513 preserve all four rotations inside each cohort.
+
+| Points, mean across all 768 corrected-incumbent games including losses | Military Focused | Economy in the same lineups |
+| --- | ---: | ---: |
+| Held Colonies | 3.74 | 10.04 |
+| Ordinary combat | 24.96 | 2.13 |
+| Card Prestige | 1.02 | 3.34 |
+| Relics | 0 | 6.08 |
+| Total | 29.72 | 21.59 |
+
+All Focused card points are Victory Doctrine; the two-world, no-relic and no-unrelated-Prestige audits passed. Exact adopted `app.js`: `6257558c9bef95981863f2b38d36c3ece4359d94d1b5921d3dbea1dfa6f65011`. Study `run-validate-r11-actual-route-5f031ce7a2`, protocol `0e716fbb7fce6bb5ab830fd10e5d3d9aae6973975d9a9939d4b56108978747c5`, complete audited rows `9bdfbaa589baa5663816e23cfac51578fd5f11c5fae7897c72ddb240d438dade`. `r11-selection.json` records the primary comparison and exact adoption gate. The replication is `run-validate-r12-five-41d26c8e9a`, protocol `6041affe3b982e2d0b0a627490b934549ae4df30c6a0ac355b8210cc8951b6f6`, rows `f2219ce22edfdc21b2d381ae387490610fd4e0ef5808c3b8bded7e709167daf2`. The exact two-cohort aggregate and analyzer are retained as `corrected-policy-replications.json` and `analyze-corrected-policy-replications.py` (analyzer SHA-256 `4b3c097ddf8d27f949c4a140f3eff22d6b4a1213e9be48599e3a6176d78ed31f`). The earlier aggregate below describes a different source and is not pooled with this corrected-policy cohort.
+
+## Earlier shorter-hunt evidence
+
+Before the route correction, the shorter-hunt Military Focused policy won **783 of 1,152 games (68.0%)** across three independent fresh-map cohorts, with a stratified whole-map bootstrap 95% interval of **65.1–70.7%**. It won 265/384 (69.0%), 258/384 (67.2%) and 260/384 (67.7%) in the three cohorts. Combat victories and Victory Doctrine supplied **86.2% of its points**. The two-world combat plan remains intact. These figures describe the frozen evaluated policy; a small-raid routing correction is awaiting its own fresh comparison below.
 
 The earlier production-first policy had already established a majority: 232/384 (60.4%) versus the original Focused policy's 119/384 (31.0%) on one shared cohort, and 237/384 (61.7%) on a second independent cohort. The new result compares shorter hunts with that strong predecessor, rather than mixing percentages from different maps.
 
 The canonical [Military Focused section](../../prototypes/galactic-reach/rulebook.html#military-focused-rival) describes the adopted behavior. It still founds only one world beyond home, commissions Fleets on the second world, fills its two worlds with Harvesters, and supports combat through capacity, draw, exchange and military cards. No costs, movement rules, attack/hull, tactics allowance, scoring, market supply or victory target change. These results evaluate browser rivals, not a Rust decision policy or human-player balance.
 
-## Shorter hunts: current selection
+## Shorter hunts: preceding selection
 
 The new policy gives distance to a favourable weak group more weight. For example, it may attack two enemy Fleets reachable now rather than spend another Move travelling toward one Fleet. Its opening, four-Fleet early opportunity, five-to-ten-Fleet cohesion, two-world cap and purchases are otherwise the same as the production-first predecessor. The exact frozen executable is adopted; experimental leader pressure, extra escape avoidance and stricter counterattack gates were not selected.
 
@@ -29,7 +51,7 @@ All selected-policy card points are combat-derived Victory Doctrine. It never ex
 
 The study is `run-validate-r6-01fbd74e32`, with all outcome/archive paths and download checksums retained in its local results and `retrieval-status.json`. The exact `app.js` SHA-256 is `1206c485baf344fdf8b05d93b509917c5037edcec76642405d531d0e28565438`; protocol `ea71c1ebcf29b8594d091ba20628000e9cfab3f74657d346c068005b026c6a0b`; complete audited rows `80c0ee408b1a8c9ba3d6c6eda32af6c44a33831954947b8b426a0588ceac8673`. Its `control` label means the production-first predecessor, not the original Focused bot. Confidence intervals use the same 20,000 whole-map resamples described below. The paired interval satisfied the predeclared positive-gain adoption gate.
 
-## Independent confirmation of the current policy
+## Independent confirmation before the route correction
 
 The exact same shorter-hunt executable faced a preselected smaller-raid challenger on another **96 disjoint fresh maps × four seats**, with all six relative opponent orders balanced. The incumbent won **258/384 (67.2%)** and the challenger **250/384 (65.1%)**. The challenger's paired difference was **−2.1 percentage points**, 95% map interval **−7.8–3.4**. Reject the challenger: the exploratory 81.2% development result did not confirm. The current five-to-ten plan and early immediate four-Fleet opportunity stay selected.
 
@@ -53,7 +75,7 @@ Another 96 fresh maps with every starting seat gave the unchanged incumbent **26
 
 The challenger is **not adopted**. Before inspecting these outcomes, a targeted fixture exposed a route-fidelity error shared by the small-raid eligibility checks. An enemy group may be close by distance while a stronger enemy blocks the direct route. Three or four Fleets can then start a detour and stop on an empty hex instead of reaching combat in this Move. This conflicts with the intended immediate-fight exception. The correction requires the actual selected legal route to reach the enemy this Move. Larger groups may still travel toward a fight.
 
-The correction passes blocked-route fixtures for three and four Fleets, clear immediate fights, larger-group detours, planning purity and late-game eligibility. All 201 original-opponent state/counter fixtures still match. The frozen next comparison uses 96 disjoint maps, every starting seat and three policies: historical uncorrected incumbent, corrected incumbent, and corrected eight-Fleet challenger. Its primary comparison is corrected challenger minus corrected incumbent; a positive paired 95% interval is required for the further group change. Correct route fidelity is mandatory. It has not run yet, so these fixtures make no claim about its game win rate.
+The correction passes blocked-route fixtures for three and four Fleets, clear immediate fights, larger-group detours, planning purity and late-game eligibility. All 201 original-opponent state/counter fixtures still match. The frozen comparison used 96 disjoint maps, every starting seat and three policies: historical uncorrected incumbent, corrected incumbent, and corrected eight-Fleet challenger. Its primary comparison is corrected challenger minus corrected incumbent; a positive paired 95% interval is required for the further group change. Correct route fidelity is mandatory. That comparison is now complete; the selected-correction section above reports every outcome and explains why the further group change was not adopted.
 
 Combining only the identical incumbent source across the three completed cohorts gives **783/1,152 wins on 288 map blocks**. The interval resamples whole maps separately within each cohort, preserving all four rotations, with 20,000 resamples and seed 2026112503. This aggregate is not another trial.
 
@@ -66,6 +88,8 @@ Combining only the identical incumbent source across the three completed cohorts
 | Total | 29.39 | 21.33 |
 
 All Focused card points remain Victory Doctrine. The third study is `run-validate-r10-e81a35cf29`, protocol `2dfd50fb56f02b7d036d23f662635bace1a154f8ff6e7b854294c78c3e1e3fb2`, audited rows `433b0bae0e4ded54f0549e3a4ead100490e3430dd23b26ddb2da7f36e8811e8b`. The three-cohort aggregate and exact analyzer are retained as `current-replications-three-cohorts.json` and `analyze-current-three-cohorts.py`; analyzer SHA-256 `57785265f7376147fed892ea7e14679fd726e0e11cc48931c49cfd5bac64464e`.
+
+The descriptive seat analysis of these same 1,152 pre-correction games found 192/288 wins in seat one (66.7%), 199/288 in seat two (69.1%), 208/288 in seat three (72.2%) and 184/288 in seat four (63.9%). Each of the six relative opponent orders also had a majority (65.1–71.4%). These are subgroup descriptions of existing trials, not new confirmation tests. The exact analyzer and output are retained as `analyze-current-seats.py` and `current-seat-replications.json`.
 
 ## Which fights supplied the points
 
@@ -131,7 +155,7 @@ Combat plus Doctrine supplied 86.8% of production-first's points. It did not buy
 
 ## Development trail
 
-Each development round used 12 new map blocks with four seat rotations, balanced opponent orders and full archives. These comparisons select candidates; they are not held-out evidence.
+The earlier development rounds used 12 new map blocks; round 12 increased this to 24. Both designs use four seat rotations, balanced opponent orders and full archives. These comparisons select candidates; they are not held-out evidence.
 
 - Round 1, 336 games: independent small raiding groups lost. Original 20/48, strongest challenger 15/48. Reject all six challengers.
 - Round 2, 336 games: cohesive groups able to grow to ten won 25/48 versus the original's 13/48. Fresh 48-map validation later gave 76/192 (39.6%) versus 53/192 (27.6%), paired interval for the gain 3.6–20.3 points. This was the first adopted improvement.
@@ -146,11 +170,15 @@ Each development round used 12 new map blocks with four seat rotations, balanced
 
 - Round 9, 384 games: allowing only immediate favourable three-Fleet fights throughout the game won 39/48 (81.2%), versus the older production-first predecessor's 29/48. Allowing four throughout won 37/48. The fresh 96-map, 768-game confirmation above rejected that exact candidate. Combined targeting/raid hypotheses remain separate development work.
 
+- Round 10, 384 games: combined nearby targeting and cohesive eight-Fleet groups selected a candidate at 37/48 versus the shorter-hunt incumbent's 33/48. The confirmation and subsequent route-correction comparison are reported above; the eight-Fleet change remains unadopted.
+
+- Round 12, 768 games: five- and seven-Fleet caps tied at 73/96 wins. Five won the predeclared mean-points tiebreak (29.96 versus 29.72); the corrected incumbent won 70/96. The fresh 96-map paired confirmation above gave 271/384 versus 274/384 and rejected the change.
+
 Raw win shares from different cohorts should not be read as paired comparisons. For example, the same earlier-opening source won 46.9% in one held-out cohort and 54.7% in the larger one.
 
 ## Recovery, verification and retention
 
-All **1,152 planned logical games** finished and passed source/trace/state/counter/RNG integrity checks, every-decision and whole-game resource accounting, production receipts, scoring reconciliation and the two-world/no-relic/no-unrelated-Prestige constraints. No planned seeds or losses were dropped.
+In the initial production-first majority comparison, all **1,152 planned logical games** finished and passed source/trace/state/counter/RNG integrity checks, every-decision and whole-game resource accounting, production receipts, scoring reconciliation and the two-world/no-relic/no-unrelated-Prestige constraints. No planned seeds or losses were dropped.
 
 The first execution hit ORCD's home inode quota. Its 305 physical attempts remain retained: 291 complete manifests and 14 partial journals. There were 282 completed, independently audited rows available to reuse; nine additional complete-but-unrecorded attempts and fourteen partial attempts were rerun. The recovery completed the remaining 870 logical tasks with identical frozen policies, tasks and RNG seeds. Count one final outcome per preplanned task, not both copies of a rerun. In total, 1,175 physical attempts are retained for this 1,152-game plan.
 
@@ -167,3 +195,5 @@ Reproduction identifiers:
 - All 672 histories from the first two development rounds are also retained in the locally downloaded and checksum-verified `focused-completed-r1-r2-20261125.tar.gz` bundle. After explicit user approval, the two expanded duplicate game folders were removed only after rechecking all 8,736 game files against this complete bundle and its independently checksum-matched copy on the compute system. Protocols/results remain expanded, and archive-location files point to the retained bundle members. No history was discarded.
 
 Optimization continues at the user's request. A majority in this frozen test does not authorize merging the PR or changing the three opponent policies.
+
+After a separate explicit approval conditional on local verification, four additional expanded duplicate game folders were removed. All **1,728 complete histories** remain in `focused-completed-r2validation-r3-r4dev-20261125.tar.gz`, verified locally and remotely against every one of its **22,611 files**; SHA-256 `043ae5df8b019f3c039a8dc944b755b528a6fa06739411d87c6ad3b5fd96ceeb`. A fresh remote verification also matched all 22,464 expanded game files before removal. Protocols/results remain expanded, each former game root has an archive locator, and `approved-next-copy-removal/` retains the authorization, terminal success, all removal events and checksum-verified evidence. No history was discarded.

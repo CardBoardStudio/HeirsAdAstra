@@ -64,6 +64,19 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   g.s.round=11;assert.equal(g.e.chooseAiMove(1,card).goal,forward,'Later incomplete groups regroup');
 }
 {
+  for(const count of [3,4]){
+    const g=game({minRaid:count}),card={id:'blocked-raid',key:'move',starter:true,upgraded:true,level:2};second(g);g.s.round=2;
+    g.s.fleets={'0,0':{1:{fleet:count}},'1,0':{0:{fleet:10}},'3,0':{2:{fleet:1}}};
+    const before=JSON.stringify(g.s),calls=g.calls();
+    assert.equal(g.e.chooseAiMove(1,card),null,'A small group waits when its legal detour cannot reach combat this Move');
+    assert.equal(JSON.stringify(g.s),before,'Blocked-raid planning preserves the position');assert.equal(g.calls(),calls,'Blocked-raid planning consumes no random choices');
+    delete g.s.fleets['1,0'];const immediate=g.e.chooseAiMove(1,card);assert.equal(immediate.destination,'3,0');assert.equal(immediate.goal,'3,0');legal(g,immediate,card);
+  }
+  const g=game(),card={id:'cohesive-detour',key:'move',starter:true,upgraded:true,level:2};second(g);
+  g.s.fleets={'0,0':{1:{fleet:5}},'1,0':{0:{fleet:10}},'3,0':{2:{fleet:1}}};
+  const approach=g.e.chooseAiMove(1,card);assert(approach);assert.equal(approach.goal,'3,0');assert.notEqual(approach.destination,approach.goal,'A full hunting group may take a longer legal approach');legal(g,approach,card);
+}
+{
   const g=game(),at=yard(g,g.s.clusters[1]);g.s.fleets={[at]:{1:{settler:1}}};
   g.p.hand=[{id:'early-move',key:'move',starter:true},{id:'existing-construct',key:'construct',starter:true,upgraded:true,level:2}];
   g.p.resources={matter:1,energy:1,biomass:3,data:4};g.s.phase='buy';g.s.market=[];g.s.capacitySupply=0;
@@ -126,4 +139,4 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   g.s.activePlayer=1;g.s.pendingColonyBuild={playerId:1,colony:world.center};g.e.aiColonyBuild(1);
   assert.equal(world.coords.filter(c=>g.s.planets[c].upgrade==='starbase').length,1,'Bonus construction cannot add another forward Shipyard');
 }
-console.log('Military Focused: one expansion, forward supply/production, cohesive five-to-ten-Fleet groups, weaker targets, legal regrouping, private information, both worlds filled, capacity, combat-reward tactics and original-policy isolation passed.');
+console.log('Military Focused: one expansion, forward supply/production, cohesive five-to-ten-Fleet groups, actual-route small raids, weaker targets, legal regrouping, private information, both worlds filled, capacity, combat-reward tactics and original-policy isolation passed.');
