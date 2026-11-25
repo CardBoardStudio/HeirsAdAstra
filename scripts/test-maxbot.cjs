@@ -9,8 +9,8 @@ function game(){const c=vm.createContext({});let e,n=73;vm.runInContext(read('ad
 {
  const {e,s}=game(),p=s.players[2];s.activePlayer=2;s.phase='operations';s.fleets={};s.players.forEach(p=>{p.hand=[];p.deck=[];p.discard=[];p.inPlay=[];});
  p.resources={matter:20,energy:20,biomass:20,data:20};p.resourceLimits={matter:12,energy:12,biomass:12,data:12};
- const value=e.aiCardUtility(2,'foldedWarehouse');p.discard=[{id:'warehouse',key:'foldedWarehouse'}];assert(e.maxBotWarehouse(2));assert(value>e.aiCardUtility(2,'foldedWarehouse')+50,'Seek the first warehouse before duplicates');
- p.discard=[];p.hand=[{id:'warehouse',key:'foldedWarehouse'}];const before={...p.resourceLimits};e.runAiOperation();for(const r of e.RESOURCES)assert.equal(p.resourceLimits[r],before[r]+2);assert(![...p.hand,...p.deck,...p.discard,...p.inPlay].some(c=>c.id==='warehouse'),'The warehouse is trashed after its one use');
+ const value=e.aiCardUtility(2,'foldedWarehouse');p.discard=[{id:'warehouse',key:'foldedWarehouse'}];assert(e.maxBotWarehouse(2));assert(value>e.aiCardUtility(2,'foldedWarehouse')+50,'Seek the first reusable warehouse, not duplicates');
+ p.discard=[];p.hand=[{id:'warehouse',key:'foldedWarehouse'}];const before={...p.resourceLimits};e.runAiOperation();for(const r of e.RESOURCES)assert.equal(p.resourceLimits[r],before[r]+1);assert(p.inPlay.some(c=>c.id==='warehouse'));
 }
 {
  const {e,s}=game(),p=s.players[2];s.activePlayer=2;s.phase='operations';p.resources={matter:20,energy:20,biomass:20,data:20};p.resourceLimits={matter:12,energy:12,biomass:12,data:12};p.hand=[{id:'build',key:'construct',starter:true}];

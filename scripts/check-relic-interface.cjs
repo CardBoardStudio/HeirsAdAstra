@@ -137,7 +137,7 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
    await load('reservoir-draft',true);await wait('document.querySelector("#storage-allocation-dialog").open');await fit();assert.equal(await evaluate('document.querySelector("#storage-points-matter").value'),'1');assert.equal(await evaluate('document.querySelector("#storage-points-data").value'),'-1');await click('#storage-allocation-cancel');await wait(`!JSON.parse(localStorage.getItem(${JSON.stringify(saveKey)})).pendingRelic`);s=await saved();assert(!s.pendingRelic);assert.equal(s.players[0].resourceLimits.data,8);assert(s.players[0].hand.some(c=>c.key==='prismaticReservoir'));
    await load('oracle',true);await click('[data-order-card]');await wait('document.querySelector("#relic-card-dialog").open');await fit();
    assert.equal(await evaluate('document.querySelectorAll("#relic-card-options .card-choice-tier").length'),3);
-   assert.equal(await evaluate('document.querySelectorAll("#relic-card-options [data-relic-card]").length'),28);
+   assert.equal(await evaluate('document.querySelectorAll("#relic-card-options [data-relic-card]").length'),27);
    assert((await evaluate('document.querySelectorAll("[data-relic-card]:disabled").length'))>0);assert((await evaluate('document.querySelectorAll("[data-relic-card]:not(:disabled)").length'))>0);
    assert(await evaluate('!!document.querySelector("[data-relic-card=worldEngine] .resource-chip.locked")'));
    assert.equal(await evaluate('document.querySelector("[data-relic-card=worldEngine] .resource-dots").outerHTML'),await evaluate('document.querySelector("#market-row .resource-dots").outerHTML'),'Oracle and Market use identical price markers');

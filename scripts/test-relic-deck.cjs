@@ -25,7 +25,7 @@ function tactics(g,t0='concentratedFire',t1='concentratedFire'){
 {
  const g=game(),c=g.c.createGalacticReach({catalog:true}),all=[...g.s.relicRow,...g.s.relicDeck];
  assert.equal(Object.keys(c.RELIC_CARDS).length,16);assert.equal(all.length,16);assert.equal(new Set(all.map(c=>c.key)).size,16);
- assert.equal(Object.values(c.MARKET_CARDS).filter(c=>!c.military).length,18);assert.equal(Object.values(c.MARKET_CARDS).filter(c=>c.military).length,10);
+ assert.equal(Object.values(c.MARKET_CARDS).filter(c=>!c.military).length,18);assert.equal(Object.values(c.MARKET_CARDS).filter(c=>c.military).length,9);
  for(const key of ['phaseShearDrive','obeliskOfAnnihilation','aegisOfSilentArchitects','memoryPrism','archiveOfTides','stellarCrucible','evergreenArk','cinderDrive'])assert(!c.RELIC_CARDS[key]);
  assert(!c.MARKET_CARDS.archivePurge);assert(![...g.s.market,...Object.values(g.s.marketDecks).flat()].some(c=>c.key==='archivePurge'));
  assert.equal(c.RELIC_CARDS.firstDawnEchoes.code,'R02');assert.equal(c.RELIC_CARDS.foldedWarehouse.code,'R13');assert.equal(c.RELIC_CARDS.oracleOfTheUnmade.code,'R24');
@@ -43,6 +43,19 @@ function tactics(g,t0='concentratedFire',t1='concentratedFire'){
 }
 {
  const g=setup('foldedWarehouse');g.p.resourceLimits={matter:14,energy:14,biomass:14,data:14};g.p.deck=[card('move'),card('construct')];const before={...g.p.resourceLimits};act(g,'special');for(const r of g.e.RESOURCES)assert.equal(g.p.resourceLimits[r],before[r]+1);assert.equal(g.p.hand.length,2);
+}
+// The restored Warehouse remains playable after Echoes returns it, including across a save.
+{
+ const g=setup('foldedWarehouse'),warehouse=g.p.hand[0];g.p.resourceLimits={matter:4,energy:4,biomass:4,data:4};g.p.relicsExcavated=1;
+ // Stage later Operations turns; intervening rivals' choices are covered separately.
+ const returnTurn=g=>{g.s.phase='operations';g.s.activePlayer=0;g.s.turnStage='action';g.p.passed=false;};
+ g.p.deck=[card('construct'),card('move'),card('firstDawnEchoes'),card('move')];const prestige=g.e.calculatePrestige(0);
+ act(g,'special');for(const r of g.e.RESOURCES)assert.equal(g.p.resourceLimits[r],5);assert.equal(g.p.hand.length,2);assert(g.p.inPlay.some(c=>c.id===warehouse.id));
+ returnTurn(g);
+ act(g,'relic',a=>a.cards?.length===1&&a.cards[0]===warehouse.id);assert(g.p.hand.some(c=>c.id===warehouse.id));
+ const resumed=checkpoint(g);returnTurn(resumed);act(resumed,'special',a=>a.card===warehouse.id);
+ for(const r of resumed.e.RESOURCES)assert.equal(resumed.p.resourceLimits[r],6);assert.equal(resumed.p.hand.length,3);
+ assert(resumed.p.inPlay.some(c=>c.id===warehouse.id));assert.equal(resumed.e.calculatePrestige(0),prestige);
 }
 {
  const g=setup('starfarersCompass'),sites=g.s.clusters.filter(c=>g.e.relicCoordInCluster(c)),known=sites[0],hidden=sites[1],dest=g.e.relicCoordInCluster(known),source=g.s.clusters[0].center;

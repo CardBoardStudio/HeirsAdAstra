@@ -22,6 +22,14 @@ The discussed battle redesign is not approved by this refinement work. Do not ch
 - Do not add co-author trailers for an AI agent.
 - Do not merge without explicit user authorization. Do not write to upstream or third-party repositories unless the user names them.
 
+## Rule-change provenance
+
+- Max’s GitHub account is `maxhays8`. Before integrating or merging rule changes, check both the originating PR opener and commit authors.
+- When syncing the repository or reporting PR status, inspect newly merged PRs since the last checked main commit as well. Flag rule changes made or merged by another account, including PRs merged outside this chat without your involvement. Name both the originating author and the merging account, and explain what rules changed; do not report only currently open PRs.
+- If a rule change originates from another account, explicitly flag it to Max before integration. Name and link the source PR, identify the account, explain the affected rules and gameplay or save impact, and state whether the change is proposed, already merged, or being reverted. Include this attribution in the PR description and final summary.
+- Preserve original provenance through batch integrations and merge commits: a merge authored by `maxhays8` does not make another account’s rule changes Max’s own work. Attribute automated release cuts to their underlying source PRs.
+- Inspect the actual gameplay effect rather than relying only on labels or which UI is affected. Distinguish wording or diagram clarifications from changed rules. If the account’s human owner or the impact is uncertain, say so instead of guessing.
+
 ## Ground every PR in the rules
 
 - Read the [canonical Heirs Ad Astra rulebook](prototypes/galactic-reach/rulebook.html) and [rules maintenance guide](docs/rules/README.md) before planning changes. The HTML is the editable source document, served unchanged at `/galactic-reach/rulebook.html`; do not create a second copy of its rules in Markdown, a tutorial, or a generated site.

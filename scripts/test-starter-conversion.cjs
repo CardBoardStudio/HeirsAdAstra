@@ -22,13 +22,13 @@ const forbidden=[
 {
  const g=game(),cards=g.e.ALL_CARDS;
  for(const key of removed)assert(!cards[key],`${key} is absent from the current catalog`);
- assert.equal(Object.keys(g.e.MARKET_CARDS).length,28);assert.equal(Object.keys(g.e.RELIC_CARDS).length,16);
+ assert.equal(Object.keys(g.e.MARKET_CARDS).length,27);assert.equal(Object.keys(g.e.RELIC_CARDS).length,16);
  for(const [key,d] of Object.entries(cards)){
   assert(!d.effect?.gain&&!d.effect?.produce&&!d.buildGain&&!d.loot&&d.reaction!=='salvage',key);
   if(!['move','construct'].includes(key))assert(!d.resource&&!d.wildcard,`${key} prints no conversion gain`);
  }
  for(const card of [...g.s.market,...Object.values(g.s.marketDecks).flat(),...g.s.relicRow,...g.s.relicDeck])assert(!removed.includes(card.key));
- assert.equal(g.s.market.length+Object.values(g.s.marketDecks).flat().length,56);assert.equal(g.s.relicRow.length+g.s.relicDeck.length,16);
+ assert.equal(g.s.market.length+Object.values(g.s.marketDecks).flat().length,54);assert.equal(g.s.relicRow.length+g.s.relicDeck.length,16);
  const book=fs.readFileSync(path.join(root,'prototypes/galactic-reach/rulebook.html'),'utf8');
  for(const key of removed)assert(!book.includes(`data-card="${key}"`));
   for(const [key,d] of Object.entries({...g.e.MARKET_CARDS,...g.e.RELIC_CARDS})){
@@ -70,13 +70,13 @@ for(const key of ['move','construct']){
  const g=game();g.s.phase='buy';g.s.market=[{id:'monument',key:'monumentOfAccord'},{id:'dyson',key:'dysonLattice'}];g.s.marketDecks={expensive:[],medium:[],cheap:[]};
  const start=g.e.calculatePrestige(0);g.a.applyAction(0,g.a.legalActions(0).find(a=>a.type==='buy'&&a.key==='monumentOfAccord'));
  g.a.applyAction(0,g.a.legalActions(0).find(a=>a.type==='buy'&&a.key==='dysonLattice'));
- assert.equal(g.e.calculatePrestige(0),start+7,'Monument 3 + Dyson Lattice 4');assert.equal(g.p.discard.length,2);
+ assert.equal(g.e.calculatePrestige(0),start+8);assert.equal(g.p.discard.length,2);
  assert(!g.e.decommission(0,'dyson','matter'),'Newly bought Wonders cannot be trashed in the same Buy turn');
  g.p.hand=g.p.discard.splice(0);g.s.phase='operations';
  assert(g.a.legalActions(0).every(a=>!['resource','special'].includes(a.type)),'Wonders are inert in hand');
  g.p.discard=g.p.hand.splice(0);g.p.buyStartDiscardIds=g.p.discard.map(c=>c.id);g.s.phase='buy';
  for(const id of ['monument','dyson'])assert(g.e.decommission(0,id,'matter'));
- assert.equal(g.p.discard.length,0);assert.equal(g.e.calculatePrestige(0),start+7,'Trashing keeps purchased Prestige');
+ assert.equal(g.p.discard.length,0);assert.equal(g.e.calculatePrestige(0),start+8,'Trashing keeps purchased Prestige');
 }
 {
  const g=game();g.p.resources={matter:0,energy:0,biomass:0,data:0};g.p.hand=plain([...eligible,...forbidden]);

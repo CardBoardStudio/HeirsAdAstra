@@ -1336,7 +1336,7 @@ test('Max UI Oracle shows every design, guards unavailable cards and purchases t
  // Leave the face-up row full, so restoring the fixture does not consume its hidden offer.
  state.marketDecks.cheap.push({id:'spare-one',key:'barterNetwork'},{id:'spare-two',key:'clearingHouse'},{id:'spare-three',key:'exchangeProtocol'});writeSave(storage,state);
  const game=maxCardChooser(storage),before=game.saved(),cards=game.dom.lastQuery('[data-relic-card]');
- assert.equal(cards.length,28);assert(cards.some(b=>b.disabled));const unavailable=cards.find(b=>b.dataset.relicCard==='worldEngine');assert(unavailable.disabled);unavailable.click();assert.deepEqual(game.saved(),before);
+ assert.equal(cards.length,27);assert(cards.some(b=>b.disabled));const unavailable=cards.find(b=>b.dataset.relicCard==='worldEngine');assert(unavailable.disabled);unavailable.click();assert.deepEqual(game.saved(),before);
  const offer=cards.find(b=>b.dataset.relicCard==='signalRelay');assert(!offer.disabled);offer.click();assert.deepEqual(game.saved(),before,'Selecting spends nothing');game.click('relic-card-confirm');
  assert(game.saved().players[0].hand.some(c=>c.id==='oracle-copy'));assert(!game.saved().marketDecks.cheap.some(c=>c.id==='oracle-copy'));assert.equal(game.saved().players[0].resources.energy,2);assert.equal(game.saved().players[0].resources.data,3);
 });
@@ -1355,7 +1355,7 @@ test('Shared Max UI Oracle renders the public catalog with redacted decks and se
  const sent=[],view={seq:1,state:authority.privateState(0),hints:authority.hints(0)};
  assert(view.state.marketDecks.expensive.every(c=>c.hidden&&!c.key));const network={seat:0,rules:authority.rulesVersion,initial:view,busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
  const game=boot(createStorage(),1729,undefined,{network});game.dom.document.body.classList.contains=name=>name==='background-stars';game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();
- const cards=game.dom.lastQuery('[data-relic-card]');assert.equal(cards.length,28);cards.find(b=>b.dataset.relicCard==='phaseLance').click();assert.deepEqual(sent,[]);game.click('relic-card-confirm');assert.equal(sent.length,1);assert.equal(sent[0].length,1);assert.equal(sent[0][0].purchase,'oracle-copy');authority.applyAction(0,sent[0][0]);assert(engine.state.players[0].military.some(c=>c.id==='oracle-copy'));
+ const cards=game.dom.lastQuery('[data-relic-card]');assert.equal(cards.length,27);cards.find(b=>b.dataset.relicCard==='phaseLance').click();assert.deepEqual(sent,[]);game.click('relic-card-confirm');assert.equal(sent.length,1);assert.equal(sent[0].length,1);assert.equal(sent[0][0].purchase,'oracle-copy');authority.applyAction(0,sent[0][0]);assert(engine.state.players[0].military.some(c=>c.id==='oracle-copy'));
 });
 
 function reservoirSave(pending=false) {

@@ -38,7 +38,7 @@ const startBuy = g => { Object.assign(g.s, { phase: 'buy', activePlayer: 0 }); g
     assert(e.ALL_CARDS[key], `${key}: retained definition`);
     assert(!e.MARKET_CARDS[key], `${key}: absent from new supply`);
   }
-  assert.deepEqual(split.expensive, ['aegisLattice', 'ascendancyCodex', 'commandNexus', 'dysonLattice', 'genesisCharter', 'hyperspaceVaults', 'monumentOfAccord', 'novaBarrage', 'phaseLance', 'torpedoBarrage', 'victoryDoctrine', 'worldEngine']);
+  assert.deepEqual(split.expensive, ['aegisLattice', 'ascendancyCodex', 'commandNexus', 'dysonLattice', 'genesisCharter', 'hyperspaceVaults', 'monumentOfAccord', 'novaBarrage', 'phaseLance', 'victoryDoctrine', 'worldEngine']);
 }
 
 // Setup: three decks of two copies per design, three face-up cards from each, in row order.
@@ -47,10 +47,10 @@ const startBuy = g => { Object.assign(g.s, { phase: 'buy', activePlayer: 0 }); g
   assert.equal(s.market.length, 9, 'Nine market cards: three rows of three');
   assert.deepEqual(plain(s.market.map(c => e.marketTier(c.key))), ['expensive', 'expensive', 'expensive', 'medium', 'medium', 'medium', 'cheap', 'cheap', 'cheap']);
   assert.deepEqual(Object.keys(s.marketDecks), tiers);
-  assert.deepEqual(plain(Object.fromEntries(tiers.map(t => [t, s.marketDecks[t].length]))), { expensive: 21, medium: 17, cheap: 9 });
+  assert.deepEqual(plain(Object.fromEntries(tiers.map(t => [t, s.marketDecks[t].length]))), { expensive: 19, medium: 17, cheap: 9 });
   for (const t of tiers) assert(s.marketDecks[t].every(c => e.marketTier(c.key) === t), `the ${t} deck holds only ${t} cards`);
   const supply = [...s.market, ...Object.values(s.marketDecks).flat()].map(c => c.key);
-  assert.equal(supply.length, 56);
+  assert.equal(supply.length, 54);
   for (const key of Object.keys(e.MARKET_CARDS)) assert.equal(supply.filter(k => k === key).length, 2, `${key}: two copies`);
   assert(!('advancedDeck' in s) && !('marketDiscard' in s), 'The single mixed supply is gone');
 }
@@ -117,4 +117,4 @@ for (const at of [0, 4, 8]) {
   assert.equal(s.round, 1);
 }
 
-console.log('Tiered market: price split 6/10/12 designs, Expensive/Medium/Cheap rows of three, in-place refills from each tier deck, empty slots when a deck runs out, hidden tier decks with public sizes and Undo reveals passed.');
+console.log('Tiered market: price split 6/10/11 designs, Expensive/Medium/Cheap rows of three, in-place refills from each tier deck, empty slots when a deck runs out, hidden tier decks with public sizes and Undo reveals passed.');
