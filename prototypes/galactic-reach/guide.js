@@ -615,13 +615,14 @@
     } else positionBox(box, anchor);
     placePointer(anchor); drawStage();
   }
-  // The map's open stretch: with the market's whole cards up (app.js showMarket), the sheet's free part
-  // left of the cards.
+  // The map's open stretch: with the market's whole cards up (app.js showMarket), the strip of map
+  // between the left-hand panels and the sheet.
   function openMap() {
     const r = $('.board-map-region')?.getBoundingClientRect(), sheet = $('.market-sheet');
     if (!r || !shown(sheet)) return r;
-    const free = sheet.getBoundingClientRect(), cards = $('#market-panel').getBoundingClientRect();
-    return new DOMRect(free.left + 4, r.top, Math.max(0, cards.left - 8 - free.left - 4), r.height);
+    const panels = ['#prestige-track', '.phase-stepper', '.log-panel:not(.open)', '#map-legend-corner'].map(sel => $(sel)?.getBoundingClientRect()).filter(p => p?.width);
+    const left = Math.max(r.left, ...panels.map(p => p.right)) + 10;
+    return new DOMRect(left, r.top, Math.max(0, sheet.getBoundingClientRect().left - 8 - left), r.height);
   }
   function positionBox(box, anchor, extraAvoid = currentAvoid, { besideOnly = false } = {}) {
     const margin = 10, gap = 14, vw = innerWidth, vh = innerHeight;
