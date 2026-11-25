@@ -394,7 +394,7 @@ for(const attacker of [0,1]) for(const stage of ['escape','tactic','committed','
   assert(reload.saved().lastCombat.volleys.length>0);
   assert(reload.dialog('message').open,'Final report opens automatically');
   const final=reload.saved().lastCombat;
-  assert(reload.dom.element('message-body').textContent.includes(final.summary.at(-1)));
+  assert(reload.dom.element('message-details').innerHTML.includes(final.summary.at(-1)));
   assert(reload.dom.element('message-body').textContent.includes(final.outcome));
   assert.doesNotMatch(final.outcome,/You has/);
   const beforeReport=JSON.stringify(reload.saved());
@@ -426,8 +426,9 @@ test('battle table shows public purchased tactics and usage without leaking the 
   state.pendingCombat.used.attacker=['railBattery'];
   writeSave(storage,state);const first=boot(storage),html=first.dom.element('combat-forces').innerHTML;
   assert(html.indexOf('combat-enemy')<html.indexOf('combat-own'),'Enemy is above you even when you defend');
-  assert.match(html,/Rail Battery: 1 available, 1 used/);
-  assert.match(html,/Phase Lance: 1 available, 0 used/);
+  assert.match(html,/Rail Battery/);assert.match(html,/Spent · 1/);
+  first.dom.lastQuery('[data-mat-page]').find(b=>b.dataset.matPage==='attacker:1').click();
+  assert.match(first.dom.element('combat-forces').innerHTML,/Phase Lance/);
   assert.doesNotMatch(html,/War-Song|private-reaction/);
   const other=JSON.parse(JSON.stringify(state));other.pendingCombat.commitments.attacker='phaseLance';
   const otherStorage=createStorage();writeSave(otherStorage,other);
@@ -440,11 +441,13 @@ test('battle table keeps damaged units separate and counts identical healthy shi
   state.pendingCombat.attackerPieces.push({type:'fleet',hull:7,power:3,damage:0},{type:'fleet',hull:7,power:3,damage:0});
   state.fleets['9,-10'][0].fleet=3;writeSave(storage,state);
   const game=boot(storage),html=game.dom.element('combat-forces').innerHTML;
-  assert.match(html,/Fleet: 3 attack, 6\/7 hull/);
-  assert.match(html,/2 × Fleet: 3 attack, 7\/7 hull each/);
-  assert.match(html,/class="board-icon"/);assert.match(html,/class="combat-hull"/);
-  assert.match(html,/Concentrated Fire: 2 available, 0 used/);
-  assert.match(html,/Defensive Screen: 1 available, 1 used/);
+  assert.match(html,/Attack: 9/);assert.match(html,/Hull: 6. Fleet · of 7/);
+  assert.match(html,/Fleet: 3 surviving, 0 destroyed, 1 damaged/);
+  game.dom.lastQuery('[data-mat-units]').find(b=>b.dataset.matUnits==='attacker:fleet').click();
+  const manifest=game.dom.element('battle-reference-body').innerHTML;
+  assert.match(manifest,/3 attack · 6\/7 hull/);
+  assert.equal((manifest.match(/3 attack · 7\/7 hull/g)||[]).length,2);
+  assert.match(html,/Concentrated Fire, 2 copies/);assert.match(html,/Spent · 1/);
 });
 
 test('Max UI battle table shows every ship individually without changing combat',()=>{
@@ -1114,7 +1117,7 @@ test('decisive combat awards Prestige once and the saved report preserves it', (
  while(game.saved().pendingCombat){assert(choices++<8);continueCombat(game);}
  assert.equal(game.saved().players[0].combatVictories,1);
  assert.equal(game.saved().lastCombat.prestigeWinner,0);
- assert.match(game.dom.element('message-body').textContent,/gained 2 Prestige/);
+ assert.match(game.dom.element('message-details').innerHTML,/gained 2 Prestige/);
  assert(game.dialog('message').open);
  const reloaded=boot(storage);assert(reloaded.dialog('message').open);
  assert.equal(reloaded.saved().players[0].combatVictories,1);

@@ -385,9 +385,10 @@ const MEASURE = `(() => {
   if (((!phone || sideways) && doc.scrollHeight > H + 1) || doc.scrollWidth > W + 1) problems.push('page scrolls: ' + doc.scrollWidth + 'x' + doc.scrollHeight);
   // Only a phone held upright shows the prompt to turn it (phone.js): never a tablet or a desktop window.
   if (document.querySelector('#rotate-prompt')?.checkVisibility()) problems.push('the turn-sideways prompt shows');
-  // Containers allowed to scroll their own reference content.
+  // Containers allowed to scroll their own reference content. Phone combat mats are a
+  // scrollable drawer; check-combat-mats.cjs checks its bounds and taps offscreen controls.
   const scrollers = '#game-log, .playtest-changes, .combat-history, .discard-scroll, .pile-dialog, #rules-dialog, #map-key-dialog, #relic-catalog-dialog, .sector-popover, .chain-details, .board-stage.map-zoomed .board-map-region'
-    + (sideways ? ', .board-map-region, #market-panel, #relics-panel, .resource-panel, .board-shared, .prestige-track, .trade-panel, .phase-stepper, body.menu-open .topbar, .phone-card-sheet .game-card, .card-table-battle .combat-card-row'
+    + (sideways ? ', .board-map-region, #market-panel, #relics-panel, .resource-panel, .board-shared, .prestige-track, .trade-panel, .phase-stepper, body.menu-open .topbar, .phone-card-sheet .game-card, .card-table-battle .combat-card-row, .combat-dialog.combat-mats'
       : phone ? ', .board-map-region, .console, .resource-panel, .board-shared, .phase-stepper, #hand-panel .hand-tools, .trade-panel' : '');
   if (sideways) {
     // Finger-sized controls: the rail, the map tools, the turn's buttons, an opened card's corners,

@@ -5907,10 +5907,18 @@ function createGalacticReach(options = {}) {
     const report=state.pendingCombatReport;
     displayingCombatReport=true;
     showMessage('COMBAT REPORT',nameForCoord(report.coord),[...report.summary,report.outcome].join('\n\n'));
+    if(!globalThis.document?.body?.classList?.contains('background-stars')) {
+      if($('#battle-reference-dialog').open)$('#battle-reference-dialog').close();
+      $('#message-dialog').classList.add('battle-report');
+      $('#message-body').textContent=report.outcome;
+      $('#message-details').innerHTML=combatMatRecord(report);
+    }
   }
 
   function acknowledgeCombatReport() {
     if (!displayingCombatReport) return;
+    $('#message-details').innerHTML='';
+    $('#message-dialog').classList.remove('battle-report');
     displayingCombatReport=false;state.pendingCombatReport=null;saveGame();render();
     if (state.pendingCombat) scheduleCombatAi();
     else if (state.activePlayer!==ME && state.phase==='operations') scheduleAiTurn('operations',runAiOperation,650);
@@ -5964,10 +5972,115 @@ function createGalacticReach(options = {}) {
     return `<section class="combat-side ${own ? 'combat-own' : 'combat-enemy'}" style="--combat-owner:${playerColor(force.playerId)}" aria-label="${own ? 'Your' : 'Enemy'} forces and tactics">${own ? units + cards : cards + units}</section>`;
   }
 
+  // Willem's physical combat mats. Read only the sanitized combat view; these
+  // controls select existing authoritative commands and never edit piece state.
+  const COMBAT_MAT_ORDER = ['fleet','settler','explorer','starbase'];
+  function combatMatPieces(force) {
+    return aliveCombatPieces(force.pieces).slice().sort((a,b)=>COMBAT_MAT_ORDER.indexOf(a.type)-COMBAT_MAT_ORDER.indexOf(b.type)||(a.hull-a.damage)-(b.hull-b.damage));
+  }
+  function combatMatName(type) { return SHIP_STATS[type]?.name || 'Shipyard'; }
+  function combatMatDial(value, label, caption, fraction = 1) {
+    return `<div class="battle-dial" role="img" aria-label="${esc(`${label}: ${value}. ${caption}`)}" style="--dial-fill:${Math.max(0,Math.min(1,fraction))*100}%"><span aria-hidden="true"><b>${value}</b><small>${esc(label)}</small></span><em aria-hidden="true">${esc(caption)}</em></div>`;
+  }
+  function combatMatUnits(force, side) {
+    const live=combatMatPieces(force), next=live[0];
+    return `<div class="battle-instruments">${combatMatDial(combatPower(force.pieces),'Attack','Surviving pieces')}${combatMatDial(next?next.hull-next.damage:0,'Hull',next?`${combatMatName(next.type)} · of ${next.hull}`:'No pieces left',next?(next.hull-next.damage)/Math.max(7,next.hull):0)}</div><div class="battle-formation"><div class="battle-caption">Hits land left to right · hull dial follows the first survivor</div><div class="battle-unit-row">${COMBAT_MAT_ORDER.map((type,index)=>{
+      const pieces=force.pieces.filter(p=>p.type===type), alive=live.filter(p=>p.type===type), damaged=alive.filter(p=>p.damage>0), lost=pieces.length-alive.length;
+      const detail=damaged.length===1?`${damaged[0].hull-damaged[0].damage}/${damaged[0].hull} hull`:damaged.length?`${damaged.length} damaged`:'Full hull';
+      return `<button type="button" class="battle-unit${next?.type===type?' next-hit':''}${!alive.length?' empty':''}" data-mat-units="${side}:${type}" aria-label="${esc(`${combatMatName(type)}: ${alive.length} surviving, ${lost} destroyed, ${damaged.length} damaged. Inspect exact hull.`)}"><span class="battle-unit-index">${index+1}</span>${boardIcon(type,1,false)}<strong>${esc(combatMatName(type))} ×${alive.length}</strong><span>${alive.length?detail:'None surviving'}${lost?` · ${lost} lost`:''}</span></button>`;
+    }).join('')}</div></div>`;
+  }
+  function combatMatCard(key, count, attributes='', selected=false) {
+    const card=MILITARY_CARDS[key];
+    const stats=[card.attack?`+${card.attack} hit${card.attack===1?'':'s'}`:'',card.shield?`Block ${card.shield}`:'',card.pierce?'Pierce':'',card.victoryPrestige?`+${card.victoryPrestige} Prestige on win`:'',card.loot?'Loot after battle':''].filter(Boolean).join(' · ');
+    return `<button type="button" class="battle-card${selected?' selected':''}" ${attributes} aria-label="${esc(`${card.name}${count>1?`, ${count} copies`:''}. ${card.text}`)}"><strong>${esc(card.name)}</strong><span>${esc(stats)}</span>${count>1?`<b class="battle-copies" aria-hidden="true">×${count}</b>`:''}</button>`;
+  }
+  function combatMatCards(view,side,own,actions) {
+    const force=view.sides[side],inventory=combatTableInventory(force);
+    // Only your own committed card can leave the visible supply before reveal.
+    const available=inventory.map(c=>({...c,left:c.left-(own&&force.committed&&force.choice===c.key?1:0)})).filter(c=>c.left>0);
+    const pageSize=globalThis.innerWidth<1000?2:3, pages=Math.max(1,Math.ceil(available.length/pageSize));
+    combatTableUi.pages ||= {};
+    const page=combatTableUi.pages[side]=Math.min(combatTableUi.pages[side]||0,pages-1);
+    const pending=own?(force.committed?force.choice:combatTableUi.tactic):null;
+    const spent=force.used.length, latest=force.used[spent-1];
+    const pocket=view.stage==='tactic'?(force.committed?(own?'Committed · private':'Committed · hidden'):(own&&pending?'Selected · not committed':'Commit face down')):'Commitment space';
+    return `<div class="battle-card-zones"><section class="battle-supply" aria-label="${own?'Your':'Enemy'} available tactics"><header><b>${own?'Available tactics':'Public tactic supply'}</b><span>${pages>1?`${page+1} / ${pages}`:'Select to read'}</span></header><div class="battle-supply-strip${pages>1?' paged':''}">${pages>1?`<button type="button" class="battle-page-button" data-mat-page="${side}:${(page+pages-1)%pages}" aria-label="Previous ${own?'own':'enemy'} tactics">‹</button>`:''}<div class="battle-card-row" style="--mat-page-size:${pageSize}">${available.slice(page*pageSize,(page+1)*pageSize).map(c=>{
+      const legal=own&&actions.some(a=>a.type==='combat_tactic'&&a.tactic===c.key);
+      return combatMatCard(c.key,c.left,legal?`data-combat-tactic="${c.key}" aria-pressed="${combatTableUi.tactic===c.key}"`:`data-combat-inspect="${c.key}"`,own&&pending===c.key);
+    }).join('')||'<span class="battle-empty">No available tactics</span>'}</div>${pages>1?`<button type="button" class="battle-page-button" data-mat-page="${side}:${(page+1)%pages}" aria-label="Next ${own?'own':'enemy'} tactics">›</button>`:''}</div></section><section class="battle-pocket" aria-label="${own?'Your':'Enemy'} commitment"><header>${esc(pocket)}</header>${own&&pending?combatMatCard(pending,1,`data-combat-inspect="${pending}"`,true):`<div class="battle-card-back"><span aria-hidden="true">${force.committed&&view.stage==='tactic'?'◆':'◇'}</span><small>${force.committed&&view.stage==='tactic'?'Face down':'Awaiting tactic'}</small></div>`}</section><section class="battle-spent" aria-label="${own?'Your':'Enemy'} spent tactics"><header>Spent · ${spent}</header>${latest?combatMatCard(latest,1,`data-mat-spent="${side}"`):'<div class="battle-empty">Revealed cards<br>rest here</div>'}</section></div>`;
+  }
+  function combatMatSide(view,side,own,actions) {
+    const force=view.sides[side],player=state.players[force.playerId],last=view.volleys.at(-1)?.[side];
+    return `<section class="battle-mat ${own?'combat-own':'combat-enemy'}" style="--combat-owner:${playerColor(force.playerId)}" aria-label="${own?'Your':'Enemy'} combat mat"><header class="battle-mat-heading"><h3><span class="combat-faction-dot" aria-hidden="true"></span>${esc(player.name)}</h3><span>${own?'You':'Enemy'} · ${side==='attacker'?'Attacking':'Defending'}${last?` · Attack ${last.base} at reveal → ${combatPower(force.pieces)} now`:''}</span></header><div class="battle-force">${combatMatUnits(force,side)}</div>${combatMatCards(view,side,own,actions)}</section>`;
+  }
+  function combatMatVolley(volley,report) {
+    return `<div class="battle-reveal" aria-label="Volley ${volley.number}, simultaneous revealed results">${['attacker','defender'].map(side=>{
+      const result=volley[side],other=volley[side==='attacker'?'defender':'attacker'],player=state.players[report[`${side}Id`]];
+      return `<div><strong>${esc(player.name)} · ${esc(MILITARY_CARDS[result.tactic]?.name||result.tactic)}</strong><span><b>${result.base}</b> attack + <b>${result.bonus}</b> bonus − <b>${result.pierce?0:other.shields}</b> shields${result.preventedByRelic?` − ${result.preventedByRelic} Silent Hour`:''} → <b>${result.damage} hits</b>${result.pierce?' · shields pierced':''}</span></div>`;
+    }).join('')}</div>`;
+  }
+  function combatMatRecord(report) {
+    return `<div class="battle-record"><p>Both sides fire using their attack at the start of each volley. The mats then show the surviving pieces. Damage carries between volleys; survivors repair after battle.</p>${(report.volleys||[]).map(v=>`<section><h3>Volley ${v.number}</h3>${combatMatVolley(v,report)}</section>`).join('')}${report.summary?.length?`<h3>Battle events</h3>${report.summary.map(line=>`<p>${esc(line)}</p>`).join('')}`:'<p>No volleys have been revealed.</p>'}</div>`;
+  }
+  function combatMatReference(title,html) {
+    $('#battle-reference-title').textContent=title;
+    $('#battle-reference-body').innerHTML=html;
+    const dialog=$('#battle-reference-dialog');
+    if(!dialog.open)dialog.showModal();
+  }
+  function renderCombatMats(view,actions) {
+    const dialog=$('#combat-dialog'),own=view.side,other=own==='attacker'?'defender':'attacker',mine=view.sides[own],actor=view.actor;
+    const key=[state.round,view.coord,view.origin,view.attackerId,view.defenderId,view.volley,view.stage].join(':');
+    if(combatTableUi.key!==key) {
+      if($('#battle-reference-dialog').open)$('#battle-reference-dialog').close();
+      combatTableUi={key,tactic:null,inspect:null,escape:0,pages:{},relic:0};
+    }
+    if(combatTableUi.tactic&&!actions.some(a=>a.type==='combat_tactic'&&a.tactic===combatTableUi.tactic))combatTableUi.tactic=null;
+    dialog.classList.add('card-table-battle','combat-mats');
+    const previousFocus=globalThis.document?.activeElement;
+    const restoreFocus=dialog.open&&dialog.contains(previousFocus);
+    const stage={opening:'Opening relics',escape:'Explorer escapes',tactic:`Volley ${view.volley} of 3`,aftermath:'After battle'}[view.stage];
+    $('#combat-title').textContent=`Battle at ${nameForCoord(view.coord)}`;
+    $('#combat-volley').hidden=true;
+    $('#combat-status').textContent=actor===ME?view.stage==='tactic'?'Select a tactic, then commit. Both sides reveal together.':view.stage==='escape'?'Choose Explorers to escape, or stay and fight.':'Choose a relic action, then confirm; or continue.':mine.committed&&view.stage==='tactic'?'Your tactic is committed. Waiting for the enemy.':`Waiting for the enemy · ${stage.toLowerCase()}.`;
+    const last=view.volleys.at(-1);
+    $('#combat-forces').innerHTML=combatMatSide(view,other,false,actions)+`<section class="battle-shared" aria-label="Shared volley tracker"><header><strong>${esc(stage)}</strong><ol class="battle-volley-track" aria-label="Three volleys">${[1,2,3].map(n=>`<li class="${n<=view.volleys.length?'resolved':view.stage==='tactic'&&n===view.volley?'current':''}" ${view.stage==='tactic'&&n===view.volley?'aria-current="step"':''} aria-label="Volley ${n}: ${n<=view.volleys.length?'resolved':view.stage==='tactic'&&n===view.volley?'commit tactics':'not yet played'}">${n}</li>`).join('')}</ol><button type="button" class="battle-link" id="battle-record-open">Battle record</button></header>${last?`<div class="battle-caption">Volley ${last.number} revealed together · attack below was measured before casualties</div>${combatMatVolley(last,view)}`:`<p>${view.stage==='opening'?'Opening relics prepare the forces and tactics before escapes.':view.stage==='escape'?'Pay 1 Energy per escaping Explorer. Ships left behind fight.':'Commit in private → reveal together → apply hits in order.'}</p>`}</section>`+combatMatSide(view,own,true,actions);
+    const inspected=MILITARY_CARDS[combatTableUi.inspect||combatTableUi.tactic];
+    $('#combat-help').textContent=inspected?`${inspected.name}: ${inspected.text}`:view.stage==='tactic'?'Attack is the surviving force for this volley. Enemy commitments stay hidden until both reveal.':view.stage==='aftermath'?'Resolve recovery relics before the final report. Prestige is recorded on the main score track.':view.stage==='opening'?'Opening relics resolve attacker first, then defender. Confirming continues the battle.':'Only the chosen Explorers escape. Other units stay. Pay 1 Energy for each escaping Explorer.';
+    if(['opening','aftermath'].includes(view.stage)&&actions.length) {
+      const selected=Math.min(combatTableUi.relic||0,actions.length-1);
+      $('#combat-options').innerHTML=`<label class="combat-escape-picker" for="battle-relic-option">Relic action<select id="battle-relic-option">${actions.map((a,i)=>`<option value="${i}" ${i===selected?'selected':''}>${esc(a.type==='combat_continue'?view.stage==='opening'?'Continue to escapes':'Finish recovery':relicActionLabel(a))}</option>`).join('')}</select></label><button class="button button-primary" id="battle-relic-confirm" type="button">Confirm choice</button>`;
+      $('#battle-relic-option').addEventListener('change',e=>{combatTableUi.relic=Number(e.target.value);});
+      $('#battle-relic-confirm').addEventListener('click',()=>{const a=actions[Number($('#battle-relic-option').value)];if(a)applyCombatAction(ME,a);});
+    } else if(view.stage==='escape'&&actions.length) {
+      if(!actions[combatTableUi.escape])combatTableUi.escape=0;
+      $('#combat-options').innerHTML=`<label class="combat-escape-picker" for="combat-escape-option">Explorers<select id="combat-escape-option">${actions.map((a,i)=>`<option value="${i}" ${i===combatTableUi.escape?'selected':''}>${esc(a.type==='combat_stay'?'Stay and fight':`Escape ${a.amount} → ${nameForCoord(a.destination)} (${a.destination}) · ${a.amount} Energy`)}</option>`).join('')}</select></label><button class="button button-primary" type="button" data-combat-action="${combatTableUi.escape}">${actions[combatTableUi.escape].type==='combat_stay'?'Stay and fight':'Confirm escape'}</button>`;
+      $('#combat-escape-option').addEventListener('change',e=>{combatTableUi.escape=Number(e.target.value);renderCombat();$('#combat-escape-option').focus();});
+    } else if(view.stage==='tactic'&&actions.length) {
+      const index=actions.findIndex(a=>a.type==='combat_tactic'&&a.tactic===combatTableUi.tactic),relics=actions.map((a,i)=>({a,i})).filter(({a})=>a.type==='combat_relic');
+      $('#combat-options').innerHTML=`${relics.length?`<label class="combat-escape-picker" for="battle-volley-relic">Relic<select id="battle-volley-relic">${relics.map(({a,i})=>`<option value="${i}" ${i===combatTableUi.volleyRelic?'selected':''}>${esc(relicActionLabel(a))}</option>`).join('')}</select></label><button type="button" class="button" id="battle-volley-relic-confirm">Play relic</button>`:'<span class="combat-action-note">Select → commit → reveal together</span>'}<button class="button button-primary" type="button" data-combat-action="${index}" ${index<0?'disabled':''}>${index<0?'Select a tactic':`Commit ${esc(MILITARY_CARDS[combatTableUi.tactic].name)}`}</button>`;
+      if(relics.length)$('#battle-volley-relic').addEventListener('change',e=>{combatTableUi.volleyRelic=Number(e.target.value);});
+      if(relics.length)$('#battle-volley-relic-confirm').addEventListener('click',()=>{const a=actions[Number($('#battle-volley-relic').value)];if(a)applyCombatAction(ME,a);});
+    } else $('#combat-options').innerHTML='<span class="combat-action-note">Waiting for the other faction. Your committed choices are saved.</span>';
+    $('#combat-history').innerHTML='';
+    $$('[data-combat-tactic]').forEach(button=>button.addEventListener('click',()=>{combatTableUi.tactic=button.dataset.combatTactic;combatTableUi.inspect=null;renderCombat();$(`[data-combat-tactic="${combatTableUi.tactic}"]`)?.focus();}));
+    $$('[data-combat-inspect]').forEach(button=>button.addEventListener('click',()=>{combatTableUi.inspect=button.dataset.combatInspect;renderCombat();$(`[data-combat-inspect="${combatTableUi.inspect}"]`)?.focus();}));
+    $$('[data-combat-action]').forEach(button=>button.addEventListener('click',()=>{const a=actions[Number(button.dataset.combatAction)];if(a){button.disabled=true;applyCombatAction(ME,a);}}));
+    $$('[data-mat-page]').forEach(button=>button.addEventListener('click',()=>{const [side,page]=button.dataset.matPage.split(':');const direction=button.getAttribute('aria-label');combatTableUi.pages[side]=Number(page);renderCombat();$$('[data-mat-page]').find(b=>b.getAttribute('aria-label')===direction)?.focus();}));
+    $$('[data-mat-units]').forEach(button=>button.addEventListener('click',()=>{const [side,type]=button.dataset.matUnits.split(':'),pieces=view.sides[side].pieces.filter(p=>p.type===type);combatMatReference(`${state.players[view.sides[side].playerId].name} · ${combatMatName(type)}`,`<p>Least remaining hull takes hits first within this type.</p><ol class="battle-piece-record">${pieces.slice().sort((a,b)=>(a.hull-a.damage)-(b.hull-b.damage)).map(p=>`<li>${p.damage>=p.hull?'Destroyed':`${p.power} attack · ${p.hull-p.damage}/${p.hull} hull`}</li>`).join('')||'<li>No pieces of this type.</li>'}</ol>`);}));
+    $$('[data-mat-spent]').forEach(button=>button.addEventListener('click',()=>{const force=view.sides[button.dataset.matSpent];combatMatReference(`${state.players[force.playerId].name} · spent tactics`,`<ul>${force.used.map(key=>`<li><strong>${esc(MILITARY_CARDS[key].name)}</strong> — ${esc(MILITARY_CARDS[key].text)}</li>`).join('')}</ul>`);}));
+    $('#battle-record-open').addEventListener('click',()=>combatMatReference(`Battle at ${nameForCoord(view.coord)}`,combatMatRecord(view)));
+    if(restoreFocus&&!previousFocus?.isConnected){$('#combat-status').setAttribute('tabindex','-1');$('#combat-status').focus();}
+    if(!dialog.open){if($('#sector-popover')?.matches?.(':popover-open'))$('#sector-popover').hidePopover();dialog.showModal();}
+  }
+
   function renderCombat() {
     if (headless || replayMode) return;
     const dialog=$('#combat-dialog'),b=state.pendingCombat;
     if (!b || (b.attackerId!==ME && b.defenderId!==ME)) {combatTableUi.key=null;if(dialog.open)dialog.close();return;}
+    if(!globalThis.document?.body?.classList?.contains('background-stars')) { renderCombatMats(combatView(ME),combatActions(ME)); return; }
+    dialog.classList.remove('combat-mats');
     const view=combatView(ME),actor=combatActor(),actions=combatActions(ME),mine=view.sides[view.side],enemy=view.sides[view.side==='attacker'?'defender':'attacker'];
     const key = [state.round, b.coord, b.origin, b.attackerId, b.defenderId, b.volley, b.stage].join(':');
     if (combatTableUi.key !== key) combatTableUi = { key, tactic: null, inspect: null, escape: 0 };
@@ -6946,6 +7059,7 @@ function createGalacticReach(options = {}) {
     });
     $('#relic-action-dialog').addEventListener('cancel',event=>{event.preventDefault();cancelRelicChoice();});
     $('#relic-choice-confirm').addEventListener('click',()=>{const a=availableRelicChoices()[Number($('#relic-choice-options').value)];if(!a)return;const battle=relicChoiceBattle;relicChoiceCard=null;relicChoiceBattle=false;relicChoiceChosen=false;$('#relic-action-dialog').close();if(battle)applyCombatAction(ME,a);else applyRelicAction(ME,a);});
+    $('#battle-reference-close').addEventListener('click',()=>$('#battle-reference-dialog').close());
     const combatDialog=$('#combat-dialog');
     combatDialog.addEventListener('cancel',event=>event.preventDefault());
     combatDialog.addEventListener('close',renderCombat);
