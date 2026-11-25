@@ -53,7 +53,7 @@
       document.title = `${mine && view.status !== 'finished' ? '● Your move · ' : ''}${view.name} · Heirs Ad Astra`;
       // Say why Undo stops short of the start of the turn: a reveal is final.
       const undo = view.undo || {};
-      const note = !mine ? '' : undo.available && undo.stop ? `Undo goes back only to just after ${undo.stop}.` : !undo.available && /^Undo stops/.test(undo.reason || '') ? undo.reason : '';
+      const note = view.committed_only ? 'Confirmed choices are final. No Undo in this game.' : !mine ? '' : undo.available && undo.stop ? `Undo goes back only to just after ${undo.stop}.` : !undo.available && /^Undo stops/.test(undo.reason || '') ? undo.reason : '';
       undoNote.textContent = note; undoNote.hidden = !note;
     }
     function adopt(view) {
@@ -185,7 +185,7 @@
       describe(view);
       if (tabletop) controls = globalThis.createTabletopControls({bar, status, current:()=>current, game:()=>game, send, busy:()=>busy});
       game = globalThis.createGalacticReach({
-        network: {tabletop, seat: view.seat, rules: view.rules_version, initial: view,
+        network: {tabletop, committedOnly:view.committed_only===true, seat: view.seat, rules: view.rules_version, initial: view,
           act: intents=>controls?controls.preview(intents):send(intents), undo, busy: () => busy || !!controls?.pending(), report},
         paused: () => busy || !!controls?.pending(), newTable: leave
       });

@@ -1575,6 +1575,21 @@ test('MaxBot is optional, previewed by name and retained through reload',()=>{
  const reload=boot(storage);assert.equal(reload.saved().players[max.id].name,'MaxBot');reload.click('new-game-button');assert(reload.dom.element('new-game-maxbot').checked);
  reload.dom.element('new-game-maxbot').checked=false;reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();assert(!reload.saved().players.some(p=>p.strategy==='maxbot'));
 });
+
+test('committed tabletop turns wait for explicit Pass and Finish Buy with an empty hand',()=>{
+ const state=boot(createStorage()).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep',tradeOffers:[]});
+ Object.assign(state.players[0],{hand:[],discard:[],inPlay:[],resources:{matter:0,energy:0,biomass:0,data:0},passed:false});
+ const sent=[],network={committedOnly:true,seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:intents=>{sent.push(JSON.parse(JSON.stringify(intents)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});game.settle();
+ assert.deepEqual(sent,[],'an empty hand cannot submit or preview Pass automatically');
+ game.click('pass-button');assert.deepEqual(sent,[[{type:'pass'}]]);sent.length=0;
+ const next=JSON.parse(JSON.stringify(state));Object.assign(next,{phase:'buy',turnStage:'buy'});next.players[0].passed=true;
+ game.sync({seq:2,state:next});game.settle();assert.deepEqual(sent,[],'empty Buy cannot submit or preview finishing automatically');
+ game.click('hand-finish-buy-button');assert.deepEqual(sent,[[{type:'finish_buy'}]]);
+ const ordinary=[];boot(createStorage(),1729,undefined,{network:{...network,committedOnly:false,act:intents=>{ordinary.push(JSON.parse(JSON.stringify(intents)));return true;}}});
+ assert.deepEqual(ordinary,[[{type:'pass'}]],'ordinary shared tables retain automatic Pass');
+});
+
 for (const { name, body } of tests) {
   try {
     body();
