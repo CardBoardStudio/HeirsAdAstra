@@ -1,7 +1,7 @@
 // Real gallery/catalog and feedback checks in Chrome, using Node built-ins only.
 // SHOTS=/outside/repository node scripts/check-card-gallery.cjs saves viewport images.
 const assert = require('node:assert/strict');
-const { FACE_PROBLEMS } = require('./lib/card-face-check.cjs');
+const { FACE_PROBLEMS, RULEBOOK_FACES, rulebookFace } = require('./lib/card-face-check.cjs');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
@@ -18,6 +18,23 @@ const market = catalog.MARKET_CARDS, relics = catalog.RELIC_CARDS;
 const allKeys = [...Object.keys(market), ...Object.keys(relics)].sort();
 const manifest = JSON.parse(fs.readFileSync(path.join(game, 'card-art/manifest.json'), 'utf8')).cards;
 const artCount = allKeys.filter(key => manifest[key]).length;
+// The rulebook's card figures are the game's faces (rulebook #card-corners, #card-face).
+const rulebook = fs.readFileSync(path.join(game, 'rulebook.html'), 'utf8');
+for (const [key, copy] of RULEBOOK_FACES) {
+  const shown = rulebook.match(new RegExp(`<div class="rb-face" data-card="${key}"[^>]*>\\s*(<span class="card-face"[^\\n]*)`))?.[1]?.trim();
+  assert.equal(shown, rulebookFace(catalog, key, copy), `The rulebook's ${key} figure is the game's face (regenerate it with rulebookFace in scripts/lib/card-face-check.cjs)`);
+}
+// The shade keeps the words readable on the palest picture: over pure white, the name and the
+// description keep at least 7:1 contrast (WCAG AAA) with the shade as card-face.css sets it.
+const faceCss = fs.readFileSync(path.join(game, 'card-face.css'), 'utf8');
+const cssValue = name => faceCss.match(new RegExp(`${name}: ([^;]+);`))[1].trim();
+const rgb = hex => hex.match(/[0-9a-f]{2}/gi).map(h => parseInt(h, 16));
+const luminance = c => { const [r, g, b] = c.map(v => v / 255).map(v => v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4); return .2126 * r + .7152 * g + .0722 * b; };
+const contrast = (a, b) => { const [x, y] = [luminance(a), luminance(b)].sort((m, n) => n - m); return (x + .05) / (y + .05); };
+const shadeAlpha = Number(cssValue('--shade-a')), shade = cssValue('--face-shade').split(',').map(Number);
+const onWhite = shade.map(v => v * shadeAlpha + 255 * (1 - shadeAlpha));
+const SHADE_CONTRAST = { name: contrast(rgb(cssValue('--face-light')), onWhite), description: contrast(rgb(cssValue('--face-mute')), onWhite) };
+for (const [part, ratio] of Object.entries(SHADE_CONTRAST)) assert(ratio >= 7, `The face's ${part} keeps 7:1 contrast over a white picture (${ratio.toFixed(1)}:1)`);
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webp': 'image/webp' };
 const posted = [];
 let saving = true;
@@ -132,6 +149,34 @@ async function main() {
     await browser.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'Enter', code: 'Enter', windowsVirtualKeyCode: 13 });
     assert.equal(await evaluate('document.querySelector("#toggle-feedback").getAttribute("aria-expanded")'), 'false', 'Keyboard activation hides feedback');
     console.log('ok - gallery catalog, shared game formatting, compact toggle, artwork, stable ids, market tiers, sorting, keyboard, host/browser feedback and reload/export');
+    console.log(`ok - rulebook figures are the game's faces; shade contrast over white: name ${SHADE_CONTRAST.name.toFixed(1)}:1, description ${SHADE_CONTRAST.description.toFixed(1)}:1`);
+
+    // Every design's face (rulebook #card-face), at the smallest size a face is read at (a phone's
+    // Supply drawer, about 100px) and at the raised card's 250px: its parts in place, its text whole.
+    // SHOTS also saves the contact sheet of every design, its pictures cropped as the game crops them.
+    const designs = await evaluate(`(() => {
+      const c = createGalacticReach({ catalog: true }), sets = [c.BASIC_CARDS, c.BASIC_TACTICS, c.ADVANCED_CARDS, c.MARKET_MILITARY, c.RELIC_CARDS, c.SUPPLY_CARDS];
+      const all = sets.flatMap(set => Object.entries(set)), sheet = document.createElement('div');
+      sheet.id = 'face-sheet'; sheet.style.cssText = 'position:fixed;inset:0;z-index:99;overflow:auto;display:grid;grid-template-columns:repeat(10,1fr);gap:8px;padding:10px;background:#0e2a25';
+      sheet.innerHTML = all.map(([key, def]) => '<div class="sheet-cell">' + c.cardFace(def, !def.code && ['move', 'construct'].includes(def.order) ? { key, starter: true } : {}) + '<small style="color:#cfe;font:10px system-ui">' + key + '</small></div>').join('');
+      document.body.append(sheet);
+      return all.length;
+    })()`);
+    for (const width of [100, 250]) {
+      await evaluate(`document.querySelector('#face-sheet').style.gridTemplateColumns = 'repeat(auto-fill, ${width}px)'`);
+      await evaluate('new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)))');
+      assert.deepEqual(await evaluate(FACE_PROBLEMS('#face-sheet')), [], `Every design's face is whole at ${width}px`);
+    }
+    if (process.env.SHOTS) {
+      fs.mkdirSync(process.env.SHOTS, { recursive: true });
+      await browser.send('Emulation.setDeviceMetricsOverride', { width: 1600, height: 1520, deviceScaleFactor: 1, mobile: false });
+      await evaluate(`document.querySelector('#face-sheet').style.gridTemplateColumns = 'repeat(10, 1fr)'`);
+      await evaluate('Promise.all([...document.querySelectorAll("#face-sheet img")].map(i => i.complete ? 0 : new Promise(r => { i.onload = i.onerror = r; })))');
+      const shot = await browser.send('Page.captureScreenshot', { format: 'png' });
+      fs.writeFileSync(path.join(process.env.SHOTS, 'card-face-contact-sheet.png'), Buffer.from(shot.data, 'base64'));
+    }
+    await evaluate("document.querySelector('#face-sheet').remove()");
+    console.log(`ok - all ${designs} designs' faces whole at 100px and 250px`);
 
     for (const [width, height, touch] of [[1280,720,false],[1440,900,false],[1024,768,true],[768,1024,true],[390,844,true],[320,700,true]]) {
       await browser.send('Emulation.setDeviceMetricsOverride', { width, height, deviceScaleFactor: 1, mobile: touch });

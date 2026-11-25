@@ -98,25 +98,31 @@
 .relic-row .game-card.face-card:is(:hover, :focus, :focus-within) .cf-sheet, #market-row > .game-card.face-card:nth-child(-n + 3):is(:hover, :focus, :focus-within) .cf-sheet { top: 0; translate: var(--tx, -50%) 0; }
 #market-row > .game-card.face-card:nth-last-child(-n + 3):is(:hover, :focus, :focus-within) .cf-sheet { top: auto; bottom: 0; translate: var(--tx, -50%) 0; }
 #market-row > .game-card.face-card:is(:nth-child(3n + 1), :nth-child(3n)), .relic-row > :is(:nth-child(3n + 1), :nth-child(3n)) { --tx: 0; }
-/* Pointer-free fallback: keyboard and screen readers reach the same card, its price in its name. */
-
 /* Dialog rows (deck, discard, in play, military deck, relic catalog): whole cards in a grid. */
 :is(#deck-row, #discard-row, #in-play-row, #military-row, #relic-catalog-grid) .game-card.face-card { width: 100%; }
 
 /* ==== Your hand. A resting card shows only its corner buttons (and its picture when it has no
    symbols): no name, no text. Raising it (pointing, focusing, a first tap) shows its face, the
    corner buttons on the face's top corners and any other buttons under it. ==== */
+/* A card with no symbols is known by its picture: the top of its face, without the shade. On a
+   phone the hand never rises (a tap opens the card in its own sheet), so its cards always rest. */
 #hand-row > .game-card.face-card:not(:hover):not(:focus-within) > .card-face { display: none !important; }
-/* A card with no symbols is known by its picture: the top of its face, without the shade. */
 #hand-row > .game-card.face-card:not(.has-symbols):not(:hover):not(:focus-within) > .card-face { display: block !important; position: absolute; inset: 0 0 auto; z-index: 0; width: 100%; pointer-events: none; }
-#hand-row > .game-card.face-card:not(.has-symbols):not(:hover):not(:focus-within) > .card-face :is(.cf-shade, .cf-frame) { display: none; }
-#hand-row > .game-card.face-card:not(.has-symbols):not(:hover):not(:focus-within) > .card-face .cf-sheet { border-radius: 0; }
-#hand-row > .game-card.face-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer) { position: relative; z-index: 1; }
+#hand-row > .game-card.face-card:not(.has-symbols) > .card-face :is(.cf-shade, .cf-frame) { display: none; }
+#hand-row > .game-card.face-card:not(.has-symbols) > .card-face .cf-sheet { border-radius: 0; }
+#hand-row > .game-card.face-card > :is(.card-symbols, .card-footer) { position: relative; z-index: 1; }
+@media (max-width: 599px), (max-height: 599px) {
+  #hand-row > .game-card.face-card > .card-face { display: none !important; }
+  #hand-row > .game-card.face-card:not(.has-symbols) > .card-face { display: block !important; position: absolute; inset: 0 0 auto; z-index: 0; width: 100%; pointer-events: none; }
+}
 @media (min-width: 600px) and (min-height: 600px) {
   #hand-row > .game-card.face-card:is(#_, .face-card):is(#_, .face-card):is(#_, .face-card):is(:hover, :focus-within) {
     display: flex !important; flex-direction: column; gap: 6px; padding: 0 !important; border: 0 !important; background: none !important; overflow: visible !important;
     box-shadow: none !important; height: auto !important; }
-  #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-face { display: block; width: 100%; }
+  #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-face { display: block; position: relative; width: 100%; }
+  #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-face :is(.cf-shade, .cf-frame) { display: flex; }
+  #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-face .cf-frame { display: block; }
+  #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-face .cf-sheet { border-radius: calc(3 * var(--mm)); }
   #hand-row > .game-card.face-card:is(:hover, :focus-within) .cf-sheet { --face-drop: 0 14px 40px #000a; }
   #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-art { display: none !important; }
   /* The corner buttons keep their size and sit in the face's top corners, cut to its rounding. */

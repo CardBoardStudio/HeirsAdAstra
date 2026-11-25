@@ -31,4 +31,13 @@ const FACE_PROBLEMS = scope => `(() => {
   }
   return problems;
 })()`;
-module.exports = { FACE_PROBLEMS };
+// The rulebook cannot run app.js: its card figures (#card-corners) are the game's faces written out,
+// each symbol a reference to the rulebook's sprite. RULEBOOK_FACES are the cards it shows and the copy
+// each one is (a level I Move converts); rulebookFace(catalog, key, copy) is the markup it must carry.
+const RULEBOOK_FACES = [['move', { key: 'move', starter: true }], ['victoryDoctrine', {}]];
+function rulebookFace(catalog, key, copy) {
+  const design = { ...catalog.BASIC_CARDS, ...catalog.ADVANCED_CARDS, ...catalog.MARKET_MILITARY }[key];
+  return catalog.cardFace(design, copy, { hidden: true })
+    .replace(/<svg class="(hx-icon[^"]*)"[^>]*data-icon="([a-z]+)"[\s\S]*?<\/svg>/g, (m, cls, name) => `<svg class="${cls.replace(' hx-auto', '')}" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#icon-${name}-small"></use></svg>`);
+}
+module.exports = { FACE_PROBLEMS, RULEBOOK_FACES, rulebookFace };
