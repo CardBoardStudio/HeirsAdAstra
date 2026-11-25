@@ -555,6 +555,8 @@ impl GameAdapter for GalacticReach {
 
 // Historical policies stay available only for previously dealt tables and replays.
 mod archived_rust;
+#[cfg(test)]
+mod shared_replay_tests;
 #[cfg(feature = "archived-rust-bots")]
 pub use archived_rust::BuiltinAgent;
 pub use archived_rust::Strategy;

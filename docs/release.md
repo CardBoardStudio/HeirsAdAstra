@@ -86,6 +86,8 @@ Five Rust tests play whole Heirs Ad Astra matches, and the JavaScript balance ha
 
 Change PRs keep fast stand-ins in `crates/server/src/shared/tests.rs`: the first 300 decisions of a four-rival match played twice (`reference_rivals_open_a_match_legally_and_reproducibly`) and resume on the current rules (`shared_tables_resume_exactly_on_current_rules`). They run alongside the archived engine and policy loads.
 
+The maintained shared-table replay fixture lives in `shared_replay_tests.rs`, outside the byte-frozen native policy file. It covers the same revisions, actions, shuffle recordings and exact snapshot comparisons, renewing `SHARED_STEP` before each command or snapshot request as the table service does. The 20-second guard bounds one request, not the complete replay; a table may remain saved between requests. The heavy profile selects this fixture in place of its frozen predecessor. The archive and its checksum remain unchanged.
+
 CI runs Rust tests with [cargo-nextest](https://nexte.st/). `.config/nextest.toml` holds the split: the default profile skips the heavy tier and the `heavy` profile runs only it. Both stop at the first failing test. Locally:
 
 ```sh
@@ -94,7 +96,7 @@ cargo nextest run --workspace --locked --profile heavy   # the heavy tier
 cargo test --workspace --locked                          # everything, without nextest
 ```
 
-Name a new test `heavy_…` when it plays a whole match or takes more than a few seconds. The three heavy tests in `crates/galactic-reach` keep their old names and are listed by name in both filters of `.config/nextest.toml`, because renaming them would edit a rule-bearing file (the Rules contract check). The dev and test profile builds `galactic-reach` at `opt-level = 1` and dependencies at `opt-level = 2` (`Cargo.toml`), because the rival policy's scoring dominates these tests.
+Name a new test `heavy_…` when it plays a whole match or takes more than a few seconds. The two maintained native-policy tests in `crates/galactic-reach` keep their old names and are listed by name in both filters of `.config/nextest.toml`. The frozen shared-replay fixture remains excluded from the default profile; its maintained replacement uses the `heavy_` prefix. The dev and test profile builds `galactic-reach` at `opt-level = 1` and dependencies at `opt-level = 2` (`Cargo.toml`), because the rival policy's scoring dominates these tests.
 
 ## Worked example
 
