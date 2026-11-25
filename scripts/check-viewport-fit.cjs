@@ -21,6 +21,7 @@ const os = require('node:os');
 const path = require('node:path');
 const vm = require('node:vm');
 const { spawn } = require('node:child_process');
+const { FACE_PROBLEMS } = require('./lib/card-face-check.cjs');
 
 const ROOT = path.resolve(__dirname, '..');
 const GAME_DIR = path.join(ROOT, 'prototypes/galactic-reach');
@@ -444,7 +445,14 @@ const MEASURE = `(() => {
     // shows its picture (or emblem) instead.
     const inHand = Boolean(top.closest('#hand-row'));
     const seen = e => e && e.getClientRects().length && !(inHand && getComputedStyle(e).clipPath.includes('inset(50%)'));
-    const summary = [top.querySelector('.card-symbols'), top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(seen)
+    // A card drawn as its printed face (rules #card-face): in the market and relic rows the face is the
+    // card; a resting hand card shows only its corner symbols, or its picture where it has none, and
+    // never its name or text.
+    const face = top.matches('.face-card') && top.querySelector(':scope > .card-face');
+    const picture = face && seen(face) && [...face.querySelectorAll('.cf-art:not([hidden]), .cf-backdrop')].some(seen);
+    if (face && inHand && seen(face) && getComputedStyle(face.querySelector('.cf-shade')).display !== 'none') problems.push('resting hand card shows its name and text: ' + label(top));
+    const summary = face ? (inHand ? [top.querySelector(':scope > .card-symbols')].find(seen) || null : face.querySelector('.cf-sheet'))
+      : [top.querySelector('.card-symbols'), top.querySelector('.card-headline'), top.querySelector('.card-icons'), top.querySelector('.card-effect')].find(seen)
       || (inHand ? null : top.querySelector('.card-symbols') || top.querySelector('.card-headline') || top.querySelector('.card-effect'));
     if (inHand) for (const e of top.querySelectorAll(':scope > :is(.card-name, .card-headline, .card-effect)')) {
       if (seen(e) && getComputedStyle(e).textOverflow === 'ellipsis' && e.scrollWidth > e.clientWidth + 1) problems.push('hand text cut with an ellipsis: ' + label(e) + ' in ' + label(top));
@@ -457,9 +465,9 @@ const MEASURE = `(() => {
     }
     // A resting hand card shows only its symbols (rules #card-corners): its name is for screen readers then.
     const symbols = top.querySelector(':scope > .card-symbols'), nameEl = top.querySelector('.card-name');
-    const nameShown = inHand ? Boolean(seen(nameEl)) : !(symbols && symbols.getClientRects().length && nameEl && getComputedStyle(nameEl).clipPath.includes('inset(50%)'));
+    const nameShown = face ? false : inHand ? Boolean(seen(nameEl)) : !(symbols && symbols.getClientRects().length && nameEl && getComputedStyle(nameEl).clipPath.includes('inset(50%)'));
     // A resting hand card is always identifiable: by its symbols, a rules line, its name or its picture.
-    if (inHand && !summary && !nameShown && !seen(top.querySelector(':scope > .card-art'))) problems.push('card top shows nothing: ' + label(top));
+    if (inHand && !summary && !nameShown && !picture && !seen(top.querySelector(':scope > .card-art'))) problems.push('card top shows nothing: ' + label(top));
     // Only level I starters print a gain badge; an empty footer has nothing to show.
     const footer = top.querySelector('.card-footer');
     // In the hand, a top's text and badges must end before its right-hand neighbour begins.
@@ -492,14 +500,21 @@ const MEASURE = `(() => {
       if (r.left < -1 || r.right > W + 1 || ((!phone || sideways) && (r.top < -1 || r.bottom > H + 1))) problems.push('outside viewport: ' + label(e) + ' [' + [r.left, r.top, r.right, r.bottom].map(Math.round) + ']');
     }
     // Cards may not clip their own text (buttons hide overflow inside their box).
-    if (e.matches('.game-card, .military-card, .combat-tactic, .trade-offer, .score-card, .resource-box, .combat-options .button') && !e.matches('.score-card:is(:hover, :focus-within)') && e.scrollHeight > e.clientHeight + 2)
+    // (A face card is its sheet, checked with the faces below: a raised one grows past its slot.)
+    if (e.matches('.game-card, .military-card, .combat-tactic, .trade-offer, .score-card, .resource-box, .combat-options .button') && !e.matches('.score-card:is(:hover, :focus-within), .face-card') && e.scrollHeight > e.clientHeight + 2)
       problems.push('card text cut: ' + label(e) + ' ' + e.scrollHeight + ' > ' + e.clientHeight);
     // Overflow above a box (centred button content) is not counted by scrollHeight.
-    if (e.matches('.game-card, .score-card, .resource-box')) for (const child of e.children) {
+    if (e.matches('.game-card:not(.face-card), .score-card, .resource-box')) for (const child of e.children) {
       const c = child.getBoundingClientRect();
       if (child.textContent.trim() && shown(child) && child.getAttribute('aria-hidden') !== 'true' && !getComputedStyle(child).clipPath.includes('inset(50%)') && c.height < 4) { problems.push('card line squeezed: ' + label(e) + ' (' + label(child) + ')'); break; }
       if (c.height && !child.matches('.score-overview') && (c.top < r.top - 1 || c.bottom > r.bottom + 1)) { problems.push('card content escapes: ' + label(e) + ' (' + label(child) + ')'); break; }
     }
+  }
+  // Every face shown keeps its parts in place, whole (rules #card-face), and a raised face stays in the window.
+  problems.push(...${FACE_PROBLEMS(':root')});
+  for (const sheet of document.querySelectorAll(':is(#hand-row, .market-cards, .relic-row) .face-card:is(:hover, :focus, :focus-within) .cf-sheet')) {
+    const r = sheet.getBoundingClientRect();
+    if (shown(sheet) && !modal && !sideways && (r.left < -1 || r.top < -1 || r.right > W + 1 || r.bottom > H + 1)) problems.push('raised card face outside viewport: ' + label(sheet.closest('.game-card')));
   }
   // Every button on a raised card must be reachable: nothing may lie over its centre.
   // (A phone opens a tapped card whole in its own sheet instead: its hand cards do not rise.)
@@ -627,6 +642,9 @@ const MEASURE = `(() => {
   document.head.append(natural);
   let slack = { px: 99, card: '' };
   for (const card of [...scope.querySelectorAll('.game-card')].filter(card => shown(card) && !folded(card))) {
+    // A face's spare room is the picture above its shade: how far its words can grow before they leave the card.
+    const sheet = card.querySelector(':scope > .card-face .cf-sheet'), shade = sheet?.querySelector('.cf-shade');
+    if (sheet && shown(shade)) { const px = Math.round(shade.getBoundingClientRect().top - sheet.getBoundingClientRect().top); if (px < slack.px) slack = { px, card: card.querySelector('.card-name')?.textContent || '' }; continue; }
     const last = [...card.children].filter(shown).at(-1);
     const pad = parseFloat(getComputedStyle(card).paddingBottom) + parseFloat(getComputedStyle(card).borderBottomWidth);
     const px = last ? Math.round(card.getBoundingClientRect().bottom - pad - last.getBoundingClientRect().bottom) : 99;
@@ -903,7 +921,7 @@ async function runCase(browser, origin, testCase, viewport) {
     const title = card => card.querySelector(':scope > .card-name')?.textContent.trim() || card.className;
     const whole = e => e.getClientRects().length && getComputedStyle(e).clipPath === 'none';
     for (const card of cards) {
-      const name = card.querySelector(':scope > .card-name');
+      const name = card.querySelector(':scope > .card-face .cf-name') || card.querySelector(':scope > .card-name');
       if (!name || !whole(name)) continue;
       const walker = document.createTreeWalker(name, NodeFilter.SHOW_TEXT);
       for (let text; (text = walker.nextNode());) for (const word of text.data.matchAll(/\\S+/g)) {
@@ -914,7 +932,8 @@ async function runCase(browser, origin, testCase, viewport) {
     }
     const sheet = document.querySelector('.market-sheet');
     if (!shown(sheet) || !cards.length) return problems;
-    const s = sheet.getBoundingClientRect(), boxes = cards.map(card => card.getBoundingClientRect());
+    // A face card is measured by its printed sheet, which fits inside its slot.
+    const s = sheet.getBoundingClientRect(), boxes = cards.map(card => (card.querySelector(':scope > .card-face .cf-sheet') || card).getBoundingClientRect());
     cards.forEach((card, i) => {
       const r = boxes[i];
       if (r.left < s.left - 1 || r.right > s.right + 1 || r.top < s.top - 1 || r.bottom > s.bottom + 1 || r.right > innerWidth + 1) problems.push('market card clipped by the sheet: ' + title(card));
@@ -957,7 +976,8 @@ async function runCase(browser, origin, testCase, viewport) {
     const cards = [...document.querySelectorAll('#hand-row > .game-card')].filter(card => { const r = card.getBoundingClientRect(); return r.left >= view.left - 1 && r.right <= Math.min(innerWidth, view.right) + 1; });
     for (const card of cards) {
       const parts = [card.querySelector(':scope > .card-symbols'), card.querySelector(':scope > .card-footer')].filter(e => e && e.getClientRects().length);
-      if (!parts.length) parts.push(card.querySelector('.card-name'));
+      // A card with no symbols shows its picture across its strip: the strip itself must be on top.
+      if (!parts.length) parts.push(card.matches('.face-card') ? card : card.querySelector('.card-name'));
       for (const part of parts) {
         const r = part.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;
         const hit = document.elementFromPoint(x, y)?.closest('#hand-row > .game-card');
@@ -1009,7 +1029,7 @@ async function runCase(browser, origin, testCase, viewport) {
       if (!raised) { problems.push(`could not raise ${at.name}`); continue; }
       problems.push(...await browser.evaluate(`(() => {
         const card = document.querySelector('.phone-card-sheet:not([hidden]) .game-card') || document.querySelector('#hand-row > .game-card:is(:hover, :focus-within)');
-        const name = card.querySelector(':scope > .card-name'), wanted = name.textContent.trim();
+        const name = card.querySelector(':scope > .card-face .cf-name') || card.querySelector(':scope > .card-name'), wanted = card.querySelector(':scope > .card-name').textContent.trim();
         const text = document.createRange(); text.selectNodeContents(name);
         const tabs = [...card.querySelectorAll(':scope > :is(.corner-button, .card-symbols, .card-footer)')].filter(t => t.getClientRects().length).map(t => t.getBoundingClientRect());
         const under = [...text.getClientRects()].some(a => tabs.some(t => a.left < t.right - 1 && a.right > t.left + 1 && a.top < t.bottom - 1 && a.bottom > t.top + 1));
@@ -1024,11 +1044,11 @@ async function runCase(browser, origin, testCase, viewport) {
     const card = document.querySelector('#hand-row > .game-card:hover'), problems = [];
     if (document.querySelector('#card-inspect, .card-inspect')) problems.push('a separate inspect copy opened');
     if (!card) return [...problems, 'the pointed-at card did not raise'];
-    const r = card.getBoundingClientRect(), effect = card.querySelector('.card-effect');
+    const r = card.getBoundingClientRect(), effect = card.querySelector('.card-face .cf-small, .card-face .cf-headline, .card-effect');
     if (r.left < 0 || r.top < 0 || r.right > innerWidth || r.bottom > innerHeight) problems.push('raised card outside viewport');
     if (!effect || !effect.getClientRects().length || getComputedStyle(effect).clipPath.includes('inset(50%)')) problems.push('raised card does not show its effect');
     else if (parseFloat(getComputedStyle(effect).fontSize) * (Number(document.documentElement.style.getPropertyValue('--table-zoom')) || 1) < 10) problems.push('raised card effect below reading size');
-    if (card.scrollHeight > card.clientHeight + 2) problems.push('raised card text cut');
+    if (!card.matches('.face-card') && card.scrollHeight > card.clientHeight + 2) problems.push('raised card text cut');
     const strip = document.querySelector('#hand-row').getBoundingClientRect();
     if (Math.abs(r.bottom - strip.bottom) > 24) problems.push('raised card does not rise from the hand');
     return problems;

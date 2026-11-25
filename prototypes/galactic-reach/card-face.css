@@ -158,3 +158,7 @@
 @media (min-width: 600px) and (min-height: 600px) and (pointer: coarse) {
   #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-buttons .button { min-height: 44px; }
 }
+/* A phone's Supply drawer is a scrolling grid of two or three columns (phone.css): each card is a
+   whole face as wide as its column, its height from the card's shape. */
+:root body[data-drawer="supply"] :is(#market-row, .relic-row) > .game-card.face-card, :root body[data-drawer="supply"] .relic-row > div > .game-card.face-card { height: auto !important; }
+:root body[data-drawer="supply"] :is(#market-row, .relic-row) .game-card.face-card > .card-face { height: auto; aspect-ratio: 63 / 88; }
