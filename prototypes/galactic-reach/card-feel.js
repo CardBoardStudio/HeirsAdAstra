@@ -274,7 +274,8 @@
   // most (rules #card-corners); a name that does not fit there moves under the corners.
   function fitNames() {
     // Measured for all cards at once (one probe, one read, one write) so a render costs two layouts.
-    const cards = $$(':is(#hand-row, #market-row, #upgrade-market) > .game-card:is(:has(> .card-symbols), :has(> .card-footer))')
+    // A card drawn as its face (card-face.css) shows its name on the face, at the face's own size.
+    const cards = $$(':is(#hand-row, #market-row, #upgrade-market) > .game-card:not(.face-card):is(:has(> .card-symbols), :has(> .card-footer))')
       .filter(card => !card.matches(':hover, :focus-within')).map(card => [card, card.querySelector(':scope > .card-name')]).filter(([, name]) => name?.getClientRects().length);
     cards.forEach(([card]) => { card.classList.remove('name-under'); card.classList.add('name-probe'); });
     const under = cards.map(([, name]) => { const line = parseFloat(getComputedStyle(name).lineHeight) || name.offsetHeight; return name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > line * 2 + 2; });
@@ -338,7 +339,7 @@
   const maxTable = () => document.body.classList.contains('background-stars');
   function fitHandNameSizes(onlyNew = false) {
     if (maxTable()) return;
-    const cards = $$('#hand-row > .game-card').filter(card => !raisedNow(card) && !(onlyNew && card.dataset.nameFit));
+    const cards = $$('#hand-row > .game-card:not(.face-card)').filter(card => !raisedNow(card) && !(onlyNew && card.dataset.nameFit));
     for (const card of cards) { card.style.removeProperty('--name-fs'); card.classList.remove('name-tucked', 'rules-tucked'); }
     // Fits: no word wider than its box, two lines at most, not squeezed in its row, and above the
     // card's bottom padding. At NAME_MIN, on a card top too narrow for two lines (the smallest
@@ -393,7 +394,7 @@
   // A redraw replaces the card, so each card's answer is kept by its id and put back on the new one.
   const raisedNames = new Map();
   function fitRaised(card) {
-    if (document.body.classList.contains('background-stars')) return;
+    if (document.body.classList.contains('background-stars') || card.matches('.face-card')) return;
     const name = card.querySelector(':scope > .card-name');
     if (!name?.getClientRects().length) return;
     card.classList.remove('name-under-raised'); card.classList.add('name-probe');
