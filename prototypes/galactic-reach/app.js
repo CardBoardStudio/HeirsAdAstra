@@ -5078,10 +5078,13 @@ function createGalacticReach(options = {}) {
     const limits = resourceLimits(viewSeat);
     const before = matSeen[viewSeat] || {};
     const mine = !replayMode && viewSeat === ME;
-    // The green mat is a track: slot i stands for the value i (0 to MAT_SLOTS), and each row has one
-    // piece on the slot for its value, which pops in when the value changes. Every fifth slot from
-    // 0 has a brighter rim; a value past the track stays on the last slot and is printed beside it.
-    const pips = (value, from, extra = () => '') => Array.from({ length: MAT_SLOTS + 1 }, (_, i) => `<i class="${i === Math.min(value, MAT_SLOTS) ? `full${value !== from ? ' new' : ''}` : ''}${i && i % 5 === 0 ? ' five' : ''}${extra(i)}"></i>`).join('') + (value > MAT_SLOTS ? `<b class="mat-lap">${value}</b>` : '');
+    // The green mat has slots 1 to MAT_SLOTS. At zero the piece is off the mat.
+    // Every fifth slot has a brighter rim; a value past the track stays on the last
+    // slot and is printed beside it. Max's separate ring row is unchanged.
+    const pips = (value, from, extra = () => '') => Array.from({ length: MAT_SLOTS }, (_, index) => {
+      const i = index + 1;
+      return `<i class="${i === Math.min(value, MAT_SLOTS) ? `full${value !== from ? ' new' : ''}` : ''}${i % 5 === 0 ? ' five' : ''}${extra(i)}"></i>`;
+    }).join('') + (value > MAT_SLOTS ? `<b class="mat-lap">${value}</b>` : '');
     $('#resource-grid').innerHTML = `<div class="mat-head mat-classic" aria-hidden="true"><span class="mat-key rate"><i></i>Rate</span><span class="mat-key now"><i></i>Now</span><span class="mat-key cap"><i></i>Capacity</span></div><div class="mat-head ring-key mat-stars" aria-hidden="true"><span class="mat-key production"><i></i>Production</span><span class="mat-key now"><i></i>Available</span><span class="mat-key unavailable"><i></i>Unavailable</span>${mine ? '<span class="mat-hint">Drag one resource onto another to trade at its current bank rate</span>' : ''}</div>` + RESOURCES.map(resource => {
       const have = player.resources[resource], cap = limits[resource], next = production[resource];
       const fill = have > cap ? 'over-cap' : have >= cap ? 'at-cap' : have + next > cap ? 'will-cap' : '';
@@ -6674,8 +6677,25 @@ function createGalacticReach(options = {}) {
     }));
     window.addEventListener('resize', () => { mapFitFor = null; showMarket(); });
     globalThis.galacticReachMarket = { need: needMarket, view: () => marketShown, drawer: needDrawer };
-    // A card design whose picture is missing shows its text in the picture's place.
-    document.addEventListener('error', event => { if (event.target?.matches?.('img.card-picture')) event.target.parentElement?.classList.remove('has-picture'); }, true);
+    // Retry a failed image once. If it still fails, keep the card's text and emblem
+    // without a broken-image box. Max's existing fallback stays separate.
+    document.addEventListener('error', event => {
+      const picture = event.target;
+      if (!picture?.matches?.('img.card-picture')) return;
+      if (document.body.classList.contains('background-stars')) {
+        picture.parentElement?.classList.remove('has-picture');
+        return;
+      }
+      if (!picture.dataset.retried) {
+        picture.dataset.retried = 'true';
+        const retry = new URL(picture.src);
+        retry.searchParams.set('retry', '1');
+        picture.src = retry.href;
+        return;
+      }
+      picture.parentElement?.classList.remove('has-picture');
+      picture.remove();
+    }, true);
   }
   const renderErrors = [];
   function drawEach(parts) {

@@ -727,6 +727,81 @@
    },
    "license": "CC0 1.0 (NGA Open Access)"
   },
+  "exchangeProtocol": {
+   "family": "Exchange",
+   "image": "card-art/exchangeProtocol.webp",
+   "ngaObjectId": 32589,
+   "title": "Entrance to the Grand Canal from the Molo, Venice",
+   "artist": "Canaletto",
+   "date": "1742/1744",
+   "medium": "oil on canvas",
+   "accession": "1945.15.4",
+   "creditLine": "Gift of Mrs. Barbara Hutton",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.32589.html",
+   "iiif": "https://api.nga.gov/iiif/619045a2-672b-4e41-bf0d-f87633686d3b/0,1023,8360,4180/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,1023,8360,4180",
+    "imageSize": [
+     8360,
+     6226
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "barterNetwork": {
+   "family": "Exchange",
+   "image": "card-art/barterNetwork.webp",
+   "ngaObjectId": 57418,
+   "title": "The Marketplace in Bergen op Zoom",
+   "artist": "Attributed to Abel Grimmer",
+   "date": "probably 1590 and 1597",
+   "medium": "oil on panel",
+   "accession": "1979.50.1",
+   "creditLine": "Gift of Mr. and Mrs. Earl H. Look",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.57418.html",
+   "iiif": "https://api.nga.gov/iiif/a74f2aea-2c0f-4215-a8b1-894a8cb3997a/0,4034,28983,14492/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,4034,28983,14492",
+    "imageSize": [
+     28983,
+     22560
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "clearingHouse": {
+   "family": "Exchange",
+   "image": "card-art/clearingHouse.webp",
+   "ngaObjectId": 135093,
+   "title": "View Down a Dutch Canal",
+   "artist": "Jan van der Heyden",
+   "date": "c. 1670",
+   "medium": "oil on panel",
+   "accession": "2012.73.2",
+   "creditLine": "Gift of George M. and Linda H. Kaufman",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.135093.html",
+   "iiif": "https://api.nga.gov/iiif/adc4f41a-08a1-4888-aed8-a838a0bfeee5/0,728,4088,2044/600,300/0/default.jpg",
+   "crop": {
+    "region": "0,728,4088,2044",
+    "imageSize": [
+     4088,
+     3500
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
   "railBattery": {
    "family": "Military",
    "image": "card-art/railBattery.webp",
@@ -944,6 +1019,31 @@
     "imageSize": [
      18962,
      10964
+    ],
+    "output": [
+     600,
+     300
+    ]
+   },
+   "license": "CC0 1.0 (NGA Open Access)"
+  },
+  "torpedoBarrage": {
+   "family": "Military",
+   "image": "card-art/torpedoBarrage.webp",
+   "ngaObjectId": 156252,
+   "title": "A Naval Encounter between Dutch and Spanish Warships",
+   "artist": "Cornelis Verbeeck",
+   "date": "c. 1618/1620",
+   "medium": "oil on panel",
+   "accession": "1995.21.1-2",
+   "creditLine": "Gift of Dorothea V. Hammond",
+   "objectPage": "https://www.nga.gov/collection/art-object-page.156252.html",
+   "iiif": "https://api.nga.gov/iiif/c03e90c9-de57-4cc4-8b4c-fa77545c9564/2212,0,9898,4949/600,300/0/default.jpg",
+   "crop": {
+    "region": "2212,0,9898,4949",
+    "imageSize": [
+     14323,
+     4949
     ],
     "output": [
      600,

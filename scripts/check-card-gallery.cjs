@@ -1,11 +1,11 @@
-// Real gallery/catalog and feedback checks in Chrome, using Node built-ins only.
+// Real gallery/catalog, game artwork and feedback checks in Chrome, using Node built-ins only.
 // SHOTS=/outside/repository node scripts/check-card-gallery.cjs saves viewport images.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
 const vm = require('node:vm');
-const { findChrome, launch } = require('./check-viewport-fit.cjs');
+const { findChrome, launch, buyState } = require('./check-viewport-fit.cjs');
 const root = path.resolve(__dirname, '..');
 const game = path.join(root, 'prototypes/galactic-reach');
 const context = vm.createContext({});
@@ -16,13 +16,26 @@ const catalog = context.createGalacticReach({ catalog: true });
 const market = catalog.MARKET_CARDS, relics = catalog.RELIC_CARDS;
 const allKeys = [...Object.keys(market), ...Object.keys(relics)].sort();
 const manifest = JSON.parse(fs.readFileSync(path.join(game, 'card-art/manifest.json'), 'utf8')).cards;
+// New cards must ship their art and credits, rather than silently disappearing
+// from the image count when their manifest entries were forgotten.
+const illustratedKeys = [...allKeys, ...Object.keys(catalog.BASIC_CARDS), ...Object.keys(catalog.BASIC_TACTICS)];
+for (const key of illustratedKeys) {
+  assert(manifest[key], `Artwork and credits are declared for ${key}`);
+  assert(fs.existsSync(path.join(game, manifest[key].image)), `Artwork exists for ${key}`);
+}
 const artCount = allKeys.filter(key => manifest[key]).length;
 const types = { '.html': 'text/html', '.js': 'text/javascript', '.css': 'text/css', '.json': 'application/json', '.webp': 'image/webp' };
 const posted = [];
 let saving = true;
+let foldArtFailures = 0;
+let foldArtRequests = [];
 
 const server = http.createServer(async (request, response) => {
   const url = new URL(request.url, 'http://localhost');
+  if (url.pathname === '/galactic-reach/card-art/foldSpaceGate.webp') {
+    foldArtRequests.push(url.search);
+    if (foldArtFailures > 0) { foldArtFailures--; response.writeHead(503); response.end(); return; }
+  }
   if (url.pathname === '/api/galactic-reach/card-feedback') {
     response.setHeader('content-type', 'application/json');
     if (request.method === 'POST') {
@@ -53,6 +66,11 @@ async function main() {
     await browser.send('Page.addScriptToEvaluateOnNewDocument',{source:"if(location.protocol==='http:'&&!localStorage.getItem('galactic-reach-card-feedback-31-36'))localStorage.setItem('galactic-reach-card-feedback-31-36',JSON.stringify({R01:{vote:'like',note:'Retired relic history'},N17:{vote:'neutral',note:'Retired starter-trash history'}}));"});
     await browser.navigate(`${origin}/galactic-reach/cards.html`);
     await wait('document.querySelectorAll(".gallery-art img").length === ' + artCount + ' && document.querySelector("#store-status").textContent.includes("Saving is on")');
+    const brokenArt = await evaluate(`Promise.all(${JSON.stringify(illustratedKeys.map(key => manifest[key].image))}.map(async src => {
+      const picture = new Image(); picture.src = src;
+      try { await picture.decode(); return null; } catch { return src; }
+    })).then(results => results.filter(Boolean))`);
+    assert.deepEqual(brokenArt, [], 'Every current card illustration loads and decodes in Chrome');
     assert(await evaluate('document.querySelectorAll(".max-resource-shape").length > 0 && [...document.querySelectorAll(".max-resource-shape")].every(e=>getComputedStyle(e).display==="none")'), 'The shared gallery keeps constellation resources without loading Max’s stylesheet');
     assert(await evaluate('document.querySelector("#toggle-feedback").getAttribute("aria-expanded")==="false" && [...document.querySelectorAll(".gallery-feedback")].every(e=>e.hidden) && document.querySelector("#feedback-export").hidden'), 'A first visit starts compact');
     const initial = await cards();
@@ -162,8 +180,39 @@ async function main() {
       console.log(`ok - gallery ${width}×${height}${touch ? ' touch' : ''}`);
     }
     assert.deepEqual(browser.errors, [], 'No gallery runtime errors');
+
+    // The actual game must recover a transient image failure, not merely list a
+    // file in the gallery. Fail the first HTTP request, then serve the real asset.
+    const format = fs.readFileSync(path.join(game, 'app.js'), 'utf8').match(/const SAVE_FORMAT_VERSION = (\d+);/)[1];
+    const artState = buyState(['foldSpaceGate', 'exchangeProtocol', 'barterNetwork', 'clearingHouse', 'torpedoBarrage'], { matter: 8, energy: 8, biomass: 8, data: 8 });
+    await browser.send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 900, deviceScaleFactor: 1, mobile: false });
+    await browser.send('Emulation.setTouchEmulationEnabled', { enabled: false });
+    await evaluate(`localStorage.clear(); localStorage.setItem('galactic-reach-save-v${format}', ${JSON.stringify(JSON.stringify(artState))}); localStorage.setItem('galactic-reach-guide-v1', JSON.stringify({enabled:false,seen:{}}));`);
+    await browser.send('Network.enable');
+    await browser.send('Network.setCacheDisabled', { cacheDisabled: true });
+    await browser.navigate(`${origin}/galactic-reach/index.html`);
+    await wait('document.querySelector("#market-row img[src*=foldSpaceGate]")?.naturalWidth > 0');
+    const marketArt = await evaluate(`Promise.all([...document.querySelectorAll('#market-row img.card-picture')].map(async picture => {
+      try { await picture.decode(); return null; } catch { return picture.getAttribute('src'); }
+    })).then(results => results.filter(Boolean))`);
+    assert.deepEqual(marketArt, [], 'The repaired cards load in the full game market');
+    await evaluate('document.fonts.ready.then(()=>new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r))))');
+    foldArtFailures = 1; foldArtRequests = [];
+    await evaluate('document.querySelector("#market-row img[src*=foldSpaceGate]").src="card-art/foldSpaceGate.webp?fault=once"');
+    await wait('document.querySelector("#market-row img[src*=foldSpaceGate]")?.dataset.retried === "true" && document.querySelector("#market-row img[src*=foldSpaceGate]").naturalWidth > 0');
+    assert.deepEqual(foldArtRequests, ['?fault=once', '?fault=once&retry=1'], 'A fresh request bypasses the failed URL');
+
+    // A persistent failure leaves readable card text and its emblem, without a
+    // broken image or an unbounded retry loop.
+    foldArtFailures = 2; foldArtRequests = [];
+    await evaluate('(()=>{const picture=document.querySelector("#market-row img[src*=foldSpaceGate]");delete picture.dataset.retried;picture.src="card-art/foldSpaceGate.webp?fault=persistent";})()');
+    await wait('[...document.querySelectorAll("#market-row .game-card")].some(c=>c.querySelector(".card-name")?.textContent==="Fold-Space Gate" && !c.querySelector("img") && c.querySelector(".card-art:not(.has-picture) .card-emblem"))');
+    assert.deepEqual(foldArtRequests, ['?fault=persistent', '?fault=persistent&retry=1'], 'A persistent failure stops after one retry');
+    assert.deepEqual(browser.errors, [], 'No runtime errors from either image failure');
+    console.log('ok - game card artwork, one failed-request retry and persistent-failure fallback');
   } catch (error) {
     console.error('Gallery diagnostics:', await evaluate('({cards:document.querySelectorAll(".gallery-card").length,art:document.querySelectorAll(".gallery-art").length,status:document.querySelector("#store-status")?.textContent,title:document.title})'));
+    console.error('Fold-Space Gate requests:', foldArtRequests);
     console.error('Browser errors:', browser.errors);
     throw error;
   } finally { browser.close(); server.close(); }
