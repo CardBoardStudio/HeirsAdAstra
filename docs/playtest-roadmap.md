@@ -137,9 +137,9 @@ This repository has three related pull requests with deliberately different jobs
 
 | Pull request | Lane | Purpose | State |
 | --- | --- | --- | --- |
-| [#3](https://github.com/CardBoardStudio/drawing_board/pull/3) | Stable prototype | Galactic Reach browser game, local rivals, board rules, and guest saves | Merged to `main` |
+| [#3](https://github.com/CardBoardStudio/drawing_board/pull/3) | Stable prototype | Heirs Ad Astra browser game, local rivals, board rules, and guest saves | Merged to `main` |
 | [#4](https://github.com/CardBoardStudio/drawing_board/pull/4) | Platform foundation | Shared library, accounts, invitations, saved tables, two game adapters, AI arena, and owner-scoped Elo | Merged into the stable lane |
-| [#5](https://github.com/CardBoardStudio/drawing_board/pull/5) | Breaking experiment | Galactic Reach 6.11 rules, pinned table versions, placement Elo, calibration, ranked games, and step-through replays | Adoption candidate |
+| [#5](https://github.com/CardBoardStudio/drawing_board/pull/5) | Breaking experiment | Heirs Ad Astra 6.11 rules, pinned table versions, placement Elo, calibration, ranked games, and step-through replays | Adoption candidate |
 
 PR #5 targets the stable lane after #4. It is an integration experiment because the new rules, table versioning, arena pool, and replay browser need the account and arena foundation together. The work inside #5 is organized into four review slices:
 
@@ -158,11 +158,11 @@ Base this on the tested PR #5 commit. Include only bugs, accessibility fixes, co
 
 ### PR 7 — promote the accepted ruleset
 
-If the playtest is accepted, rebase the experiment on the latest platform foundation, announce the save cutover, and promote 6.11 to the stable Galactic Reach lane. Verify the new stable deployment before asking players to start fresh tables. If the rules are rejected, close #5 and leave the stable 5.10 lane untouched.
+If the playtest is accepted, rebase the experiment on the latest platform foundation, announce the save cutover, and promote 6.11 to the stable Heirs Ad Astra lane. Verify the new stable deployment before asking players to start fresh tables. If the rules are rejected, close #5 and leave the stable 5.10 lane untouched.
 
 ### PR 8 — calibrated AI opponents in human tables
 
-Let a table owner choose one of their calibrated AI accounts as a Galactic Reach opponent. Reuse the existing `PlayerAgent` contract and owner checks, but keep human tables separate from rated arena matches. Define what happens when a policy version is unavailable before changing table saves.
+Let a table owner choose one of their calibrated AI accounts as an Heirs Ad Astra opponent. Reuse the existing `PlayerAgent` contract and owner checks, but keep human tables separate from rated arena matches. Define what happens when a policy version is unavailable before changing table saves.
 
 ### PR 9 — deployment and operations hardening
 

@@ -12,6 +12,12 @@ The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the p
 
 The rulebook is authoritative for intended play. The initial version documents existing 6.11 behavior, including exceptions, without approving those exceptions as final design. An inconsistency is a review item, not permission to silently change rules or saves. Developer notes and old READMEs are not competing rules specifications.
 
+## Game name and compatibility
+
+Use **Heirs Ad Astra** in current text, documentation, release summaries and check labels. The existing `galactic-reach` URLs, save keys, rules IDs, package paths and JavaScript identifiers remain compatibility contracts for saved games, tables and tools. Frozen engines, manuals, policies and their hashes retain their original contents. Naming cleanup does not change rules or saved-state meaning; historical reports may describe a retired award by what it scored.
+
+The pending entries `gr-focus-f1.md` and `gr-heirs-ad-astra-rename-n1.md` received a wording-only correction during the naming cleanup so the next release uses the current name. Their compatibility classifications and release behavior are unchanged; this does not relax the release process for other edits to existing entries.
+
 ## Where rules meet code
 
 | Rulebook anchor | Implementation starting points | Behavior checks |

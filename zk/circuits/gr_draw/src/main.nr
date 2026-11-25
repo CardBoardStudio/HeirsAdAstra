@@ -1,4 +1,4 @@
-// Galactic Reach: a fair, private draw from a committed deck.
+// Heirs Ad Astra: a fair, private draw from a committed deck.
 //
 // Statement (everything `pub` is a public input the table contract supplies
 // from its own storage, except the two outputs it records):
