@@ -3546,7 +3546,7 @@ function createGalacticReach(options = {}) {
     const p=state.players[playerId],keep={matter:0,energy:0,biomass:0,data:0};
     if(p.strategy==='militaryFocused') {
       Object.assign(keep,aiFocusedMilitaryBuildCost(playerId));
-      if(findColonizeTarget(playerId))keep.biomass=COLONY_LIFE_COST;
+      if(findColonizeTarget(playerId)||FOCUSED_MILITARY_POLICY.reserveOpening&&!aiFocusedMilitaryWorlds(playerId).forward&&countPlacedShips(playerId,'settler'))keep.biomass=COLONY_LIFE_COST;
       return keep;
     }
     const colony=findColonizeTarget(playerId);
@@ -3957,7 +3957,7 @@ function createGalacticReach(options = {}) {
   }
 
   // Fixed browser-policy parameters, also frozen with each simulation candidate.
-  const FOCUSED_MILITARY_POLICY = Object.freeze({"minRaid":5,"maxRaid":10,"margin":0,"preferFullGroup":true,"earlyRaidUntil":10,"distancePenalty":4,"countPenalty":0,"maxRisk":1,"productionFloor":0,"doctrineBuy":0,"doctrinePlay":6,"leaderPressure":0.15,"rallyScore":80,"returnScore":75});
+  const FOCUSED_MILITARY_POLICY = Object.freeze({"minRaid":4,"maxRaid":10,"margin":0,"preferFullGroup":true,"earlyRaidUntil":10,"distancePenalty":4,"countPenalty":0,"maxRisk":1,"productionFloor":0,"doctrineBuy":0,"doctrinePlay":6,"leaderPressure":0.15,"rallyScore":80,"returnScore":75,"openingEconomy":105,"reserveOpening":true,"openingMoves":2,"moveBeforeSettler":true,"deferOpeningBuys":true,"immediateSmallRaid":true});
 
   // #military-focused-rival: founding the second Colony ends expansion permanently.
   // originalFounder survives conquest, so this plan needs no hidden policy state.
@@ -3980,7 +3980,8 @@ function createGalacticReach(options = {}) {
       for(const coord of world.coords)if(coord!==site&&canBuildStructureAt(playerId,coord,'harvester')) {
         const resource=state.planets[coord].type;
         const supply=forward&&['matter','energy'].includes(resource)&&income[resource]<FOCUSED_MILITARY_POLICY.productionFloor;
-        options.push({kind:'harvester',coord,score:!forward?25:supply?74:income[resource]===0?72:50+Math.max(0,4-income[resource])*3});
+        const opening=!forward&&FOCUSED_MILITARY_POLICY.openingEconomy&&['data','biomass'].includes(resource)&&income[resource]===0;
+        options.push({kind:'harvester',coord,score:opening?FOCUSED_MILITARY_POLICY.openingEconomy+(resource==='data'?1:0):!forward?25:supply?74:income[resource]===0?72:50+Math.max(0,4-income[resource])*3});
       }
       if(!yard)continue;
       if(!forward&&!countPlacedShips(playerId,'settler')&&canPlaceShip(playerId,'settler'))options.push({kind:'settler',coord:yard[0],score:90});
@@ -4113,6 +4114,7 @@ function createGalacticReach(options = {}) {
           for(let n=policy.preferFullGroup?maximum:minimum;n<=maximum;n++) {
             const count=Math.min(maximum,n+policy.margin);if(tried.has(count))continue;tried.add(count);
             const hunters={settler:0,explorer:0,fleet:count};
+            if(count<5&&policy.immediateSmallRaid&&travelDistance(source,at)>movementRange(hunters,card))continue;
             if(!aiCanFight(playerId,hunters,at))continue;
             const turns=Math.ceil(travelDistance(source,at)/movementRange(hunters,card));
             const value=125-fleetPower(enemy)*4-(yardDefense?12:0)-(escape?40:0)-turns*policy.distancePenalty-count*policy.countPenalty;
@@ -4429,11 +4431,14 @@ function createGalacticReach(options = {}) {
     const horizon=victoryTarget()-Math.max(...state.players.map((_,i)=>calculatePrestige(i)));
     const early=marketChoices()[0],marketFirst=['market','maxbot'].includes(p.strategy);
     const established=aiCards(id).some(c=>c.starter&&c.key==='construct'&&starterLevel(c)>=2);
-    if(yard&&early&&(marketFirst?established&&early.score>=18:established&&early.score>=24))purchase(early);
+    const openingMoveNeeded=()=>p.strategy==='militaryFocused'&&!aiFocusedMilitaryWorlds(id).forward
+      &&(FOCUSED_MILITARY_POLICY.moveBeforeSettler||countPlacedShips(id,'settler')>0)
+      &&aiCards(id).filter(c=>c.starter&&c.key==='move'&&starterLevel(c)>=2).length<FOCUSED_MILITARY_POLICY.openingMoves;
+    if(yard&&early&&!(p.strategy==='militaryFocused'&&FOCUSED_MILITARY_POLICY.deferOpeningBuys&&openingMoveNeeded())&&(marketFirst?established&&early.score>=18:established&&early.score>=24))purchase(early);
     if(marketFirst&&established)aiCapacityForTarget(id);
     for(let n=0;yard&&n<(p.strategy==='maxbot'?2:4)&&horizon>3;n++) {
       const candidates=[...p.hand,...p.discard,...p.inPlay].filter(c=>c.starter&&starterLevel(c)<3);
-      const rank=c=>starterLevel(c)===2?40:c.key==='construct'&&!aiCards(id).some(c=>c.key==='construct'&&c.upgraded)?45:c.key==='construct'?25:20;
+      const rank=c=>openingMoveNeeded()&&c.key==='move'&&starterLevel(c)===1&&aiCards(id).some(c=>c.key==='construct'&&c.upgraded)?60:starterLevel(c)===2?40:c.key==='construct'&&!aiCards(id).some(c=>c.key==='construct'&&c.upgraded)?45:c.key==='construct'?25:20;
       const upgrade=candidates.sort((a,b)=>rank(b)-rank(a)||a.id.localeCompare(b.id)).find(c=>RESOURCES.some(r=>p.resources[r]>=upgradePrice(c)+(immediate[r]||0)));
       if(!upgrade)break;
       const resource=surplus().find(r=>p.resources[r]>=upgradePrice(upgrade)+(immediate[r]||0));

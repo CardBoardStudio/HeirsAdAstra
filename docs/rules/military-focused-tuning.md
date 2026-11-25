@@ -1,49 +1,77 @@
-# Military Focused: first validated improvement
+# Military Focused: a majority through combat
 
-The five-to-ten-Fleet candidate won 76 of 192 fresh-map games (39.6%), compared with 53 of 192 (27.6%) for the original Military Focused policy. The paired improvement was 12.0 percentage points, with a map-block bootstrap 95% interval of 3.6–20.3 points. It improved the bot, but did **not** reach the requested majority of wins.
+The production-first Military Focused policy won **232 of 384 fresh-map games (60.4%)**, with a map-block bootstrap 95% interval of **54.9–65.9%**. The original Focused policy won 119/384 (31.0%) on the same maps. Combat victories and Victory Doctrine supplied **86.8% of the selected policy's points**. This meets the requested majority goal against the unchanged Military, Economy and Expansion rivals.
 
-This evaluates the browser rival described in the canonical [Military Focused section](../../prototypes/galactic-reach/rulebook.html#military-focused-rival). It changes the rival's decisions, with ordinary game rules, the normal nine-card market and the 30-Prestige target. Military, Economy and Expansion remain the same opponents. It does not test a Rust decision policy or establish human-player balance.
+The canonical [Military Focused section](../../prototypes/galactic-reach/rulebook.html#military-focused-rival) describes the adopted behavior. It still founds only one world beyond home, commissions Fleets on the second world, fills its two worlds with Harvesters, and supports combat through capacity, draw, exchange and military cards. No costs, movement rules, attack/hull, tactics allowance, scoring, market supply or victory target change. These results evaluate browser rivals, not a Rust decision policy or human-player balance.
 
-## Selection and fresh validation
+## What improved
 
-The 2026-11-25 development rounds each used 12 new map seeds, four starting-seat rotations per seed, and all six relative opponent orders twice per policy. Each round compared the original with six candidates: 336 complete games. All histories and failed-candidate sources remain retained.
+The adopted policy bootstraps missing Data and Life Harvesters before its home Shipyard. It protects the second Colony's Life payment during travel and prioritizes two early Move upgrades after an upgraded Construct. It normally keeps five to ten Fleets together. Through round ten, four may take a favourable fight reachable in one Move. It leaves empty enemy worlds alone and rejects purchases for unrelated Prestige.
 
-- Round 1: small independent raiding groups performed worse. The original won 20/48; the strongest challenger won 15/48. Reject all six candidates.
-- Round 2: keeping a hunting group together, allowing it to grow beyond five, was strongest. It won 25/48 versus the original's 13/48. Those development results selected the candidate; they are not independent evidence of a majority win rate.
-- Freeze that exact executable source, then play 48 disjoint new maps, four rotations each, with both policies: 384 validation games, 192 per policy. Every profile occupies each seat once on every map; all 24 seat assignments occur eight times per policy.
+| Opening step, mean round | Original Focused | Earlier opening | Production-first |
+| --- | ---: | ---: | ---: |
+| Second Colony | 6.43 | 6.16 | 4.76 |
+| First Fleet built | 8.12 | 7.21 | 5.57 |
+| First Fleet move | 10.48 | 9.30 | 7.54 |
 
-The selected policy launches at five Fleets, keeps up to ten together, slightly prefers nearer fights, and values playing Victory Doctrine in a favourable battle. It rejects purchases for unrelated Prestige. Smaller-than-five early raids were not adopted. Its two-world plan, forward Fleet production, Harvester filling and capacity support remain.
+Timing means include every game reaching the step, including losses. The selected policy averaged 9.40 Harvesters and 3.60 paid Capacity Modules; world losses can reduce the final held count. It never exceeded two held Colonies, excavated a relic or earned card Prestige unrelated to combat.
 
-| Validation lineup | Focused | Military | Economy | Expansion |
+## Fresh validation
+
+The candidate was selected on development games, then frozen before 96 disjoint new map seeds were played. Each map rotates all four starting seats for each of three policies: **1,152 planned logical games**, 384 per policy. All six relative opponent orders occur on 16 maps; each of the 24 complete seat assignments appears 16 times per policy. All games use the ordinary nine-card market and 30-Prestige target.
+
+| Focused policy in the lineup | Focused wins | Military wins | Economy wins | Expansion wins |
 | --- | ---: | ---: | ---: | ---: |
-| Original Focused | 53 (27.6%) | 53 (27.6%) | 55 (28.6%) | 31 (16.1%) |
-| Five-to-ten-Fleet Focused | 76 (39.6%) | 35 (18.2%) | 56 (29.2%) | 25 (13.0%) |
+| Original | 119 (31.0%) | 66 (17.2%) | 122 (31.8%) | 77 (20.1%) |
+| Earlier opening | 210 (54.7%) | 46 (12.0%) | 84 (21.9%) | 44 (11.5%) |
+| Production-first | 232 (60.4%) | 51 (13.3%) | 73 (19.0%) | 28 (7.3%) |
 
-The original's win-share 95% interval is 20.8–34.9%; the candidate's is 31.8–47.9%. Intervals use 20,000 percentile-bootstrap resamples of whole map blocks, preserving all four rotations. Paired differences resample the same blocks together. The selected policy contains several decision changes, so the aggregate comparison does not isolate the causal contribution of each one.
+The selected policy improves on the original by **29.4 percentage points**, paired 95% interval **22.7–36.2**. Its observed gain over the earlier opening is **5.7 points**, interval **−1.0–12.5**; that additional advantage remains uncertain. The earlier opening's own win-share interval is 49.0–60.4%, while production-first's interval is entirely above 50%.
 
-## Points across all validation games
+Intervals use 20,000 percentile-bootstrap resamples of whole map blocks, preserving their four seat rotations. Paired comparisons resample the same blocks together. The selected version bundles several decision changes, so this is not a causal estimate of any single weight or upgrade choice.
 
-Means include losses, rather than only winning scores. Victory Doctrine is combat-derived card Prestige.
+## Points across all 384 games per policy
 
-| Source | Original Focused | Five-to-ten-Fleet Focused |
-| --- | ---: | ---: |
-| Held Colonies | 5.30 | 4.98 |
-| Ordinary combat victories | 19.34 | 21.25 |
-| Card Prestige | 0.39 | 0.41 |
-| Relics | 0 | 0 |
-| Total | 25.03 | 26.64 |
+Means include losses, rather than only winning scores. All selected-policy card points are Victory Doctrine's combat-derived reward.
 
-For the selected policy, every card point came from Victory Doctrine. Combat plus Doctrine supplied 81.3% of all its points. No game exceeded two held Colonies or earned relic Prestige. The mean first Fleet move remained round 10.48 in both policies; this improvement did not accelerate the opening.
+| Source | Original Focused | Earlier opening | Production-first |
+| --- | ---: | ---: | ---: |
+| Held Colonies | 5.21 | 4.46 | 3.85 |
+| Ordinary combat victories | 19.34 | 22.50 | 24.15 |
+| Card Prestige | 0.35 | 1.01 | 1.16 |
+| Relics | 0 | 0 | 0 |
+| Total | 24.91 | 27.97 | 29.16 |
 
-## Reproducibility and retention
+Combat plus Doctrine supplied 86.8% of production-first's points. It did not buy an economic scoring engine or expand beyond its two-world plan to achieve the majority.
 
-All 384 validation games finished and passed source/trace/state/counter/RNG integrity checks, every-decision and whole-game resource accounting, production receipts, scoring reconciliation, and the two-world/no-relic constraints. No failed or incomplete games were excluded. ORCD job `30413978` completed with exit code `0:0` on `node1609`.
+## Development trail
+
+Each development round used 12 new map blocks with four seat rotations, balanced opponent orders and full archives. These comparisons select candidates; they are not held-out evidence.
+
+- Round 1, 336 games: independent small raiding groups lost. Original 20/48, strongest challenger 15/48. Reject all six challengers.
+- Round 2, 336 games: cohesive groups able to grow to ten won 25/48 versus the original's 13/48. Fresh 48-map validation later gave 76/192 (39.6%) versus 53/192 (27.6%), paired interval for the gain 3.6–20.3 points. This was the first adopted improvement.
+- Round 3, 384 games: the earlier opening won 23/48 versus 13/48 for larger groups and 7/48 for the original. Fresh 48-map validation gave 90/192 (46.9%) versus 76/192 and 66/192 respectively. Further improvement over larger groups remained uncertain.
+- Round 4, 384 games: production-first candidates won 31–34/48. The selected four-Fleet opportunistic version won 34/48 (70.8%), versus 26/48 for the earlier opening and 20/48 for the original. The larger fresh validation above, rather than 70.8%, is the adopted evidence.
+- Round 5, 384 games: defensive target priority and paired immediate strikes remain exploratory. The selected combination won 30/48 versus the production-first incumbent's 29/48. It is not adopted without fresh confirmation.
+
+Raw win shares from different cohorts should not be read as paired comparisons. For example, the same earlier-opening source won 46.9% in one held-out cohort and 54.7% in the larger one.
+
+## Recovery, verification and retention
+
+All **1,152 planned logical games** finished and passed source/trace/state/counter/RNG integrity checks, every-decision and whole-game resource accounting, production receipts, scoring reconciliation and the two-world/no-relic/no-unrelated-Prestige constraints. No planned seeds or losses were dropped.
+
+The first execution hit ORCD's home inode quota. Its 305 physical attempts remain retained: 291 complete manifests and 14 partial journals. There were 282 completed, independently audited rows available to reuse; nine additional complete-but-unrecorded attempts and fourteen partial attempts were rerun. The recovery completed the remaining 870 logical tasks with identical frozen policies, tasks and RNG seeds. Count one final outcome per preplanned task, not both copies of a rerun. In total, 1,175 physical attempts are retained for this 1,152-game plan.
+
+Lossless hard-link consolidation of identical frozen source files freed 24,285 inodes, verifying every source hash before and after; no game, manifest, trace, source path or source byte was pruned. A repeated original-policy game matched all 5,116 retained state/counter/RNG checkpoints. A genuinely partial selected-policy game matched its 4,092 retained checkpoints before extending to 4,256. The original job was `30416286`; recovery job `30417854` completed with exit `0:0` on `node1620`.
+
+Reproduction identifiers:
 
 - Original source commit: `af501e5759fc26002ea2a09036a1a4ef4371b01c`.
-- Selected `app.js` SHA-256: `afdf2c755581a4830f350928b22f5d01b09802733b46c3def338d78b3c667dd6`. The promoted executable matches it exactly; the final player-facing rulebook wording clarifies the selected group sizes.
-- Validation protocol SHA-256: `3ca8d25d11bf28908640945bacad7b82288c6ad7a35af7b3ea195ab4776ee4e3`.
-- Audited validation rows SHA-256: `4494e280f560003e81163267b57213c0b310e4937bf2def8144f3f240ba857af`.
-- Local study parent: `output/military-focused-improvement-20261125/`. Development runs are `run-accb1236f8` and `run-round2-6e2c170c59`; validation is `run-validate-r2-aa8fb1c395`. Each retains its frozen protocol, source hashes and audit results. `analyze-round.py` records the analysis; the validation's `analysis/report.html` and `analysis/summary.json` report every outcome.
-- Complete validation game histories and sources: `/home/maxhays/galactic-reach-simulations/focused-run-validate-r2-aa8fb1c395/results/games/` on ORCD. Each audited row records its exact archive path. Full private positions, engine counters, actions/events and the random stream follow the [simulation archive contract](../simulation-archives.md).
+- Adopted `app.js` SHA-256: `b1949d6b7ce86a57e8c043c6073a7ef374ca30993a5b5e8123ebe74d32bda3df`. The promoted executable matches it exactly; final player-facing rulebook wording describes the selected preparation and group sizes.
+- Validation protocol SHA-256: `e0303edf60728f6d992198f891fb99a2ecfaa6156b5f6f86ed5d405b9ce9492c`.
+- Complete audited rows SHA-256: `e04cf9942c44af336d252ad7a12ef910395ac05d3915b4acc7cce0884c485c32`.
+- Local study parent: `output/military-focused-improvement-20261125/`. The original validation is `run-validate-r4-48b9e2f60c`; recovery is `run-validate-r4-48b9e2f60c-recovery1`. Recovery retains `results/games.completed.jsonl`, `recovery-provenance.json`, `analysis/report.html`, `analysis/summary.json` and the exact analysis source/manifest. The original 282-row prefix and interruption inventory remain separate.
+- Full histories: `/home/maxhays/galactic-reach-simulations/focused-run-validate-r4-48b9e2f60c/results/games/` and its `-recovery1` counterpart on ORCD. Every final row records its exact archive path. Full private positions, counters, actions/events and RNG follow the [simulation archive contract](../simulation-archives.md).
+- All 672 histories from the first two development rounds are also retained in the locally downloaded and checksum-verified `focused-completed-r1-r2-20261125.tar.gz` bundle.
 
-Opening-production and early-upgrade candidates are separate continuing experiments. They do not alter this frozen validation result or establish a further improvement until tested on fresh maps.
+Optimization continues at the user's request. A majority in this frozen test does not authorize merging the PR or changing the three opponent policies.

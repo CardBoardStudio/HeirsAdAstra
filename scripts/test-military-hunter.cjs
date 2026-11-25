@@ -19,7 +19,9 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   const restored=c.createGalacticReach({headless:true,resume:focused}).snapshotState();assert.equal(restored.state.players[1].strategy,'militaryFocused');
 }
 {
-  const g=game(),home=g.s.clusters[1];let build=g.e.chooseAiBuild(1);assert.equal(build.kind,'starbase');assert.equal(g.s.planets[build.coord].cluster,home.id);
+  const g=game(),home=g.s.clusters[1];
+  for(const resource of ['data','biomass']){const prep=g.e.chooseAiBuild(1);assert.equal(prep.kind,'harvester');assert.equal(g.s.planets[prep.coord].type,resource);assert.equal(g.s.planets[prep.coord].cluster,home.id);assert(g.e.constructAt(1,prep.coord,prep.kind));}
+  let build=g.e.chooseAiBuild(1);assert.equal(build.kind,'starbase');assert.equal(g.s.planets[build.coord].cluster,home.id);
   assert(g.e.constructAt(1,build.coord,build.kind));build=g.e.chooseAiBuild(1);assert.equal(build.kind,'settler');assert(g.e.constructAt(1,build.coord,build.kind));
   const card={id:'move',key:'move',starter:true,upgraded:true},move=g.e.chooseAiMove(1,card);assert(move);assert.equal(g.s.planets[move.goal].owner,null);legal(g,move,card);
   const world=g.s.clusters[4];g.s.fleets={[world.center]:{1:{settler:1}}};assert.equal(g.e.chooseAiMove(1,card),null,'Wait at the second Colony site');
@@ -53,6 +55,19 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   g.s.fleets['2,0']={0:{explorer:2}};g.s.players[0].resources.energy=1;
   assert.equal(g.e.chooseAiMove(1,card).goal,'0,2','Prefer a decisive fight over Explorers that can escape');
   g.s.fleets['0,2']={2:{fleet:10}};delete g.s.fleets['2,0'];assert.equal(g.e.chooseAiMove(1,card),null,'Do not attack an overwhelming group');
+}
+{
+  const g=game(),world=second(g),forward=yard(g,world),card={id:'early',key:'move',starter:true,upgraded:true};
+  g.s.fleets={'0,0':{1:{fleet:4}},'2,0':{0:{fleet:1}}};
+  const raid=g.e.chooseAiMove(1,card);assert.equal(raid.goal,'2,0');assert.equal(raid.destination,'2,0');assert.equal(raid.units.fleet,4,'Four can take a safe fight in one early Move');legal(g,raid,card);
+  g.s.round=11;assert.equal(g.e.chooseAiMove(1,card).goal,forward,'Later incomplete groups regroup');
+}
+{
+  const g=game(),at=yard(g,g.s.clusters[1]);g.s.fleets={[at]:{1:{settler:1}}};
+  g.p.hand=[{id:'early-move',key:'move',starter:true},{id:'existing-construct',key:'construct',starter:true,upgraded:true,level:2}];
+  g.p.resources={matter:1,energy:1,biomass:3,data:4};g.s.phase='buy';g.s.market=[];g.s.capacitySupply=0;
+  g.e.runAiBuy();assert.equal(g.p.hand.find(c=>c.id==='early-move').level,2,'Opening Move upgrade precedes Construct III');
+  assert.equal(g.p.hand.find(c=>c.id==='existing-construct').level,2);assert.equal(g.p.resources.biomass,3,'Preserve the Colony payment during travel');
 }
 {
   const g=game(),world=second(g),forward=yard(g,world),card={id:'move',key:'move',starter:true,upgraded:true};
