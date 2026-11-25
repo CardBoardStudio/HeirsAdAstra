@@ -4270,7 +4270,7 @@ body.background-stars .combat-many-ships .combat-unit figcaption { gap:0; }
 }
 
 /* Willem's combat mats (#combat-table). Max's renderer and table styles stay separate. */
-body:not(.background-stars) .combat-dialog.combat-mats { width: min(1180px, calc(100vw - 24px)); padding: 12px 16px; background: radial-gradient(ellipse at top, var(--felt), var(--felt-deep)); border: 1px solid var(--gold); border-radius: 16px; overflow: visible; }
+body:not(.background-stars) .combat-dialog.combat-mats { width: min(1180px, calc(100vw - 24px)); padding: 12px 16px; background: radial-gradient(ellipse at top, color-mix(in srgb, var(--felt) 85%, #000), var(--felt-deep)); border: 1px solid var(--gold); border-radius: 16px; overflow: visible; }
 body:not(.background-stars) .combat-mats .dialog-heading { margin-bottom: 8px; }
 body:not(.background-stars) .combat-mats .dialog-heading h2 { font-size: 20px; }
 body:not(.background-stars) .combat-mats .combat-forces { gap: 7px; }
