@@ -14,7 +14,7 @@ function game(key){const g=freshEngine(171);g.s=g.state;g.e=g.engine;g.p=g.s.pla
 }
 {
  const g=game('foldedWarehouse');g.p.resourceLimits={matter:15,energy:14,biomass:15,data:4};
- assert(g.e.resolveHumanSpecial(g.p.hand[0],g.e.ALL_CARDS.foldedWarehouse,0));assert.deepEqual(plain(g.p.resourceLimits),{matter:15,energy:15,biomass:15,data:5});
+ assert(g.e.resolveHumanSpecial(g.p.hand[0],g.e.ALL_CARDS.foldedWarehouse,0));assert.deepEqual(plain(g.p.resourceLimits),{matter:15,energy:15,biomass:15,data:6});
 }
 {
  const g=game('omniscientChorus'),id=g.p.hand[0].id;g.p.deck=[card('move')];
@@ -31,8 +31,8 @@ function game(key){const g=freshEngine(171);g.s=g.state;g.e=g.engine;g.p=g.s.pla
 }
 {
  const g=game('ascendancyCodex');g.p.deck=[card('move')];assert(g.e.resolveHumanSpecial(g.p.hand[0],g.e.ALL_CARDS.ascendancyCodex,0));
- assert.equal(g.p.cardPrestigeSources.ascendancyCodex,2);assert.equal(g.p.cardPrestige,2);
- const snap=g.adapter.snapshotState();assert.equal(snap.state.players[0].cardPrestigeSources.ascendancyCodex,2);
+ assert.equal(g.p.cardPrestigeSources.ascendancyCodex,1);assert.equal(g.p.cardPrestige,1);assert.equal(g.p.deck.length,1,'Codex grants Prestige without drawing the waiting card');
+ const snap=g.adapter.snapshotState();assert.equal(snap.state.players[0].cardPrestigeSources.ascendancyCodex,1);
 }
 // #relic-targeting: every nonempty subset is legal, ownership and unchosen ships stay put.
 for(const units of [{settler:0,explorer:0,fleet:1},{settler:1,explorer:1,fleet:1}]) {

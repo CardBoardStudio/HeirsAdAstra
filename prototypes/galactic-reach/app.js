@@ -506,12 +506,13 @@ function createGalacticReach(options = {}) {
     "tag": "foldedWarehouse",
     "effect": {
       "limits": {
-        "matter": 1,
-        "energy": 1,
-        "biomass": 1,
-        "data": 1
+        "matter": 2,
+        "energy": 2,
+        "biomass": 2,
+        "data": 2
       },
-      "draw": 2
+      "draw": 2,
+      "trashSelf": true
     }
   },
   "keepersArchive": {

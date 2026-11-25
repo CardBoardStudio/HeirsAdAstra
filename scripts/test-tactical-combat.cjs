@@ -16,6 +16,13 @@ function choose(g,action){assert(g.e.applyCombatAction(g.e.combatActor(),action)
 function stays(g){while(g.s.pendingCombat?.stage==='escape')choose(g,{type:'combat_stay'});}
 function volley(g,a='concentratedFire',d='concentratedFire'){choose(g,{type:'combat_tactic',tactic:a});choose(g,{type:'combat_tactic',tactic:d});}
 function finish(g){let n=0;while(g.s.pendingCombat){assert(n++<20);choose(g,g.e.combatActions(g.e.combatActor())[0]);}}
+// Torpedo Barrage uses the ordinary tactic window, grants its hits/shields and spends one copy.
+{
+ const g=fixture({a:{fleet:2},d:{fleet:2}});g.s.players[0].military=[{id:'barrage',key:'torpedoBarrage'}];g.start();stays(g);
+ volley(g,'torpedoBarrage','concentratedFire');
+ assert.equal(g.s.pendingCombat.volleys[0].attacker.bonus,3);assert.equal(g.s.pendingCombat.volleys[0].attacker.shields,3);
+ assert(!g.e.combatActions(0).some(a=>a.tactic==='torpedoBarrage'),'The purchased tactic copy cannot be used twice in this battle');finish(g);
+}
 // Fleets shield Settlers on both sides, including against their lower remaining hull.
 {
  const g=fixture({a:{fleet:1,settler:1},d:{fleet:1,settler:1}});g.start();stays(g);volley(g);

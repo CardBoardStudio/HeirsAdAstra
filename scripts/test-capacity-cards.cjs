@@ -47,6 +47,15 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
   assert.equal(game({ victoryTarget: 40 }).s.victoryTarget, 40, 'Explicit40-point games retain their chosen target'); assert.equal(game({ victoryTarget: 35 }).s.victoryTarget, 30, 'Unlisted targets fall back to 30');
   assert.equal(game({ newGameSettings: { victoryTarget: 60 } }).s.victoryTarget, 60, 'Table settings choose the target');
 }
+// Genesis Charter can now be bought with exactly seven Life, preserving its printed other costs.
+{
+  const g=game(),{s,p}=g;s.phase='buy';s.activePlayer=0;p.passed=true;
+  p.resourceLimits={matter:4,energy:4,biomass:7,data:4};p.resources={matter:2,energy:0,biomass:7,data:1};
+  s.market=[{key:'genesisCharter',id:'seven-life-charter'}];
+  act(g,0,'buy',a=>a.index===0);
+  assert.deepEqual(JSON.parse(JSON.stringify(p.resources)),{matter:0,energy:0,biomass:0,data:0});
+  assert(p.discard.some(c=>c.id==='seven-life-charter'));
+}
 // Starting limits can hold the specified entry cards; higher-cost cards still need capacity.
 {
   const g = game(), { s, p } = g; s.phase = 'buy'; s.activePlayer = 0; p.passed = true; p.resources = { matter: 4, energy: 4, biomass: 4, data: 4 };
