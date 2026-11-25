@@ -12,7 +12,7 @@ function game(){
 }
 function yard(g,world){const at=world.coords.filter(c=>c!==world.center).sort((a,b)=>g.e.travelDistance(a,'0,0')-g.e.travelDistance(b,'0,0'))[0];Object.assign(g.s.planets[at],{owner:1,upgrade:'starbase'});return at;}
 function second(g){const world=g.s.clusters[4];Object.assign(g.s.planets[world.center],{owner:1,originalFounder:1,hasColony:true});return world;}
-function legal(g,move,card){g.p.hand=[card];assert(g.a.legalActions(1).some(a=>a.type==='move'&&a.source===move.source&&a.destination===move.destination&&JSON.stringify(plain(a.units))===JSON.stringify(plain(move.units))),JSON.stringify(move));}
+function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapter(g.e);assert(fresh.legalActions(1).some(a=>a.type==='move'&&a.source===move.source&&a.destination===move.destination&&JSON.stringify(plain(a.units))===JSON.stringify(plain(move.units))),JSON.stringify(move));}
 {
   const {c}=game(),original=c.createGalacticReach({headless:true}).snapshotState();assert(original.state.players.some(p=>p.strategy==='military'));assert(!original.state.players.some(p=>p.strategy==='militaryFocused'));
   const focused=c.createGalacticReach({headless:true,militaryFocused:true}).snapshotState();assert.equal(focused.state.players.filter(p=>p.strategy==='militaryFocused').length,1);
@@ -25,7 +25,9 @@ function legal(g,move,card){g.p.hand=[card];assert(g.a.legalActions(1).some(a=>a
   const world=g.s.clusters[4];g.s.fleets={[world.center]:{1:{settler:1}}};assert.equal(g.e.chooseAiMove(1,card),null,'Wait at the second Colony site');
   g.p.hand=[{id:'col',key:'colonize'}];g.e.runAiOperation();assert.equal(g.s.planets[world.center].owner,1);
   g.s.activePlayer=1;g.p.hand=[{id:'build2',key:'construct'}];build=g.e.chooseAiBuild(1);assert.equal(build.kind,'starbase');assert.equal(g.s.planets[build.coord].cluster,world.id);
-  assert(g.e.constructAt(1,build.coord,build.kind));build=g.e.chooseAiBuild(1);assert.equal(build.kind,'fleet');assert.equal(g.s.planets[build.coord].cluster,world.id);
+  assert(g.e.constructAt(1,build.coord,build.kind));
+  for(let n=0;n<4&&g.e.chooseAiBuild(1)?.kind==='harvester';n++){build=g.e.chooseAiBuild(1);assert(g.e.constructAt(1,build.coord,build.kind));}
+  build=g.e.chooseAiBuild(1);assert.equal(build.kind,'fleet');assert.equal(g.s.planets[build.coord].cluster,world.id);
 }
 {
   const g=game(),world=second(g);yard(g,g.s.clusters[1]);const forward=yard(g,world),third=g.s.clusters[5];
@@ -34,10 +36,11 @@ function legal(g,move,card){g.p.hand=[card];assert(g.a.legalActions(1).some(a=>a
   g.p.hand=[{id:'col',key:'colonize'}];g.e.runAiOperation();assert.equal(g.s.planets[third.center].owner,null,'Spare Colonize never founds a third world');
   Object.assign(g.s.planets[world.center],{owner:2});assert(g.e.aiFocusedMilitaryWorlds(1).forward);assert.equal(g.e.findColonizeTarget(1),null,'Losing the forward world does not restart expansion');
 }
+
 {
   const g=game(),world=second(g);yard(g,g.s.clusters[1]);const forward=yard(g,world),card={id:'move',key:'move',starter:true,upgraded:true};
-  g.s.fleets={[forward]:{1:{fleet:4}},'0,0':{0:{settler:1}}};assert.equal(g.e.chooseAiMove(1,card),null,'Four stay at the Shipyard');
-  g.s.fleets[forward][1].fleet=10;let move=g.e.chooseAiMove(1,card);assert.equal(move.goal,'0,0');assert.deepEqual(plain(move.units),{settler:0,explorer:0,fleet:5});legal(g,move,card);
+  g.s.fleets={[forward]:{1:{fleet:4}},'0,0':{0:{settler:1}}};let move=g.e.chooseAiMove(1,card);assert.equal(move,null,'Four wait for a complete hunting group');
+  g.s.fleets[forward][1].fleet=10;move=g.e.chooseAiMove(1,card);assert.equal(move.goal,'0,0');assert.equal(move.units.fleet,10,'Keep a larger hunting group together');legal(g,move,card);
   const before=JSON.stringify(g.s),calls=g.calls(),hand=g.s.players[0].hand;g.s.players[0].hand=[{id:'secret',key:'phaseLance'}];g.s.players[0].deck.reverse();
   assert.deepEqual(plain(g.e.chooseAiMove(1,card)),plain(move),'Hunting ignores enemy private cards');assert.equal(g.calls(),calls);
   g.s.players[0].hand=hand;assert(JSON.stringify(g.s)===before,'Planning does not mutate the position');
@@ -53,9 +56,17 @@ function legal(g,move,card){g.p.hand=[card];assert(g.a.legalActions(1).some(a=>a
 }
 {
   const g=game(),world=second(g),forward=yard(g,world),card={id:'move',key:'move',starter:true,upgraded:true};
-  g.s.fleets={'0,0':{1:{fleet:3}},'3,0':{1:{fleet:3}},'1,0':{0:{settler:1}}};
-  const move=g.e.chooseAiMove(1,card);assert(move);assert.notEqual(move.goal,'1,0');assert.equal(move.units.fleet,2,'Merge only enough to form five');legal(g,move,card);
+  g.s.fleets={'0,0':{1:{fleet:3}},'3,0':{1:{fleet:3}}};
+  const move=g.e.chooseAiMove(1,card);assert(move);assert.equal(move.units.fleet,3,'Merge the incomplete groups when no useful scoring fight is available');legal(g,move,card);
   g.s.fleets={'0,0':{1:{fleet:4}}};assert.equal(g.e.chooseAiMove(1,card).goal,forward,'Survivors return for reinforcement');
+}
+{
+  const g=game();g.p.strategy='militaryFocused';
+  const piece=(type,power,hull)=>({type,power,hull,damage:0});
+  const view={stage:'tactic',side:'attacker',volley:1,sides:{attacker:{playerId:1,pieces:Array.from({length:3},()=>piece('fleet',3,7)),used:[]},defender:{playerId:0,pieces:[piece('settler',1,4)],used:[],available:{concentratedFire:2,defensiveScreen:2}}}};
+  const actions=[{type:'combat_tactic',tactic:'novaBarrage'},{type:'combat_tactic',tactic:'victoryDoctrine'}];
+  assert.equal(g.e.chooseCombatAction(view,actions).tactic,'victoryDoctrine','Use the combat reward in a safe decisive fight');
+  g.p.strategy='military';assert.equal(g.e.chooseCombatAction(view,actions).tactic,'novaBarrage','Original Military tactic choices are unchanged');
 }
 {
   const g=game(),world=second(g);yard(g,g.s.clusters[1]);const forward=yard(g,world);g.s.fleets={[forward]:{1:{fleet:10}}};
@@ -91,4 +102,4 @@ function legal(g,move,card){g.p.hand=[card];assert(g.a.legalActions(1).some(a=>a
   g.s.activePlayer=1;g.s.pendingColonyBuild={playerId:1,colony:world.center};g.e.aiColonyBuild(1);
   assert.equal(world.coords.filter(c=>g.s.planets[c].upgrade==='starbase').length,1,'Bonus construction cannot add another forward Shipyard');
 }
-console.log('Military Focused: one expansion, forward production, five-Fleet sorties, weaker targets, legal regrouping, private information, both worlds filled, capacity and focused purchases passed.');
+console.log('Military Focused: one expansion, forward supply/production, cohesive five-to-ten-Fleet groups, weaker targets, legal regrouping, private information, both worlds filled, capacity, combat-reward tactics and original-policy isolation passed.');

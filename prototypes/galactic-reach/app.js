@@ -3234,7 +3234,10 @@ function createGalacticReach(options = {}) {
       const enemyFire=2-enemy.used.filter(key=>key==='concentratedFire').length, enemyScreen=2-enemy.used.filter(key=>key==='defensiveScreen').length;
       const probability=enemyFire/(enemyFire+enemyScreen), shield=(1-probability)*2;
       const dealt=Math.max(0,power(me)+card.attack-(card.pierce?0:shield)), received=Math.max(0,power(enemy)+probability-card.shield);
-      return dealt-received*.75+(dealt>=hull(enemy)?8:0)-(received>=hull(me)?10:0)+(view.volley===3 && view.side==='defender'?card.shield:0);
+      const focused=state.players[me.playerId]?.strategy==='militaryFocused';
+      const enemyBonus=Math.max(1,...Object.entries(enemy.available||{}).filter(([,count])=>count>0).map(([key])=>MILITARY_CARDS[key]?.attack||0));
+      const combatReward=focused&&power(me)>=power(enemy)&&hull(me)>power(enemy)+enemyBonus?(card.victoryPrestige||0)*FOCUSED_MILITARY_POLICY.doctrinePlay:0;
+      return dealt-received*.75+(dealt>=hull(enemy)?8:0)-(received>=hull(me)?10:0)+(view.volley===3 && view.side==='defender'?card.shield:0)+combatReward;
     };
     return [...actions].sort((a,b)=>score(b)-score(a))[0];
   }
@@ -3886,9 +3889,11 @@ function createGalacticReach(options = {}) {
     const income=aiIncome(playerId),limits=resourceLimits(playerId);
     let value=aiCardUtility(playerId,key);
     if(p.strategy==='militaryFocused') {
-      const effect=def.effect||{},expanding=!aiFocusedMilitaryWorlds(playerId).forward;
-      if(!(def.military||effect.draw>=2||effect.bankRate||effect.allocate||effect.limits||['move','construct'].includes(def.order)||expanding&&def.order==='colonize'))return -1;
+      const effect=def.effect||{};
+      if(def.gainPrestige||effect.prestige||def.colonyPrestige)return -1;
+      if(!(def.military||Math.max(effect.draw||0,def.fallbackDraw||0)>=2||effect.bankRate||effect.allocate||effect.limits||['move','construct'].includes(def.order)))return -1;
       value+=def.military?12:effect.draw>=2?12:effect.bankRate?14:['move','construct'].includes(def.order)?8:0;
+      if(key==='victoryDoctrine'&&countPlacedShips(playerId,'fleet')>=2&&!p.military.some(c=>c.key===key))value+=FOCUSED_MILITARY_POLICY.doctrineBuy;
     }
     value-=RESOURCES.reduce((n,r)=>n+(def.cost[r]||0)*(.5+1/(income[r]+1))+Math.max(0,(def.cost[r]||0)-limits[r])*3,0);
     const favored={market:['Economy','Capacity','Deckcraft','Buy','Industry'],military:['Military','Movement'],militaryFocused:['Military','Movement'],economy:['Economy','Capacity','Deckcraft','Buy','Industry'],expansion:['Expansion','Movement','Capacity']}[p.strategy]||[];
@@ -3951,6 +3956,9 @@ function createGalacticReach(options = {}) {
     return aiHomeCluster(playerId)?.coords.slice(1).sort((a,b)=>hexDistance(a,'0,0')-hexDistance(b,'0,0'))[0];
   }
 
+  // Fixed browser-policy parameters, also frozen with each simulation candidate.
+  const FOCUSED_MILITARY_POLICY = Object.freeze({"minRaid":5,"maxRaid":10,"margin":0,"preferFullGroup":true,"earlyRaidUntil":10,"distancePenalty":4,"countPenalty":0,"maxRisk":1,"productionFloor":0,"doctrineBuy":0,"doctrinePlay":6,"leaderPressure":0.15,"rallyScore":80,"returnScore":75});
+
   // #military-focused-rival: founding the second Colony ends expansion permanently.
   // originalFounder survives conquest, so this plan needs no hidden policy state.
   function aiFocusedMilitaryWorlds(playerId) {
@@ -3971,7 +3979,8 @@ function createGalacticReach(options = {}) {
       if(site)options.push({kind:'starbase',coord:site,score:100});
       for(const coord of world.coords)if(coord!==site&&canBuildStructureAt(playerId,coord,'harvester')) {
         const resource=state.planets[coord].type;
-        options.push({kind:'harvester',coord,score:!forward?25:income[resource]===0?72:50+Math.max(0,4-income[resource])*3});
+        const supply=forward&&['matter','energy'].includes(resource)&&income[resource]<FOCUSED_MILITARY_POLICY.productionFloor;
+        options.push({kind:'harvester',coord,score:!forward?25:supply?74:income[resource]===0?72:50+Math.max(0,4-income[resource])*3});
       }
       if(!yard)continue;
       if(!forward&&!countPlacedShips(playerId,'settler')&&canPlaceShip(playerId,'settler'))options.push({kind:'settler',coord:yard[0],score:90});
@@ -4079,11 +4088,11 @@ function createGalacticReach(options = {}) {
   }
 
   function aiFocusedMilitaryMoves(playerId, card, groups, add) {
-    const {forward}=aiFocusedMilitaryWorlds(playerId),cannotAttack=avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag);
+    const policy=FOCUSED_MILITARY_POLICY,{forward}=aiFocusedMilitaryWorlds(playerId),cannotAttack=avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag);
     const yard=forward&&controlledPlanets(playerId).find(([,p])=>p.cluster===forward.id&&p.upgrade==='starbase')?.[0];
     // Pick one rendezvous for incomplete groups; reciprocal merge plans would chase
-    // each other. A completed five-Fleet group never donates ships or grows to six.
-    const partial=groups.filter(([,g])=>g[playerId].fleet%5).sort((a,b)=>b[1][playerId].fleet%5-a[1][playerId].fleet%5
+    // each other. Small groups may still take a safe scoring fight before rallying.
+    const partial=groups.filter(([,g])=>g[playerId].fleet%policy.maxRaid).sort((a,b)=>b[1][playerId].fleet%policy.maxRaid-a[1][playerId].fleet%policy.maxRaid
       ||(yard?travelDistance(a[0],yard)-travelDistance(b[0],yard):0)||aiCompareCoords(a[0],b[0],playerId));
     const rally=partial[0]?.[0];
     for(const [source,g] of groups) {
@@ -4093,23 +4102,31 @@ function createGalacticReach(options = {}) {
           add(source,{settler:f.settler,explorer:0,fleet:0},world.center,120,'ships',true);
       }
       const fleets=f.fleet||0;
-      if(fleets>=5) {
-        const hunters={settler:0,explorer:0,fleet:5};
+      const minimum=state.round<=policy.earlyRaidUntil?policy.minRaid:5;
+      if(fleets>=minimum) {
         for(const [at,other] of Object.entries(state.fleets)) {
           const defender=findDefender(at,playerId),enemy=defender===null?null:other[defender];
-          if(!enemy||!fleetCount(enemy)||!aiCanFight(playerId,hunters,at))continue;
+          if(!enemy||!fleetCount(enemy))continue;
           const planet=state.planets[at],yardDefense=planet?.owner===defender&&planet.upgrade==='starbase';
           const escape=enemy.explorer&&state.players[defender].resources.energy>=1&&adjacentKeys(at).some(next=>!hostileAt(next,defender));
-          add(source,hunters,at,125-fleetPower(enemy)*4-(yardDefense?12:0)-(escape?40:0),'ships',cannotAttack);
+          const maximum=Math.min(fleets,policy.maxRaid),tried=new Set();
+          for(let n=policy.preferFullGroup?maximum:minimum;n<=maximum;n++) {
+            const count=Math.min(maximum,n+policy.margin);if(tried.has(count))continue;tried.add(count);
+            const hunters={settler:0,explorer:0,fleet:count};
+            if(!aiCanFight(playerId,hunters,at))continue;
+            const turns=Math.ceil(travelDistance(source,at)/movementRange(hunters,card));
+            const value=125-fleetPower(enemy)*4-(yardDefense?12:0)-(escape?40:0)-turns*policy.distancePenalty-count*policy.countPenalty;
+            if(add(source,hunters,at,value,'ships',cannotAttack,policy.maxRisk))break;
+          }
         }
       }
-      const spare=fleets%5;
+      const spare=fleets%policy.maxRaid;
       if(!spare)continue;
       if(rally&&rally!==source) {
-        const waiting=state.fleets[rally][playerId].fleet%5;
-        add(source,{settler:0,explorer:0,fleet:Math.min(spare,5-waiting)},rally,80,'ships',true);
+        const waiting=state.fleets[rally][playerId].fleet%policy.maxRaid;
+        add(source,{settler:0,explorer:0,fleet:Math.min(spare,policy.maxRaid-waiting)},rally,policy.rallyScore,'ships',true);
       } else if(partial.length===1&&yard&&source!==yard) {
-        add(source,{settler:0,explorer:0,fleet:spare},yard,75,'ships',true);
+        add(source,{settler:0,explorer:0,fleet:spare},yard,policy.returnScore,'ships',true);
       }
     }
   }
@@ -4118,9 +4135,9 @@ function createGalacticReach(options = {}) {
     const p=state.players[playerId],military=p.strategy==='military'||maxBotLate(playerId),expansion=['expansion','maxbot'].includes(p.strategy),economy=['economy','market','maxbot'].includes(p.strategy);
     const groups=Object.entries(state.fleets).filter(([,g])=>fleetCount(g[playerId]));
     const targets=[],defense=aiColonyDefense(playerId);
-    const add=(source,moving,goal,value,moveGroup,cannotAttack)=>{
+    const add=(source,moving,goal,value,moveGroup,cannotAttack,maxRisk=Infinity)=>{
       if (source===goal) return;
-      value+=moveGroup==='ships'?(p.strategy==='militaryFocused'?.15:1)*(aiLeaderPressure(playerId,state.planets[goal]?.owner)+Math.max(0,...Object.keys(state.fleets[goal]||{}).map(owner=>aiLeaderPressure(playerId,+owner)))):0;
+      value+=moveGroup==='ships'?(p.strategy==='militaryFocused'?FOCUSED_MILITARY_POLICY.leaderPressure:1)*(aiLeaderPressure(playerId,state.planets[goal]?.owner)+Math.max(0,...Object.keys(state.fleets[goal]||{}).map(owner=>aiLeaderPressure(playerId,+owner)))):0;
       const range=movementRange(moving,card),path=aiPath(source,goal,playerId,moving,cannotAttack,range,routeCache);
       if (!path?.length) return;
       const segment=[];let spent=0,previous=source;
@@ -4129,10 +4146,12 @@ function createGalacticReach(options = {}) {
       const destination=segment[segment.length-1],pathCost=pathMovementCost(source,path);
       const risk=moveGroup==='ships'?aiThreat(playerId,moving,destination,source):0;
       const current=moveGroup==='ships'?aiThreat(playerId,moving,source,source):0;
+      if(risk>maxRisk)return;
       if (moving.settler && risk>.6 && risk>=current) return;
       const home=defense.find(d=>d.coord===source&&d.attackers),remaining=(state.fleets[source]?.[playerId]?.fleet||0)-(moving.fleet||0);
       const abandon=home&&remaining<home.attackers+1&&home.guards>=home.attackers+1?80:0;
-      targets.push({source,destination,moveGroup,units:fleetGroup(moving,moveGroup),score:value-2*Math.ceil(pathCost/range)+(pathCost<=range?4:0)-risk*(moving.settler?55:35)-abandon,goal});
+      const target={source,destination,moveGroup,units:fleetGroup(moving,moveGroup),score:value-2*Math.ceil(pathCost/range)+(pathCost<=range?4:0)-risk*(moving.settler?55:35)-abandon,goal};
+      targets.push(target);return target;
     };
     if(p.strategy==='militaryFocused')aiFocusedMilitaryMoves(playerId,card,groups,add);
     else for (const [source,g] of groups) {
