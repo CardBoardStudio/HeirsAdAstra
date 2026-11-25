@@ -29,6 +29,20 @@ All selected-policy card points are combat-derived Victory Doctrine. It never ex
 
 The study is `run-validate-r6-01fbd74e32`, with all outcome/archive paths and download checksums retained in its local results and `retrieval-status.json`. The exact `app.js` SHA-256 is `1206c485baf344fdf8b05d93b509917c5037edcec76642405d531d0e28565438`; protocol `ea71c1ebcf29b8594d091ba20628000e9cfab3f74657d346c068005b026c6a0b`; complete audited rows `80c0ee408b1a8c9ba3d6c6eda32af6c44a33831954947b8b426a0588ceac8673`. Its `control` label means the production-first predecessor, not the original Focused bot. Confidence intervals use the same 20,000 whole-map resamples described below. The paired interval satisfied the predeclared positive-gain adoption gate.
 
+## Which fights supplied the points
+
+A read-only reanalysis of every retained history in the 384-game shorter-hunt cohort reconciled **4,668 decisive Focused combat wins** with the audited ordinary combat points. It rechecked source, trace, state, counter and RNG integrity. Starting enemy groups were:
+
+| Enemy Fleets at the start of a decisive Focused win | Wins | Share |
+| --- | ---: | ---: |
+| None | 1,808 | 38.7% |
+| One | 1,576 | 33.8% |
+| Two or more | 1,284 | 27.5% |
+
+Thus 72.5% of decisive wins faced at most one enemy Fleet. A group without Fleets can still contain Settlers, Explorers or a defending Shipyard. The bot lost no Fleets in **3,801 of these wins (81.4%)**; this percentage concerns winning combats, not all battles. Its opponents in those wins were Expansion 1,763 times, Economy 1,601 and Military 1,304. This supports weak-group hunting as the scoring mechanism; it does not require a broader expansion or relic engine.
+
+All 768 histories across this cohort and the earlier independent production-first replication were reanalyzed in 48 retained chunks. Chunk-analyzer SHA-256: `935bae0701f634e66d2b2128213c73238183ad6e486e7e241eb6905e84cf6b58`; coordinator: `09158b748cf71258c5b1ff905f22a03ec268c0a57d30896b5a4b2923f04e566e`. Local `posthoc-victims-parallel-v2/` retains every chunk, source, manifest and verified download. A serial analysis helper was replaced for performance; no game histories or outcomes changed. This diagnostic did not select or retune the frozen policy.
+
 ## What improved
 
 The adopted policy bootstraps missing Data and Life Harvesters before its home Shipyard. It protects the second Colony's Life payment during travel and prioritizes two early Move upgrades after an upgraded Construct. It normally keeps five to ten Fleets together. Through round ten, four may take a favourable fight reachable in one Move. It leaves empty enemy worlds alone and rejects purchases for unrelated Prestige.
@@ -91,6 +105,8 @@ Each development round used 12 new map blocks with four seat rotations, balanced
 - Round 7, 384 games: extra production before Fleets and stronger exchange buying lost (24–30/48 versus the old incumbent's 35/48). Higher draw preference tied at 35/48 and won the predeclared mean-points tiebreak, but did not increase wins. It remains unadopted and must face the new shorter-hunt incumbent in any confirmation.
 
 - Round 8, 384 games: public one-volley tactic forecasts tied the predecessor at 31/48 at best; the predeclared mean-points tiebreak selected the worst-response model. It remains unadopted. A fixture that preserves another Fleet does not establish higher game win share.
+
+- Round 9, 384 games: allowing only immediate favourable three-Fleet fights throughout the game won 39/48 (81.2%), versus the older production-first predecessor's 29/48. Allowing four throughout won 37/48. The exact three-Fleet candidate is frozen for a 96-map, 768-game confirmation against the stronger shorter-hunt policy; it is not adopted from this exploratory result.
 
 Raw win shares from different cohorts should not be read as paired comparisons. For example, the same earlier-opening source won 46.9% in one held-out cohort and 54.7% in the larger one.
 
