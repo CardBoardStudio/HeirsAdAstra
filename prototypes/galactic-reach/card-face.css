@@ -166,5 +166,14 @@
 }
 /* A phone's Supply drawer is a scrolling grid of two or three columns (phone.css): each card is a
    whole face as wide as its column, its height from the card's shape. */
-:root body[data-drawer="supply"] :is(#market-row, .relic-row) > .game-card.face-card, :root body[data-drawer="supply"] .relic-row > div > .game-card.face-card { height: auto !important; }
-:root body[data-drawer="supply"] :is(#market-row, .relic-row) .game-card.face-card > .card-face { height: auto; aspect-ratio: 63 / 88; }
+@media (max-width: 599px), (max-height: 599px) {
+  :root body[data-drawer="supply"] :is(#market-row, .relic-row) > .game-card.face-card, :root body[data-drawer="supply"] .relic-row > div > .game-card.face-card { height: auto !important; }
+  :root body[data-drawer="supply"] :is(#market-row, .relic-row) .game-card.face-card > .card-face { height: auto; aspect-ratio: 63 / 88; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .game-card.face-card .cf-sheet { transition: none; }
+}
+/* Choosing a relic (Excavate): each relic's face over its Choose button, never under it. */
+.relic-row > div:has(> .game-card.face-card) { display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+.relic-row > div:has(> .button) > .game-card.face-card { flex: 1 1 0; height: auto !important; min-height: 0; }
+.relic-row > div > .game-card.face-card + .button { flex: none; position: static !important; margin: 0 !important; }
