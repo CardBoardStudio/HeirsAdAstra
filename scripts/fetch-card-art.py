@@ -34,10 +34,15 @@ CARDS = {
   'procurementHub': ('Buy', 71554, .5, .5, 1), 'tradeSyndicate': ('Buy', 1224, .5, .5, 1),
   'monumentOfAccord': ('Wonder', 165, .5, .3, 1), 'dysonLattice': ('Wonder', 46089, .5, .45, 1),
   'ascendancyCodex': ('Prestige', 52453, .5, .25, 1),
+  # Exchange: working waterways and market squares.
+  'exchangeProtocol': ('Exchange', 32589, .5, .5, 1),
+  'barterNetwork': ('Exchange', 57418, .5, .5, 1),
+  'clearingHouse': ('Exchange', 135093, .5, .5, 1),
   # Military deck: naval battle, storm and fortification.
   'railBattery': ('Military', 45885, .5, .45, 1), 'deflectorGrid': ('Military', 126132, .5, .5, 1), 'flakScreen': ('Military', 112264, .5, .5, 1),
   'torpedoSpread': ('Military', 111194, .5, .5, 1), 'hardlightBulwark': ('Military', 70987, .5, .5, 1), 'phaseLance': ('Military', 51138, .5, .5, 1),
   'novaBarrage': ('Military', 56598, .5, .45, 1), 'aegisLattice': ('Military', 82649, .5, .45, 1), 'victoryDoctrine': ('Military', 157388, .5, .5, 1),
+  'torpedoBarrage': ('Military', 156252, .5, .5, 1),
   # Alien relics: engravings and drawings of imaginary ruins, star charts and the moon.
   'phaseShearDrive': ('Alien Relic', 33734, .5, .5, 1), 'firstDawnEchoes': ('Alien Relic', 74798, .5, .55, 1),
   'omniscientChorus': ('Alien Relic', 136358, .315, .5, .42), 'obeliskOfAnnihilation': ('Alien Relic', 54439, .55, .45, 1),

@@ -824,7 +824,7 @@ test('Resource counters show starting production separately from available stock
  }
 
 });
-test('Green mat shows one Now piece and one Rate piece on the slot for each value',()=>{
+test('Green mat starts at one and keeps zero-value Now and Rate pieces off the mat',()=>{
  const storage=createStorage(),state=boot(storage).saved();
  state.players[0].resources={matter:0,energy:2,biomass:4,data:6};writeSave(storage,state);
  const game=boot(storage),html=game.dom.element('resource-grid').innerHTML,production=productionNumbers(game);
@@ -833,14 +833,14 @@ test('Green mat shows one Now piece and one Rate piece on the slot for each valu
   const article=html.match(new RegExp('<article class="resource-box '+resource+'[^"]*"[\\s\\S]*?</article>'))[0];
   const now=slots(article,'<span class="mat-classic mat-stock" aria-hidden="true">'),rate=slots(article,'<span class="mat-pips rate mat-classic" aria-hidden="true">');
   for(const row of [now,rate]){
-   assert.equal(row.length,21,'Slots for the values 0 to 20');
-   assert.deepEqual(row.flatMap((c,i)=>c.includes('five')?[i]:[]),[5,10,15,20],'Rimmed slots mark 5, 10, 15 and 20');
+   assert.equal(row.length,20,'Slots for the values 1 to 20, with no zero hole');
+   assert.deepEqual(row.flatMap((c,i)=>c.includes('five')?[i+1]:[]),[5,10,15,20],'Rimmed slots mark 5, 10, 15 and 20');
   }
-  assert.deepEqual(now.flatMap((c,i)=>c.includes('full')?[i]:[]),[have],'One Now piece on the slot for the stock, 0 included');
-  assert.deepEqual(rate.flatMap((c,i)=>c.includes('full')?[i]:[]),[production[resource]],'One Rate piece on the slot for production, 0 included');
-  assert.deepEqual(now.flatMap((c,i)=>c.includes('cap')?[i]:[]),[4],'The capacity marker keeps its slot');
-  assert.equal(now[4].includes('full'),have===4,'Stock at its limit stands on the capacity marker');
-  assert.deepEqual(now.flatMap((c,i)=>c.includes('over')?[i]:[]),have>4?[have]:[],'Stock past the limit is marked beyond the marker');
+  assert.deepEqual(now.flatMap((c,i)=>c.includes('full')?[i+1]:[]),have?[have]:[],'Stock at zero leaves its piece off the mat');
+  assert.deepEqual(rate.flatMap((c,i)=>c.includes('full')?[i+1]:[]),production[resource]?[production[resource]]:[],'Production at zero leaves its cube off the mat');
+  assert.deepEqual(now.flatMap((c,i)=>c.includes('cap')?[i+1]:[]),[4],'The capacity marker keeps its slot');
+  assert.equal(now[3].includes('full'),have===4,'Stock at its limit stands on the capacity marker');
+  assert.deepEqual(now.flatMap((c,i)=>c.includes('over')?[i+1]:[]),have>4?[have]:[],'Stock past the limit is marked beyond the marker');
   assert.equal(now.filter(c=>c.includes('shut')).length,have>4?15:16,'Slots past the limit are closed');
   assert(article.includes(`${have} of 4, +${production[resource]} per round`),'Accessible name still states the values');
  }
