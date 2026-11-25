@@ -37,7 +37,7 @@ All running, failed, incomplete and hard-killed games retain the same flushed jo
 
 ## Where and how long
 
-Local archives default to `output/simulations/`, ignored by Git. No local pruning, overwrite or automatic deletion is performed. Each game uses a unique directory, including repeated seeds. Study/profiling results always use a new `run-*` child of the requested output root, including concurrent runs. Batch IDs connect related per-game archives; prior summaries and CPU profiles are not overwritten. For a permanent study location outside a temporary checkout, set:
+Local archives default to `output/simulations/`, ignored by Git. The recorder never prunes or overwrites previous runs. The [standing retention policy](../AGENTS.md#bot-simulation-retention) permits automatic removal of expanded duplicates after complete bundles covering every contained file are byte-verified locally and on ORCD. Keep both bundles, expanded protocols/results, archive locators and verification/removal evidence. Each game uses a unique directory, including repeated seeds. Study/profiling results always use a new `run-*` child of the requested output root, including concurrent runs. Batch IDs connect related per-game archives; prior summaries and CPU profiles are not overwritten. For a permanent study location outside a temporary checkout, set:
 
 ```sh
 GR_SIMULATION_ARCHIVE_DIR=/absolute/path/to/study/games node scripts/balance-simulations.cjs 1
