@@ -1114,6 +1114,11 @@ pub fn seats(humans: &[(String, String)]) -> Vec<Seat> {
                 .split('/')
                 .next()
                 .unwrap();
+            let profile = if profile == "military-focused" {
+                "military"
+            } else {
+                profile
+            };
             seat.policy = Some(format!("gr-{profile}/29"));
         }
     }
@@ -1133,8 +1138,8 @@ pub fn random_seats(humans: &[(String, String)], rng: &mut impl rand::Rng) -> Ve
 /// `order[i]` is the seat of the `i`-th person who joined.
 fn seats_at(humans: &[(String, String)], order: &[usize; 4]) -> Vec<Seat> {
     const RIVALS: [(&str, BrowserProfile); 4] = [
-        ("Cyan Concord", BrowserProfile::Military),
-        ("Ember Directorate", BrowserProfile::Military),
+        ("Cyan Concord", BrowserProfile::MilitaryFocused),
+        ("Ember Directorate", BrowserProfile::MilitaryFocused),
         ("Violet Assembly", BrowserProfile::Economy),
         ("Helios Compact", BrowserProfile::Expansion),
     ];

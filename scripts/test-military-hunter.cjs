@@ -15,9 +15,16 @@ function yard(g,world){const at=world.coords.filter(c=>c!==world.center).sort((a
 function second(g){const world=g.s.clusters[4];Object.assign(g.s.planets[world.center],{owner:1,originalFounder:1,hasColony:true});return world;}
 function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapter(g.e);assert(fresh.legalActions(1).some(a=>a.type==='move'&&a.source===move.source&&a.destination===move.destination&&JSON.stringify(plain(a.units))===JSON.stringify(plain(move.units))),JSON.stringify(move));}
 {
-  const {c}=game(),original=c.createGalacticReach({headless:true}).snapshotState();assert(original.state.players.some(p=>p.strategy==='military'));assert(!original.state.players.some(p=>p.strategy==='militaryFocused'));
-  const focused=c.createGalacticReach({headless:true,militaryFocused:true}).snapshotState();assert.equal(focused.state.players.filter(p=>p.strategy==='militaryFocused').length,1);
+  const {c}=game(),focused=c.createGalacticReach({headless:true}).snapshotState();assert.equal(focused.state.players.filter(p=>p.strategy==='militaryFocused').length,1);
+  const original=c.createGalacticReach({headless:true,militaryFocused:false}).snapshotState();assert(original.state.players.some(p=>p.strategy==='military'));assert(!original.state.players.some(p=>p.strategy==='militaryFocused'));
   const restored=c.createGalacticReach({headless:true,resume:focused}).snapshotState();assert.equal(restored.state.players[1].strategy,'militaryFocused');
+  for(const botProfiles of [['military','maxbot','militaryFocused'],['economy','economy','economy']]){
+    const selected=c.createGalacticReach({headless:true,botProfiles,lineup:[3,1,2]}).snapshotState();
+    assert.deepEqual(plain(selected.state.players.slice(1).map(p=>p.strategy)),[botProfiles[2],botProfiles[0],botProfiles[1]],'Choices follow their factions when seats rotate');
+    assert.deepEqual(plain(c.createGalacticReach({headless:true,resume:selected}).snapshotState().state.players),plain(selected.state.players),'Reload preserves every assigned profile');
+  }
+  const invalid=c.createGalacticReach({headless:true,botProfiles:['human','economy','expansion']}).snapshotState();
+  assert.equal(invalid.state.players[1].strategy,'militaryFocused','Invalid setup profiles fall back to the default rivals');
 }
 {
   const g=game(),home=g.s.clusters[1];

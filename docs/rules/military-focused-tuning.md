@@ -1,5 +1,7 @@
 # Military Focused: a majority through combat
 
+New games now use Military Focused as the default military rival. Solo settings let the player choose each of the three rivals independently, including repeated profiles. These setup and interface changes leave the confirmed combat policy unchanged. The executable hashes below identify the frozen study inputs before this setup change; they do not identify the later UI bundle.
+
 The immediate-small-raid Military Focused policy won **266/384 games (69.3%)**, versus **244/384 (63.5%)** for the preceding corrected policy on the same fresh maps and starting seats. The paired gain is **5.7 percentage points**, with a whole-map bootstrap 95% interval of **1.8–9.6**. Its own win-share interval is **64.8–73.7%**; combat and Victory Doctrine supplied **86.7% of its points**.
 
 ## Immediate small raids: selected

@@ -69,8 +69,18 @@ function createGalacticReach(options = {}) {
   const CORNER_RESOURCE_ICONS = { matter: icon('matter', { small: 'auto' }), energy: icon('energy', { small: 'auto' }), biomass: icon('life', { small: 'auto' }), data: icon('data', { small: 'auto' }) };
   const PLAYER_COLORS = ['#55d9f4', '#ff9f6e', '#a58cff', '#f2cf66'];
   const PLAYER_NAMES = ['You', 'Ember Directorate', 'Violet Assembly', 'Helios Compact'];
-  const PLAYER_STRATEGIES = ['human', 'military', 'economy', 'expansion'];
   const STRATEGY_NAMES = { military: 'Military', militaryFocused: 'Military Focused', economy: 'Economy', expansion: 'Expansion', maxbot: 'MaxBot' };
+  const DEFAULT_BOT_PROFILES = ['militaryFocused', 'economy', 'expansion'];
+  function validBotProfiles(profiles) {
+    return Array.isArray(profiles) && profiles.length===3 && profiles.every(profile=>Object.hasOwn(STRATEGY_NAMES,profile));
+  }
+  function configuredBotProfiles() {
+    if(validBotProfiles(newGameSettings.botProfiles))return newGameSettings.botProfiles;
+    if(validBotProfiles(options.botProfiles))return options.botProfiles;
+    // Keep explicit legacy setup options usable; saved games retain their actual profiles.
+    return [(newGameSettings.militaryFocused??options.militaryFocused??true)?'militaryFocused':'military',
+      (newGameSettings.maxbot??options.maxbot)?'maxbot':'economy','expansion'];
+  }
   // Rules #setup: in a solo game the three rival factions are dealt to seats 1-3 at random.
   // Home order maps these logical seats to physical homes. A lineup lists the
   // rival (1-3, by its default seat) in seats 1, 2 and 3; headless games keep [1,2,3].
@@ -95,10 +105,10 @@ function createGalacticReach(options = {}) {
   function neighborSeat(homeOrder=DEFAULT_HOME_ORDER) {
     return homeOrder.indexOf(homeOrder[0]^1);
   }
-  function lineupText(lineup, homeOrder=DEFAULT_HOME_ORDER, maxbot=false, militaryFocused=false) {
+  function lineupText(lineup, homeOrder=DEFAULT_HOME_ORDER, profiles=configuredBotProfiles()) {
     const neighbor=neighborSeat(homeOrder);
     const seats=[neighbor,...[1,2,3].filter(id=>id!==neighbor)];
-    const [near,...far]=seats.map(id=>{const n=lineup[id-1],strategy=militaryFocused&&PLAYER_STRATEGIES[n]==='military'?'militaryFocused':PLAYER_STRATEGIES[n];return maxbot&&strategy==='economy' ? 'MaxBot (MaxBot)' : `${options.names?.[id]||PLAYER_NAMES[n]} (${STRATEGY_NAMES[strategy]})`;});
+    const [near,...far]=seats.map(id=>{const n=lineup[id-1],strategy=profiles[n-1];return `${strategy==='maxbot'?'MaxBot':options.names?.[id]||PLAYER_NAMES[n]} (${STRATEGY_NAMES[strategy]})`;});
     return {neighbor:near,far:far.join(' and ')};
   }
   const BOARD_RADIUS = 10;
@@ -861,10 +871,9 @@ function createGalacticReach(options = {}) {
     const deck = [];
     for (let i = 0; i < 3; i += 1) deck.push(makeCard('move',true), makeCard('construct',true));
     const faction = index === 0 ? 0 : lineup[index - 1];
-    const maxbot=(options.maxbot===true||newGameSettings.maxbot===true)&&PLAYER_STRATEGIES[faction]==='economy';
-    const militaryFocused=(options.militaryFocused===true||newGameSettings.militaryFocused===true)&&PLAYER_STRATEGIES[faction]==='military';
+    const strategy=index===0?'human':configuredBotProfiles()[faction-1];
     return {
-      id: index, name: maxbot?'MaxBot':options.names?.[index] || PLAYER_NAMES[faction], color: PLAYER_COLORS[faction], strategy: maxbot?'maxbot':militaryFocused?'militaryFocused':PLAYER_STRATEGIES[faction],
+      id: index, name: strategy==='maxbot'?'MaxBot':options.names?.[index] || PLAYER_NAMES[faction], color: PLAYER_COLORS[faction], strategy,
       resources: { matter: 0, energy: 0, biomass: 1, data: 1 }, deck: shuffled(deck,`deck:${index}`), discard: [], hand: [], inPlay: [],
       resourceLimits: { matter:4, energy:4, biomass:4, data:4 }, storageUpgrades: 0, storagePurchases: 0, storage: [], initialShipyardCoord: null, cardsPurchased: 0, relicsExcavated: 0, combatVictories: 0, passed: false, tradeUsed: false, bought: 0,
       buyDiscountEach: 0, buyHubDiscounts: 0, bankExchangeResources: [], buyStartDiscardIds: [], buyStartInPlayIds: [], buyStartHandIds: [], combatBonus: 0, military: [], cardPrestige: 0,
@@ -6987,21 +6996,31 @@ function createGalacticReach(options = {}) {
       // Rules #solo-seating: deal physical homes and preview the rival sharing your half.
       newGameLineup=validLineup(options.lineup) ? [...options.lineup] : rollLineup();
       newGameHomeOrder=validHomeOrder(options.homeOrder) ? [...options.homeOrder] : TUTORIAL ? [...DEFAULT_HOME_ORDER] : rollHomeOrder();
+      $('#new-game-rivals').hidden=false;
+      $('#new-game-legacy-rivals').hidden=true;
+      DEFAULT_LINEUP.forEach(faction=>{
+        const select=$(`#new-game-rival-${faction}`);
+        const profile=state.players.find(p=>p.id!==ME&&p.color===PLAYER_COLORS[faction])?.strategy||configuredBotProfiles()[faction-1];
+        select.innerHTML=Object.entries(STRATEGY_NAMES).map(([value,label])=>`<option value="${value}"${value===profile?' selected':''}>${label}</option>`).join('');
+        select.value=profile;
+      });
       $('#new-game-maxbot').checked=state.players.some(p=>p.strategy==='maxbot');
       $('#new-game-military-profile').value=state.players.some(p=>p.strategy==='militaryFocused')?'militaryFocused':'military';
-      const {neighbor,far}=lineupText(newGameLineup,newGameHomeOrder,$('#new-game-maxbot').checked,$('#new-game-military-profile').value==='militaryFocused');
+      const {neighbor,far}=lineupText(newGameLineup,newGameHomeOrder,selectedRivalProfiles());
       $('#new-game-neighbor').innerHTML=`<strong>Your neighbor: ${esc(neighbor)}.</strong> It shares your half of the map. Across the map: ${esc(far)}.`;
       $('#new-game-dialog').showModal();
     });
+    const selectedRivalProfiles=()=>DEFAULT_LINEUP.map(faction=>$(`#new-game-rival-${faction}`).value);
     const previewRivals=()=>{
-      const {neighbor,far}=lineupText(newGameLineup,newGameHomeOrder,$('#new-game-maxbot').checked,$('#new-game-military-profile').value==='militaryFocused');
+      const {neighbor,far}=lineupText(newGameLineup,newGameHomeOrder,selectedRivalProfiles());
       $('#new-game-neighbor').textContent=`Your neighbor: ${neighbor}. It shares your half of the map. Across the map: ${far}.`;
     };
-    $('#new-game-maxbot').addEventListener('change',previewRivals);
-    $('#new-game-military-profile').addEventListener('change',previewRivals);
+    DEFAULT_LINEUP.forEach(faction=>$(`#new-game-rival-${faction}`).addEventListener('change',previewRivals));
     $('#new-game-dialog').addEventListener('close',()=>{
       if ($('#new-game-dialog').returnValue!=='start') return;
-      newGameSettings={victoryTarget:Number($('#new-game-target').value),lineup:newGameLineup,homeOrder:newGameHomeOrder,maxbot:$('#new-game-maxbot').checked,militaryFocused:$('#new-game-military-profile').value==='militaryFocused'};
+      const botProfiles=selectedRivalProfiles();
+      if(!validBotProfiles(botProfiles))return;
+      newGameSettings={victoryTarget:Number($('#new-game-target').value),lineup:newGameLineup,homeOrder:newGameHomeOrder,botProfiles};
       clearTurnHistory();
       state=newState(); fillMarket(); logEvent(`The four factions entered the Reach and drew their opening five cards. First to ${victoryTarget()} Prestige at a round's end wins.`); logNeighbor(); saveGame(); render(); beginRound();
     });

@@ -164,7 +164,8 @@ for (const stored of [0, 1, 8]) {
 }
 // Rivals: value and save toward a target card, buy a Capacity Module for it, then play it toward that price.
 {
-  const g = game(), { s, e } = g, bot = s.players[1];
+  // The broader Military still values unrelated Prestige; Focused deliberately does not.
+  const g = game({ militaryFocused: false }), { s, e } = g, bot = s.players[1];
   Object.assign(s.planets[s.clusters[1].coords[1]], { owner: 1, upgrade: 'starbase' });
   s.market = [{ key: 'ascendancyCodex', id: 'codex' }, { key: 'ionThrusters', id: 'ion' }];
   assert(e.aiBuyValue(1, 'ascendancyCodex') > e.aiBuyValue(1, 'ionThrusters'), 'Printed Prestige makes a card worth more');

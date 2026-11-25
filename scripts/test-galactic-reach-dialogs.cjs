@@ -1148,7 +1148,7 @@ test('export downloads a private read-only report without using RNG or changing 
  assert.equal(report.rulesVersion,`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`);
  assert(report.coverage.complete);assert(report.save.gameHistory.initialState);
  assert.deepEqual(report.save.state,game.saved());assert.equal(report.factions.length,4);
- assert.equal(report.factions[1].botProfile.strategy,game.saved().players[1].strategy);assert.deepEqual(report.factions.slice(1).map(f=>f.botProfile.strategy).sort(),['economy','expansion','military']);assert.equal(report.factions[0].points.total,3);
+ assert.equal(report.factions[1].botProfile.strategy,game.saved().players[1].strategy);assert.deepEqual(report.factions.slice(1).map(f=>f.botProfile.strategy).sort(),['economy','expansion','militaryFocused']);assert.equal(report.factions[0].points.total,3);
  assert(report.logText.includes('Controlled planets produced'));assert(report.logText.includes('+1 Matter'));
  // Rules #setup: the private opening hand is dealt at setup, so the report's initial position holds it.
  assert.equal(report.save.gameHistory.initialState.players[0].hand.length,5);assert.equal(report.save.gameHistory.initialState.players[0].deck.length,1);
@@ -1196,7 +1196,7 @@ test('New game asks for the Prestige target; Cancel keeps the current game', () 
 
 // Rules #solo-seating: preview and log follow physical home assignment, which survives reload.
 test('New solo games randomize all four starting positions and name the actual neighbor', () => {
- const storage=createStorage(),game=boot(storage),profiles={'Ember Directorate':'military','Violet Assembly':'economy','Helios Compact':'expansion'};
+ const storage=createStorage(),game=boot(storage),profiles={'Ember Directorate':'militaryFocused','Violet Assembly':'economy','Helios Compact':'expansion'};
  const check=s=>{assert.deepEqual(s.players.slice(1).map(p=>p.name).sort(),Object.keys(profiles).sort());s.players.slice(1).forEach(p=>assert.equal(p.strategy,profiles[p.name]));assert.equal(s.firstPlayer,0);};
  const neighbor=s=>s.players[s.homeOrder.indexOf(s.homeOrder[0]^1)];
  check(game.saved());assert(game.saved().log.some(e=>String(e.text||e).includes(`Your neighbor this game is ${neighbor(game.saved()).name}`)));
@@ -1566,25 +1566,30 @@ test('Retained Seed Ark has no unadopted draw alternative',()=>{
 });
 test('MaxBot is optional, previewed by name and retained through reload',()=>{
  const storage=createStorage(),game=boot(storage);assert(!game.saved().players.some(p=>p.strategy==='maxbot'));
- game.click('new-game-button');game.dom.element('new-game-maxbot').checked=true;
- game.dom.element('new-game-maxbot').listeners.change.forEach(fn=>fn({type:'change'}));
+ game.click('new-game-button');game.dom.element('new-game-rival-2').value='maxbot';
+ game.dom.element('new-game-rival-2').listeners.change.forEach(fn=>fn({type:'change'}));
  assert(game.dom.element('new-game-neighbor').textContent.includes('MaxBot'));
  game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();assert(!game.saved().players.some(p=>p.strategy==='maxbot'));
- game.click('new-game-button');game.dom.element('new-game-maxbot').checked=true;game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
+ game.click('new-game-button');game.dom.element('new-game-rival-2').value='maxbot';game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
  const max=game.saved().players.find(p=>p.strategy==='maxbot');assert(max);assert.equal(max.name,'MaxBot');assert.equal(game.saved().players.filter(p=>p.strategy==='maxbot').length,1);
- const reload=boot(storage);assert.equal(reload.saved().players[max.id].name,'MaxBot');reload.click('new-game-button');assert(reload.dom.element('new-game-maxbot').checked);
- reload.dom.element('new-game-maxbot').checked=false;reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();assert(!reload.saved().players.some(p=>p.strategy==='maxbot'));
+ const reload=boot(storage);assert.equal(reload.saved().players[max.id].name,'MaxBot');reload.click('new-game-button');assert.equal(reload.dom.element('new-game-rival-2').value,'maxbot');
+ reload.dom.element('new-game-rival-2').value='economy';reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();assert(!reload.saved().players.some(p=>p.strategy==='maxbot'));
 });
-test('Military Focused is optional, previewed and retained without replacing Military by default',()=>{
- const storage=createStorage(),game=boot(storage);assert(game.saved().players.some(p=>p.strategy==='military'));assert(!game.saved().players.some(p=>p.strategy==='militaryFocused'));
- game.click('new-game-button');game.dom.element('new-game-military-profile').value='militaryFocused';
- game.dom.element('new-game-military-profile').listeners.change.forEach(fn=>fn({type:'change'}));
- assert(game.dom.element('new-game-neighbor').textContent.includes('Military Focused'));
- game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();assert(game.saved().players.some(p=>p.strategy==='military'));
- game.click('new-game-button');game.dom.element('new-game-military-profile').value='militaryFocused';game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
- const focused=game.saved().players.find(p=>p.strategy==='militaryFocused');assert(focused);assert.equal(game.saved().players.filter(p=>p.strategy==='militaryFocused').length,1);
- const reload=boot(storage);assert.equal(reload.saved().players[focused.id].strategy,'militaryFocused');reload.click('new-game-button');assert.equal(reload.dom.element('new-game-military-profile').value,'militaryFocused');
- reload.dom.element('new-game-military-profile').value='military';reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();assert(reload.saved().players.some(p=>p.strategy==='military'));assert(!reload.saved().players.some(p=>p.strategy==='militaryFocused'));
+test('New game defaults to Military Focused and independently selects, previews and restores all rivals',()=>{
+ const storage=createStorage(),game=boot(storage);assert(game.saved().players.some(p=>p.strategy==='militaryFocused'));assert(!game.saved().players.some(p=>p.strategy==='military'));
+ game.click('new-game-button');assert.equal(game.dom.element('new-game-rival-1').value,'militaryFocused');
+ const before=JSON.stringify(game.saved());
+ for(const faction of [1,2,3]){game.dom.element(`new-game-rival-${faction}`).value='military';game.dom.element(`new-game-rival-${faction}`).listeners.change.forEach(fn=>fn({type:'change'}));}
+ assert(!game.dom.element('new-game-neighbor').textContent.includes('Military Focused'));assert(game.dom.element('new-game-neighbor').textContent.includes('(Military)'));
+ game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();assert.equal(JSON.stringify(game.saved()),before,'Cancel changes neither the save nor its assigned profiles');
+ game.click('new-game-button');for(const faction of [1,2,3])game.dom.element(`new-game-rival-${faction}`).value='military';
+ game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();assert.equal(game.saved().players.filter(p=>p.strategy==='military').length,3,'Repeated profiles are allowed');
+ const reload=boot(storage);assert.equal(reload.saved().players.filter(p=>p.strategy==='military').length,3);reload.click('new-game-button');
+ for(const faction of [1,2,3])assert.equal(reload.dom.element(`new-game-rival-${faction}`).value,'military');
+ const profiles=['expansion','militaryFocused','maxbot'];profiles.forEach((profile,i)=>{reload.dom.element(`new-game-rival-${i+1}`).value=profile;});
+ reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();
+ assert.deepEqual(reload.saved().players.slice(1).map(p=>p.strategy).sort(),[...profiles].sort());
+ const again=boot(storage);again.click('new-game-button');profiles.forEach((profile,i)=>assert.equal(again.dom.element(`new-game-rival-${i+1}`).value,profile));
 });
 for (const { name, body } of tests) {
   try {

@@ -143,6 +143,7 @@
       const storage = seededStorage(engineKeys(globalThis.createGalacticReach,globalThis.galacticReachChannel,page.format),save);
       // A new game uses the table's waiting-room settings (rules #victory: Prestige target).
       const newGameSettings = table.settings?.victory_target ? {victoryTarget:table.settings.victory_target} : {};
+      if(table.settings?.bot_profiles)newGameSettings.botProfiles=table.settings.bot_profiles;
       globalThis.createGalacticReach({storage,requireSave:!!save,newTable:leave,newGameSettings,paused:()=>conflict,onSave:value=>{
         if (conflict) return;
         pending=JSON.parse(JSON.stringify(value)); backup();

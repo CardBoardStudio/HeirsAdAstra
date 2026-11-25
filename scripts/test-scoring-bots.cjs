@@ -5,7 +5,8 @@ function game(prefix='prototypes/galactic-reach/',seed=53){
  const c=vm.createContext({});let e,calls=0;
  const source=prefix==='prototypes/galactic-reach/'?read(prefix+'app.js').replace('      clone, deckContents,','      runAiOperation,runAiBuy,chooseAiMove,chooseAiBuild,aiUseResources,aiFundingPlan,aiManageStorage,aiBuyValue,aiPath,clone,deckContents,'):read(prefix+'app.js');
  vm.runInContext(read(prefix+'adapter.js')+source,c);const original=c.createGalacticAdapter;c.createGalacticAdapter=x=>{e=x;return original(x);};
- const a=c.createGalacticReach({headless:true,random:()=>{calls++;return ((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}});
+ // Compare the original Military profile with its archived setup, independently of new defaults.
+ const a=c.createGalacticReach({headless:true,militaryFocused:false,random:()=>{calls++;return ((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}});
  return {e,a,s:e.state,calls:()=>calls};
 }
 function bot(g){g.s.activePlayer=1;g.s.phase='operations';g.s.turnStage='ai';g.s.players[1].strategy='military';return g.s.players[1];}
