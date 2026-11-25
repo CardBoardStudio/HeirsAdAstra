@@ -17,6 +17,12 @@ Each `game-*` directory contains:
 
 A position can be materialized at any recorded checkpoint without playing the game again. Legal options and faction views can be derived from that position, saved counters and the frozen adapter. Arrays retain their order and object key order is preserved. Random values and checkpoints are numbered. The reader verifies source, compressed trace, state and engine-counter hashes.
 
+### Sharing immutable source files
+
+Large studies can pass `sourcePool` to `SimulationArchive`, or set `GR_SIMULATION_SOURCE_POOL_DIR` to a directory on the same filesystem as their archives. Identical source contents then share a hard-linked blob, rather than consuming a new inode for every game. Publish each blob only after its complete contents are written; verify an existing blob's hash before reusing it. Different contents, even under the same source name, keep separate blobs. Source collisions within one archive remain errors.
+
+Every game still has ordinary files at its own `sources/` paths, with the same hashes. The reader needs no pool lookup, and moving the pool does not break an existing game archive. Frozen sources are immutable: editing a hard-linked source would affect its other links and be detected by integrity checks. When packaging a subset of games with `tar`, use `--hard-dereference` to include each selected game's source bytes independently. This is an optional storage optimization; private positions, counters, events, RNG and interrupted journals keep the same format and retention rules.
+
 `before-decision` / `after-decision` checkpoints bracket a runner invocation such as `runAiOperation`, `runAiBuy` or a combat command. `event-state` also captures nested action, draw, production and round boundaries. Some event checkpoints are inside an automatic resolution; use the outer decision boundary as the resumable position. Round-end events retain the unplayed hand before cleanup. Resource events retain both requested/actual gains and overflow; production retains actual requested gross income, overflow and before/after storage (including experiment toggles), while round-end events include the engine’s income forecast. This supports resource-time plots, card-use audits and other later analysis without a whole-match rerun.
 
 ## Where and how long

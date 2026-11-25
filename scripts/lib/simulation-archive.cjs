@@ -7,6 +7,22 @@ const plain=x=>x===undefined?null:JSON.parse(JSON.stringify(x));
 const hash=x=>crypto.createHash('sha256').update(typeof x==='string'||Buffer.isBuffer(x)?x:JSON.stringify(x)).digest('hex');
 function resultDirectory(base){base=path.resolve(base);fs.mkdirSync(base,{recursive:true});return fs.mkdtempSync(path.join(base,'run-'));}
 function atomic(file,value){const tmp=file+'.tmp';fs.writeFileSync(tmp,JSON.stringify(value,null,2)+'\n');fs.renameSync(tmp,file);}
+function freezeSource(file,content,pool,digest=hash(content)){
+ if(!pool){fs.writeFileSync(file,content);return digest;}
+ fs.mkdirSync(pool,{recursive:true});const blob=path.join(pool,digest+'.source');
+ if(!fs.existsSync(blob)){
+  const temporary=path.join(pool,'.source-'+crypto.randomUUID()+'.tmp');
+  try{fs.writeFileSync(temporary,content,{flag:'wx'});try{fs.linkSync(temporary,blob);}catch(error){if(error.code!=='EEXIST')throw error;}}
+  finally{if(fs.existsSync(temporary))fs.unlinkSync(temporary);}
+ }
+ if(!fs.lstatSync(blob).isFile()||hash(fs.readFileSync(blob))!==digest)throw Error('Frozen source pool hash mismatch: '+digest);
+ // A new hard link atomically replaces only this archive's path, never blob bytes.
+ const temporary=file+'.link-'+crypto.randomUUID();
+ try{fs.linkSync(blob,temporary);fs.renameSync(temporary,file);}
+ catch(error){if(error.code==='EXDEV')throw Error('Frozen source pool and archives must share a filesystem');throw error;}
+ finally{if(fs.existsSync(temporary))fs.unlinkSync(temporary);}
+ return digest;
+}
 function patch(before,after,at=[],out=[]){
  if(JSON.stringify(before)===JSON.stringify(after))return out;
  if(before&&after&&!Array.isArray(before)&&!Array.isArray(after)&&typeof before==='object'&&typeof after==='object'){
@@ -23,16 +39,17 @@ function applyPatch(state,changes){
  return state;
 }
 class SimulationArchive{
- constructor({directory=process.env.GR_SIMULATION_ARCHIVE_DIR||path.join(ROOT,'output/simulations'),metadata={},sources={},rulebookSource=null}={}){
+ constructor({directory=process.env.GR_SIMULATION_ARCHIVE_DIR||path.join(ROOT,'output/simulations'),metadata={},sources={},rulebookSource=null,sourcePool=process.env.GR_SIMULATION_SOURCE_POOL_DIR||null}={}){
+  this.sourcePool=sourcePool?path.resolve(sourcePool):null;
   fs.mkdirSync(directory,{recursive:true});this.directory=fs.mkdtempSync(path.join(path.resolve(directory),'game-'));this.file=path.join(this.directory,'trace.partial.jsonl');this.fd=fs.openSync(this.file,'wx');this.previous=null;this.randomCalls=0;this.index=0;this.depth=0;this.closed=false;
   fs.mkdirSync(path.join(this.directory,'sources'));const sourceHashes={};
-  for(const [name,content] of Object.entries(sources)){if(!/^[a-zA-Z0-9_.-]+$/.test(name))throw Error('Unsafe archive source name');fs.writeFileSync(path.join(this.directory,'sources',name),content);sourceHashes[name]=hash(content);}
-  for(const [name,file] of [['recorder.cjs',__filename],['rulebook.html',path.join(ROOT,'prototypes/galactic-reach/rulebook.html')]])if(fs.existsSync(file)){const text=file===__filename?RECORDER_SOURCE:rulebookSource??fs.readFileSync(file,'utf8');fs.writeFileSync(path.join(this.directory,'sources',name),text);sourceHashes[name]=hash(text);}
-  this.manifest={format:FORMAT,status:'running',createdAt:new Date().toISOString(),node:process.version,metadata:plain(metadata),sourceHashes,trace:'trace.partial.jsonl',retention:'No local automatic deletion'};
+  for(const [name,content] of Object.entries(sources)){if(!/^[a-zA-Z0-9_.-]+$/.test(name))throw Error('Unsafe archive source name');sourceHashes[name]=freezeSource(path.join(this.directory,'sources',name),content,this.sourcePool);}
+  for(const [name,file] of [['recorder.cjs',__filename],['rulebook.html',path.join(ROOT,'prototypes/galactic-reach/rulebook.html')]])if(fs.existsSync(file)){const text=file===__filename?RECORDER_SOURCE:rulebookSource??fs.readFileSync(file,'utf8');sourceHashes[name]=freezeSource(path.join(this.directory,'sources',name),text,this.sourcePool);}
+  this.manifest={format:FORMAT,status:'running',createdAt:new Date().toISOString(),node:process.version,metadata:plain(metadata),sourceHashes,...(this.sourcePool?{sourceStorage:{kind:'immutable-hard-links',pool:this.sourcePool}}:{}),trace:'trace.partial.jsonl',retention:'No local automatic deletion'};
   this.writeManifest();this.write({type:'header',format:FORMAT,metadata:plain(metadata)});active.add(this);
   if(!handlers){handlers=true;process.once('exit',code=>{for(const recorder of active)recorder.finish({reason:'process-exit',exitCode:code,incomplete:true});});process.once('uncaughtExceptionMonitor',error=>{for(const recorder of active)recorder.finish({reason:'uncaught-exception',incomplete:true,error:{message:error.message,stack:error.stack}});});}
  }
- addSources(sources){for(const [name,content] of Object.entries(sources)){if(!/^[a-zA-Z0-9_.-]+$/.test(name))throw Error('Unsafe archive source name');const digest=hash(content);if(this.manifest.sourceHashes[name]&&this.manifest.sourceHashes[name]!==digest)throw Error('Archive source collision');if(!this.manifest.sourceHashes[name]){fs.writeFileSync(path.join(this.directory,'sources',name),content);this.manifest.sourceHashes[name]=digest;}}this.writeManifest();}
+ addSources(sources){for(const [name,content] of Object.entries(sources)){if(!/^[a-zA-Z0-9_.-]+$/.test(name))throw Error('Unsafe archive source name');const digest=hash(content);if(this.manifest.sourceHashes[name]&&this.manifest.sourceHashes[name]!==digest)throw Error('Archive source collision');if(!this.manifest.sourceHashes[name]){freezeSource(path.join(this.directory,'sources',name),content,this.sourcePool,digest);this.manifest.sourceHashes[name]=digest;}}this.writeManifest();}
  writeManifest(){atomic(path.join(this.directory,'manifest.json'),this.manifest);}
  write(record,sync=false){fs.writeFileSync(this.fd,JSON.stringify(record)+'\n');if(sync)fs.fsyncSync(this.fd);}
  random(fn){return()=>{const value=fn();if(!this.closed)this.write({type:'random',sequence:this.randomCalls++,value});return value;};}
