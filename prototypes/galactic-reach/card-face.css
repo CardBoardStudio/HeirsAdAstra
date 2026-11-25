@@ -71,10 +71,14 @@
   display: block !important; position: relative; padding: 0 !important; border: 0 !important; border-radius: 0 !important; background: none !important; box-shadow: none !important;
   overflow: visible !important; min-height: 0 !important; filter: none !important; opacity: 1 !important; color: inherit; text-align: left; }
 .game-card.face-card:not(#hand-row > *) > .card-face { width: 100%; }
-.game-card.face-card .cf-sheet { transition: box-shadow .15s; }
+/* card-feel.css's states (the gold "you can use this" ring, the selected order, the lift) are its
+   custom properties; on a face they ring the sheet, and its sheen lies on the sheet only. */
+.game-card.face-card .cf-sheet { box-shadow: var(--cf-ring, 0 0 #0000), var(--face-drop, 0 0 #0000); transition: box-shadow .15s; }
+.game-card.face-card::after { display: none; }
+.game-card.face-card .cf-sheet::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: radial-gradient(circle at var(--cf-mx, 28%) var(--cf-my, 0%), #ffffff40, #ffffff00 48%); mix-blend-mode: soft-light; opacity: .55; }
+.game-card.face-card.cf-tilting .cf-sheet::after { opacity: 1; }
 .game-card.face-card:disabled .cf-sheet, .game-card.face-card.unavailable .cf-sheet { filter: saturate(.55) brightness(.82); }
-.market-cards .game-card.face-card:not(:disabled) .cf-sheet { box-shadow: 0 0 0 2px #f2d488, 0 0 14px #f2d48866; }
-.game-card.face-card.order-selected .cf-sheet { box-shadow: 0 0 0 3px var(--gold); }
 .game-card.face-card:focus-visible { outline: none; }
 .game-card.face-card:focus-visible .cf-sheet { outline: 3px solid var(--cyan); outline-offset: 2px; }
 .game-card.face-card > .card-limit-note { position: absolute; z-index: 2; left: 50%; top: 6px; translate: -50% 0; display: none; max-width: 92%; margin: 0; padding: 2px 6px; border-radius: 6px; background: #14202ae6; color: #fbf4e2; font-size: 11px; line-height: 1.3; text-align: center; white-space: nowrap; }
@@ -84,8 +88,16 @@
 /* Raised (pointed at or focused): the card grows to reading size over its neighbours, from the
    corner of its slot that keeps it on screen. */
 :is(#market-row, .relic-row) .game-card.face-card:is(:hover, :focus, :focus-within) { z-index: 40 !important; transform: none !important; }
-:is(#market-row, .relic-row) .game-card.face-card:is(:hover, :focus, :focus-within) .cf-sheet { --sheet-w: max(min(100cqw, 100cqh * 63 / 88), var(--face-raise, 250px)); box-shadow: 0 14px 40px #000a, 0 0 0 2px #f2d488; }
+:is(#market-row, .relic-row) .game-card.face-card:is(:hover, :focus, :focus-within) .cf-sheet { --sheet-w: max(min(100cqw, 100cqh * 63 / 88), var(--face-raise, 250px)); --face-drop: 0 14px 40px #000a; }
 :is(#market-row, .relic-row) .game-card.face-card:is(:hover, :focus, :focus-within) > .card-limit-note { display: block; }
+/* The market and relic rows are three to a row: the left column grows rightward, the right column
+   leftward; the top row grows down, the bottom tier up, the rest about their middle. */
+#market-row > .game-card.face-card:nth-child(3n + 1):is(:hover, :focus, :focus-within) .cf-sheet, .relic-row > :nth-child(3n + 1):is(:hover, :focus, :focus-within) .cf-sheet { left: 0; translate: 0 -50%; }
+#market-row > .game-card.face-card:nth-child(3n):is(:hover, :focus, :focus-within) .cf-sheet, .relic-row > :nth-child(3n):is(:hover, :focus, :focus-within) .cf-sheet { left: auto; right: 0; translate: 0 -50%; }
+:is(#market-row, .relic-row) .game-card.face-card:is(:hover, :focus, :focus-within) .cf-sheet { top: 50%; }
+.relic-row .game-card.face-card:is(:hover, :focus, :focus-within) .cf-sheet, #market-row > .game-card.face-card:nth-child(-n + 3):is(:hover, :focus, :focus-within) .cf-sheet { top: 0; translate: var(--tx, -50%) 0; }
+#market-row > .game-card.face-card:nth-last-child(-n + 3):is(:hover, :focus, :focus-within) .cf-sheet { top: auto; bottom: 0; translate: var(--tx, -50%) 0; }
+#market-row > .game-card.face-card:is(:nth-child(3n + 1), :nth-child(3n)), .relic-row > :is(:nth-child(3n + 1), :nth-child(3n)) { --tx: 0; }
 /* Pointer-free fallback: keyboard and screen readers reach the same card, its price in its name. */
 
 /* Dialog rows (deck, discard, in play, military deck, relic catalog): whole cards in a grid. */
@@ -95,13 +107,17 @@
    symbols): no name, no text. Raising it (pointing, focusing, a first tap) shows its face, the
    corner buttons on the face's top corners and any other buttons under it. ==== */
 #hand-row > .game-card.face-card:not(:hover):not(:focus-within) > .card-face { display: none !important; }
+/* A card with no symbols is known by its picture: the top of its face, without the shade. */
+#hand-row > .game-card.face-card:not(.has-symbols):not(:hover):not(:focus-within) > .card-face { display: block !important; position: absolute; inset: 0 0 auto; z-index: 0; width: 100%; pointer-events: none; }
+#hand-row > .game-card.face-card:not(.has-symbols):not(:hover):not(:focus-within) > .card-face :is(.cf-shade, .cf-frame) { display: none; }
+#hand-row > .game-card.face-card:not(.has-symbols):not(:hover):not(:focus-within) > .card-face .cf-sheet { border-radius: 0; }
+#hand-row > .game-card.face-card:not(:hover):not(:focus-within) > :is(.card-symbols, .card-footer) { position: relative; z-index: 1; }
 @media (min-width: 600px) and (min-height: 600px) {
   #hand-row > .game-card.face-card:is(#_, .face-card):is(#_, .face-card):is(#_, .face-card):is(:hover, :focus-within) {
     display: flex !important; flex-direction: column; gap: 6px; padding: 0 !important; border: 0 !important; background: none !important; overflow: visible !important;
     box-shadow: none !important; height: auto !important; }
   #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-face { display: block; width: 100%; }
-  #hand-row > .game-card.face-card:is(:hover, :focus-within) .cf-sheet { box-shadow: 0 14px 40px #000a; }
-  #hand-row > .game-card.face-card.order-selected:is(:hover, :focus-within) .cf-sheet { box-shadow: 0 0 0 3px var(--gold), 0 14px 40px #000a; }
+  #hand-row > .game-card.face-card:is(:hover, :focus-within) .cf-sheet { --face-drop: 0 14px 40px #000a; }
   #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-art { display: none !important; }
   /* The corner buttons keep their size and sit in the face's top corners, cut to its rounding. */
   #hand-row > .game-card.face-card:is(#_, .face-card):is(#_, .face-card):is(#_, .face-card):is(:hover, :focus-within) > :is(.card-symbols, .card-footer) {
@@ -110,4 +126,35 @@
   #hand-row > .game-card.face-card:is(#_, .face-card):is(#_, .face-card):is(#_, .face-card):is(:hover, :focus-within) > .card-footer { right: 0; border-top-right-radius: calc(var(--raise-w, 250px) * 3 / 63) !important; }
   #hand-row > .game-card.face-card:is(#_, .face-card):is(#_, .face-card):is(#_, .face-card):is(:hover, :focus-within) > .card-buttons {
     position: static !important; width: auto !important; height: auto !important; margin: 0 !important; clip-path: none !important; opacity: 1; display: flex; flex-direction: row; gap: 4px; }
+}
+
+/* A pile's top card, face up (discard, in play): the face fills the pile's card. */
+.pile-card.face-up:has(> .card-face) { padding: 0; background: none; }
+.pile-card > .card-face { height: 100%; width: 100%; aspect-ratio: auto; }
+
+/* ==== A tapped card on a phone, opened whole (app.js setupPhoneCardSheet): its face as tall as
+   the sheet allows, the corner buttons on its corners, any other buttons at its left (the sheet
+   sits at the right, against the note). ==== */
+.phone-card-sheet .game-card.face-card:is(#_, .face-card):is(#_, .face-card):is(#_, .face-card) {
+  position: relative; display: block !important; flex: none !important; height: 100% !important; width: auto !important; max-width: none !important; max-height: 100% !important; aspect-ratio: 63 / 88 !important;
+  margin: 0 !important; padding: 0 !important; border: 0 !important; background: none !important; box-shadow: none !important; overflow: visible !important; transform: none !important; }
+.phone-card-sheet .game-card.face-card > .card-face { width: 100%; height: 100%; aspect-ratio: auto; }
+.phone-card-sheet .game-card.face-card .cf-sheet { --face-drop: 0 8px 24px #000a; }
+.phone-card-sheet .game-card.face-card:is(#_, .face-card):is(#_, .face-card):is(#_, .face-card) > :is(.card-symbols, .card-footer) { position: absolute; z-index: 2; top: 0; margin: 0 !important; }
+.phone-card-sheet .game-card.face-card:is(#_, .face-card):is(#_, .face-card):is(#_, .face-card) > .card-symbols { left: 0; }
+.phone-card-sheet .game-card.face-card:is(#_, .face-card):is(#_, .face-card):is(#_, .face-card) > .card-footer { right: 0; }
+.phone-card-sheet .game-card.face-card:is(#_, .face-card):is(#_, .face-card):is(#_, .face-card) > .card-buttons {
+  position: absolute !important; right: calc(100% + 8px); bottom: 0; width: 140px !important; height: auto !important; margin: 0 !important; clip-path: none !important; opacity: 1;
+  display: flex; flex-direction: column !important; gap: 8px; }
+/* Upright, the old raised card was wide and short (540px); a face that wide would be taller than
+   the board, so the raised face keeps a card's reading width there too. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  #hand-row:has(> .face-card) { --raise-w: 280px !important; }
+}
+/* The raised card's other buttons (Probe, Excavate, Trash…) share a row under the face. */
+@media (min-width: 600px) and (min-height: 600px) {
+  #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-buttons .button { flex: 1 1 auto; min-height: 36px; padding: 4px 8px; font-size: 13px !important; }
+}
+@media (min-width: 600px) and (min-height: 600px) and (pointer: coarse) {
+  #hand-row > .game-card.face-card:is(:hover, :focus-within) > .card-buttons .button { min-height: 44px; }
 }

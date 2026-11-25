@@ -714,7 +714,10 @@ function createGalacticReach(options = {}) {
   // footer (convert and type left, price right). card-face.css lays it out on a 63 x 88 mm sheet.
   // Symbols appear only inside the description; the hand's corner buttons are a separate layer.
   // A card with no picture yet (its file is missing) shows its emblem: the picture hides itself.
-  if (globalThis.document && !document.cardFaceArtWatch) document.cardFaceArtWatch = document.addEventListener('error', event => { if (event.target?.matches?.('img.cf-art')) event.target.hidden = true; }, true) || true;
+  if (typeof globalThis.document?.addEventListener === 'function' && !document.cardFaceArtWatch) {
+    document.cardFaceArtWatch = true;
+    document.addEventListener('error', event => { if (event.target?.matches?.('img.cf-art')) event.target.hidden = true; }, true);
+  }
   const FACE_ART_KEYS = new Map(Object.entries({ ...ALL_CARDS, ...BASIC_TACTICS }).filter(([, def]) => !def.supply).map(([key, def]) => [def, key]));
   // The headline: the card's effect values (the corners' symbols) as one line, each with its number.
   function faceHeadline(parts) {
@@ -751,8 +754,10 @@ function createGalacticReach(options = {}) {
   // definition: the card's design; card: the copy (its level, whether it converts).
   // price: the price to show (default the printed market price; none for cards not for sale).
   // convert: the resource it converts to (default: a level I starter's).
-  function cardFace(definition, card = {}, { price, priceMarks = {}, convert, hidden = false } = {}) {
-    const key = FACE_ART_KEYS.get(definition) || '';
+  // art: false where the art manifest says the card has no picture yet (the gallery knows).
+  function cardFace(definition, card = {}, { price, priceMarks = {}, convert, hidden = false, art = true } = {}) {
+    // The gallery passes a copy of the design carrying its key.
+    const key = !art ? '' : FACE_ART_KEYS.get(definition) || (FACE_ART_KEYS.has(ALL_CARDS[definition.key] || BASIC_TACTICS[definition.key]) ? definition.key : '');
     const level = starterLevel(card);
     const levelMark = level === 3 ? ' III' : level === 2 ? ' II' : '';
     const text = definition.text + (levelMark ? ` ${levelMark.trim()}: ${upgradedOrderText(card)}${level === 3 && card.key !== 'construct' ? ' Draw one card when using the order.' : ''}` : '');
@@ -774,12 +779,29 @@ function createGalacticReach(options = {}) {
       + `</span><span class="cf-frame" aria-hidden="true"></span></span></span>`;
   }
 
+  // Each picture's focal point (card-art/manifest.json "focus": [x, y], fractions of the picture;
+  // default the centre). The face shows a 63:88 crop of a wider picture: this places the crop so
+  // the focal point sits as near its middle as the picture allows, as CSS for every face.
+  function cardArtFocusCss(manifest) {
+    const place = (focus, picture, box) => Math.min(100, Math.max(0, picture === box ? 50 : (focus * picture - box / 2) / (picture - box) * 100));
+    return Object.entries(manifest?.cards || {}).filter(([, work]) => Array.isArray(work.focus)).map(([key, work]) => {
+      const [w, h] = work.crop?.output || [2, 1], scale = Math.max(63 / w, 88 / h);
+      return `.card-face[data-art="${key}"] .cf-art { --focus-x: ${place(work.focus[0], w * scale, 63).toFixed(1)}%; --focus-y: ${place(work.focus[1], h * scale, 88).toFixed(1)}%; }`;
+    }).join('\n');
+  }
+  function loadCardArtFocus() {
+    if (!globalThis.document?.head || !globalThis.fetch || document.querySelector('#card-art-focus')) return;
+    fetch('card-art/manifest.json').then(response => response.ok ? response.json() : null).then(manifest => {
+      const style = document.createElement('style'); style.id = 'card-art-focus'; style.textContent = cardArtFocusCss(manifest); document.head.append(style);
+    }).catch(() => { /* Every picture keeps its centred crop. */ });
+  }
+
   // Card data only, for the card gallery page: no galaxy, state, timers or storage.
   if (options.catalog === true) return {
     rulesVersion: `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`, MARKET_CARDS, ADVANCED_CARDS, MARKET_MILITARY, BASIC_TACTICS, BASIC_CARDS, RELIC_CARDS,
     MARKET_SIZE, MARKET_COPIES, MARKET_TIERS, MARKET_TIER_SLOTS, marketTier, STARTING_LIMIT, DEFAULT_VICTORY_TARGET, VICTORY_TARGET_CHOICES, RESOURCES, RESOURCE_NAMES,
     // Shared, state-free presentation for the gallery's costs and card descriptions.
-    resourceDots, iconText, BOARD_ICONS, boardGlyph, cardSymbols, cornerDots, costClusters, cardEffectParts, cardEffectLabel, cardFace, SUPPLY_CARDS
+    resourceDots, iconText, BOARD_ICONS, boardGlyph, cardSymbols, cornerDots, costClusters, cardEffectParts, cardEffectLabel, cardFace, cardArtFocusCss, SUPPLY_CARDS
   };
 
 
@@ -5490,7 +5512,7 @@ function createGalacticReach(options = {}) {
     const name=`${definition.name}${starterLevel(card)===3?' III':card.upgraded?' II':''}`;
     const said=`${definition.text}${card.upgraded?` ${starterLevel(card)===3?'III':'II'}: ${upgradedOrderText(card)}${starterLevel(card)===3&&card.key!=='construct'?' Draw one card when using the order.':''}`:''}`;
     const inHand=location==='hand';
-    return `<article class="game-card face-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''}${parts.length?' has-symbols':''}${gain?' has-corner-dots':''}${textButtons?' has-buttons':''}" style="--card-accent:${definition.accent}"${card.id?` data-card-id="${card.id}"`:''}${inHand&&definition.order?` data-order="${definition.order}"`:''}>${inHand?effectCorner+convertCorner:''}<span class="card-name sr-only">${name}</span><span class="card-said sr-only">${esc(said)}</span>${inHand&&!parts.length?cardIllustration(definition):''}${cardFace(definition,card,{hidden:true})}${textButtons?`<div class="card-buttons">${textButtons}</div>`:''}</article>`;
+    return `<article class="game-card face-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''}${parts.length?' has-symbols':''}${gain?' has-corner-dots':''}${textButtons?' has-buttons':''}" style="--card-accent:${definition.accent}"${card.id?` data-card-id="${card.id}"`:''}${inHand&&definition.order?` data-order="${definition.order}"`:''}>${inHand?effectCorner+convertCorner:''}<span class="card-name sr-only">${name}</span><span class="card-said sr-only">${esc(said)}</span>${cardFace(definition,card,{hidden:true})}${textButtons?`<div class="card-buttons">${textButtons}</div>`:''}</article>`;
 
   }
 
@@ -5528,7 +5550,8 @@ function createGalacticReach(options = {}) {
     face.classList.toggle('face-up', !!definition);
     face.style.setProperty('--card-accent', definition?.accent || 'transparent');
     const topName = definition ? `${definition.name}${starterLevel(top)===3?' III':top.upgraded?' II':''}` : '';
-    face.innerHTML = topName ? `<span class="pile-name">${topName}</span>` : '';
+    // Face up, the top card shows its face (rules #card-face); Max's table keeps its name label.
+    face.innerHTML = !topName ? '' : globalThis.document?.body?.classList?.contains('background-stars') ? `<span class="pile-name">${topName}</span>` : cardFace(definition, top, { hidden: true });
     button.dataset.title ||= button.title;
     button.title = topName ? `${button.dataset.title}. Top card: ${topName}.` : button.dataset.title;
   }
@@ -7114,6 +7137,7 @@ function createGalacticReach(options = {}) {
     }
     setupMatTrades();
     setupPhoneCardSheet();
+    loadCardArtFocus();
     setupLogCard();
     setupTradeDrawer();
     setupMarketDrawer();

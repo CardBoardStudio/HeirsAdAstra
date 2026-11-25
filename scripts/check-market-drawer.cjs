@@ -204,7 +204,8 @@ async function main() {
         // Over a closed column the map may slide against the left-hand panels (one re-fit), never smaller.
         { const under = await mapWidth(); assert(under >= opsMap - 2, `${label}: the map keeps its size under the whole cards (${under} vs ${opsMap})`); }
         await fitsWindow();
-        const cards = await evaluate(`[...document.querySelectorAll('#market-row > .game-card')].map(c => { const r = c.getBoundingClientRect(), art = c.querySelector('.card-art.has-picture'); return { ratio: r.height / r.width, art: art ? art.getBoundingClientRect().height : 0 }; })`);
+        // Each card is its printed face (rulebook #card-face): the sheet is card-shaped and its picture shows.
+        const cards = await evaluate(`[...document.querySelectorAll('#market-row > .game-card')].map(c => { const r = c.querySelector('.cf-sheet').getBoundingClientRect(), art = c.querySelector('.cf-art:not([hidden])'); return { ratio: r.height / r.width, art: art ? art.getBoundingClientRect().height : 0 }; })`);
         assert.equal(cards.length, 9, `${label}: nine market cards`);
         for (const c of cards) assert(Math.abs(c.ratio - 88 / 63) < 0.06, `${label}: a whole card is card-shaped (${c.ratio.toFixed(2)})`);
         assert(cards.filter(c => c.art > 30).length >= 6, `${label}: the cards show their pictures`);

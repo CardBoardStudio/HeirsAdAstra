@@ -75,7 +75,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.45,
+    0.5
+   ]
   },
   "probe": {
    "family": "Starter",
@@ -100,7 +104,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.68,
+    0.5
+   ]
   },
   "excavate": {
    "family": "Starter",
@@ -150,7 +158,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.74,
+    0.5
+   ]
   },
   "defensiveScreen": {
    "family": "Basic tactic",
@@ -200,7 +212,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.42,
+    0.5
+   ]
   },
   "slipstreamCharts": {
    "family": "Movement",
@@ -250,7 +266,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.8,
+    0.5
+   ]
   },
   "foldSpaceGate": {
    "family": "Movement",
@@ -300,7 +320,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.42,
+    0.5
+   ]
   },
   "worldEngine": {
    "family": "Industry",
@@ -500,7 +524,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.7,
+    0.5
+   ]
   },
   "surveyNetwork": {
    "family": "Deckcraft",
@@ -525,7 +553,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.6,
+    0.5
+   ]
   },
   "tacticalBriefing": {
    "family": "Deckcraft",
@@ -550,7 +582,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.55,
+    0.5
+   ]
   },
   "cargoExpansion": {
    "family": "Capacity",
@@ -625,7 +661,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.35,
+    0.5
+   ]
   },
   "tradeSyndicate": {
    "family": "Buy",
@@ -700,7 +740,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.42,
+    0.5
+   ]
   },
   "ascendancyCodex": {
    "family": "Prestige",
@@ -750,7 +794,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.7,
+    0.5
+   ]
   },
   "deflectorGrid": {
    "family": "Military",
@@ -825,7 +873,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.65,
+    0.5
+   ]
   },
   "hardlightBulwark": {
    "family": "Military",
@@ -850,7 +902,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.4,
+    0.5
+   ]
   },
   "phaseLance": {
    "family": "Military",
@@ -875,7 +931,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.58,
+    0.5
+   ]
   },
   "novaBarrage": {
    "family": "Military",
@@ -925,7 +985,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.68,
+    0.5
+   ]
   },
   "victoryDoctrine": {
    "family": "Military",
@@ -1025,7 +1089,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.4,
+    0.5
+   ]
   },
   "obeliskOfAnnihilation": {
    "family": "Alien Relic",
@@ -1450,7 +1518,11 @@
      300
     ]
    },
-   "license": "CC0 1.0 (NGA Open Access)"
+   "license": "CC0 1.0 (NGA Open Access)",
+   "focus": [
+    0.43,
+    0.5
+   ]
   },
   "theSilentHour": {
    "family": "Alien Relic",

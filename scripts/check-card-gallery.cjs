@@ -1,6 +1,7 @@
 // Real gallery/catalog and feedback checks in Chrome, using Node built-ins only.
 // SHOTS=/outside/repository node scripts/check-card-gallery.cjs saves viewport images.
 const assert = require('node:assert/strict');
+const { FACE_PROBLEMS } = require('./lib/card-face-check.cjs');
 const fs = require('node:fs');
 const http = require('node:http');
 const path = require('node:path');
@@ -47,12 +48,13 @@ async function main() {
   const wait = condition => evaluate(`new Promise((resolve,reject)=>{const start=Date.now();const poll=()=>{if(${condition})resolve(true);else if(Date.now()-start>8000)reject(new Error('Gallery did not settle'));else setTimeout(poll,30);};poll();})`);
   const click = selector => evaluate(`(()=>{const e=document.querySelector(${JSON.stringify(selector)});if(!e?.checkVisibility())throw new Error('Control is hidden: '+${JSON.stringify(selector)});e.click();})()`);
   const filter = id => click(`[data-filter="${id}"]`);
-  const cards = () => evaluate('[...document.querySelectorAll(".gallery-card")].map(c=>({key:c.dataset.cardKey,code:c.dataset.cardCode,name:c.querySelector("h3").textContent,effect:c.querySelector(".effect .sr-only").textContent,formatted:c.querySelector(".effect-symbols").innerHTML,cost:c.querySelector(".gallery-cost .resource-dots")?.getAttribute("aria-label"),tier:c.closest("[data-market-tier]")?.dataset.marketTier||null,image:c.querySelector(".gallery-art img")?.getAttribute("src")}))');
+  // Each gallery card is the game's printed face (rulebook #card-face) with its name, effect and price for screen readers.
+  const cards = () => evaluate('[...document.querySelectorAll(".gallery-card")].map(c=>({key:c.dataset.cardKey,code:c.dataset.cardCode,name:c.querySelector("h3").textContent,faceName:c.querySelector(".cf-name").textContent,effect:c.querySelector(".effect").textContent,face:c.querySelector(".gallery-face").innerHTML,cost:c.querySelector(".cf-price")?.getAttribute("aria-label")||undefined,tier:c.closest("[data-market-tier]")?.dataset.marketTier||null,image:c.querySelector(".cf-art")?.getAttribute("src")}))');
   const note = async (code, text) => evaluate(`(()=>{const area=document.querySelector(${JSON.stringify('#note-' + code)});area.value=${JSON.stringify(text)};area.dispatchEvent(new Event('input',{bubbles:true}));})()`);
   try {
     await browser.send('Page.addScriptToEvaluateOnNewDocument',{source:"if(location.protocol==='http:'&&!localStorage.getItem('galactic-reach-card-feedback-31-36'))localStorage.setItem('galactic-reach-card-feedback-31-36',JSON.stringify({R01:{vote:'like',note:'Retired relic history'},N17:{vote:'neutral',note:'Retired starter-trash history'}}));"});
     await browser.navigate(`${origin}/galactic-reach/cards.html`);
-    await wait('document.querySelectorAll(".gallery-art img").length === ' + artCount + ' && document.querySelector("#store-status").textContent.includes("Saving is on")');
+    await wait('document.querySelectorAll(".gallery-credit").length === ' + artCount + ' && document.querySelector("#card-art-focus") && document.querySelector("#store-status").textContent.includes("Saving is on")');
     assert(await evaluate('document.querySelectorAll(".max-resource-shape").length > 0 && [...document.querySelectorAll(".max-resource-shape")].every(e=>getComputedStyle(e).display==="none")'), 'The shared gallery keeps constellation resources without loading Max’s stylesheet');
     assert(await evaluate('document.querySelector("#toggle-feedback").getAttribute("aria-expanded")==="false" && [...document.querySelectorAll(".gallery-feedback")].every(e=>e.hidden) && document.querySelector("#feedback-export").hidden'), 'A first visit starts compact');
     const initial = await cards();
@@ -60,15 +62,15 @@ async function main() {
     assert.equal(new Set(initial.map(c => c.code)).size, initial.length, 'Feedback ids are distinct');
     for (const card of initial) {
       const def = market[card.key] || relics[card.key];
-      assert.equal(card.name, def.name); assert.equal(card.effect, def.text);
+      assert.equal(card.name, def.name); assert.equal(card.faceName, def.name); assert.equal(card.effect, def.text);
       if (manifest[card.key]) {
         assert.equal(card.image, manifest[card.key].image);
         assert(fs.existsSync(path.join(game, card.image)), `Artwork exists for ${card.key}`);
       } else assert.equal(card.image, undefined, 'Cards without existing art keep their emblem');
       assert.equal(card.tier, relics[card.key] ? null : catalog.marketTier(card.key), 'Only market cards enter price tiers');
-      const formatted = catalog.iconText(def.text);
-      assert.equal(card.formatted, await evaluate(`(()=>{const t=document.createElement('template');t.innerHTML=${JSON.stringify(formatted)};return t.innerHTML;})()`), 'Descriptions use the main game formatter');
-      if (market[card.key]) assert.equal(card.cost, catalog.RESOURCES.filter(r => def.cost[r]).map(r => `${def.cost[r]} ${catalog.RESOURCE_NAMES[r]}`).join(', '));
+      const face = catalog.cardFace({ key: card.key, ...def }, {}, { hidden: true, art: Boolean(manifest[card.key]) });
+      assert.equal(card.face, await evaluate(`(()=>{const t=document.createElement('template');t.innerHTML=${JSON.stringify(face)};return t.innerHTML;})()`), 'Gallery cards are the main game\'s card face');
+      if (market[card.key]) assert.equal(card.cost, 'Price: ' + catalog.RESOURCES.filter(r => def.cost[r]).map(r => `${def.cost[r]} ${catalog.RESOURCE_NAMES[r]}`).join(', '));
       else assert.equal(card.cost, undefined, 'Relics have no market cost box');
     }
     assert.equal(initial.find(c => c.key === 'firstDawnEchoes').code, 'R02');
@@ -93,7 +95,7 @@ async function main() {
     assert.equal(posted[2].card, 'N27');
     saving = false;
     await browser.navigate(`${origin}/galactic-reach/cards.html`);
-    await wait('document.querySelectorAll(".gallery-art img").length === ' + artCount + ' && document.querySelector("#store-status").textContent.includes("browser only")');
+    await wait('document.querySelectorAll(".gallery-credit").length === ' + artCount + ' && document.querySelector("#card-art-focus") && document.querySelector("#store-status").textContent.includes("browser only")');
     assert.equal(await evaluate('document.querySelector("#toggle-feedback").getAttribute("aria-expanded")'), 'true', 'The feedback display preference survives reload');
     await filter('relic');
     assert.equal(await evaluate('document.querySelector("#note-R02").value'), relicNote, 'Reload retains relic feedback');
@@ -152,8 +154,8 @@ async function main() {
         fs.writeFileSync(path.join(process.env.SHOTS, `relic-gallery-${width}x${height}.png`), Buffer.from(shot.data, 'base64'));
       }
       await filter('military');
-      const costsFit = await evaluate('[...document.querySelectorAll(".gallery-card")].every(c=>{const card=c.getBoundingClientRect(),cost=c.querySelector(".gallery-cost").getBoundingClientRect(),name=c.querySelector("h3").getBoundingClientRect();return cost.right<=card.right+1 && cost.right>=card.right-3 && cost.top>=card.top-1 && cost.top<=card.top+6 && name.right<=cost.left+1;})');
-      assert(costsFit, `${width}×${height}: cost boxes stay in the upper right without overlapping names`);
+      const faceProblems = await evaluate(FACE_PROBLEMS('.gallery-card'));
+      assert.deepEqual(faceProblems, [], `${width}×${height}: every face keeps its parts in place, whole`);
       if (process.env.SHOTS && width === 1440) {
         await evaluate('scrollTo(0,0)');
         const shot = await browser.send('Page.captureScreenshot', { format: 'png' });
@@ -163,7 +165,7 @@ async function main() {
     }
     assert.deepEqual(browser.errors, [], 'No gallery runtime errors');
   } catch (error) {
-    console.error('Gallery diagnostics:', await evaluate('({cards:document.querySelectorAll(".gallery-card").length,art:document.querySelectorAll(".gallery-art").length,status:document.querySelector("#store-status")?.textContent,title:document.title})'));
+    console.error('Gallery diagnostics:', await evaluate('({cards:document.querySelectorAll(".gallery-card").length,art:document.querySelectorAll(".gallery-credit").length,status:document.querySelector("#store-status")?.textContent,title:document.title})'));
     console.error('Browser errors:', browser.errors);
     throw error;
   } finally { browser.close(); server.close(); }

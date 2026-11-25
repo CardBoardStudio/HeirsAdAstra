@@ -103,6 +103,9 @@ if __name__ == '__main__':
     with cf.ThreadPoolExecutor(6) as ex:
         done = dict(ex.map(lambda k: one(k, objs, imgs), keys))
     cards = {k: done.get(k) or old[k] for k in CARDS}
+    # A picture's chosen focal point (the card face's crop, rulebook #card-face) is kept while its crop is unchanged.
+    for k, card in cards.items():
+        if 'focus' in old.get(k, {}) and card.get('crop') == old[k].get('crop'): card['focus'] = old[k]['focus']
     manifest = {
         'source': 'National Gallery of Art, Washington, open access images (https://www.nga.gov/open-access-images.html); metadata from https://github.com/NationalGalleryOfArt/opendata',
         'license': 'CC0 1.0 Universal. NGA releases these public-domain images without restriction and asks for a credit line, given here and on the card gallery.',
