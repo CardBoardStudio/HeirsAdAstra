@@ -1,5 +1,7 @@
 # Open playtest work integration
 
+The card rebalance below was subsequently rolled back at Max’s request. It originated in `bitswell`’s PR #90 and was integrated by `maxhays8` through PR #193. The current [card reference](../../prototypes/galactic-reach/rulebook.html#cards) and [market rows](../../prototypes/galactic-reach/rulebook.html#market-tiers) state the restored catalog. The original integration decisions below remain as history; the bot, tabletop, branding and combat-mat changes remain in place.
+
 This integration carries forward PRs #90, #133, #188, #190 and #191 onto the current main branch. The release cut runs after the combined changes pass verification.
 
 ## Card rebalance on the current catalog

@@ -18,14 +18,14 @@ function act(g, seat, type, match = () => true) {
 }
 const big = p => { p.resourceLimits = { matter: 30, energy: 30, biomass: 30, data: 30 }; p.resources = { matter: 20, energy: 20, biomass: 20, data: 20 }; };
 
-// Catalog: 35 retained designs; the price experiment adds six affordable utility designs.
+// Catalog: 34 retained designs; the price experiment adds six affordable utility designs.
 const catalog = vm.runInContext(app + ';createGalacticReach({catalog:true})', vm.createContext({}));
 const cards = { ...catalog.ADVANCED_CARDS, ...catalog.MARKET_MILITARY };
 const codes = Object.values(cards).map(c => c.code);
-assert.equal(Object.keys(catalog.ADVANCED_CARDS).length, 25); assert.equal(Object.keys(catalog.MARKET_MILITARY).length, 10);
-assert.equal(new Set(codes).size, 35, 'Card ids are unique');
+assert.equal(Object.keys(catalog.ADVANCED_CARDS).length, 25); assert.equal(Object.keys(catalog.MARKET_MILITARY).length, 9);
+assert.equal(new Set(codes).size, 34, 'Card ids are unique');
 assert.deepEqual(codes.filter(c => c[0] === 'N').sort(), Array.from({ length: 32 }, (_, i) => `N${String(i + 1).padStart(2, '0')}`).filter(c=>!['N06','N11','N12','N13','N14','N15','N24'].includes(c)));
-assert.deepEqual(codes.filter(c => c[0] === 'M').sort(), Array.from({ length: 11 }, (_, i) => `M${String(i + 1).padStart(2, '0')}`).filter(c=>c!=='M04'));
+assert.deepEqual(codes.filter(c => c[0] === 'M').sort(), Array.from({ length: 10 }, (_, i) => `M${String(i + 1).padStart(2, '0')}`).filter(c=>c!=='M04'));
 for (const [key, def] of Object.entries(cards)) {
   assert(['exchangeProtocol','barterNetwork','clearingHouse','signalRelay','surveyNetwork','tacticalBriefing','strikeVector','prefabYards','seedArk','colonyPods','procurementHub','tradeSyndicate'].includes(key)||Object.values(def.cost).some(n => n > catalog.STARTING_LIMIT), `${key} must need a raised limit`);
   assert.equal(!!def.military, def.code[0] === 'M');
@@ -34,27 +34,29 @@ const prices = Object.values(cards).map(c => Object.values(c.cost).reduce((n, x)
 // 32.37 (Cheaper Cards): about 30% cheaper, from exactly 5 of one resource (one upgrade) to 14.
 assert.equal(Math.min(...prices), 3, 'The cheapest draw cards still cost three resources');
 assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
-assert.equal(prices.reduce((n, p) => n + p, 0), 228, 'Current cheaper prices remain, Genesis costs one less Life, and Torpedo Barrage costs ten');
+assert.equal(prices.reduce((n, p) => n + p, 0), 219, 'Price v1 reduces the eight selected designs by eleven resources total');
 assert.equal(catalog.rulesVersion, 'galactic-reach/39.44');
 
-// Setup: nine face-up cards (three per price tier) from 56 cards that mix both decks; target defaults to 30.
+// Setup: nine face-up cards (three per price tier) from 54 cards that mix both decks; target defaults to 30.
 {
   const g = game(), { s } = g, decks = Object.values(s.marketDecks).flat();
-  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 56); assert.equal(s.victoryTarget, 30);
+  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 54); assert.equal(s.victoryTarget, 30);
   delete s.victoryTarget; assert.equal(g.e.victoryTarget(),40,'Legacy targetless saves retain40');
   const supply = [...s.market, ...decks].map(c => c.key);
   for (const key of Object.keys(catalog.MARKET_CARDS)) assert.equal(supply.filter(k => k === key).length, 2, `${key} has two copies`);
   assert.equal(game({ victoryTarget: 40 }).s.victoryTarget, 40, 'Explicit40-point games retain their chosen target'); assert.equal(game({ victoryTarget: 35 }).s.victoryTarget, 30, 'Unlisted targets fall back to 30');
   assert.equal(game({ newGameSettings: { victoryTarget: 60 } }).s.victoryTarget, 60, 'Table settings choose the target');
 }
-// Genesis Charter can now be bought with exactly seven Life, preserving its printed other costs.
+// Genesis Charter retains its eight-Life boundary after the rebalance rollback.
 {
   const g=game(),{s,p}=g;s.phase='buy';s.activePlayer=0;p.passed=true;
   p.resourceLimits={matter:4,energy:4,biomass:7,data:4};p.resources={matter:2,energy:0,biomass:7,data:1};
-  s.market=[{key:'genesisCharter',id:'seven-life-charter'}];
+  s.market=[{key:'genesisCharter',id:'eight-life-charter'}];
+  assert(!g.adapter().legalActions(0).some(a=>a.type==='buy'&&a.key==='genesisCharter'),'Seven Life cannot buy Genesis Charter');
+  p.resourceLimits.biomass=8;p.resources.biomass=8;
   act(g,0,'buy',a=>a.index===0);
   assert.deepEqual(JSON.parse(JSON.stringify(p.resources)),{matter:0,energy:0,biomass:0,data:0});
-  assert(p.discard.some(c=>c.id==='seven-life-charter'));
+  assert(p.discard.some(c=>c.id==='eight-life-charter'));
 }
 // Starting limits can hold the specified entry cards; higher-cost cards still need capacity.
 {
@@ -110,14 +112,15 @@ for (const stored of [0, 1, 8]) {
 {
   const g = game(), { s, p } = g; s.phase = 'buy'; s.activePlayer = 0; p.passed = true; big(p);
   s.market = [{ key: 'novaBarrage', id: 'nova' }, { key: 'dysonLattice', id: 'dyson' }, { key: 'railBattery', id: 'rail' }];
-  p.hand = [{ key: 'procurementHub', id: 'hub' }];
+  p.hand = [{ key: 'procurementHub', id: 'hub' }, { key: 'tradeSyndicate', id: 'syn' }];
   p.resources.energy = 25;
   act(g, 0, 'buy_effect', a => a.card === 'hub'); assert.equal(p.buyHubDiscounts, 1);
-  // 34.39: Procurement Hub's purchase costs 1 less of each resource.
+  // 34.39: Procurement Hub's purchase also costs 1 less of each; with Trade Syndicate both apply.
   assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'dysonLattice'))), { matter: 3, energy: 7, data: 1 });
+  act(g, 0, 'buy_effect', a => a.card === 'syn'); assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'dysonLattice'))), { matter: 2, energy: 6, data: 0 });
   act(g, 0, 'buy', a => a.key === 'dysonLattice');
-  assert.equal(p.cardPrestige, 4); assert.equal(g.e.calculatePrestige(0), 7, 'Colony 3 + Dyson Lattice 4 (rebalance b2)');
-  assert.equal(p.resources.energy, 18, 'Procurement Hub took 1 off each resource of the next purchase');
+  assert.equal(p.cardPrestige, 5); assert.equal(g.e.calculatePrestige(0), 8, 'Colony 3 + Dyson Lattice 5 (34.39)');
+  assert.equal(p.resources.energy, 19, 'Trade Syndicate and Procurement Hub each took 1 off each resource of the next purchase');
   assert.equal(p.buyDiscountEach, 0, 'The discounts are used up'); assert.equal(p.buyHubDiscounts, 0);
   assert.deepEqual(JSON.parse(JSON.stringify(g.e.purchaseCost(p, 'novaBarrage'))), { matter: 3, energy: 7 }, 'The next purchase is at full price');
   act(g, 0, 'buy', a => a.key === 'novaBarrage');
@@ -134,7 +137,7 @@ for (const stored of [0, 1, 8]) {
   assert.deepEqual(JSON.parse(JSON.stringify(p.resourceLimits)), { matter: 6, energy: 6, biomass: 6, data: 6 }, 'Cargo Expansion raises every limit');
   assert.equal(p.storagePurchases || 0, 0, 'Card capacity does not raise the next paid price');
   s.activePlayer = 0; p.hand = [{ key: 'ascendancyCodex', id: 'codex' }]; p.deck = [{ key: 'move', id: 'drawn' }];
-  act(g, 0, 'special', a => a.card === 'codex'); assert.equal(p.cardPrestige, 1, 'Ascendancy Codex: 1 Prestige per use (rebalance b2)'); assert(!p.hand.some(c => c.id === 'drawn'), 'Ascendancy Codex no longer draws (rebalance b2)');
+  act(g, 0, 'special', a => a.card === 'codex'); assert.equal(p.cardPrestige, 2); assert(p.hand.some(c => c.id === 'drawn'));
   s.activePlayer = 0; p.hand = [{ key: 'commandNexus', id: 'nexus' }]; p.deck = [1, 2, 3, 4, 5].map(n => ({ key: 'move', id: `d${n}` }));
   act(g, 0, 'special', a => a.card === 'nexus'); assert.equal(p.hand.length, 4);
   assert(p.inPlay.some(c => c.id === 'nexus'), 'Used orders stay in play until cleanup');
@@ -172,7 +175,6 @@ for (const stored of [0, 1, 8]) {
 }
 // Rivals: value and save toward a target card, buy a Capacity Module for it, then play it toward that price.
 {
-  // The broader Military still values unrelated Prestige; Focused deliberately does not.
   const g = game({ militaryFocused: false }), { s, e } = g, bot = s.players[1];
   Object.assign(s.planets[s.clusters[1].coords[1]], { owner: 1, upgrade: 'starbase' });
   s.market = [{ key: 'ascendancyCodex', id: 'codex' }, { key: 'ionThrusters', id: 'ion' }];
