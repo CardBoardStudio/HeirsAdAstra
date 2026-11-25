@@ -541,6 +541,32 @@ const MEASURE = `(() => {
       if (!['top', 'bottom', 'left', 'right'].includes(note.dataset.side) && !pointer) problems.push('guidance note does not point at its target: ' + label(target));
     }
   }
+  // Willem's UI (Max's keeps its own): a guidance note, on the table or in a window, prints one step
+  // larger than the table's small print (guide.css --note-step), its symbols 1.3 times its text's
+  // height. The mat's row symbols are drawn 24 px across (before the table's zoom) in one column,
+  // and show the ghost rendering exactly where they are 24 px or more on screen (icons.js).
+  if (!document.body.classList.contains('background-stars')) {
+    for (const note of document.querySelectorAll('#gr-coach')) {
+      if (note.hidden || !note.getClientRects().length || getComputedStyle(note).display === 'none') continue;
+      const text = note.querySelector('.gr-coach-text'), size = text ? parseFloat(getComputedStyle(text).fontSize) : 0;
+      if (text && shown(text) && size < 13.5) problems.push('guidance note text under 13.5 px: ' + size + ' px');
+      for (const glyph of note.querySelectorAll('.hx-glyph')) {
+        const g = getComputedStyle(glyph);
+        if (shown(glyph) && parseFloat(g.height) < 1.25 * parseFloat(g.fontSize)) problems.push('guidance note symbol under 1.25 times its text: ' + glyph.getAttribute('aria-label'));
+      }
+    }
+    const symbols = [...document.querySelectorAll('#resource-grid .resource-box > .resource-symbol')].filter(shown);
+    if (symbols.length && Math.max(...symbols.map(s => s.getBoundingClientRect().left)) - Math.min(...symbols.map(s => s.getBoundingClientRect().left)) > 0.5) problems.push('mat symbols out of line');
+    for (const symbol of symbols) {
+      const svg = symbol.querySelector('svg'), ghost = symbol.querySelector('.hx-r-ghost');
+      const drawn = parseFloat(getComputedStyle(svg).width), onScreen = svg.getBoundingClientRect().width;
+      // (A zoomed table keeps the ring's 1 px border whole, so the symbol inside measures a little
+      // less before zoom: 22.7 px at the table's 0.6 zoom under 150% browser zoom. It was 14 to 19 px.)
+      if (drawn < 22.5) problems.push('mat symbol drawn under 24 px: ' + symbol.className + ' ' + drawn + ' px');
+      if (!ghost) problems.push('mat symbol carries no ghost rendering: ' + symbol.className);
+      else if (Math.abs(onScreen - 24) > 0.5 && (getComputedStyle(ghost).display !== 'none') !== onScreen > 24) problems.push('mat symbol shows the wrong rendering at ' + onScreen.toFixed(1) + ' px: ' + symbol.className);
+    }
+  }
   // A toast may lie over reference text, never over a card, a control or the map.
   for (const toast of document.querySelectorAll('.toast')) {
     const t = toast.getBoundingClientRect();
