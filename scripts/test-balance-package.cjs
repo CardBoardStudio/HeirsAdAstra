@@ -11,7 +11,8 @@ function game(options = {}) {
   const c = vm.createContext({});
   vm.runInContext(adapterSource + app.replace('      clone, deckContents,', '      runAiOperation, findColonizeTarget, chooseAiMove, clone, deckContents,'), c);
   let e; const factory = c.createGalacticAdapter; c.createGalacticAdapter = x => { e = x; return factory(x); };
-  c.createGalacticReach({ headless: true, random: rng(39), ...options });
+  // Capture-planning fixtures exercise the original broad-scoring Military profile.
+  c.createGalacticReach({ headless: true, militaryFocused: false, random: rng(39), ...options });
   return { e, s: e.state, p: e.state.players[0], adapter: () => factory(e) };
 }
 const legal = (g, seat = 0) => g.adapter().legalActions(seat);

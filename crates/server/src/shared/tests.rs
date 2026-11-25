@@ -1184,6 +1184,12 @@ fn start_deals_people_to_random_seats_and_rivals_fill_the_rest() {
                     .and_then(BrowserProfile::parse)
                     .is_some()
             );
+            if seat.seat < 2 {
+                assert_eq!(
+                    seat.policy.as_deref(),
+                    Some(BrowserProfile::MilitaryFocused.version())
+                );
+            }
         }
         host_seats.insert(ada);
         split += usize::from(ada / 2 != bo / 2);

@@ -1240,6 +1240,11 @@ body.background-stars .board-stage.map-zoomed .max-resource-legend {
 .archive-purge-option:has(input:disabled) { opacity:.55; }
 #archive-purge-status { color:var(--gold); }
 .new-game-neighbor { margin:14px 0 0; padding:10px 12px; border:1px solid var(--line-bright); border-radius:7px; background:#162d30; }
+#new-game-rivals:not([hidden]) { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px 12px; margin-top:14px; }
+#new-game-rivals label { display:block; margin-bottom:4px; }
+#new-game-rivals select { box-sizing:border-box; width:100%; min-height:44px; padding:8px; border:1px solid var(--line-bright); border-radius:5px; font:inherit; color:var(--text); background:var(--surface); }
+#new-game-rivals > p { grid-column:1/-1; margin:0; }
+@media (max-width:520px) { #new-game-rivals:not([hidden]) { grid-template-columns:1fr; } }
 
 /* Desktop pieces share the hex interior. A lone piece fills it; only crowded
    hexes divide that space, including buildings and located relic markers. */

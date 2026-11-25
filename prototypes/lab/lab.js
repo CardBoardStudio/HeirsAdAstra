@@ -203,10 +203,15 @@ function tablesView() {
 // Play alone: the settings a solo game already has, then the game starts.
 // Every game seats four factions (rules #setup), so three computer rivals play.
 const VICTORY_TARGETS = [20, 30, 40, 50, 60]; // rules #victory-target; the server checks the choice.
+const SOLO_RIVALS = [['Ember Directorate','militaryFocused'],['Violet Assembly','economy'],['Helios Compact','expansion']];
+const SOLO_PROFILES = [['militaryFocused','Military Focused'],['military','Military'],['economy','Economy'],['expansion','Expansion'],['maxbot','MaxBot']];
+function soloRivalSettings() {
+  return SOLO_RIVALS.map(([name,profile],i)=>`<label for="alone-rival-${i+1}">${name}</label><select id="alone-rival-${i+1}" name="bot_profile_${i+1}">${SOLO_PROFILES.map(([value,label])=>`<option value="${value}"${value===profile?' selected':''}>${label}</option>`).join('')}</select>`).join('') + '<p class="form-note">Choose each rival’s strategy. Repeated strategies are allowed.</p>';
+}
 function aloneView() {
   const intro = head("PLAY ALONE", "You against three computer rivals.", "Every game has four factions. Ember Directorate, Violet Assembly and Helios Compact play the other three.");
   if (!profile) return intro + `<section class="panel alone-panel"><p>Without an account, your game is saved in this browser.</p><a class="primary" href="/galactic-reach/?new=1">Choose the settings and start →</a><p class="form-note"><a class="text-link" href="#account">Sign in</a> to keep games in your account instead.</p></section>`;
-  return intro + `<section class="panel alone-panel"><form id="alone-form"><label for="alone-target">Prestige target</label><select id="alone-target" name="victory_target">${VICTORY_TARGETS.map(n => `<option value="${n}" ${n === 30 ? "selected" : ""}>${n} Prestige${n === 30 ? " (default)" : ""}</option>`).join("")}</select><p class="form-note">The first faction at or above the target when a round ends wins.</p><button class="primary">Start the game →</button><p class="form-note">Saved to your account, so you can continue from any browser.</p></form></section><p><a class="text-link" href="#library">← Back</a></p>`;
+  return intro + `<section class="panel alone-panel"><form id="alone-form"><label for="alone-target">Prestige target</label><select id="alone-target" name="victory_target">${VICTORY_TARGETS.map(n => `<option value="${n}" ${n === 30 ? "selected" : ""}>${n} Prestige${n === 30 ? " (default)" : ""}</option>`).join("")}</select><p class="form-note">The first faction at or above the target when a round ends wins.</p>${soloRivalSettings()}<button class="primary">Start the game →</button><p class="form-note">Saved to your account, so you can continue from any browser.</p></form></section><p><a class="text-link" href="#library">← Back</a></p>`;
 }
 // Read the current rules from the server's engine, never a hard-coded label.
 function rulesHint() {
@@ -462,7 +467,7 @@ function bind() {
   // Alone: a game of its own, never a waiting room or an invitation.
   onForm("#alone-form", async body => {
     const when = new Date().toLocaleString(undefined, {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"});
-    const table = await api("/api/tables", {game:arenaGame, name:`Alone · ${when}`, victory_target:Number(body.victory_target)});
+    const table = await api("/api/tables", {game:arenaGame, name:`Alone · ${when}`, victory_target:Number(body.victory_target), bot_profiles:SOLO_RIVALS.map((_,i)=>body[`bot_profile_${i+1}`])});
     location.assign(table.url);
   });
   // With others: the game and its waiting screen, where the link is sent.

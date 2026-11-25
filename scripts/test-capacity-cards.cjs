@@ -34,13 +34,13 @@ const prices = Object.values(cards).map(c => Object.values(c.cost).reduce((n, x)
 // 32.37 (Cheaper Cards): about 30% cheaper, from exactly 5 of one resource (one upgrade) to 14.
 assert.equal(Math.min(...prices), 3, 'The cheapest draw cards still cost three resources');
 assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
-assert.equal(prices.reduce((n, p) => n + p, 0), 219, 'Price v1 reduces the eight selected designs by eleven resources total');
+assert.equal(prices.reduce((n, p) => n + p, 0), 228, 'Current cheaper prices remain, Genesis costs one less Life, and Torpedo Barrage costs ten');
 assert.equal(catalog.rulesVersion, 'galactic-reach/38.43');
 
-// Setup: nine face-up cards (three per price tier) from 54 cards that mix both decks; target defaults to 30.
+// Setup: nine face-up cards (three per price tier) from 56 cards that mix both decks; target defaults to 30.
 {
   const g = game(), { s } = g, decks = Object.values(s.marketDecks).flat();
-  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 54); assert.equal(s.victoryTarget, 30);
+  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 56); assert.equal(s.victoryTarget, 30);
   delete s.victoryTarget; assert.equal(g.e.victoryTarget(),40,'Legacy targetless saves retain40');
   const supply = [...s.market, ...decks].map(c => c.key);
   for (const key of Object.keys(catalog.MARKET_CARDS)) assert.equal(supply.filter(k => k === key).length, 2, `${key} has two copies`);
@@ -163,7 +163,8 @@ for (const stored of [0, 1, 8]) {
 }
 // Rivals: value and save toward a target card, buy a Capacity Module for it, then play it toward that price.
 {
-  const g = game(), { s, e } = g, bot = s.players[1];
+  // The broader Military still values unrelated Prestige; Focused deliberately does not.
+  const g = game({ militaryFocused: false }), { s, e } = g, bot = s.players[1];
   Object.assign(s.planets[s.clusters[1].coords[1]], { owner: 1, upgrade: 'starbase' });
   s.market = [{ key: 'ascendancyCodex', id: 'codex' }, { key: 'ionThrusters', id: 'ion' }];
   assert(e.aiBuyValue(1, 'ascendancyCodex') > e.aiBuyValue(1, 'ionThrusters'), 'Printed Prestige makes a card worth more');

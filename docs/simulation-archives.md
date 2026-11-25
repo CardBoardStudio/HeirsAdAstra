@@ -8,7 +8,7 @@ Use the canonical factory for new bot studies. Do not copy an older summary-only
 
 ## What is kept
 
-Each `game-*` directory contains:
+Each default version-1 tree-layout `game-*` directory contains:
 
 - `manifest.json`: schema version, exact configuration supplied by the runner (seed, profiles, policy assignment, target and bounds), runtime version, source hashes, completion status and final state hash.
 - `sources/`: exact executable rules and adapter, runner/policy source and recorder, plus the canonical rulebook. Mixed-policy games retain every source variant. Card-evolution games also freeze their complete generated pool, generator, scoring code and configuration.
@@ -17,11 +17,27 @@ Each `game-*` directory contains:
 
 A position can be materialized at any recorded checkpoint without playing the game again. Legal options and faction views can be derived from that position, saved counters and the frozen adapter. Arrays retain their order and object key order is preserved. Random values and checkpoints are numbered. The reader verifies source, compressed trace, state and engine-counter hashes.
 
+### Sharing immutable source files
+
+Large studies can pass `sourcePool` to `SimulationArchive`, or set `GR_SIMULATION_SOURCE_POOL_DIR` to a directory on the same filesystem as their archives. Identical source contents then share a hard-linked blob, rather than consuming a new inode for every game. Publish each blob only after its complete contents are written; verify an existing blob's hash before reusing it. Different contents, even under the same source name, keep separate blobs. Source collisions within one archive remain errors.
+
+Each tree-layout game still has ordinary files at its own `sources/` paths, with the same hashes. Compact games keep equivalent ordinary `source-*` files as described below. The reader needs no pool lookup, and moving the pool does not break an existing game archive. Frozen sources are immutable: editing a hard-linked source would affect its other links and be detected by integrity checks. When packaging a subset of games with `tar`, use `--hard-dereference` to include each selected game's source bytes independently. This is an optional storage optimization; private positions, counters, events, RNG and interrupted journals keep the same format and retention rules.
+
+### Compact layout for new studies
+
+Set `GR_SIMULATION_ARCHIVE_LAYOUT=compact`, or pass `layout: 'compact'` to `SimulationArchive`, to create new `galactic-reach-simulation/2` archives. The default remains the version-1 tree layout. This changes archive storage, never game decisions, private positions, counters or RNG.
+
+A version-2 game keeps `manifest.json`, its normal append-only/compressed trace and ordinary frozen source files named `source-<original-name>` beside the manifest. `sourceHashes` still uses the original source names. The manifest identifies `sourceLayout: 'flat'`; final runner metrics remain complete in `summaryInline`, including summaries supplied after an automatic victory close. There is no separate `sources/` directory or `summary.json`. The reader supports both versions and rejects unknown versions. A copied version-2 game remains independently readable when its source pool is unavailable.
+
+With the immutable source pool, each additional completed game needs only three new persistent inodes: its directory, manifest and trace. A custom batch can place uniquely named game directories directly below its games root and retain raw runner metrics inline before auditing; it need not add a task directory or another summary copy. A nonnegative integer task `metadata.id` appears in the compact directory prefix so failed attempts can still be located. Source file names are always prefixed, so a frozen source named `manifest.json` cannot overwrite the real manifest.
+
+All running, failed, incomplete and hard-killed games retain the same flushed journals and private checkpoints. This layout applies only to newly created archives. It does not rewrite, remove or prune previous studies.
+
 `before-decision` / `after-decision` checkpoints bracket a runner invocation such as `runAiOperation`, `runAiBuy` or a combat command. `event-state` also captures nested action, draw, production and round boundaries. Some event checkpoints are inside an automatic resolution; use the outer decision boundary as the resumable position. Round-end events retain the unplayed hand before cleanup. Resource events retain both requested/actual gains and overflow; production retains actual requested gross income, overflow and before/after storage (including experiment toggles), while round-end events include the engine’s income forecast. This supports resource-time plots, card-use audits and other later analysis without a whole-match rerun.
 
 ## Where and how long
 
-Local archives default to `output/simulations/`, ignored by Git. No local pruning, overwrite or automatic deletion is performed. Each game uses a unique directory, including repeated seeds. Study/profiling results always use a new `run-*` child of the requested output root, including concurrent runs. Batch IDs connect related per-game archives; prior summaries and CPU profiles are not overwritten. For a permanent study location outside a temporary checkout, set:
+Local archives default to `output/simulations/`, ignored by Git. The recorder never prunes or overwrites previous runs. The [standing retention policy](../AGENTS.md#bot-simulation-retention) permits automatic removal of expanded duplicates after complete bundles covering every contained file are byte-verified locally and on ORCD. Keep both bundles, expanded protocols/results, archive locators and verification/removal evidence. Each game uses a unique directory, including repeated seeds. Study/profiling results always use a new `run-*` child of the requested output root, including concurrent runs. Batch IDs connect related per-game archives; prior summaries and CPU profiles are not overwritten. For a permanent study location outside a temporary checkout, set:
 
 ```sh
 GR_SIMULATION_ARCHIVE_DIR=/absolute/path/to/study/games node scripts/balance-simulations.cjs 1
@@ -47,7 +63,7 @@ node scripts/read-simulation-archive.cjs /path/to/game-archive > positions.jsonl
 
 For a Node analysis, iterate `archiveRecords(directory)` from `scripts/lib/simulation-archive.cjs`. Each record's `position` contains the complete reconstructed state; `counters` accompanies checkpoints. Iteration avoids retaining every position in memory. `readArchive(directory)` is a convenience materializer for small games and tests.
 
-The format is `galactic-reach-simulation/1`. New fields must preserve old-reader meaning or use a new schema version. Never rewrite an old archive to match current rules.
+The default tree format is `galactic-reach-simulation/1`; the optional compact layout is `galactic-reach-simulation/2`. New fields must preserve old-reader meaning or use a new schema version. Never rewrite an old archive to match current rules.
 
 ## Frozen market experiments
 

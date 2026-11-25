@@ -101,7 +101,8 @@ pub async fn catalog() -> Json<serde_json::Value> {
         {"game":"voidwright","id":"explorer","version":"explorer/1","name":"Explorer","description":"Experiments with random purchases and sometimes passes."},
         {"game":"voidwright","id":"merchant","version":"merchant/1","name":"Merchant","description":"Builds a resource economy, then buys scoring colonies."},
         {"game":"voidwright","id":"kepler","version":"kepler/1","name":"Kepler","description":"Balances resource growth with a small action engine."}
-        ,{"game":"galactic-reach","id":"gr-military","version":"gr-browser-military/1","name":"Vanguard","description":"Builds warships and shipyards, then moves toward rival colonies."}
+        ,{"game":"galactic-reach","id":"gr-military","version":"gr-browser-military/1","name":"Military","description":"Builds warships and shipyards, then moves toward rival colonies."}
+        ,{"game":"galactic-reach","id":"gr-military-focused","version":"gr-browser-military-focused/1","name":"Military Focused","description":"Settles one extra world, then hunts weaker units with cohesive Fleets and immediate small raids from its forward Shipyard."}
         ,{"game":"galactic-reach","id":"gr-economy","version":"gr-browser-economy/1","name":"Architect","description":"Prioritizes production, storage, and industry."}
         ,{"game":"galactic-reach","id":"gr-expansion","version":"gr-browser-expansion/1","name":"Pathfinder","description":"Builds Settlers and seeks new colony sites."}
         ,{"game":"galactic-reach","id":"gr-market","version":"gr-browser-market/1","name":"Market","description":"Prioritizes useful market cards with the browser policy."}
@@ -174,6 +175,7 @@ pub async fn create_bot(
         use galactic_reach::BrowserProfile;
         match input.strategy.as_str() {
             "gr-military" => BrowserProfile::Military,
+            "gr-military-focused" => BrowserProfile::MilitaryFocused,
             "gr-economy" => BrowserProfile::Economy,
             "gr-market" => BrowserProfile::Market,
             "gr-expansion" => BrowserProfile::Expansion,
@@ -579,6 +581,7 @@ mod calibration_tests {
         }
         for profile in [
             galactic_reach::BrowserProfile::Military,
+            galactic_reach::BrowserProfile::MilitaryFocused,
             galactic_reach::BrowserProfile::Economy,
             galactic_reach::BrowserProfile::Market,
             galactic_reach::BrowserProfile::Expansion,
