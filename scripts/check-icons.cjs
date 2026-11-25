@@ -133,6 +133,7 @@ const SYMBOL_BUTTONS = [
   [/data-consortium-gain=/, 'a choice of resource to gain'],
   [/bank-resource-button/, 'a resource to give or take at the bank'],
   [/data-card-bank="relics"/, 'the Relics card bank (relics are excavated: Excavate)'],
+  [/data-mat-units=/, 'combat pieces: inspect that ship type or Shipyard and its exact hull (rules #combat-table)'],
 ];
 const symbolButtons = [];
 for (const file of ['prototypes/galactic-reach/app.js', 'prototypes/galactic-reach/index.html', 'prototypes/galactic-reach/guide.js', 'prototypes/galactic-reach/tutorial.js',
