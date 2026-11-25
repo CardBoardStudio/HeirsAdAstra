@@ -169,6 +169,8 @@
 @media (max-width: 599px), (max-height: 599px) {
   :root body[data-drawer="supply"] :is(#market-row, .relic-row) > .game-card.face-card, :root body[data-drawer="supply"] .relic-row > div > .game-card.face-card { height: auto !important; }
   :root body[data-drawer="supply"] :is(#market-row, .relic-row) .game-card.face-card > .card-face { height: auto; aspect-ratio: 63 / 88; }
+  :root body[data-drawer="supply"] .relic-row > div:has(> .game-card.face-card) { height: auto !important; }
+  :root body[data-drawer="supply"] .relic-row > div > .game-card.face-card { flex: none; }
 }
 @media (prefers-reduced-motion: reduce) {
   .game-card.face-card .cf-sheet { transition: none; }
