@@ -2,7 +2,9 @@
 // shared review-conventions validator, and checks its pin is the same everywhere.
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
+const { execFileSync } = require('node:child_process');
 const { pathToFileURL } = require('node:url');
 const { PIN, REPOSITORY, ROOT, home } = require('./lib/review-conventions.cjs');
 const { CONFIG } = require('./check-rules-contract.cjs');
@@ -41,22 +43,40 @@ const RULEBOOK = 'prototypes/galactic-reach/rulebook.html';
   assert.deepEqual(commit('Heirs Ad Astra: Harbors refit Fleets\n\nWhy: x.\n\nBREAKING CHANGE: y'), ['trailer-breaking']);
 
   // The code rules (scripts/review-conventions-rules.mjs): one compatibility box
-  // ticked, matched by the changes/ entry. Entries are read from the checkout.
+  // ticked, matched by the changes/ entry. A cut has no pending entries, so these
+  // cases own their checkout and history instead of reading the caller's entries.
   const template = fs.readFileSync(path.join(ROOT, '.github', 'pull_request_template.md'), 'utf8');
   const tick = (text, choice) => text.replace(`- [ ] \`${choice}\``, `- [x] \`${choice}\``);
-  const repoRules = (text, files = []) => checkBody({ body: text, files }, advisory).map(f => f.rule).filter(r => ['playtest-compatibility', 'changes-entry'].includes(r));
-  const safeEntry = fs.readdirSync(path.join(ROOT, 'changes')).find(name => name !== 'README.md' && /compat: safe/.test(fs.readFileSync(path.join(ROOT, 'changes', name), 'utf8')));
-  assert.deepEqual(repoRules(template), ['playtest-compatibility'], 'An unticked template is reported');
-  assert.deepEqual(repoRules(tick(tick(template, 'playtest-safe'), 'playtest-breaking'), [`changes/${safeEntry}`]), ['playtest-compatibility'], 'Both boxes ticked is reported');
-  assert.deepEqual(repoRules(tick(template, 'playtest-safe')), []);
-  assert.deepEqual(repoRules(tick(template, 'playtest-breaking'), [`changes/${safeEntry}`]), ['changes-entry'], 'Breaking work needs a compat: breaking entry');
-  assert.deepEqual(repoRules(tick(template, 'playtest-safe') + '\n## Gameplay impact\nChanged: Harbors refit Fleets at the start of a turn.'), ['changes-entry'], 'Changed gameplay needs an entry');
-  assert.deepEqual(repoRules(tick(template, 'playtest-safe') + '\n## Gameplay impact\nChanged: Harbors refit Fleets at the start of a turn.', [`changes/${safeEntry}`]), []);
-  // With the PR's revisions, only entries the PR adds count (as in release.cjs check).
-  const revs = { base: '2f0ec85', head: 'c8b61ec' }; // adds changes/stars-around-map.md (compat: safe)
-  const withRevs = text => checkBody({ body: text, files: [], ...revs }, advisory).map(f => f.rule).filter(r => r === 'changes-entry');
-  assert.deepEqual(withRevs(tick(template, 'playtest-safe')), []);
-  assert.deepEqual(withRevs(tick(template, 'playtest-breaking')), ['changes-entry']);
+  const fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'gr-rules-contract-'));
+  try {
+    fs.mkdirSync(path.join(fixture, 'changes'));
+    for (const compat of ['safe', 'breaking']) fs.writeFileSync(path.join(fixture, 'changes', `${compat}.md`), `---\ncompat: ${compat}\ntitle: Fixture ${compat} change\n---\nA fixture for the rules contract.\n`);
+    const { createRules } = await import(pathToFileURL(path.join(ROOT, 'scripts', 'review-conventions-rules.mjs')).href);
+    const fixtureContext = { ...advisory, module: createRules({ root: fixture }) };
+    const repoRules = (text, files = []) => checkBody({ body: text, files }, fixtureContext).map(f => f.rule).filter(r => ['playtest-compatibility', 'changes-entry'].includes(r));
+    const safeEntry = 'changes/safe.md', breakingEntry = 'changes/breaking.md';
+    assert.deepEqual(repoRules(template), ['playtest-compatibility'], 'An unticked template is reported');
+    assert.deepEqual(repoRules(tick(tick(template, 'playtest-safe'), 'playtest-breaking'), [safeEntry]), ['playtest-compatibility'], 'Both boxes ticked is reported');
+    assert.deepEqual(repoRules(tick(template, 'playtest-safe')), []);
+    assert.deepEqual(repoRules(tick(template, 'playtest-breaking'), [safeEntry]), ['changes-entry'], 'Breaking work needs a compat: breaking entry');
+    assert.deepEqual(repoRules(tick(template, 'playtest-breaking'), [breakingEntry]), [], 'A matching breaking entry is accepted');
+    assert.deepEqual(repoRules(tick(template, 'playtest-safe'), [breakingEntry]), ['changes-entry'], 'Safe work cannot include a breaking entry');
+    const changed = tick(template, 'playtest-safe') + '\n## Gameplay impact\nChanged: Harbors refit Fleets at the start of a turn.';
+    assert.deepEqual(repoRules(changed), ['changes-entry'], 'Changed gameplay needs an entry');
+    assert.deepEqual(repoRules(changed, [safeEntry]), []);
+    // Only newly added entries count, even if view.files also names an older breaking entry.
+    const git = (...args) => execFileSync('git', ['-c', 'user.name=Rules fixture', '-c', 'user.email=rules-fixture@example.invalid', '-c', 'commit.gpgsign=false', '-c', `core.hooksPath=${path.join(fixture, 'no-hooks')}`, ...args], { cwd: fixture, encoding: 'utf8' }).trim();
+    git('init', '--quiet', '--initial-branch=fixture');
+    git('add', breakingEntry); git('commit', '--quiet', '-m', 'Fixture baseline');
+    const base = git('rev-parse', 'HEAD');
+    git('add', safeEntry); git('commit', '--quiet', '-m', 'Fixture safe change');
+    const head = git('rev-parse', 'HEAD');
+    const withRevs = text => checkBody({ body: text, files: [safeEntry, breakingEntry], base, head }, fixtureContext).map(f => f.rule).filter(r => r === 'changes-entry');
+    assert.deepEqual(withRevs(tick(template, 'playtest-safe')), []);
+    assert.deepEqual(withRevs(tick(template, 'playtest-breaking')), ['changes-entry']);
+  } finally {
+    fs.rmSync(fixture, { recursive: true, force: true });
+  }
   // A commit over 30 changed lines needs a body; its size comes from its SHA.
   const sized = (message, sha) => checkCommitMessage(message, advisory, { sha }).map(f => f.rule);
   assert.deepEqual(sized('Review guidance: split the shared core', '1bc2136'), ['commit-body'], 'A large subject-only commit is reported');
