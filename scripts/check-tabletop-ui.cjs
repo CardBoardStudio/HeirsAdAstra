@@ -5,7 +5,7 @@ const {launch}=require('./lib/tabletop-browser.cjs');
 const root=path.join(__dirname,'..'),id='a'.repeat(32),context=vm.createContext({});
 vm.runInContext(fs.readFileSync(path.join(root,'prototypes/galactic-reach/adapter.js'),'utf8')+fs.readFileSync(path.join(root,'prototypes/galactic-reach/app.js'),'utf8'),context);
 const adapter=context.createGalacticReach({headless:true,names:['Ada','Bo','Violet','Helios'],controllers:['human','human','ai','ai'],random:()=>0.41});
-const view={id,role:'board',name:'Tabletop playtest',status:'active',seq:19,client_path:'/galactic-reach/',rules_version:'galactic-reach/38.43',state:JSON.parse(JSON.stringify(adapter.publicState()))};
+const view={id,role:'board',name:'Tabletop playtest',status:'active',seq:19,client_path:'/galactic-reach/',rules_version:adapter.rulesVersion,state:JSON.parse(JSON.stringify(adapter.publicState()))};
 const requests=[];
 const server=http.createServer((req,res)=>{
   requests.push([req.method,req.url]);

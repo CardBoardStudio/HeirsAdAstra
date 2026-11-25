@@ -2,6 +2,9 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),http=require('node:http');
 const {findChrome,launch}=require('./check-viewport-fit.cjs');
 const root=path.resolve(__dirname,'..'),fixtures=require('./fixtures/viewport-lab-api.json'),id='b'.repeat(32);
+const source=fs.readFileSync(path.join(root,'prototypes/galactic-reach/app.js'),'utf8');
+const format=source.match(/const SAVE_FORMAT_VERSION = (\d+)/)[1],rulesRevision=source.match(/const RULES_REVISION = (\d+)/)[1];
+const saveKey=`galactic-reach-save-v${format}`,rules=`galactic-reach/${format}.${rulesRevision}`;
 let created=null,saved=null,revision=0;
 const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.svg':'image/svg+xml'};
 const server=http.createServer(async(req,res)=>{
@@ -12,7 +15,7 @@ const server=http.createServer(async(req,res)=>{
     if(url.pathname===`/api/tables/${id}/save`){saved=body.save;return json({revision:++revision});}
     return json({error:'Unexpected write'},400);
   }
-  if(url.pathname===`/api/tables/${id}`)return json({id,name:'Rival choices',owner_id:fixtures['/api/account'].id,revision,rules_version:'galactic-reach/38.43',save:saved,lobby:null,shared_url:null,settings:{victory_target:created.victory_target,bot_profiles:created.bot_profiles}});
+  if(url.pathname===`/api/tables/${id}`)return json({id,name:'Rival choices',owner_id:fixtures['/api/account'].id,revision,rules_version:rules,save:saved,lobby:null,shared_url:null,settings:{victory_target:created.victory_target,bot_profiles:created.bot_profiles}});
   if(url.pathname.startsWith('/api/'))return json(fixtures[url.pathname]??{error:'Not in fixture'},fixtures[url.pathname]?200:404);
   const dir=path.join(root,'prototypes',url.pathname.startsWith('/galactic-reach/')?'galactic-reach':'lab');
   const rel=url.pathname.startsWith('/galactic-reach/')?url.pathname.slice(16):url.pathname.replace(/^\/(lab\/)?/,'');
@@ -47,8 +50,8 @@ async function screenshot(b,name){if(!process.env.SHOTS)return;fs.mkdirSync(proc
       assert(!(await b.evaluate('document.querySelector("#new-game-neighbor").textContent')).includes('Military Focused'));
       await screenshot(b,`rivals-${width}x${height}-${stars?'stars':'green'}`);
       await b.evaluate('document.querySelector("#new-game-start").click()');
-      await wait(b,'!document.querySelector("#new-game-dialog").open && JSON.parse(localStorage.getItem("galactic-reach-save-v38"))?.players.filter(p=>p.strategy==="military").length===3');
-      assert.equal(await b.evaluate('JSON.parse(localStorage.getItem("galactic-reach-save-v38")).players.filter(p=>p.strategy==="military").length'),3);
+      await wait(b,`!document.querySelector("#new-game-dialog").open && JSON.parse(localStorage.getItem(${JSON.stringify(saveKey)}))?.players.filter(p=>p.strategy==="military").length===3`);
+      assert.equal(await b.evaluate(`JSON.parse(localStorage.getItem(${JSON.stringify(saveKey)})).players.filter(p=>p.strategy==="military").length`),3);
       console.log(`ok - guest rivals ${width}x${height}, ${stars?'Max':'Willem'} UI`);
     }
     // The account form submits all three profiles; table.js passes them to the real engine.
