@@ -30,6 +30,14 @@ The selected policy improves on the original by **29.4 percentage points**, pair
 
 Intervals use 20,000 percentile-bootstrap resamples of whole map blocks, preserving their four seat rotations. Paired comparisons resample the same blocks together. The selected version bundles several decision changes, so this is not a causal estimate of any single weight or upgrade choice.
 
+## Independent replication and rejected additions
+
+A second **96 fresh maps × four starting seats** reproduced the majority for the exact same production-first executable: **237/384 wins (61.7%)**, map-bootstrap 95% interval **56.8–66.7%**. Combat plus Victory Doctrine supplied **86.7%** of its points. Combined with the first frozen test, this unchanged executable won 469/768 games (61.1%); the two separate cohorts remain the primary reports rather than treating their individual games as independent map samples.
+
+The preselected challenger added public defense priority, splitting ten Fleets for two immediate safe fights, and earlier Doctrine saving. It won **234/384 (60.9%)** on these same maps, versus 237 for the incumbent. Its paired difference was **−0.8 percentage points**, interval **−5.7–4.2**. Reject those additions: the fresh comparison does not support an improvement. Neither policy changed during the 768-game plan, and all games completed and passed audits without recovery or excluded attempts.
+
+The study is `run-validate-r5-74c126ef83`, ORCD job `30422184` (completed `0:0`, `node1620`). Full histories remain at `/home/maxhays/galactic-reach-simulations/focused-run-validate-r5-74c126ef83/results/games/`. The frozen protocol SHA-256 is `7f398e070425a1072fd9536edb0b69fd0711f5da22c368b9793dfd5ae2e2c22c`. The complete audited rows SHA-256 is `1a546fe80574ecae390327a3624e42fb7b2e3e3653961a28bf48d4766329c97d`. Its `control` label means the majority-winning production-first policy, not the original Focused policy. Locally retained `retrieval-status.json`, `analysis/summary.json`, `analysis/decision.json` and the analysis source record the download checksums and decision.
+
 ## Points across all 384 games per policy
 
 Means include losses, rather than only winning scores. All selected-policy card points are Victory Doctrine's combat-derived reward.
@@ -52,7 +60,8 @@ Each development round used 12 new map blocks with four seat rotations, balanced
 - Round 2, 336 games: cohesive groups able to grow to ten won 25/48 versus the original's 13/48. Fresh 48-map validation later gave 76/192 (39.6%) versus 53/192 (27.6%), paired interval for the gain 3.6–20.3 points. This was the first adopted improvement.
 - Round 3, 384 games: the earlier opening won 23/48 versus 13/48 for larger groups and 7/48 for the original. Fresh 48-map validation gave 90/192 (46.9%) versus 76/192 and 66/192 respectively. Further improvement over larger groups remained uncertain.
 - Round 4, 384 games: production-first candidates won 31–34/48. The selected four-Fleet opportunistic version won 34/48 (70.8%), versus 26/48 for the earlier opening and 20/48 for the original. The larger fresh validation above, rather than 70.8%, is the adopted evidence.
-- Round 5, 384 games: defensive target priority and paired immediate strikes remain exploratory. The selected combination won 30/48 versus the production-first incumbent's 29/48. It is not adopted without fresh confirmation.
+- Round 5, 384 games: defensive target priority and paired immediate strikes selected a combination at 30/48 versus the production-first incumbent's 29/48. The independent 768-game confirmation above rejected the additions.
+- Round 6, 384 games: a stronger preference for nearby weak targets won 36/48 versus the incumbent's 35/48. More pressure on the public leader lost substantially (25–27/48). The one-game nearby gain remains exploratory and needs fresh confirmation; it is not adopted.
 
 Raw win shares from different cohorts should not be read as paired comparisons. For example, the same earlier-opening source won 46.9% in one held-out cohort and 54.7% in the larger one.
 
