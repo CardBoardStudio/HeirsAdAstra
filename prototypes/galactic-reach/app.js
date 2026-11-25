@@ -198,17 +198,17 @@ function createGalacticReach(options = {}) {
     worldEngine: { code: 'N07', name: 'World Engine', kind: 'Industry', accent: 'var(--matter)', cost: {"matter": 6, "energy": 1, "biomass": 1}, order: 'construct', tag: 'worldEngine', buildDiscount: 'free', orderDraw: 1, text: 'Build or commission once at no resource cost, then draw one card.' },
     seedArk: { code: 'N08', name: 'Seed Ark', kind: 'Expansion', accent: 'var(--biomass)', cost: {"biomass": 4}, order: 'colonize', tag: 'seedArk', colonyCost: 1, text: 'Colonize with a Settler for 1 Life. The Settler is consumed; Seed Ark stays in your deck.' },
     colonyPods: { code: 'N09', name: 'Colony Pods', kind: 'Expansion', accent: 'var(--biomass)', cost: {"energy": 1, "biomass": 4}, order: 'colonize', tag: 'colonyPods', colonyCost: 1, keepSettler: true, text: 'Colonize for 1 Life without consuming the Settler.' },
-    genesisCharter: { code: 'N10', name: 'Genesis Charter', kind: 'Expansion', accent: 'var(--biomass)', cost: { matter: 2, biomass: 8, data: 1 }, order: 'colonize', tag: 'genesisCharter', colonyCost: 0, keepSettler: true, colonyPrestige: 2, text: 'Colonize for 0 Life without consuming the Settler, and gain 2 permanent Prestige.' },
+    genesisCharter: { code: 'N10', name: 'Genesis Charter', kind: 'Expansion', accent: 'var(--biomass)', cost: { matter: 2, biomass: 7, data: 1 }, order: 'colonize', tag: 'genesisCharter', colonyCost: 0, keepSettler: true, colonyPrestige: 2, text: 'Colonize for 0 Life without consuming the Settler, and gain 2 permanent Prestige.' },
     strategyCore: { code: 'N16', name: 'Strategy Core', kind: 'Deckcraft', accent: 'var(--data)', cost: { energy: 1, data: 5 }, order: 'special', tag: 'strategyCore', effect: { draw: 3 }, text: 'Draw three cards.' },
     archivePurge: { code: 'N17', name: 'Archive Purge', kind: 'Deckcraft', accent: 'var(--data)', cost: { biomass: 1, data: 5 }, order: 'special', tag: 'archivePurge', effect: { trashStarters: 2, draw: 1 }, text: 'Choose up to two level I starter cards in your discard pile and trash them permanently, then draw one card.' },
     commandNexus: { code: 'N18', name: 'Command Nexus', kind: 'Deckcraft', accent: 'var(--data)', cost: { energy: 2, data: 6 }, order: 'special', tag: 'commandNexus', effect: { draw: 4 }, text: 'Draw four cards.' },
     cargoExpansion: { code: 'N19', name: 'Cargo Expansion', kind: 'Capacity', accent: 'var(--gold)', cost: { matter: 5, data: 1 }, order: 'special', tag: 'cargoExpansion', effect: { limits: { matter: 2, energy: 2, biomass: 2, data: 2 }, trashSelf: true }, text: 'Permanently raise each resource limit by 2, then trash this card.' },
-    hyperspaceVaults: { code: 'N20', name: 'Hyperspace Vaults', kind: 'Capacity', accent: 'var(--gold)', cost: { matter: 2, energy: 1, data: 6 }, order: 'special', tag: 'hyperspaceVaults', effect: { limits: { matter: 2, energy: 2, biomass: 2, data: 2 }, draw: 1 }, text: 'Permanently raise each resource limit by 2, then draw one card.' },
+    hyperspaceVaults: { code: 'N20', name: 'Hyperspace Vaults', kind: 'Capacity', accent: 'var(--gold)', cost: { matter: 2, energy: 1, data: 6 }, order: 'special', tag: 'hyperspaceVaults', effect: { limits: { matter: 1, energy: 1, biomass: 1, data: 1 }, draw: 1 }, text: 'Permanently raise each resource limit by 1, then draw one card.' },
     procurementHub: { code: 'N21', name: 'Procurement Hub', kind: 'Buy', accent: 'var(--gold)', cost: {"biomass": 1, "data": 4}, buyEffect: 'hubDiscount', text: 'Buy turn: your next purchase this Buy costs 1 less of each resource in its cost.' },
     tradeSyndicate: { code: 'N22', name: 'Trade Syndicate', kind: 'Buy', accent: 'var(--gold)', cost: {"energy": 4, "data": 1}, buyEffect: 'discountEach', text: 'Buy turn: your next purchase this Buy costs 1 less of each resource in its cost.' },
     monumentOfAccord: { code: 'N23', name: 'Monument of Accord', kind: 'Wonder', accent: 'var(--gold)', cost: { matter: 6, biomass: 2, data: 2 }, gainPrestige: 3, text: 'When bought, gain 3 permanent Prestige. This card enters discard and has no effect in hand; trash it later to remove it from your deck.' },
-    dysonLattice: { code: 'N25', name: 'Dyson Lattice', kind: 'Wonder', accent: 'var(--gold)', cost: { matter: 4, energy: 8, data: 2 }, gainPrestige: 5, text: 'When bought, gain 5 permanent Prestige. This card enters discard and has no effect in hand; trash it later to remove it from your deck.' },
-    ascendancyCodex: { code: 'N26', name: 'Ascendancy Codex', kind: 'Prestige', accent: 'var(--gold)', cost: { energy: 2, biomass: 4, data: 8 }, order: 'special', tag: 'ascendancyCodex', effect: { prestige: 2, draw: 1 }, text: 'Gain 2 permanent Prestige, then draw one card.' },
+    dysonLattice: { code: 'N25', name: 'Dyson Lattice', kind: 'Wonder', accent: 'var(--gold)', cost: { matter: 4, energy: 8, data: 2 }, gainPrestige: 4, text: 'When bought, gain 4 permanent Prestige. This card enters discard and has no effect in hand; trash it later to remove it from your deck.' },
+    ascendancyCodex: { code: 'N26', name: 'Ascendancy Codex', kind: 'Prestige', accent: 'var(--gold)', cost: { energy: 2, biomass: 4, data: 8 }, order: 'special', tag: 'ascendancyCodex', effect: { prestige: 1 }, text: 'Gain 1 permanent Prestige.' },
     signalRelay: { code:'N27', name:'Signal Relay', kind:'Deckcraft', accent:'var(--data)', cost:{energy:2,data:1}, order:'special', effect:{draw:2}, text:'Draw two cards.' },
     surveyNetwork: { code:'N28', name:'Survey Network', kind:'Deckcraft', accent:'var(--data)', cost:{biomass:1,data:2}, order:'special', effect:{draw:2}, text:'Draw two cards.' },
     tacticalBriefing: { code:'N29', name:'Tactical Briefing', kind:'Deckcraft', accent:'var(--data)', cost:{matter:1,data:2}, order:'special', effect:{draw:2}, text:'Draw two cards.' },
@@ -217,7 +217,7 @@ function createGalacticReach(options = {}) {
     clearingHouse: { code:'N32', name:'Clearing House', kind:'Exchange', accent:'var(--gold)', cost:{matter:1,data:2}, order:'special', effect:{bankRate:2}, text:'Play during Operations or your Buy turn. Choose a resource to give at 2:1 with the bank until your Buy ends.' },
   };
 
-  // Military-deck market cards (codes M01-M10). Buying one adds it to your military deck,
+  // Military-deck market cards (codes M01-M11). Buying one adds it to your military deck,
   // never your normal deck. Each battle your tactic hand is the four basic tactics plus
   // every military card you own; each card is usable once per battle.
   const MARKET_MILITARY = {
@@ -229,7 +229,9 @@ function createGalacticReach(options = {}) {
     phaseLance: { code: 'M07', name: 'Phase Lance', kind: 'Military', military: true, accent: 'var(--red)', cost: { energy: 6, data: 2 }, attack: 2, shield: 0, pierce: true, text: '+2 hits this volley. The opponent’s shields prevent none of your hits.' },
     novaBarrage: { code: 'M08', name: 'Nova Barrage', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 3, energy: 7 }, attack: 5, shield: 0, text: '+5 hits this volley.' },
     aegisLattice: { code: 'M09', name: 'Aegis Lattice', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 7, energy: 2 }, attack: 0, shield: 8, text: 'Prevent 8 hits this volley.' },
-    victoryDoctrine: { code: 'M10', name: 'Victory Doctrine', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 1, energy: 2, data: 6 }, attack: 2, shield: 0, victoryPrestige: 2, text: '+2 hits this volley. If your side wins a decisive combat victory, gain 2 more permanent Prestige.' }
+    victoryDoctrine: { code: 'M10', name: 'Victory Doctrine', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 1, energy: 2, data: 6 }, attack: 2, shield: 0, victoryPrestige: 2, text: '+2 hits this volley. If your side wins a decisive combat victory, gain 2 more permanent Prestige.' },
+    // Promoted from the card-evolution study (generated card E1-02, both 2026-11-16 runs).
+    torpedoBarrage: { code: 'M11', name: 'Torpedo Barrage', kind: 'Military', military: true, accent: 'var(--red)', cost: { energy: 6, biomass: 2, data: 2 }, attack: 3, shield: 3, text: '+3 hits and prevent 3 hits this volley.' }
   };
   const RETIRED_MARKET_KEYS = ['strikeVector', 'prefabYards', 'seedArk', 'colonyPods', 'procurementHub', 'tradeSyndicate', 'archivePurge'];
   const MARKET_CARDS = Object.fromEntries(Object.entries({ ...ADVANCED_CARDS, ...MARKET_MILITARY }).filter(([key]) => !RETIRED_MARKET_KEYS.includes(key)));
@@ -387,16 +389,17 @@ function createGalacticReach(options = {}) {
     "accent": "var(--gold)",
     "order": "special",
     "tag": "foldedWarehouse",
-    "text": "Increase all resource capacities by 1 (maximum 15 each), then draw two cards.",
+    "text": "Increase all resource capacities by 2 (maximum 15 each), draw two cards, then trash this card.",
     "lore": "A fragment of the civilizations that came before.",
     "effect": {
       "limits": {
-        "matter": 1,
-        "energy": 1,
-        "biomass": 1,
-        "data": 1
+        "matter": 2,
+        "energy": 2,
+        "biomass": 2,
+        "data": 2
       },
-      "draw": 2
+      "draw": 2,
+      "trashSelf": true
     }
   },
   "cinderDrive": {
@@ -488,7 +491,7 @@ function createGalacticReach(options = {}) {
     "accent": "var(--gold)",
     "name": "Folded Warehouse",
     "affinity": "Settlement",
-    "text": "Increase all resource capacities by 1 (maximum 15 each), then draw two cards.",
+    "text": "Increase all resource capacities by 2 (maximum 15 each), draw two cards, then trash this card.",
     "order": "special",
     "tag": "foldedWarehouse",
     "effect": {
@@ -1777,8 +1780,10 @@ function createGalacticReach(options = {}) {
     return position?.victoryTarget || 40; // Legacy saves without a target retain their original goal.
   }
 
-  // A purchase's price after this Buy turn's discounts: Trade Syndicate's, plus one
-  // pending Procurement Hub discount (rules #buy). Each discount is 1 of each resource.
+  // A purchase's price after this Buy turn's discounts: one pending Procurement Hub
+  // discount (rules #buy), plus a `discountEach` Buy card's. No printed card uses
+  // `discountEach` since Trade Syndicate left the market; card-evolution study cards do.
+  // Each discount is 1 of each resource.
   function purchaseDiscount(player) {
     return (player.buyDiscountEach > 0 ? 1 : 0) + ((player.buyHubDiscounts || 0) > 0 ? 1 : 0);
   }
@@ -5386,7 +5391,7 @@ function createGalacticReach(options = {}) {
   function renderMarket() {
     const humanBuy=!replayMode&&state.phase==='buy'&&state.activePlayer===ME;
     const me0=state.players[ME];
-    $('#market-help').textContent=replayMode?`${state.players[viewSeat].name} purchased ${state.players[viewSeat].cardsPurchased||0} cards.`:`Buy as many cards as you can afford in your Buy turn${purchaseDiscount(me0)?` (${[me0.buyDiscountEach?'Trade Syndicate':'',me0.buyHubDiscounts?'Procurement Hub':''].filter(Boolean).join(' + ')}: ${purchaseDiscount(me0)} less of each resource on your next purchase)`:''}; military cards join your military deck. Rows: Expensive, Medium, Cheap. Starter upgrades are paid separately.`;
+    $('#market-help').textContent=replayMode?`${state.players[viewSeat].name} purchased ${state.players[viewSeat].cardsPurchased||0} cards.`:`Buy as many cards as you can afford in your Buy turn${purchaseDiscount(me0)?` (${[me0.buyDiscountEach?'Buy card':'',me0.buyHubDiscounts?'Procurement Hub':''].filter(Boolean).join(' + ')}: ${purchaseDiscount(me0)} less of each resource on your next purchase)`:''}; military cards join your military deck. Rows: Expensive, Medium, Cheap. Starter upgrades are paid separately.`;
     $('#basic-market').innerHTML='';
     // Rules #market: three slots per tier, Expensive then Medium then Cheap; a slot whose deck ran out shows empty.
     const slots=MARKET_TIERS.flatMap(tier=>{
