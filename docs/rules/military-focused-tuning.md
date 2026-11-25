@@ -1,8 +1,33 @@
 # Military Focused: a majority through combat
 
-The route-corrected Military Focused policy won **530/768 games (69.0%)** across two independent cohorts: 192 fresh maps with all starting seats. Its stratified whole-map bootstrap 95% interval is **65.9–72.1%**. Combat victories and Victory Doctrine supplied **87.4% of its points**. The two-world plan and cohesive five-to-ten-Fleet groups remain selected.
+The immediate-small-raid Military Focused policy won **266/384 games (69.3%)**, versus **244/384 (63.5%)** for the preceding corrected policy on the same fresh maps and starting seats. The paired gain is **5.7 percentage points**, with a whole-map bootstrap 95% interval of **1.8–9.6**. Its own win-share interval is **64.8–73.7%**; combat and Victory Doctrine supplied **86.7% of its points**.
 
-## Actual-route correction: selected
+## Immediate small raids: selected
+
+The bot normally keeps five to ten Fleets together. Two to four may take a favourable fight throughout the game when the actual legal route reaches the enemy in this Move. Smaller forces still wait or regroup when no such fight is available. Its opening, second-world Fleet production, permanent one-expansion limit, Harvesters/cargo and draw/exchange/military support remain the same.
+
+Round 14 development selected immediate two-Fleet opportunities at 64/96 wins versus the incumbent's 59/96 on 24 maps. That exploratory result was frozen before this new **96-map × four-seat × two-policy = 768-game** confirmation. All six relative opponent orders are balanced. All 768 requested games completed and passed every audit with no failures, unfinished outcomes or excluded attempts. The paired interval satisfied the predeclared positive-gain gate.
+
+| Policy | Focused wins | Military wins | Economy wins | Expansion wins |
+| --- | ---: | ---: | ---: | ---: |
+| Preceding corrected policy | 244 (63.5%) | 45 | 63 | 32 |
+| Immediate small raids | 266 (69.3%) | 43 | 51 | 24 |
+
+| Points, mean across all 384 selected-policy games including losses | Military Focused | Economy in the same lineup |
+| --- | ---: | ---: |
+| Held Colonies | 3.94 | 9.63 |
+| Ordinary combat | 24.94 | 2.15 |
+| Card Prestige | 0.81 | 2.65 |
+| Relics | 0 | 5.79 |
+| Total | 29.69 | 20.22 |
+
+All Focused card points are Victory Doctrine, and every two-world/no-relic/no-unrelated-Prestige audit passed. Exact selected `app.js`: `eb83f86ba61f35c9dfd4b07624cadba15acead70bae15f17d75eb0e55ce3b961`. Study `run-validate-r14-two-6c38e91a04`, protocol `77951bff2f813d3a7c1d047caadd488f30475168656f7188b59a17e875acafb6`, audited rows `52684b5d90e14b777262411b1e8245312fbcb3b29ec1c5f54405039d6bd144ce`. `r15-selection.json` retains the gate and exact comparison. This is one fresh confirmation cohort of the new executable. Earlier percentages below concern other executables and are not pooled into it.
+
+## Preceding corrected-policy evidence
+
+Before the immediate-small-raid change, the route-corrected Military Focused policy won **530/768 games (69.0%)** across two independent cohorts: 192 fresh maps with all starting seats. Its stratified whole-map bootstrap 95% interval is **65.9–72.1%**. Combat victories and Victory Doctrine supplied **87.4% of its points**. The two-world plan and cohesive five-to-ten-Fleet groups remain selected.
+
+## Actual-route correction: preceding selection
 
 Small early raids must reach the enemy by the legal route they actually take. A stronger enemy may block the direct route even when the target is close by distance. Four Fleets now wait or regroup when that detour would need another Move. Full hunting groups can still take longer approaches. The intended clarification was written before implementing the fix, and the blocked-route fixture was found before inspecting the preceding eight-Fleet confirmation outcomes.
 
@@ -18,7 +43,7 @@ A second independent **96-map × four-seat × two-policy = 768-game** comparison
 | Relics | 0 | 6.08 |
 | Total | 29.72 | 21.59 |
 
-All Focused card points are Victory Doctrine; the two-world, no-relic and no-unrelated-Prestige audits passed. Exact adopted `app.js`: `6257558c9bef95981863f2b38d36c3ece4359d94d1b5921d3dbea1dfa6f65011`. Study `run-validate-r11-actual-route-5f031ce7a2`, protocol `0e716fbb7fce6bb5ab830fd10e5d3d9aae6973975d9a9939d4b56108978747c5`, complete audited rows `9bdfbaa589baa5663816e23cfac51578fd5f11c5fae7897c72ddb240d438dade`. `r11-selection.json` records the primary comparison and exact adoption gate. The replication is `run-validate-r12-five-41d26c8e9a`, protocol `6041affe3b982e2d0b0a627490b934549ae4df30c6a0ac355b8210cc8951b6f6`, rows `f2219ce22edfdc21b2d381ae387490610fd4e0ef5808c3b8bded7e709167daf2`. The exact two-cohort aggregate and analyzer are retained as `corrected-policy-replications.json` and `analyze-corrected-policy-replications.py` (analyzer SHA-256 `4b3c097ddf8d27f949c4a140f3eff22d6b4a1213e9be48599e3a6176d78ed31f`). The earlier aggregate below describes a different source and is not pooled with this corrected-policy cohort.
+All Focused card points are Victory Doctrine; the two-world, no-relic and no-unrelated-Prestige audits passed. That stage's adopted `app.js`: `6257558c9bef95981863f2b38d36c3ece4359d94d1b5921d3dbea1dfa6f65011`. Study `run-validate-r11-actual-route-5f031ce7a2`, protocol `0e716fbb7fce6bb5ab830fd10e5d3d9aae6973975d9a9939d4b56108978747c5`, complete audited rows `9bdfbaa589baa5663816e23cfac51578fd5f11c5fae7897c72ddb240d438dade`. `r11-selection.json` records the primary comparison and exact adoption gate. The replication is `run-validate-r12-five-41d26c8e9a`, protocol `6041affe3b982e2d0b0a627490b934549ae4df30c6a0ac355b8210cc8951b6f6`, rows `f2219ce22edfdc21b2d381ae387490610fd4e0ef5808c3b8bded7e709167daf2`. The exact two-cohort aggregate and analyzer are retained as `corrected-policy-replications.json` and `analyze-corrected-policy-replications.py` (analyzer SHA-256 `4b3c097ddf8d27f949c4a140f3eff22d6b4a1213e9be48599e3a6176d78ed31f`). The earlier aggregate below describes a different source and is not pooled with this corrected-policy cohort.
 
 ## Earlier shorter-hunt evidence
 
@@ -175,6 +200,14 @@ The earlier development rounds used 12 new map blocks; round 12 increased this t
 - Round 12, 768 games: five- and seven-Fleet caps tied at 73/96 wins. Five won the predeclared mean-points tiebreak (29.96 versus 29.72); the corrected incumbent won 70/96. The fresh 96-map paired confirmation above gave 271/384 versus 274/384 and rejected the change.
 
 Raw win shares from different cohorts should not be read as paired comparisons. For example, the same earlier-opening source won 46.9% in one held-out cohort and 54.7% in the larger one.
+
+- Round 14, 768 development games: immediate two-Fleet opportunities won 64/96 versus the incumbent's 59/96. The fresh confirmation above supported adoption.
+
+## Discarded Colonize-trimming premise
+
+The proposed round 16 deck study incorrectly assumed the used basic Colonize card remained after founding the second world. The canonical card text and `applyColonizeOrder` already permanently trash it, and the real browser rival uses that function. A retained current-engine bot-operation fixture confirmed the second founding, normal payment and permanent removal of the used card. No card or founding rule needed a change.
+
+The study was cancelled before inspecting win outcomes and will not be ranked or used for adoption. All 576 complete game archives remain retained, including five completed attempts whose coordinator audits were interrupted after 571 audited rows. Its frozen protocol, cancellation reason, scheduler state and retention counts are preserved in `r16-invalidated-study-note.json` and `r16-cancellation-provenance.json`. The synthetic spare-card fixtures tested legal trashing but did not establish the premise in actual play. No deck-trimming code was adopted or combined with the selected raid policy.
 
 ## Recovery, verification and retention
 

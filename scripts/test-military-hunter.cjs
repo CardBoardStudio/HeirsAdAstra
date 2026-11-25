@@ -27,6 +27,7 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   const card={id:'move',key:'move',starter:true,upgraded:true},move=g.e.chooseAiMove(1,card);assert(move);assert.equal(g.s.planets[move.goal].owner,null);legal(g,move,card);
   const world=g.s.clusters[4];g.s.fleets={[world.center]:{1:{settler:1}}};assert.equal(g.e.chooseAiMove(1,card),null,'Wait at the second Colony site');
   g.p.hand=[{id:'col',key:'colonize'}];g.e.runAiOperation();assert.equal(g.s.planets[world.center].owner,1);
+  assert(![...g.p.hand,...g.p.deck,...g.p.discard,...g.p.inPlay].some(c=>c.id==='col'),'The used basic Colonize is permanently trashed when the bot founds its second world');
   g.s.activePlayer=1;g.p.hand=[{id:'build2',key:'construct'}];build=g.e.chooseAiBuild(1);assert.equal(build.kind,'starbase');assert.equal(g.s.planets[build.coord].cluster,world.id);
   assert(g.e.constructAt(1,build.coord,build.kind));
   for(let n=0;n<4&&g.e.chooseAiBuild(1)?.kind==='harvester';n++){build=g.e.chooseAiBuild(1);assert(g.e.constructAt(1,build.coord,build.kind));}
@@ -42,7 +43,7 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
 
 {
   const g=game(),world=second(g);yard(g,g.s.clusters[1]);const forward=yard(g,world),card={id:'move',key:'move',starter:true,upgraded:true};
-  g.s.fleets={[forward]:{1:{fleet:4}},'0,0':{0:{settler:1}}};let move=g.e.chooseAiMove(1,card);assert.equal(move,null,'Four wait for a complete hunting group');
+  g.s.fleets={[forward]:{1:{fleet:4}},'0,0':{0:{settler:1}}};let move=g.e.chooseAiMove(1,card);assert.equal(move,null,'A smaller group waits when no fight can be reached this Move');
   g.s.fleets[forward][1].fleet=10;move=g.e.chooseAiMove(1,card);assert.equal(move.goal,'0,0');assert.equal(move.units.fleet,10,'Keep a larger hunting group together');legal(g,move,card);
   const before=JSON.stringify(g.s),calls=g.calls(),hand=g.s.players[0].hand;g.s.players[0].hand=[{id:'secret',key:'phaseLance'}];g.s.players[0].deck.reverse();
   assert.deepEqual(plain(g.e.chooseAiMove(1,card)),plain(move),'Hunting ignores enemy private cards');assert.equal(g.calls(),calls);
@@ -61,10 +62,10 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   const g=game(),world=second(g),forward=yard(g,world),card={id:'early',key:'move',starter:true,upgraded:true};
   g.s.fleets={'0,0':{1:{fleet:4}},'2,0':{0:{fleet:1}}};
   const raid=g.e.chooseAiMove(1,card);assert.equal(raid.goal,'2,0');assert.equal(raid.destination,'2,0');assert.equal(raid.units.fleet,4,'Four can take a safe fight in one early Move');legal(g,raid,card);
-  g.s.round=11;assert.equal(g.e.chooseAiMove(1,card).goal,forward,'Later incomplete groups regroup');
+  g.s.round=11;const late=g.e.chooseAiMove(1,card);assert.equal(late.goal,'2,0','Immediate small fights remain available after round ten');assert.equal(late.destination,late.goal);legal(g,late,card);
 }
 {
-  for(const count of [3,4]){
+  for(const count of [2,3,4]){
     const g=game({minRaid:count}),card={id:'blocked-raid',key:'move',starter:true,upgraded:true,level:2};second(g);g.s.round=2;
     g.s.fleets={'0,0':{1:{fleet:count}},'1,0':{0:{fleet:10}},'3,0':{2:{fleet:1}}};
     const before=JSON.stringify(g.s),calls=g.calls();
@@ -75,6 +76,13 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   const g=game(),card={id:'cohesive-detour',key:'move',starter:true,upgraded:true,level:2};second(g);
   g.s.fleets={'0,0':{1:{fleet:5}},'1,0':{0:{fleet:10}},'3,0':{2:{fleet:1}}};
   const approach=g.e.chooseAiMove(1,card);assert(approach);assert.equal(approach.goal,'3,0');assert.notEqual(approach.destination,approach.goal,'A full hunting group may take a longer legal approach');legal(g,approach,card);
+}
+{
+  for(const round of [2,11,1000]){
+    const g=game(),card={id:'immediate-two',key:'move',starter:true,upgraded:true,level:2};second(g);g.s.round=round;
+    g.s.fleets={'0,0':{1:{fleet:2}},'2,0':{0:{fleet:1}}};
+    const move=g.e.chooseAiMove(1,card);assert(move);assert.equal(move.units.fleet,2);assert.equal(move.goal,'2,0');assert.equal(move.destination,move.goal,'Two Fleets must reach their favourable fight now');legal(g,move,card);
+  }
 }
 {
   const g=game(),at=yard(g,g.s.clusters[1]);g.s.fleets={[at]:{1:{settler:1}}};

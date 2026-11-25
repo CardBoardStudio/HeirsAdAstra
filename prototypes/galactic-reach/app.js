@@ -3957,7 +3957,7 @@ function createGalacticReach(options = {}) {
   }
 
   // Fixed browser-policy parameters, also frozen with each simulation candidate.
-  const FOCUSED_MILITARY_POLICY = Object.freeze({"minRaid":4,"maxRaid":10,"margin":0,"preferFullGroup":true,"earlyRaidUntil":10,"distancePenalty":8,"countPenalty":0,"maxRisk":1,"productionFloor":0,"doctrineBuy":0,"doctrinePlay":6,"leaderPressure":0.15,"rallyScore":80,"returnScore":75,"openingEconomy":105,"reserveOpening":true,"openingMoves":2,"moveBeforeSettler":true,"deferOpeningBuys":true,"immediateSmallRaid":true,"enemyRange":3,"escapePenalty":40});
+  const FOCUSED_MILITARY_POLICY = Object.freeze({"minRaid":2,"maxRaid":10,"margin":0,"preferFullGroup":true,"earlyRaidUntil":null,"distancePenalty":8,"countPenalty":0,"maxRisk":1,"productionFloor":0,"doctrineBuy":0,"doctrinePlay":6,"leaderPressure":0.15,"rallyScore":80,"returnScore":75,"openingEconomy":105,"reserveOpening":true,"openingMoves":2,"moveBeforeSettler":true,"deferOpeningBuys":true,"immediateSmallRaid":true,"enemyRange":3,"escapePenalty":40});
 
   // #military-focused-rival: founding the second Colony ends expansion permanently.
   // originalFounder survives conquest, so this plan needs no hidden policy state.
@@ -4104,14 +4104,19 @@ function createGalacticReach(options = {}) {
       }
       const fleets=f.fleet||0;
       const minimum=policy.earlyRaidUntil===null||state.round<=policy.earlyRaidUntil?policy.minRaid:5;
-      if(fleets>=minimum) {
+      const opportunityMinimum=policy.opportunisticMin??Infinity;
+      if(fleets>=Math.min(minimum,opportunityMinimum)) {
         for(const [at,other] of Object.entries(state.fleets)) {
           const defender=findDefender(at,playerId),enemy=defender===null?null:other[defender];
           if(!enemy||!fleetCount(enemy))continue;
+          const opportunity=fleets>=opportunityMinimum&&(enemy.fleet||0)<=(policy.opportunisticEnemyFleets??0)
+            &&(policy.opportunisticDistance===undefined||travelDistance(source,at)<=policy.opportunisticDistance);
+          const targetMinimum=opportunity?Math.min(minimum,opportunityMinimum):minimum;
+          if(fleets<targetMinimum)continue;
           const planet=state.planets[at],yardDefense=planet?.owner===defender&&planet.upgrade==='starbase';
           const escape=enemy.explorer&&state.players[defender].resources.energy>=1&&adjacentKeys(at).some(next=>!hostileAt(next,defender));
           const maximum=Math.min(fleets,policy.maxRaid),tried=new Set();
-          for(let n=policy.preferFullGroup?maximum:minimum;n<=maximum;n++) {
+          for(let n=policy.preferFullGroup?maximum:targetMinimum;n<=maximum;n++) {
             const count=Math.min(maximum,n+policy.margin);if(tried.has(count))continue;tried.add(count);
             const hunters={settler:0,explorer:0,fleet:count};
             if(count<5&&policy.immediateSmallRaid&&travelDistance(source,at)>movementRange(hunters,card))continue;
