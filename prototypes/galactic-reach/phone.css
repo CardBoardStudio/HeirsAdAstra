@@ -219,10 +219,12 @@
   :root body[data-drawer="mat"] .storage-upgrade-control .storage-upgrade-button { flex: none; min-height: 44px; }
   :root body[data-drawer="mat"] .storage-upgrade-control p { margin: 0; font-size: 11.5px; line-height: 1.35; }
   :root body[data-drawer="mat"] .resource-panel { width: min(440px, calc(100vw - var(--rail) - var(--safe-r) - var(--note-gap) - 16px)) !important; }
+  /* The mat's larger symbols (styles.css) take 8 px more beside each row: the sheet gives it back, so the pips keep their size. */
+  :root body:not(.background-stars)[data-drawer="mat"] .resource-panel { width: min(448px, calc(100vw - var(--rail) - var(--safe-r) - var(--note-gap) - 16px)) !important; }
   :root body[data-drawer="mat"] #resource-grid .mat-pips { grid-template-columns: repeat(21, minmax(0, 15px)); gap: 3px; }
   /* Each resource row is a finger-sized target for a trade: its Now track takes taps across the whole row. */
   :root body[data-drawer="mat"] #resource-grid > .resource-box { min-height: 44px; align-content: center !important; }
-  :root body[data-drawer="mat"] #resource-grid .mat-pips.now::after { content: ''; position: absolute; inset: -22px -6px -12px -34px; }
+  :root body[data-drawer="mat"] #resource-grid .mat-pips.now::after { content: ''; position: absolute; inset: -22px -6px -12px calc(-14px - var(--mat-symbol, 20px)); }
   /* Comms: the whole log. */
   :root body[data-drawer="comms"] .board-shared > :not(.board-reference), :root body[data-drawer="comms"] .board-reference > :not(.log-panel) { display: none !important; }
   /* Table: the score track and standings. */
@@ -296,9 +298,9 @@
   }
   :root .gr-coach:not(.in-dialog) .gr-coach-arrow { display: none; }
   /* Compact print, finger-sized buttons. */
-  :root .gr-coach:not(.in-dialog) { padding: 8px 11px 9px; font-size: 12.5px; line-height: 1.35; }
-  :root .gr-coach:not(.in-dialog) .gr-coach-eyebrow { font-size: 9.5px; letter-spacing: .06em; }
-  :root .gr-coach:not(.in-dialog) .gr-coach-title { margin: 0 0 2px; font-size: 16px; }
+  :root .gr-coach:not(.in-dialog) { padding: 8px 11px 9px; font-size: calc(12.5px * var(--note-step)); line-height: 1.35; }
+  :root .gr-coach:not(.in-dialog) .gr-coach-eyebrow { font-size: calc(9.5px * var(--note-step)); letter-spacing: .06em; }
+  :root .gr-coach:not(.in-dialog) .gr-coach-title { margin: 0 0 2px; font-size: calc(16px * var(--note-step)); }
   :root .gr-coach:not(.in-dialog) .gr-coach-progress { margin-top: 2px; }
   /* The Rules link sits at the end of the title's line. */
   :root .gr-coach:not(.in-dialog):not([hidden]) { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-auto-flow: row dense; column-gap: 8px; align-items: baseline; }

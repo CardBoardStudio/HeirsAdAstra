@@ -2475,6 +2475,15 @@ html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 #resource-grid .mat-stock { display: contents; }
 #resource-grid .mat-stars { display: none !important; }
+/* Each row is led by its resource's symbol, drawn 24 px across inside its 30 px ring: large enough
+   for the ghost rendering (icons.js; the symbol carries both, and its box picks one, as a card
+   corner's does). The symbol's column grows and the gap beside it narrows, so the pips keep their
+   spacing; the rows stay aligned on one column. Max's UI keeps its own mat. */
+body:not(.background-stars) #resource-grid { --mat-symbol: 30px; }
+body:not(.background-stars) #resource-grid > .resource-box { grid-template-columns: var(--mat-symbol) minmax(0, 1fr) !important; column-gap: 5px !important; }
+body:not(.background-stars) #resource-grid .resource-box > .resource-symbol { width: var(--mat-symbol) !important; height: var(--mat-symbol) !important; padding: 2px; container: hx-box / size; }
+/* The legend's Rate, Now and Capacity marks, in proportion beside the larger symbols. */
+body:not(.background-stars) #resource-grid .mat-key i { width: 10px; height: 10px; }
 body.background-stars #resource-grid .mat-classic { display: none !important; }
 body.background-stars #resource-grid .mat-stock.mat-stars { display: contents !important; }
 body.background-stars #resource-grid > .mat-head.mat-stars { display: flex !important; }

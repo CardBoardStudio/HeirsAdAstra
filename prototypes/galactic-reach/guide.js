@@ -13,8 +13,10 @@
   const esc = text => String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]);
   // Notes write Prestige and relics as ★ and ◈ (the rules' shorthand); they show as the game's
   // symbols (icons.js). An element keeps its words in data-raw, so shortening a note and
-  // comparing notes work on the words, never on the drawn symbols.
-  const rich = text => globalThis.heirsIcons ? globalThis.heirsIcons.glyphs(esc(text)) : esc(text);
+  // comparing notes work on the words, never on the drawn symbols. A symbol never wraps away from
+  // the word or number it belongs to ("3" and its Prestige symbol stay on one line).
+  const glued = html => html.replace(/\S*[★◈]\S*/g, word => `<span class="gr-coach-word">${word}</span>`);
+  const rich = text => globalThis.heirsIcons ? globalThis.heirsIcons.glyphs(glued(esc(text))) : esc(text);
   const setText = (el, text) => { el.dataset.raw = text; el.innerHTML = rich(text); };
   const rawText = el => el.dataset.raw ?? el.textContent;
   // Where each resource comes from, in the words of the rulebook's #resources and #trade.
