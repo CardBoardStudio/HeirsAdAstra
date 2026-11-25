@@ -56,15 +56,28 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
 /// Settings a started table hands to the browser engine for its new game: the
 /// waiting room's choice, or the one made when the game was started alone.
 pub fn table_settings(db: &Connection, table_id: &str) -> ApiResult<Option<serde_json::Value>> {
-    db.query_row(
-        "SELECT coalesce((SELECT victory_target FROM gr_lobbies WHERE table_id=t.id),t.victory_target)
+    let settings = db
+        .query_row(
+            "SELECT coalesce((SELECT victory_target FROM gr_lobbies WHERE table_id=t.id),t.victory_target),t.bot_profiles
          FROM solo_tables t WHERE t.id=?",
-        [table_id],
-        |r| r.get::<_, Option<u32>>(0),
-    )
-    .optional()
-    .map_err(internal)
-    .map(|target| target.flatten().map(|n| json!({"victory_target":n})))
+            [table_id],
+            |r| Ok((r.get::<_, Option<u32>>(0)?, r.get::<_, Option<String>>(1)?)),
+        )
+        .optional()
+        .map_err(internal)?;
+    let Some((target, profiles)) = settings else {
+        return Ok(None);
+    };
+    if target.is_none() && profiles.is_none() {
+        return Ok(None);
+    }
+    let profiles = profiles
+        .map(|text| serde_json::from_str::<Vec<String>>(&text))
+        .transpose()
+        .map_err(internal)?;
+    Ok(Some(
+        json!({"victory_target":target,"bot_profiles":profiles}),
+    ))
 }
 
 /// Opens a waiting room for a freshly created table and returns its invite token.
@@ -418,6 +431,7 @@ pub async fn start(
                 status: "active".into(),
                 seats,
                 victory_target: lobby.victory_target,
+                committed_only: false,
             })
             .await?;
     }

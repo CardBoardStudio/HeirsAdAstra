@@ -11,7 +11,8 @@ function game(options = {}) {
   const c = vm.createContext({});
   vm.runInContext(adapterSource + app.replace('      clone, deckContents,', '      runAiOperation, findColonizeTarget, chooseAiMove, clone, deckContents,'), c);
   let e; const factory = c.createGalacticAdapter; c.createGalacticAdapter = x => { e = x; return factory(x); };
-  c.createGalacticReach({ headless: true, random: rng(39), ...options });
+  // Capture-planning fixtures exercise the original broad-scoring Military profile.
+  c.createGalacticReach({ headless: true, militaryFocused: false, random: rng(39), ...options });
   return { e, s: e.state, p: e.state.players[0], adapter: () => factory(e) };
 }
 const legal = (g, seat = 0) => g.adapter().legalActions(seat);
@@ -74,7 +75,8 @@ for (const key of ['colonize', 'colonyPods']) {
 // #cards: printed values of the trimmed Wonders and reworked cheap cards.
 {
   const { e } = game(), C = e.ALL_CARDS;
-  assert.equal(C.dysonLattice.gainPrestige, 5); assert.match(C.dysonLattice.text, /gain 5 permanent Prestige/);
+  // Rebalance b2 (2026-11-16 card-evolution study) trims Dyson Lattice again, 5 -> 4.
+  assert.equal(C.dysonLattice.gainPrestige, 4); assert.match(C.dysonLattice.text, /gain 4 permanent Prestige/);
   assert(!C.senateSeat);
   assert(!C.boardingMarines);
   assert(!C.miningCharter && !C.bioReactor);
@@ -88,7 +90,7 @@ for (const key of ['colonize', 'colonyPods']) {
   const g = game(), { s, p } = g; s.phase = 'buy'; s.activePlayer = 0; p.passed = true; big(p);
   s.market = [{ key: 'monumentOfAccord', id: 'senate' }, { key: 'dysonLattice', id: 'dyson' }, { key: 'railBattery', id: 'marines' }];
   const view = g.adapter().observe(0);
-  assert.deepEqual(plain(view.marketPrestige), [3, 5, 0]);
+  assert.deepEqual(plain(view.marketPrestige), [3, 4, 0]);
   assert.deepEqual(plain(view.tacticStats.railBattery), { attack: 2, shield: 0, pierce: false });
   assert.deepEqual(plain(view.tacticStats.phaseLance), { attack: 2, shield: 0, pierce: true });
   act(g, 0, 'buy', a => a.key === 'monumentOfAccord'); assert.equal(p.cardPrestige, 3);

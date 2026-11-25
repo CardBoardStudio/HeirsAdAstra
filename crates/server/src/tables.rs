@@ -29,6 +29,13 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
     if !has_target {
         db.execute_batch("ALTER TABLE solo_tables ADD COLUMN victory_target INTEGER;")?;
     }
+    let has_profiles = db
+        .prepare("PRAGMA table_info(solo_tables)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .any(|c| c.as_deref() == Ok("bot_profiles"));
+    if !has_profiles {
+        db.execute_batch("ALTER TABLE solo_tables ADD COLUMN bot_profiles TEXT;")?;
+    }
     Ok(())
 }
 fn table_url(game: &str, id: &str) -> String {
@@ -116,6 +123,9 @@ pub struct Create {
     /// (rules #victory-target). A waiting room's host chooses it in the room.
     #[serde(default)]
     victory_target: Option<u32>,
+    /// Solo setup only: profiles for Ember, Violet and Helios (rules #solo-seating).
+    #[serde(default)]
+    bot_profiles: Option<Vec<String>>,
 }
 fn rounds() -> u16 {
     20
@@ -156,6 +166,26 @@ pub async fn create(
             "Choose a listed Prestige target."
         }));
     }
+    if let Some(profiles) = &input.bot_profiles
+        && (input.lobby
+            || profiles.len() != 3
+            || profiles.iter().any(|profile| {
+                !matches!(
+                    profile.as_str(),
+                    "militaryFocused" | "military" | "economy" | "expansion" | "maxbot"
+                )
+            }))
+    {
+        return Err(bad(
+            "Choose a listed profile for each of the three solo rivals.",
+        ));
+    }
+    let bot_profiles = input
+        .bot_profiles
+        .as_ref()
+        .map(serde_json::to_string)
+        .transpose()
+        .map_err(internal)?;
     let db = app.store.0.lock().map_err(internal)?;
     let count: u32 = db
         .query_row(
@@ -172,8 +202,8 @@ pub async fn create(
     let id = uuid::Uuid::new_v4().simple().to_string();
     // Played alone, this row is the whole game: no waiting room, invitation or shared table.
     db.execute(
-        "INSERT INTO solo_tables(id,owner_id,name,created,updated,rules_version,victory_target) VALUES(?,?,?,?,?,?,?)",
-        params![id, u.id, name, now(), now(),galactic_reach::RULES,input.victory_target],
+        "INSERT INTO solo_tables(id,owner_id,name,created,updated,rules_version,victory_target,bot_profiles) VALUES(?,?,?,?,?,?,?,?)",
+        params![id, u.id, name, now(), now(),galactic_reach::RULES,input.victory_target,bot_profiles],
     )
     .map_err(internal)?;
     if input.lobby {
@@ -421,6 +451,9 @@ mod tests {
         for body in [
             json!({"game":"galactic-reach","name":"Alone","victory_target":35}),
             json!({"game":"galactic-reach","name":"Alone","victory_target":40,"lobby":true}),
+            json!({"game":"galactic-reach","name":"Alone","bot_profiles":["military"]}),
+            json!({"game":"galactic-reach","name":"Alone","bot_profiles":["human","economy","expansion"]}),
+            json!({"game":"galactic-reach","name":"Alone","bot_profiles":["militaryFocused","economy","expansion"],"lobby":true}),
         ] {
             assert_eq!(
                 call(&a, "POST", "/api/tables", &me, body).await.0,
@@ -432,7 +465,7 @@ mod tests {
             "POST",
             "/api/tables",
             &me,
-            json!({"game":"galactic-reach","name":"Alone · Nov 21","victory_target":40}),
+            json!({"game":"galactic-reach","name":"Alone · Nov 21","victory_target":40,"bot_profiles":["military","military","maxbot"]}),
         )
         .await;
         assert_eq!(s, StatusCode::OK, "{t}");
@@ -444,6 +477,10 @@ mod tests {
         assert!(table["lobby"].is_null(), "{table}");
         assert!(table["shared_url"].is_null(), "{table}");
         assert_eq!(table["settings"]["victory_target"], 40);
+        assert_eq!(
+            table["settings"]["bot_profiles"],
+            json!(["military", "military", "maxbot"])
+        );
         let shared_rows = |a: &App| {
             let db = a.store.0.lock().unwrap();
             [

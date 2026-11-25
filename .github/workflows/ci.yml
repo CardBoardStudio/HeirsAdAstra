@@ -56,7 +56,7 @@ jobs:
   # The change queue (crates/server/src/change_queue.rs) requires this job's name, so it passes
   # only when every JavaScript job below passed.
   javascript:
-    name: Galactic Reach JavaScript checks
+    name: Heirs Ad Astra JavaScript checks
     needs: [javascript-tests, relic-interface]
     if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
@@ -87,7 +87,7 @@ jobs:
         env:
           CHECK_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
   javascript-tests:
-    name: Galactic Reach JavaScript tests
+    name: Heirs Ad Astra JavaScript tests
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -131,9 +131,12 @@ jobs:
       - run: node scripts/test-storage-planning.cjs
       - run: node scripts/test-twenty-point-strategy.cjs
       - run: node scripts/test-scoring-bots.cjs
+      - run: node scripts/test-military-hunter.cjs
+      - run: node scripts/check-rival-settings.cjs
       - run: node scripts/test-no-shipyard-upgrades.cjs
       - run: node scripts/test-combat-prestige.cjs
       - run: node scripts/test-tactical-combat.cjs
+      - run: node scripts/check-combat-mats.cjs
       - run: node scripts/test-shared-tables.cjs
       - run: node scripts/test-replay-view.cjs
       - run: node scripts/test-galactic-reach-dialogs.cjs

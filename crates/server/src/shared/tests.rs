@@ -62,6 +62,7 @@ fn table(id: &str, people: &[(&str, &str)]) -> Table {
         status: "active".into(),
         seats: seats(&people),
         victory_target: 40,
+        committed_only: false,
     }
 }
 fn store_with(accounts: &[&str]) -> Arc<Store> {
@@ -211,7 +212,7 @@ async fn private_views_never_hold_another_seats_hand_or_deck_order() {
             .map(|deck| deck.as_array().unwrap().len())
             .sum::<usize>()
             + bo["state"]["market"].as_array().unwrap().len(),
-        54
+        56
     );
     // A seat's own deck is listed without its order.
     let deck: Vec<&str> = bo["state"]["players"][1]["deck"]
@@ -531,6 +532,7 @@ async fn a_live_view_streams_the_current_seat_view_first() {
             status: "active".into(),
             seats: seats(&ids),
             victory_target: 40,
+            committed_only: false,
         })
         .await
         .unwrap();
@@ -1182,6 +1184,12 @@ fn start_deals_people_to_random_seats_and_rivals_fill_the_rest() {
                     .and_then(BrowserProfile::parse)
                     .is_some()
             );
+            if seat.seat < 2 {
+                assert_eq!(
+                    seat.policy.as_deref(),
+                    Some(BrowserProfile::MilitaryFocused.version())
+                );
+            }
         }
         host_seats.insert(ada);
         split += usize::from(ada / 2 != bo / 2);

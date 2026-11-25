@@ -1,7 +1,8 @@
+// Explorer-planning fixtures explicitly select the original Military profile.
 // Public world information, private discoveries, randomized moons, and frozen 19.24.
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),crypto=require('node:crypto'),path=require('node:path');
 const root=path.join(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,p),'utf8'),plain=x=>JSON.parse(JSON.stringify(x)),hash=s=>crypto.createHash('sha256').update(s).digest('hex');
-function game(prefix='prototypes/galactic-reach/',seed=17){const c=vm.createContext({});vm.runInContext(read(prefix+'adapter.js')+read(prefix+'app.js').replace('      clone, deckContents,','      chooseAiMove, moonLayoutCount:()=>moonLayoutChoices.length, clone, deckContents,'),c);let e;const factory=c.createGalacticAdapter;c.createGalacticAdapter=p=>{e=p;return factory(p);};const a=c.createGalacticReach({headless:true,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});return{a,e,s:e.state,adapter:()=>factory(e)};}
+function game(prefix='prototypes/galactic-reach/',seed=17){const c=vm.createContext({});vm.runInContext(read(prefix+'adapter.js')+read(prefix+'app.js').replace('      clone, deckContents,','      chooseAiMove, moonLayoutCount:()=>moonLayoutChoices.length, clone, deckContents,'),c);let e;const factory=c.createGalacticAdapter;c.createGalacticAdapter=p=>{e=p;return factory(p);};const a=c.createGalacticReach({headless:true,militaryFocused:false,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});return{a,e,s:e.state,adapter:()=>factory(e)};}
 function terrain(a,seat){const view=a.observe(seat);return plain({planets:view.planets,clusters:view.clusters});}
 {
  const g=game();assert.equal(g.a.rulesVersion,'galactic-reach/38.43');assert.equal(g.s.version,38);assert.equal(g.s.rulesRevision,43);

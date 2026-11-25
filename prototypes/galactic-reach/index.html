@@ -281,7 +281,18 @@
       <label for="new-game-target">Prestige target</label>
       <select id="new-game-target"></select>
       <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 30.</p>
-      <label><input type="checkbox" id="new-game-maxbot"> Play against MaxBot instead of the Economy rival</label>
+      <div id="new-game-rivals" hidden>
+        <div><label for="new-game-rival-1">Ember Directorate</label><select id="new-game-rival-1"></select></div>
+        <div><label for="new-game-rival-2">Violet Assembly</label><select id="new-game-rival-2"></select></div>
+        <div><label for="new-game-rival-3">Helios Compact</label><select id="new-game-rival-3"></select></div>
+        <p class="muted">Choose each rival's strategy. Repeated strategies are allowed.</p>
+      </div>
+      <!-- Kept engines use these controls with the current shared markup. -->
+      <div id="new-game-legacy-rivals">
+        <label><input type="checkbox" id="new-game-maxbot"> Play against MaxBot instead of the Economy rival</label>
+        <label for="new-game-military-profile">Military rival</label>
+        <select id="new-game-military-profile"><option value="military">Military</option><option value="militaryFocused">Military Focused</option></select>
+      </div>
       <p id="new-game-neighbor" class="new-game-neighbor"></p>
       <div class="dialog-actions"><button class="button button-ghost" value="cancel" type="submit">Cancel</button><button class="button button-primary" value="start" type="submit" id="new-game-start">Start new game</button></div>
     </form>
@@ -313,6 +324,11 @@
     <div id="combat-options" class="combat-options"></div>
     <div id="combat-history" class="combat-history"></div>
     <p class="muted combat-save-note">Finish the battle before normal play resumes. Your committed choices are saved.</p>
+  </dialog>
+
+  <dialog id="battle-reference-dialog" class="battle-reference" aria-labelledby="battle-reference-title">
+    <div class="dialog-heading"><h2 id="battle-reference-title">Battle record</h2><button type="button" class="button" id="battle-reference-close">Close</button></div>
+    <div id="battle-reference-body"></div>
   </dialog>
 
   <dialog id="storage-allocation-dialog" class="storage-allocation-dialog" aria-labelledby="storage-allocation-title" aria-describedby="storage-allocation-help">

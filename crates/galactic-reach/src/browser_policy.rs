@@ -2,6 +2,7 @@ use super::*;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BrowserProfile {
     Military,
+    MilitaryFocused,
     Economy,
     Market,
     Expansion,
@@ -10,6 +11,7 @@ impl BrowserProfile {
     pub fn name(self) -> &'static str {
         match self {
             Self::Military => "military",
+            Self::MilitaryFocused => "militaryFocused",
             Self::Economy => "economy",
             Self::Market => "market",
             Self::Expansion => "expansion",
@@ -18,15 +20,22 @@ impl BrowserProfile {
     pub fn version(self) -> &'static str {
         match self {
             Self::Military => "gr-browser-military/1",
+            Self::MilitaryFocused => "gr-browser-military-focused/1",
             Self::Economy => "gr-browser-economy/1",
             Self::Market => "gr-browser-market/1",
             Self::Expansion => "gr-browser-expansion/1",
         }
     }
     pub fn parse(version: &str) -> Option<Self> {
-        [Self::Military, Self::Economy, Self::Market, Self::Expansion]
-            .into_iter()
-            .find(|p| p.version() == version)
+        [
+            Self::Military,
+            Self::MilitaryFocused,
+            Self::Economy,
+            Self::Market,
+            Self::Expansion,
+        ]
+        .into_iter()
+        .find(|p| p.version() == version)
     }
 }
 /// A transport handle, not another decision policy. The engine executes browser JS.
@@ -78,5 +87,17 @@ mod tests {
             agent.select_action(&Value::Null, &[json!({"type":"pass"})]),
             usize::MAX
         );
+    }
+    #[test]
+    fn focused_military_is_a_distinct_browser_profile() {
+        let profile = BrowserProfile::MilitaryFocused;
+        assert_eq!(BrowserProfile::parse(profile.version()), Some(profile));
+        assert_ne!(profile.version(), BrowserProfile::Military.version());
+        let mut g = GalacticReach::new([7; 32]).unwrap();
+        g.set_browser_profiles([Some(profile), None, None, None])
+            .unwrap();
+        let action = json!({"type":"browser_policy","profile":profile.name()});
+        assert_eq!(g.legal_actions(0), vec![action.clone()]);
+        g.apply_action(0, action).unwrap();
     }
 }

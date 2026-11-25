@@ -394,7 +394,7 @@ for(const attacker of [0,1]) for(const stage of ['escape','tactic','committed','
   assert(reload.saved().lastCombat.volleys.length>0);
   assert(reload.dialog('message').open,'Final report opens automatically');
   const final=reload.saved().lastCombat;
-  assert(reload.dom.element('message-body').textContent.includes(final.summary.at(-1)));
+  assert(reload.dom.element('message-details').innerHTML.includes(final.summary.at(-1)));
   assert(reload.dom.element('message-body').textContent.includes(final.outcome));
   assert.doesNotMatch(final.outcome,/You has/);
   const beforeReport=JSON.stringify(reload.saved());
@@ -426,8 +426,9 @@ test('battle table shows public purchased tactics and usage without leaking the 
   state.pendingCombat.used.attacker=['railBattery'];
   writeSave(storage,state);const first=boot(storage),html=first.dom.element('combat-forces').innerHTML;
   assert(html.indexOf('combat-enemy')<html.indexOf('combat-own'),'Enemy is above you even when you defend');
-  assert.match(html,/Rail Battery: 1 available, 1 used/);
-  assert.match(html,/Phase Lance: 1 available, 0 used/);
+  assert.match(html,/Rail Battery/);assert.match(html,/Spent · 1/);
+  first.dom.lastQuery('[data-mat-page]').find(b=>b.dataset.matPage==='attacker:1').click();
+  assert.match(first.dom.element('combat-forces').innerHTML,/Phase Lance/);
   assert.doesNotMatch(html,/War-Song|private-reaction/);
   const other=JSON.parse(JSON.stringify(state));other.pendingCombat.commitments.attacker='phaseLance';
   const otherStorage=createStorage();writeSave(otherStorage,other);
@@ -440,11 +441,13 @@ test('battle table keeps damaged units separate and counts identical healthy shi
   state.pendingCombat.attackerPieces.push({type:'fleet',hull:7,power:3,damage:0},{type:'fleet',hull:7,power:3,damage:0});
   state.fleets['9,-10'][0].fleet=3;writeSave(storage,state);
   const game=boot(storage),html=game.dom.element('combat-forces').innerHTML;
-  assert.match(html,/Fleet: 3 attack, 6\/7 hull/);
-  assert.match(html,/2 × Fleet: 3 attack, 7\/7 hull each/);
-  assert.match(html,/class="board-icon"/);assert.match(html,/class="combat-hull"/);
-  assert.match(html,/Concentrated Fire: 2 available, 0 used/);
-  assert.match(html,/Defensive Screen: 1 available, 1 used/);
+  assert.match(html,/Attack: 9/);assert.match(html,/Hull: 6. Fleet · of 7/);
+  assert.match(html,/Fleet: 3 surviving, 0 destroyed, 1 damaged/);
+  game.dom.lastQuery('[data-mat-units]').find(b=>b.dataset.matUnits==='attacker:fleet').click();
+  const manifest=game.dom.element('battle-reference-body').innerHTML;
+  assert.match(manifest,/3 attack · 6\/7 hull/);
+  assert.equal((manifest.match(/3 attack · 7\/7 hull/g)||[]).length,2);
+  assert.match(html,/Concentrated Fire, 2 copies/);assert.match(html,/Spent · 1/);
 });
 
 test('Max UI battle table shows every ship individually without changing combat',()=>{
@@ -1114,7 +1117,7 @@ test('decisive combat awards Prestige once and the saved report preserves it', (
  while(game.saved().pendingCombat){assert(choices++<8);continueCombat(game);}
  assert.equal(game.saved().players[0].combatVictories,1);
  assert.equal(game.saved().lastCombat.prestigeWinner,0);
- assert.match(game.dom.element('message-body').textContent,/gained 2 Prestige/);
+ assert.match(game.dom.element('message-details').innerHTML,/gained 2 Prestige/);
  assert(game.dialog('message').open);
  const reloaded=boot(storage);assert(reloaded.dialog('message').open);
  assert.equal(reloaded.saved().players[0].combatVictories,1);
@@ -1148,7 +1151,7 @@ test('export downloads a private read-only report without using RNG or changing 
  assert.equal(report.rulesVersion,`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`);
  assert(report.coverage.complete);assert(report.save.gameHistory.initialState);
  assert.deepEqual(report.save.state,game.saved());assert.equal(report.factions.length,4);
- assert.equal(report.factions[1].botProfile.strategy,game.saved().players[1].strategy);assert.deepEqual(report.factions.slice(1).map(f=>f.botProfile.strategy).sort(),['economy','expansion','military']);assert.equal(report.factions[0].points.total,3);
+ assert.equal(report.factions[1].botProfile.strategy,game.saved().players[1].strategy);assert.deepEqual(report.factions.slice(1).map(f=>f.botProfile.strategy).sort(),['economy','expansion','militaryFocused']);assert.equal(report.factions[0].points.total,3);
  assert(report.logText.includes('Controlled planets produced'));assert(report.logText.includes('+1 Matter'));
  // Rules #setup: the private opening hand is dealt at setup, so the report's initial position holds it.
  assert.equal(report.save.gameHistory.initialState.players[0].hand.length,5);assert.equal(report.save.gameHistory.initialState.players[0].deck.length,1);
@@ -1196,7 +1199,7 @@ test('New game asks for the Prestige target; Cancel keeps the current game', () 
 
 // Rules #solo-seating: preview and log follow physical home assignment, which survives reload.
 test('New solo games randomize all four starting positions and name the actual neighbor', () => {
- const storage=createStorage(),game=boot(storage),profiles={'Ember Directorate':'military','Violet Assembly':'economy','Helios Compact':'expansion'};
+ const storage=createStorage(),game=boot(storage),profiles={'Ember Directorate':'militaryFocused','Violet Assembly':'economy','Helios Compact':'expansion'};
  const check=s=>{assert.deepEqual(s.players.slice(1).map(p=>p.name).sort(),Object.keys(profiles).sort());s.players.slice(1).forEach(p=>assert.equal(p.strategy,profiles[p.name]));assert.equal(s.firstPlayer,0);};
  const neighbor=s=>s.players[s.homeOrder.indexOf(s.homeOrder[0]^1)];
  check(game.saved());assert(game.saved().log.some(e=>String(e.text||e).includes(`Your neighbor this game is ${neighbor(game.saved()).name}`)));
@@ -1333,7 +1336,7 @@ test('Max UI Oracle shows every design, guards unavailable cards and purchases t
  // Leave the face-up row full, so restoring the fixture does not consume its hidden offer.
  state.marketDecks.cheap.push({id:'spare-one',key:'barterNetwork'},{id:'spare-two',key:'clearingHouse'},{id:'spare-three',key:'exchangeProtocol'});writeSave(storage,state);
  const game=maxCardChooser(storage),before=game.saved(),cards=game.dom.lastQuery('[data-relic-card]');
- assert.equal(cards.length,27);assert(cards.some(b=>b.disabled));const unavailable=cards.find(b=>b.dataset.relicCard==='worldEngine');assert(unavailable.disabled);unavailable.click();assert.deepEqual(game.saved(),before);
+ assert.equal(cards.length,28);assert(cards.some(b=>b.disabled));const unavailable=cards.find(b=>b.dataset.relicCard==='worldEngine');assert(unavailable.disabled);unavailable.click();assert.deepEqual(game.saved(),before);
  const offer=cards.find(b=>b.dataset.relicCard==='signalRelay');assert(!offer.disabled);offer.click();assert.deepEqual(game.saved(),before,'Selecting spends nothing');game.click('relic-card-confirm');
  assert(game.saved().players[0].hand.some(c=>c.id==='oracle-copy'));assert(!game.saved().marketDecks.cheap.some(c=>c.id==='oracle-copy'));assert.equal(game.saved().players[0].resources.energy,2);assert.equal(game.saved().players[0].resources.data,3);
 });
@@ -1352,7 +1355,7 @@ test('Shared Max UI Oracle renders the public catalog with redacted decks and se
  const sent=[],view={seq:1,state:authority.privateState(0),hints:authority.hints(0)};
  assert(view.state.marketDecks.expensive.every(c=>c.hidden&&!c.key));const network={seat:0,rules:authority.rulesVersion,initial:view,busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
  const game=boot(createStorage(),1729,undefined,{network});game.dom.document.body.classList.contains=name=>name==='background-stars';game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();
- const cards=game.dom.lastQuery('[data-relic-card]');assert.equal(cards.length,27);cards.find(b=>b.dataset.relicCard==='phaseLance').click();assert.deepEqual(sent,[]);game.click('relic-card-confirm');assert.equal(sent.length,1);assert.equal(sent[0].length,1);assert.equal(sent[0][0].purchase,'oracle-copy');authority.applyAction(0,sent[0][0]);assert(engine.state.players[0].military.some(c=>c.id==='oracle-copy'));
+ const cards=game.dom.lastQuery('[data-relic-card]');assert.equal(cards.length,28);cards.find(b=>b.dataset.relicCard==='phaseLance').click();assert.deepEqual(sent,[]);game.click('relic-card-confirm');assert.equal(sent.length,1);assert.equal(sent[0].length,1);assert.equal(sent[0][0].purchase,'oracle-copy');authority.applyAction(0,sent[0][0]);assert(engine.state.players[0].military.some(c=>c.id==='oracle-copy'));
 });
 
 function reservoirSave(pending=false) {
@@ -1566,15 +1569,46 @@ test('Retained Seed Ark has no unadopted draw alternative',()=>{
 });
 test('MaxBot is optional, previewed by name and retained through reload',()=>{
  const storage=createStorage(),game=boot(storage);assert(!game.saved().players.some(p=>p.strategy==='maxbot'));
- game.click('new-game-button');game.dom.element('new-game-maxbot').checked=true;
- game.dom.element('new-game-maxbot').listeners.change.forEach(fn=>fn({type:'change'}));
+ game.click('new-game-button');game.dom.element('new-game-rival-2').value='maxbot';
+ game.dom.element('new-game-rival-2').listeners.change.forEach(fn=>fn({type:'change'}));
  assert(game.dom.element('new-game-neighbor').textContent.includes('MaxBot'));
  game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();assert(!game.saved().players.some(p=>p.strategy==='maxbot'));
- game.click('new-game-button');game.dom.element('new-game-maxbot').checked=true;game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
+ game.click('new-game-button');game.dom.element('new-game-rival-2').value='maxbot';game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();
  const max=game.saved().players.find(p=>p.strategy==='maxbot');assert(max);assert.equal(max.name,'MaxBot');assert.equal(game.saved().players.filter(p=>p.strategy==='maxbot').length,1);
- const reload=boot(storage);assert.equal(reload.saved().players[max.id].name,'MaxBot');reload.click('new-game-button');assert(reload.dom.element('new-game-maxbot').checked);
- reload.dom.element('new-game-maxbot').checked=false;reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();assert(!reload.saved().players.some(p=>p.strategy==='maxbot'));
+ const reload=boot(storage);assert.equal(reload.saved().players[max.id].name,'MaxBot');reload.click('new-game-button');assert.equal(reload.dom.element('new-game-rival-2').value,'maxbot');
+ reload.dom.element('new-game-rival-2').value='economy';reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();assert(!reload.saved().players.some(p=>p.strategy==='maxbot'));
 });
+test('New game defaults to Military Focused and independently selects, previews and restores all rivals',()=>{
+ const storage=createStorage(),game=boot(storage);assert(game.saved().players.some(p=>p.strategy==='militaryFocused'));assert(!game.saved().players.some(p=>p.strategy==='military'));
+ game.click('new-game-button');assert.equal(game.dom.element('new-game-rival-1').value,'militaryFocused');
+ const before=JSON.stringify(game.saved());
+ for(const faction of [1,2,3]){game.dom.element(`new-game-rival-${faction}`).value='military';game.dom.element(`new-game-rival-${faction}`).listeners.change.forEach(fn=>fn({type:'change'}));}
+ assert(!game.dom.element('new-game-neighbor').textContent.includes('Military Focused'));assert(game.dom.element('new-game-neighbor').textContent.includes('(Military)'));
+ game.dialog('new-game').returnValue='cancel';game.dialog('new-game').close();assert.equal(JSON.stringify(game.saved()),before,'Cancel changes neither the save nor its assigned profiles');
+ game.click('new-game-button');for(const faction of [1,2,3])game.dom.element(`new-game-rival-${faction}`).value='military';
+ game.dialog('new-game').returnValue='start';game.dialog('new-game').close();game.settle();assert.equal(game.saved().players.filter(p=>p.strategy==='military').length,3,'Repeated profiles are allowed');
+ const reload=boot(storage);assert.equal(reload.saved().players.filter(p=>p.strategy==='military').length,3);reload.click('new-game-button');
+ for(const faction of [1,2,3])assert.equal(reload.dom.element(`new-game-rival-${faction}`).value,'military');
+ const profiles=['expansion','militaryFocused','maxbot'];profiles.forEach((profile,i)=>{reload.dom.element(`new-game-rival-${i+1}`).value=profile;});
+ reload.dialog('new-game').returnValue='start';reload.dialog('new-game').close();reload.settle();
+ assert.deepEqual(reload.saved().players.slice(1).map(p=>p.strategy).sort(),[...profiles].sort());
+ const again=boot(storage);again.click('new-game-button');profiles.forEach((profile,i)=>assert.equal(again.dom.element(`new-game-rival-${i+1}`).value,profile));
+});
+
+test('committed tabletop turns wait for explicit Pass and Finish Buy with an empty hand',()=>{
+ const state=boot(createStorage()).saved();Object.assign(state,{phase:'operations',activePlayer:0,turnStage:'prep',tradeOffers:[]});
+ Object.assign(state.players[0],{hand:[],discard:[],inPlay:[],resources:{matter:0,energy:0,biomass:0,data:0},passed:false});
+ const sent=[],network={committedOnly:true,seat:0,rules:`galactic-reach/${formatVersion}.${CURRENT_RULES_REVISION}`,initial:{seq:1,state},busy:()=>false,act:intents=>{sent.push(JSON.parse(JSON.stringify(intents)));return true;}};
+ const game=boot(createStorage(),1729,undefined,{network});game.settle();
+ assert.deepEqual(sent,[],'an empty hand cannot submit or preview Pass automatically');
+ game.click('pass-button');assert.deepEqual(sent,[[{type:'pass'}]]);sent.length=0;
+ const next=JSON.parse(JSON.stringify(state));Object.assign(next,{phase:'buy',turnStage:'buy'});next.players[0].passed=true;
+ game.sync({seq:2,state:next});game.settle();assert.deepEqual(sent,[],'empty Buy cannot submit or preview finishing automatically');
+ game.click('hand-finish-buy-button');assert.deepEqual(sent,[[{type:'finish_buy'}]]);
+ const ordinary=[];boot(createStorage(),1729,undefined,{network:{...network,committedOnly:false,act:intents=>{ordinary.push(JSON.parse(JSON.stringify(intents)));return true;}}});
+ assert.deepEqual(ordinary,[[{type:'pass'}]],'ordinary shared tables retain automatic Pass');
+});
+
 for (const { name, body } of tests) {
   try {
     body();

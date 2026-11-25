@@ -171,7 +171,7 @@ function card(key,upgraded=false){return {...r.makeCard(key,true),upgraded};}
   // 31.36+: basic cards are not sold; Fold-Space Gate (price v1: 6 Energy, 1 Data) needs a raised Energy limit.
   p.resourceLimits={matter:4,energy:12,biomass:4,data:4};p.resources={matter:0,energy:11,biomass:0,data:0};
   s.phase='buy';p.passed=true;s.market=[{key:'foldSpaceGate',id:'ion-1'}];s.marketDecks={expensive:[],medium:[],cheap:[]};r.runAiBuy();
-  assert.equal(p.bought,1);assert.equal(p.resources.data,0);assert.equal(p.resources.energy,1,'AI paid the same 4:1 exchange and card price while keeping the next unit’s Energy');
+  assert.equal(p.bought,1);assert.equal(p.resources.data,0);assert.equal(p.resources.energy,1,'AI pays the current 6 Energy/1 Data price after the same 4:1 bank exchange');
   assert(p.discard.some(c=>c.id==='ion-1'),'A bought normal card enters discard');
 }
 {

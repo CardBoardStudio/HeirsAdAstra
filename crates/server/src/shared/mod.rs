@@ -170,6 +170,9 @@ impl Live {
     /// Undo (rulebook #shared-tables): only the seat to move, only within its
     /// current turn, and never back past an action that revealed hidden information.
     fn undo_window(&self, seat: usize) -> Result<UndoWindow, String> {
+        if self.table.committed_only {
+            return Err("Confirmed choices are final at this tabletop game.".into());
+        }
         if self.table.status == "finished" {
             return Err("The game is over.".into());
         }
@@ -582,7 +585,7 @@ impl Tables {
             "authority": live.table.authority, "status": live.table.status, "seq": live.head,
             "seat": seat, "active": active,
             "seats": live.table.seats.iter().map(|s| json!({"seat":s.seat,"name":s.name,"human":s.human(),"you":s.seat==seat})).collect::<Vec<_>>(),
-            "state": state, "hints": hints, "undo": undo,
+            "state": state, "hints": hints, "undo": undo, "committed_only":live.table.committed_only,
             "ai_error": ai_error,
         }))
     }
@@ -598,7 +601,7 @@ impl Tables {
         }
         Ok(json!({"id":id,"role":"board","name":live.table.name,
             "rules_version":live.table.rules,"client_path":channel.client_path(&live.table.rules),
-            "status":live.table.status,"seq":live.head,"state":state}))
+            "status":live.table.status,"seq":live.head,"state":state,"committed_only":live.table.committed_only}))
     }
     fn act(
         &mut self,
@@ -1114,6 +1117,11 @@ pub fn seats(humans: &[(String, String)]) -> Vec<Seat> {
                 .split('/')
                 .next()
                 .unwrap();
+            let profile = if profile == "military-focused" {
+                "military"
+            } else {
+                profile
+            };
             seat.policy = Some(format!("gr-{profile}/29"));
         }
     }
@@ -1133,8 +1141,8 @@ pub fn random_seats(humans: &[(String, String)], rng: &mut impl rand::Rng) -> Ve
 /// `order[i]` is the seat of the `i`-th person who joined.
 fn seats_at(humans: &[(String, String)], order: &[usize; 4]) -> Vec<Seat> {
     const RIVALS: [(&str, BrowserProfile); 4] = [
-        ("Cyan Concord", BrowserProfile::Military),
-        ("Ember Directorate", BrowserProfile::Military),
+        ("Cyan Concord", BrowserProfile::MilitaryFocused),
+        ("Ember Directorate", BrowserProfile::MilitaryFocused),
         ("Violet Assembly", BrowserProfile::Economy),
         ("Helios Compact", BrowserProfile::Expansion),
     ];

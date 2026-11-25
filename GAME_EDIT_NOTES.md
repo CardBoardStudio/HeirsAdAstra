@@ -42,4 +42,4 @@
   - Every 10 unspent influence grants 1 Prestige.
   - Each Colony grants 1 Prestige, plus 1 bonus for every two Colonies beyond the home world.
   - Every pair of Shipyards grants 1 Prestige.
-  - Fleet Supremacy and Occupation Mandate grant 2 Prestige; Galactic Reach grants 1.
+  - Fleet Supremacy and Occupation Mandate grant 2 Prestige; the award for presence across the most worlds grants 1.

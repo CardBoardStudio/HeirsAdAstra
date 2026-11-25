@@ -2,7 +2,7 @@
 const fs=require('node:fs'),path=require('node:path');
 const {factory}=require('./strategic-bot-study.cjs');
 const {SimulationArchive,resultDirectory,hash}=require('./lib/simulation-archive.cjs');
-const ROOT=path.resolve(__dirname,'..'),PROFILES=['military','economy','market','expansion'];
+const ROOT=path.resolve(__dirname,'..'),PROFILES=['military','militaryFocused','economy','market','expansion'];
 function play(task,sources,directory){
  if(task.profiles.length!==4||task.profiles.some(p=>!PROFILES.includes(p)))throw Error('Choose four browser profiles');
  const recorder=new SimulationArchive({directory,metadata:{...task,policyFamily:'browser'},rulebookSource:sources.rulebook,sources:{'browser-study.cjs':fs.readFileSync(__filename,'utf8'),'original-app.js':sources.app,'original-adapter.js':sources.adapter}});
