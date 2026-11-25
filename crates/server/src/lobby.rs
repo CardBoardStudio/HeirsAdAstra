@@ -75,7 +75,9 @@ pub fn table_settings(db: &Connection, table_id: &str) -> ApiResult<Option<serde
         .map(|text| serde_json::from_str::<Vec<String>>(&text))
         .transpose()
         .map_err(internal)?;
-    Ok(Some(json!({"victory_target":target,"bot_profiles":profiles})))
+    Ok(Some(
+        json!({"victory_target":target,"bot_profiles":profiles}),
+    ))
 }
 
 /// Opens a waiting room for a freshly created table and returns its invite token.
