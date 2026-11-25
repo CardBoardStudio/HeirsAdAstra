@@ -6587,20 +6587,20 @@ function createGalacticReach(options = {}) {
   // The whole-card sheet: the market's three rows of three cards in real card proportions (63:88)
   // as tall as the column allows, the Upgrades in two columns beside them; on a narrower table the
   // cards shrink so the sheet leaves the left-hand column and a strip of the map uncovered.
-  // The strip it leaves beside it is wide enough for a guidance note (SHEET_NOTE_ROOM window pixels)
-  // unless that would shrink the cards below SHEET_CARD_MIN units; then the note narrows to the strip
-  // (--sheet-note-w, at least 200 pixels) rather than lie over the cards.
+  // The sheet is just as wide as its cards (--sheet-w), at the table's right edge, so the cards
+  // use all of it. The strip of map it leaves is wide enough for a guidance note (SHEET_NOTE_ROOM
+  // window pixels) unless that would shrink the cards below SHEET_CARD_MIN units; then the note
+  // narrows to the strip (--sheet-note-w, at least 200 pixels) rather than lie over the cards.
   const SHEET_PAD = 12, SHEET_SPLIT = 18, SHEET_GAP = 8, SHEET_NOTE_ROOM = 350, SHEET_CARD_MIN = 128;
   function fitMarketSheet(tableW, height) {
     const root = document.documentElement, shell = $('.app-shell'), style = getComputedStyle(shell);
     const left = parseFloat(style.getPropertyValue('--left-w')) || 250, side = parseFloat(style.paddingRight) || 16, gapX = parseFloat(style.columnGap) || 14;
     const zoom = Number(root.style.getPropertyValue('--table-zoom')) || 1;
-    // The sheet starts right of the left-hand panels (the map key and comms card are wider than
-    // their column); --sheet-inset is that distance into the map's column.
+    // The sheet's room starts right of the left-hand panels (the map key and comms card are wider
+    // than their column); inset is that distance into the map's column.
     const start = shell.getBoundingClientRect().left + (side + left + gapX) * zoom;
     const reach = Math.max(0, ...['#prestige-track', '.phase-stepper', '.log-panel:not(.open)', '#map-legend-corner'].map(sel => $(sel)?.getBoundingClientRect?.()).filter(r => r?.width).map(r => r.right));
     const inset = Math.max(0, Math.ceil((reach - start) / zoom) + 10);
-    root.style.setProperty('--sheet-inset', `${inset}px`);
     const room = tableW - 2 * side - left - gapX - inset, frame = 2 * SHEET_PAD + SHEET_SPLIT + 3 * SHEET_GAP;
     let cardH = Math.floor((height - 2 * SHEET_PAD - 2 * SHEET_GAP) / 3), cardW = Math.floor(cardH * 63 / 88);
     const withNote = Math.floor((room - SHEET_NOTE_ROOM / zoom - frame) / 5), widest = Math.floor((room - frame) / 5);

@@ -230,7 +230,8 @@
     globalThis.galacticReachMaxUI?.rendered(next);
     fanHand();
     syncAim();
-    fitNames();
+    fitMarketCards();
+    watchMarketCards();
     fitHandNameSizes();
     watchHandNames();
     keepRaisedNames();
@@ -279,7 +280,55 @@
     const under = cards.map(([, name]) => { const line = parseFloat(getComputedStyle(name).lineHeight) || name.offsetHeight; return name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > line * 2 + 2; });
     cards.forEach(([card], index) => { card.classList.remove('name-probe'); card.classList.toggle('name-under', under[index]); });
   }
-  addEventListener('resize', () => requestAnimationFrame(fitNames));
+  // The market on your Buy turn - its whole cards (market-drawer.css) and a phone's Supply drawer -
+  // shows names only whole, like a resting hand card (rules #shared-board): a name lies between the
+  // corners or, where it does not fit there, under them across the card, wrapping only between
+  // words onto SHEET_NAME_LINES lines at most; where it still does not fit (a word wider than the
+  // card), it gets smaller in half-pixel steps down to NAME_MIN, and a name that does not fit even
+  // then (a phone's drawer narrowed by a guidance note) is left to the raised card. On the whole
+  // cards the effect gets smaller the same way, down to SHEET_RULES_MIN, where it would run past the
+  // card's bottom padding; where even that does not fit, it is left to the raised card. (Both are
+  // kept for screen readers.) Their picture takes the height left and is left out where that is
+  // under SHEET_ART_MIN. The cards' size changes after they are drawn (the sheet is fitted to the
+  // table, a drawer opens), so they are measured again then. All cards step together.
+  const SHEET_NAME_LINES = 3, SHEET_RULES_MIN = 10, SHEET_ART_MIN = 32;
+  const MARKET_CARDS = ':is(#market-row, #upgrade-market) > .game-card';
+  function fitMarketCards() {
+    const resting = scope => $$(`${scope} ${MARKET_CARDS}`).filter(card => !card.matches(':hover, :focus, :focus-within'));
+    for (const card of resting(':root')) { card.style.removeProperty('--name-fs'); card.style.removeProperty('--rules-fs'); card.classList.remove('name-tucked', 'rules-tucked', 'art-tucked'); }
+    fitNames();
+    if (maxTable()) return;
+    const shrink = (items, fits, prop, min) => {
+      const size = new Map(items.map(([card, el]) => [card, parseFloat(getComputedStyle(el).fontSize)]));
+      let open = items;
+      while ((open = open.filter(([card, el]) => !fits(card, el) && size.get(card) - .5 >= min)).length)
+        for (const [card] of open) { size.set(card, size.get(card) - .5); card.style.setProperty(prop, `${size.get(card)}px`); }
+      return items.filter(([card, el]) => !fits(card, el)).map(([card]) => card);
+    };
+    const lineOf = el => parseFloat(getComputedStyle(el).lineHeight) || parseFloat(getComputedStyle(el).fontSize) * 1.2;
+    const cards = resting(':root.market-full'), named = cards.concat(resting('body[data-drawer="supply"]'));
+    shrink(named.map(card => [card, card.querySelector(':scope > .card-name')]).filter(([, name]) => name?.getClientRects().length),
+      (card, name) => name.scrollWidth <= name.clientWidth + 1 && name.scrollHeight <= lineOf(name) * SHEET_NAME_LINES + 2, '--name-fs', NAME_MIN)
+      .forEach(card => card.classList.add('name-tucked'));
+    // In the card's own units (the table may be zoomed): the effect's bottom, whole, above the padding.
+    const fitsCard = (card, rules) => {
+      const box = card.getBoundingClientRect(), scale = box.height / card.offsetHeight || 1;
+      const bottom = (rules.getBoundingClientRect().top - box.top) / scale + rules.scrollHeight;
+      return rules.scrollWidth <= rules.clientWidth + 1 && bottom <= card.clientTop + card.clientHeight - (parseFloat(getComputedStyle(card).paddingBottom) || 0) + 1;
+    };
+    const shownRules = card => [...card.querySelectorAll(':scope > :is(.card-icons, .card-effect)')].find(rules => rules.getClientRects().length);
+    const cut = shrink(cards.map(card => [card, shownRules(card)]).filter(([, rules]) => rules), fitsCard, '--rules-fs', SHEET_RULES_MIN);
+    cut.forEach(card => card.classList.add('rules-tucked'));
+    const slivers = cards.filter(card => { const art = card.querySelector(':scope > .card-art.has-picture'); return art?.getClientRects().length && art.offsetHeight < SHEET_ART_MIN; });
+    slivers.forEach(card => card.classList.add('art-tucked'));
+  }
+  addEventListener('resize', () => requestAnimationFrame(fitMarketCards));
+  const marketObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(() => fitMarketCards()) : null;
+  function watchMarketCards() {
+    if (!marketObserver) return;
+    marketObserver.disconnect();
+    for (const card of $$(MARKET_CARDS)) marketObserver.observe(card);
+  }
   // A resting hand card's name is never cut off (rules #card-corners): it wraps between words onto
   // two lines at most, inside the card; where it does not fit, it gets smaller in half-pixel steps
   // down to NAME_MIN. A name that does not fit even then is left to the raised card (styles.css

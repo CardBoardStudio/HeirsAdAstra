@@ -64,7 +64,7 @@ const SAVE_KEY = `galactic-reach-save-v${FORMAT}`;
 const RULES = `galactic-reach/${FORMAT}.${source.match(/const RULES_REVISION = (\d+);/)[1]}`;
 // Market cards ranked by how much text they print, so every market state is a worst case.
 const MARKET = [...source.matchAll(/^ {4}(\w+): \{ code: '([NM]\d\d)', name: '([^']+)'.*?text: '((?:[^'\\]|\\.)*)'/gm)]
-  .map(([, key, code, name, text]) => ({ key, code, weight: text.length + name.length * 2 }))
+  .map(([, key, code, name, text]) => ({ key, code, name, weight: text.length + name.length * 2 }))
   .sort((a, b) => b.weight - a.weight);
 
 function seeded(seed) { let v = seed >>> 0; return () => { v = (v * 1664525 + 1013904223) >>> 0; return v / 0x100000000; }; }
@@ -192,6 +192,8 @@ const RAISED_NAME_SIZES = ['1280x720', '1440x900', '1180x820', '820x1180', '844x
 const { MARKET_TIERS, marketTier } = vm.runInContext(source + ';createGalacticReach({catalog:true})', vm.createContext({}));
 const byTier = MARKET_TIERS.map(tier => MARKET.filter(c => marketTier(c.key) === tier.id));
 const chunks = [0, 1, 2, 3].map(page => byTier.flatMap(row => [0, 1, 2].map(n => row[(page * 3 + n) % row.length].key)));
+// The three longest names in each price row: the market whose names are hardest to keep whole.
+const longNames = byTier.flatMap(row => [...row].sort((a, b) => b.name.length - a.name.length).slice(0, 3).map(c => c.key));
 
 // Each case: a save to load, then optional page actions before measuring.
 const CASES = [
@@ -251,7 +253,8 @@ const CASES = [
   // cards over the map, and Smaller returns the side panel.
   { name: 'market closed (operations)', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), marketView: 'closed', extraSizes: true, devices: true },
   { name: 'market side panel (operations)', save: operationsState(['move', 'construct', 'move', 'construct', 'move']), click: ['#market-handle', '.phone-drawers [data-drawer="supply"]'], marketView: 'side', extraSizes: true, devices: true },
-  { name: 'buy, whole-card market', save: buyState(chunks[0], { matter: 8, energy: 8, biomass: 8, data: 8 }), marketView: 'full', buyVisible: true, extraSizes: true, devices: true },
+  { name: 'buy, whole-card market', save: buyState(chunks[0], { matter: 8, energy: 8, biomass: 8, data: 8 }), marketView: 'full', buyVisible: true, wholeCards: true, extraSizes: true, devices: true },
+  { name: 'buy, whole-card market, long names and a long hand', save: (() => { const s = buyState(longNames, { matter: 8, energy: 8, biomass: 8, data: 8 }); s.players[0].hand = fanHand(10).map(key => card(key, { starter: key === 'move' || key === 'construct' })); return s; })(), marketView: 'full', buyVisible: true, wholeCards: true, extraSizes: true, devices: true },
   { name: 'buy, market shrunk to the side panel', save: buyState(chunks[0]), click: ['#market-size'], marketView: 'side', buyVisible: true },
   { name: 'operations, market panel (shaded)', save: operationsState(['move', 'construct']), click: ['#market-tab', '#market-handle'] },
   ...chunks.map((keys, i) => ({ name: `buy, market ${i + 1}/4 with upgrades`, save: buyState(keys), click: ['#market-tab'], buyVisible: true, extraSizes: i === 0 })),
@@ -578,9 +581,11 @@ const MEASURE = `(() => {
   // Only the table during a game is measured (not a waiting room, nor a shared table's top bar).
   // With the market drawer closed (rulebook #shared-board) the map is limited by the window's
   // height, so the closed market's room shows as felt beside the centred map: that state alone is
-  // not measured (at 1920x1080 an empty 568x736 area, 20% of the window).
+  // not measured (at 1920x1080 an empty 568x736 area, 20% of the window). Nor are the whole cards
+  // over a closed column: the map keeps that same place under their sheet, which covers only the cards.
   const tableArea = document.querySelector('.app-shell')?.getBoundingClientRect();
-  const marketClosed = document.documentElement.classList.contains('market-drawer') && document.documentElement.classList.contains('market-closed');
+  const drawerClass = name => document.documentElement.classList.contains('market-drawer') && document.documentElement.classList.contains(name);
+  const marketClosed = drawerClass('market-closed') || (drawerClass('market-full') && drawerClass('market-no-column'));
   if (!phone && !modal && !marketClosed && tableArea?.height && document.querySelector('#galaxy-board .hex') && [1920, 2000].includes(innerWidth) && [1080, 1075].includes(innerHeight) && !document.querySelector('.game-card:is(:hover, :focus, :focus-within), .log-panel.open, .board-stage.map-zoomed')) {
     const pieces = [...document.querySelectorAll('.hex, #hand-row, #prestige-track, .standings-stats, .phase-stepper, .log-panel, #map-legend-corner, .map-tools > :not([hidden]), .relic-row > *, #relics-panel > .section-intro, #market-row > .game-card, #upgrade-market > .game-card, #resource-grid, #hand-row > .game-card, .pile-stats > button, #hand-panel .hand-tools > :not([hidden]), .table-menu-button, .toast, .market-full .market-sheet')].filter(shown).map(e => e.getBoundingClientRect()).filter(r => r.width > 1 && r.height > 1);
     const cell = 8, cols = Math.ceil(innerWidth / cell), rows = Math.ceil(innerHeight / cell), heights = new Array(cols).fill(0);
@@ -888,6 +893,41 @@ async function runCase(browser, origin, testCase, viewport) {
     if (seen.market < 5) problems.push('market cards not visible in Buy: ' + seen.market);
     if (!seen.finish) problems.push('Finish Buy not visible in Buy');
   }
+  // The Buy turn's market (rules #card-corners, #shared-board): every name whole, wrapping only
+  // between words; on the whole-card sheet every card and its text inside the sheet and the card,
+  // and no empty band wider than a card at either side of the sheet.
+  if (testCase.wholeCards) problems.push(...await browser.evaluate(`(() => {
+    const problems = [], shown = e => e?.checkVisibility() && e.getBoundingClientRect().width > 1;
+    const cards = [...document.querySelectorAll('#market-row > .game-card, #upgrade-market > .game-card')].filter(shown);
+    const title = card => card.querySelector(':scope > .card-name')?.textContent.trim() || card.className;
+    const whole = e => e.getClientRects().length && getComputedStyle(e).clipPath === 'none';
+    for (const card of cards) {
+      const name = card.querySelector(':scope > .card-name');
+      if (!name || !whole(name)) continue;
+      const walker = document.createTreeWalker(name, NodeFilter.SHOW_TEXT);
+      for (let text; (text = walker.nextNode());) for (const word of text.data.matchAll(/\\S+/g)) {
+        const range = document.createRange(); range.setStart(text, word.index); range.setEnd(text, word.index + word[0].length);
+        if (new Set([...range.getClientRects()].filter(r => r.width > 0).map(r => Math.round(r.top))).size > 1) problems.push('market card name breaks inside a word: ' + title(card));
+      }
+      if (name.scrollWidth > name.clientWidth + 1 || name.scrollHeight > name.clientHeight + 1) problems.push('market card name cut off: ' + title(card));
+    }
+    const sheet = document.querySelector('.market-sheet');
+    if (!shown(sheet) || !cards.length) return problems;
+    const s = sheet.getBoundingClientRect(), boxes = cards.map(card => card.getBoundingClientRect());
+    cards.forEach((card, i) => {
+      const r = boxes[i];
+      if (r.left < s.left - 1 || r.right > s.right + 1 || r.top < s.top - 1 || r.bottom > s.bottom + 1 || r.right > innerWidth + 1) problems.push('market card clipped by the sheet: ' + title(card));
+      for (const text of card.querySelectorAll(':scope > :is(.card-name, .card-icons, .card-effect, .card-headline)')) {
+        if (!whole(text)) continue;
+        const t = text.getBoundingClientRect();
+        if (text.scrollWidth > text.clientWidth + 1 || text.scrollHeight > text.clientHeight + 1 || t.right > r.right + 1 || t.bottom > r.bottom + 1) problems.push('market card text cut off: ' + title(card) + ' ' + text.className);
+      }
+    });
+    const width = Math.min(...boxes.map(r => r.width)), left = Math.min(...boxes.map(r => r.left)) - s.left, right = s.right - Math.max(...boxes.map(r => r.right));
+    if (left > width) problems.push('the whole cards leave ' + Math.round(left) + 'px of the sheet empty on the left');
+    if (right > width) problems.push('the whole cards leave ' + Math.round(right) + 'px of the sheet empty on the right');
+    return problems;
+  })()`));
   problems.push(...problems0);
   if (!touch && !isPhone([width, height]) && !testCase.hover && !testCase.tap && !testCase.drag && /^(1280x720|1440x900)$/.test(`${width}x${height}`) && scale === 1) {
     const noteShown = 'getComputedStyle(document.querySelector("#gr-coach") || document.body).display !== "none" && !document.querySelector("#gr-coach")?.hidden && getComputedStyle(document.querySelector("#gr-coach") || document.body).visibility !== "hidden" && !document.querySelector("#gr-coach")?.closest("dialog")';
