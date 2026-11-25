@@ -1,8 +1,9 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
 const root=path.resolve(__dirname,'..'),read=p=>fs.readFileSync(path.join(root,'prototypes/galactic-reach',p),'utf8'),plain=x=>JSON.parse(JSON.stringify(x));
-function game(){
+function game(policyOverrides){
   const c=vm.createContext({});let e,seed=1729,calls=0;
-  const source=read('app.js').replace('      clone, deckContents,','      chooseAiBuild, chooseAiMove, aiFocusedMilitaryWorlds, aiBuyValue, aiColonyBuild, aiStorageBudget, aiManageStorage, aiModuleAllocation, findColonizeTarget, runAiRelic, clone, deckContents,');
+  let source=read('app.js').replace('      clone, deckContents,','      chooseAiBuild, chooseAiMove, aiFocusedMilitaryWorlds, aiBuyValue, aiColonyBuild, aiStorageBudget, aiManageStorage, aiModuleAllocation, findColonizeTarget, runAiRelic, clone, deckContents,');
+  if(policyOverrides){const match=source.match(/const FOCUSED_MILITARY_POLICY = Object.freeze\((\{[^\n]*\})\);/);source=source.replace(match[0],'const FOCUSED_MILITARY_POLICY = Object.freeze('+JSON.stringify({...JSON.parse(match[1]),...policyOverrides})+');');}
   vm.runInContext(read('adapter.js')+source,c);const factory=c.createGalacticAdapter;c.createGalacticAdapter=p=>{e=p;return factory(p);};
   const a=c.createGalacticReach({headless:true,browserPolicy:true,random:()=>{calls++;return ((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}}),s=e.state,p=s.players[1];
   s.activePlayer=1;s.phase='operations';s.fleets={};
@@ -74,6 +75,14 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   g.s.fleets={'0,0':{1:{fleet:3}},'3,0':{1:{fleet:3}}};
   const move=g.e.chooseAiMove(1,card);assert(move);assert.equal(move.units.fleet,3,'Merge the incomplete groups when no useful scoring fight is available');legal(g,move,card);
   g.s.fleets={'0,0':{1:{fleet:4}}};assert.equal(g.e.chooseAiMove(1,card).goal,forward,'Survivors return for reinforcement');
+}
+{
+  for(const distancePenalty of [4,8]){
+    const g=game({distancePenalty}),card={id:'short-hunt',key:'move',starter:true,upgraded:true};second(g);
+    g.s.fleets={'0,0':{1:{fleet:10}},'2,0':{0:{fleet:2}},'-6,0':{2:{fleet:1}}};
+    const move=g.e.chooseAiMove(1,card);assert.equal(move.goal,distancePenalty===8?'2,0':'-6,0','Favor a reachable weak group over a slightly weaker distant target');
+    if(distancePenalty===8)assert.equal(move.destination,move.goal,'Start scoring in one Move');legal(g,move,card);
+  }
 }
 {
   const g=game();g.p.strategy='militaryFocused';

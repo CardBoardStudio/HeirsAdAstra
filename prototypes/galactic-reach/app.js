@@ -3696,7 +3696,7 @@ function createGalacticReach(options = {}) {
     return estimate.win>=.85 && estimate.loss===0;
   }
 
-  function aiThreat(playerId, moving, destination, source = null) {
+  function aiThreat(playerId, moving, destination, source = null, range = 3) {
     const own={...moving},standing=destination===source?{}:state.fleets[destination]?.[playerId]||{};
     for (const type of Object.keys(SHIP_STATS)) own[type]=(own[type]||0)+(standing[type]||0);
     const p=state.planets[destination],yard=p?.owner===playerId&&p.upgrade==='starbase';
@@ -3704,7 +3704,7 @@ function createGalacticReach(options = {}) {
     for (const [at,groups] of Object.entries(state.fleets)) for (const [owner,enemy] of Object.entries(groups)) {
       if (+owner===playerId || !enemy.fleet) continue;
       // Move II is public card content, but an opponent's current hand is not.
-      const range=3; // An enemy Fleet can leave its slower Settlers behind.
+      // An enemy Fleet can leave its slower Settlers behind; the caller supplies a public-card range assumption.
       if (travelDistance(at,destination)>range) continue;
       const attacker=fleetGroup(enemy,'ships'),estimate=aiBattleEstimate(attacker,own,yard);
       risk=Math.max(risk,estimate.win);
@@ -3957,7 +3957,7 @@ function createGalacticReach(options = {}) {
   }
 
   // Fixed browser-policy parameters, also frozen with each simulation candidate.
-  const FOCUSED_MILITARY_POLICY = Object.freeze({"minRaid":4,"maxRaid":10,"margin":0,"preferFullGroup":true,"earlyRaidUntil":10,"distancePenalty":4,"countPenalty":0,"maxRisk":1,"productionFloor":0,"doctrineBuy":0,"doctrinePlay":6,"leaderPressure":0.15,"rallyScore":80,"returnScore":75,"openingEconomy":105,"reserveOpening":true,"openingMoves":2,"moveBeforeSettler":true,"deferOpeningBuys":true,"immediateSmallRaid":true});
+  const FOCUSED_MILITARY_POLICY = Object.freeze({"minRaid":4,"maxRaid":10,"margin":0,"preferFullGroup":true,"earlyRaidUntil":10,"distancePenalty":8,"countPenalty":0,"maxRisk":1,"productionFloor":0,"doctrineBuy":0,"doctrinePlay":6,"leaderPressure":0.15,"rallyScore":80,"returnScore":75,"openingEconomy":105,"reserveOpening":true,"openingMoves":2,"moveBeforeSettler":true,"deferOpeningBuys":true,"immediateSmallRaid":true,"enemyRange":3,"escapePenalty":40});
 
   // #military-focused-rival: founding the second Colony ends expansion permanently.
   // originalFounder survives conquest, so this plan needs no hidden policy state.
@@ -4117,7 +4117,7 @@ function createGalacticReach(options = {}) {
             if(count<5&&policy.immediateSmallRaid&&travelDistance(source,at)>movementRange(hunters,card))continue;
             if(!aiCanFight(playerId,hunters,at))continue;
             const turns=Math.ceil(travelDistance(source,at)/movementRange(hunters,card));
-            const value=125-fleetPower(enemy)*4-(yardDefense?12:0)-(escape?40:0)-turns*policy.distancePenalty-count*policy.countPenalty;
+            const value=125-fleetPower(enemy)*4-(yardDefense?12:0)-(escape?(policy.escapePenalty??40):0)-turns*policy.distancePenalty-count*policy.countPenalty;
             if(add(source,hunters,at,value,'ships',cannotAttack,policy.maxRisk))break;
           }
         }
@@ -4146,8 +4146,9 @@ function createGalacticReach(options = {}) {
       for(const at of path){const cost=portalExit(previous)===at?PORTAL_MOVEMENT_COST:1;if(spent+cost>range)break;segment.push(at);spent+=cost;previous=at;if(hostileAt(at,playerId))break;}
       if(!segment.length)return;
       const destination=segment[segment.length-1],pathCost=pathMovementCost(source,path);
-      const risk=moveGroup==='ships'?aiThreat(playerId,moving,destination,source):0;
-      const current=moveGroup==='ships'?aiThreat(playerId,moving,source,source):0;
+      const threatRange=p.strategy==='militaryFocused'?(FOCUSED_MILITARY_POLICY.enemyRange||3):3;
+      const risk=moveGroup==='ships'?aiThreat(playerId,moving,destination,source,threatRange):0;
+      const current=moveGroup==='ships'?aiThreat(playerId,moving,source,source,threatRange):0;
       if(risk>maxRisk)return;
       if (moving.settler && risk>.6 && risk>=current) return;
       const home=defense.find(d=>d.coord===source&&d.attackers),remaining=(state.fleets[source]?.[playerId]?.fleet||0)-(moving.fleet||0);
