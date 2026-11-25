@@ -1,6 +1,6 @@
 # Military Focused: a majority through combat
 
-The shorter-hunt Military Focused policy won **523 of 768 games (68.1%)** across two independent fresh-map cohorts, with a stratified whole-map bootstrap 95% interval of **64.8–71.4%**. It won 265/384 (69.0%) in the first cohort and 258/384 (67.2%) in the second. Combat victories and Victory Doctrine supplied **86.4% of its points**. The two-world combat plan remains intact.
+The shorter-hunt Military Focused policy won **783 of 1,152 games (68.0%)** across three independent fresh-map cohorts, with a stratified whole-map bootstrap 95% interval of **65.1–70.7%**. It won 265/384 (69.0%), 258/384 (67.2%) and 260/384 (67.7%) in the three cohorts. Combat victories and Victory Doctrine supplied **86.2% of its points**. The two-world combat plan remains intact. These figures describe the frozen evaluated policy; a small-raid routing correction is awaiting its own fresh comparison below.
 
 The earlier production-first policy had already established a majority: 232/384 (60.4%) versus the original Focused policy's 119/384 (31.0%) on one shared cohort, and 237/384 (61.7%) on a second independent cohort. The new result compares shorter hunts with that strong predecessor, rather than mixing percentages from different maps.
 
@@ -46,6 +46,26 @@ Combining only the unchanged incumbent's two independent cohorts gives 523/768 w
 | Total | 29.46 | 21.23 |
 
 All Focused card points are Victory Doctrine. Source identity is checked against `1206c485baf344fdf8b05d93b509917c5037edcec76642405d531d0e28565438` in both frozen protocols. The second study is `run-validate-r9-compact-72d0f1a9e6`, protocol `6e0ff2be8ee7ec48048272f2bd2690bffc2ddde221d9fbbf84e36fab034aeed9`, audited rows `162dcf2a5ed1065701e656e8c3f87b2c441ea1a5cf986ba3be59fb1b40c98de8`. The combined analysis is retained as `current-replications.json` with its exact analyzer source.
+
+## Third cohort and the actual-route correction
+
+Another 96 fresh maps with every starting seat gave the unchanged incumbent **260/384 wins (67.7%)**. A preselected combination of nearby targeting, cohesive groups capped at eight and immediate three-Fleet opportunities won **279/384 (72.7%)** on the same maps. Its paired gain was **4.9 percentage points**, whole-map 95% interval **0.5–9.4**. All 768 requested games completed and passed every audit, with no interrupted attempts or exclusions.
+
+The challenger is **not adopted**. Before inspecting these outcomes, a targeted fixture exposed a route-fidelity error shared by the small-raid eligibility checks. An enemy group may be close by distance while a stronger enemy blocks the direct route. Three or four Fleets can then start a detour and stop on an empty hex instead of reaching combat in this Move. This conflicts with the intended immediate-fight exception. The correction requires the actual selected legal route to reach the enemy this Move. Larger groups may still travel toward a fight.
+
+The correction passes blocked-route fixtures for three and four Fleets, clear immediate fights, larger-group detours, planning purity and late-game eligibility. All 201 original-opponent state/counter fixtures still match. The frozen next comparison uses 96 disjoint maps, every starting seat and three policies: historical uncorrected incumbent, corrected incumbent, and corrected eight-Fleet challenger. Its primary comparison is corrected challenger minus corrected incumbent; a positive paired 95% interval is required for the further group change. Correct route fidelity is mandatory. It has not run yet, so these fixtures make no claim about its game win rate.
+
+Combining only the identical incumbent source across the three completed cohorts gives **783/1,152 wins on 288 map blocks**. The interval resamples whole maps separately within each cohort, preserving all four rotations, with 20,000 resamples and seed 2026112503. This aggregate is not another trial.
+
+| Points, mean across all 1,152 incumbent games including losses | Military Focused | Economy in the same lineups |
+| --- | ---: | ---: |
+| Held Colonies | 4.05 | 10.23 |
+| Ordinary combat | 24.30 | 2.08 |
+| Card Prestige | 1.04 | 3.09 |
+| Relics | 0 | 5.94 |
+| Total | 29.39 | 21.33 |
+
+All Focused card points remain Victory Doctrine. The third study is `run-validate-r10-e81a35cf29`, protocol `2dfd50fb56f02b7d036d23f662635bace1a154f8ff6e7b854294c78c3e1e3fb2`, audited rows `433b0bae0e4ded54f0549e3a4ead100490e3430dd23b26ddb2da7f36e8811e8b`. The three-cohort aggregate and exact analyzer are retained as `current-replications-three-cohorts.json` and `analyze-current-three-cohorts.py`; analyzer SHA-256 `57785265f7376147fed892ea7e14679fd726e0e11cc48931c49cfd5bac64464e`.
 
 ## Which fights supplied the points
 
