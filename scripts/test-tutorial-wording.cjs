@@ -63,6 +63,16 @@ const port = state => ({ state, colonyCost: 3, excavationCost: { energy: 1, data
   assert.match(step.text(), /Concentrated Fire adds 1 hit; Defensive Screen blocks 2/);
   assert.doesNotMatch(step.text(), /If asked|Settler/);
 }
+// The staged opponent is an Explorer, so its defeat gives no combat Prestige.
+{
+  const { step } = open({ stepId: 'report' });
+  assert.match(step.text(), /defeated the Explorer/);
+  assert.match(step.text(), /Civilian-only victories grant no Prestige/);
+  assert.doesNotMatch(step.text(), /\+[12]★/);
+  const help = fs.readFileSync(path.join(__dirname, '../prototypes/galactic-reach/index.html'), 'utf8');
+  assert.match(help, /A decisive victory scores 1 only against a group containing an enemy Fleet/);
+  assert.match(help, /Civilian-only fights give no combat or Victory Doctrine Prestige/);
+}
 // Buy a card rings one card: the one it asks you to buy.
 {
   const affordable = { id: 'clearing-house' };

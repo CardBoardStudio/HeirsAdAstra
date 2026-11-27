@@ -25,7 +25,7 @@ Status: **implemented for 38.43** (`prototypes/galactic-reach/tutorial.js`, `gui
 | The bank | Trades 4 Energy for 1 of another resource on the mat | `#trade` | That resource rose |
 | Your Buy turn | Passes; buys a market card; upgrades a starter; buys a Capacity Module; trashes a card; finishes Buy | `#buy`, `#market-tiers`, `#capacity-module` | Each purchase, upgrade or trash is seen; the round advanced |
 | Capacity | Plays the Capacity Module and splits its 4 points | `#storage-allocation` | The Storage pile holds a module |
-| Combat | Moves the Fleet onto a stray rival Explorer and picks tactics | `#combat`, `#combat-tactics` | A decisive victory is recorded and its report closed |
+| Combat | Moves the Fleet onto a stray rival Explorer and picks tactics | `#combat`, `#combat-tactics` | The battle report is closed; the lesson explains that civilian-only victories give no Prestige |
 | Winning | Reads their score and the goal on the score track | `#victory`, `#victory-target` | Next |
 
 ## Staged positions

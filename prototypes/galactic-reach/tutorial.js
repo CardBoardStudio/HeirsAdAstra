@@ -439,7 +439,7 @@
         done: state => !state.pendingCombat },
       { id: 'report', title: 'Victory', rule: 'combat', dialog: '#message-dialog',
         start: state => ({ wins: me(state).combatVictories || 0 }),
-        text: () => 'Every enemy unit destroyed: a decisive victory, +2★. Choose Continue.',
+        text: () => 'You defeated the Explorer. Civilian-only victories grant no Prestige. Choose Continue.',
         anchor: () => $('#message-dialog #message-continue'),
         done: state => !state.pendingCombatReport && !modalOpen('#message-dialog') },
     ] },

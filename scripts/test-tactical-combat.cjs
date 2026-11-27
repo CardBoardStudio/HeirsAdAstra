@@ -153,16 +153,42 @@ for(const tag of [null,'overdrive']){
 }
 {
  // Victory Doctrine adds 2 Prestige only on a decisive win; surviving tactics grant no resource loot.
- const g=fixture({d:{settler:1}});g.s.players[0].resourceLimits={matter:10,energy:10,biomass:10,data:10};
+ const g=fixture({a:{fleet:2},d:{fleet:1}});g.s.players[0].resourceLimits={matter:10,energy:10,biomass:10,data:10};
  g.s.players[0].military=[{key:'railBattery',id:'marines'},{key:'victoryDoctrine',id:'doctrine'}];g.start();stays(g);
  volley(g,'victoryDoctrine','defensiveScreen');if(g.s.pendingCombat)volley(g,'railBattery','defensiveScreen');finish(g);
  assert.equal(g.s.lastCombat.prestigeWinner,0);assert.equal(g.s.players[0].combatVictories,1);assert.equal(g.s.players[0].cardPrestige,2);
- assert.equal(g.e.calculatePrestige(0),4,'Combat 2 (34.39) + Victory Doctrine 2 (the fixture has no Colony)');
+ assert.equal(g.e.calculatePrestige(0),3,'Qualifying combat 1 + Victory Doctrine 2 (the fixture has no Colony)');
 }
 {
  const g=fixture({d:{fleet:2}});g.s.players[0].military=[{key:'victoryDoctrine',id:'doctrine'}];g.s.players[0].resourceLimits={matter:10,energy:10,biomass:10,data:10};
  g.s.players[0].military.push({key:'railBattery',id:'marines'});g.start();stays(g);volley(g,'railBattery','concentratedFire');finish(g);
  assert.equal(g.s.players[0].cardPrestige||0,0,'No decisive win, no Victory Doctrine Prestige');assert.equal(g.s.players[0].resources.matter,0);assert.equal(g.s.players[0].resources.data,0,'Military tactics grant no resource loot after a defeat');
+}
+// Civilian-only victories never score, including with a Shipyard or an unrelated
+// enemy Fleet elsewhere. Reloading a committed Doctrine preserves that rule.
+for(const unit of ['settler','explorer'])for(const yard of [false,true]){
+ const g=fixture({a:{fleet:3},d:{[unit]:1}});
+ g.s.fleets['5,0']={1:{fleet:1}};
+ if(yard)g.s.planets['1,0']={owner:1,upgrade:'starbase',upgradeLevel:1,cluster:0};
+ g.s.players[0].military=[{key:'victoryDoctrine',id:'doctrine'}];
+ g.start();stays(g);choose(g,{type:'combat_tactic',tactic:'victoryDoctrine'});
+ const restored=fixture();Object.assign(restored.s,plain(g.s));finish(g);finish(restored);
+ for(const match of [g,restored]){
+  assert.equal(match.s.lastCombat.prestigeWinner,null);
+  assert.equal(match.s.players[0].combatVictories,0);
+  assert.equal(match.s.players[0].cardPrestige||0,0);
+  assert.equal(match.e.calculatePrestige(0),0);
+ }
+ assert.deepEqual(plain(restored.s.lastCombat),plain(g.s.lastCombat));
+}
+{
+ const g=fixture({a:{fleet:1},d:{fleet:3}});
+ g.s.players[1].military=[{key:'victoryDoctrine',id:'defender-doctrine'}];
+ g.start();stays(g);volley(g,'concentratedFire','victoryDoctrine');finish(g);
+ assert.equal(g.s.lastCombat.prestigeWinner,1);
+ assert.equal(g.s.players[1].combatVictories,1);
+ assert.equal(g.s.players[1].cardPrestige,2);
+ assert.equal(g.e.calculatePrestige(1),3,'Defender earns combat 1 plus Doctrine 2');
 }
 {
  // Strike Vector (N03) adds 2 hits to the attacker's first volley only.
