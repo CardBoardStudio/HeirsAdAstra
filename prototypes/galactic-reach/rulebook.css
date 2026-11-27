@@ -158,6 +158,14 @@ ul.rb-ex li { margin: 4px 0; }
 .rb-card .rb-pin.tr { top: -12px; right: -10px; }
 .rb-card .rb-pin.name { top: 40px; left: -12px; }
 .rb-card .rb-pin.text { bottom: 18px; left: -12px; }
+/* Read a card (#card-corners): a resting hand card shows only its corners; whole cards are faces (card-face.css). */
+.rb-face-cards { align-items: flex-end; }
+.rb-card.rb-rest { width: 150px; min-height: 64px; grid-template-areas: "tl . tr"; align-content: start; padding-bottom: 0; }
+.rb-face { position: relative; width: min(100%, 210px); flex: none; }
+.rb-face .rb-pin { position: absolute; z-index: 1; }
+.rb-face .rb-pin.desc { top: 58%; left: -14px; }
+.rb-face .rb-pin.foot-left { bottom: 4%; left: -14px; }
+.rb-face .rb-pin.foot-right { bottom: 4%; right: -14px; }
 .rb-card.relic { background: radial-gradient(ellipse at 100% 0, #fff4d2, transparent 80%), #e8dfc6; }
 .rb-card.military { --accent: var(--red); }
 .rb-card.face-down { background: repeating-linear-gradient(45deg, #24384a 0 6px, #1e3040 6px 12px); border-color: #3c5266; border-top-color: #3c5266; box-shadow: 0 2px 0 #0b1218; }

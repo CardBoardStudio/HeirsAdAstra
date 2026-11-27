@@ -705,12 +705,99 @@ function createGalacticReach(options = {}) {
     return `<span class="resource-dots corner-dots" role="img" aria-label="${label}">${chips}</span>`;
   }
 
+  // ---- The card face (rules #card-face): the printed card, the same wherever a whole card shows.
+  // Its picture fills the card; a shade over its foot carries the name, the description and a
+  // footer (convert and type left, price right). card-face.css lays it out on a 63 x 88 mm sheet.
+  // Symbols appear only inside the description; the hand's corner buttons are a separate layer.
+  // A card with no picture yet (its file is missing) shows its emblem: the picture hides itself.
+  if (typeof globalThis.document?.addEventListener === 'function' && !document.cardFaceArtWatch) {
+    document.cardFaceArtWatch = true;
+    document.addEventListener('error', event => { if (event.target?.matches?.('img.cf-art')) event.target.hidden = true; }, true);
+  }
+  const FACE_ART_KEYS = new Map(Object.entries({ ...ALL_CARDS, ...BASIC_TACTICS }).filter(([, def]) => !def.supply).map(([key, def]) => [def, key]));
+  // The headline: the card's effect values (the corners' symbols) as one line, each with its number.
+  function faceHeadline(parts) {
+    const sym = key => `<span class="cf-sym">${VOCAB_ICONS[key]}</span>`;
+    return parts.map(({ key, count }) => key === 'move' ? `${sym('move')}${count > 1 ? `+${count - 1}` : ''}`
+      : key === 'build' ? `${sym('build')}${count > 1 ? ` up to ${count}` : ''}`
+      : key === 'colonize' ? sym('colonize')
+      : key === 'miss' ? `${count}${sym('miss')}` : `+${count}${sym(key)}`).join('<span class="cf-sep" aria-hidden="true">·</span>');
+  }
+  // The description: two choices on one card ("Probe: … Excavate: …") read as two with an "or"
+  // rule between them; any other text is one block. The symbols are iconText's.
+  // A first sentence that only repeats the headline in symbols ("+2 hits this volley.") is left to
+  // the headline; the rest of the text follows it unchanged.
+  function faceText(text, parts = []) {
+    const choices = String(text).match(/^(Probe): (.+?) (Excavate): (.+)$/);
+    if (!choices) {
+      const [first, ...rest] = String(text).split(/(?<=\.) /), tokens = iconTokens(first);
+      const said = [...tokens.matchAll(/(\d+) @(\w+)@/g)].map(([, n, key]) => `${n}${key}`).sort().join();
+      const repeats = parts.length && !/[a-z]/i.test(tokens.replace(/@\w+@/g, '').replace(/\band\b/g, '')) && said === parts.map(part => `${part.count}${part.key}`).sort().join();
+      const shown = repeats ? rest.join(' ') : text;
+      return shown ? `<span class="cf-small">${iconText(shown)}</span>` : '';
+    }
+    return `<span class="cf-small"><b>${choices[1]}:</b> ${iconText(choices[2])}</span><span class="cf-or">or</span><span class="cf-small"><b>${choices[3]}:</b> ${iconText(choices[4])}</span>`;
+  }
+  // A price as one disc per resource, its count on a badge when more than one (rules #card-face).
+  // marks: per resource { mark: 'short'|'locked', title } for a market price you cannot pay yet.
+  function facePrice(cost, marks = {}) {
+    const present = RESOURCES.filter(resource => cost?.[resource] > 0);
+    if (!present.length) return '<span class="cf-price"></span>';
+    const label = present.map(resource => `${cost[resource]} ${RESOURCE_NAMES[resource]}${marks[resource]?.label || ''}`).join(', ');
+    return `<span class="cf-price" role="img" aria-label="Price: ${label}">${present.map(resource => `<span class="cf-disc ${resource}${marks[resource]?.mark ? ` ${marks[resource].mark}` : ''}" title="${marks[resource]?.title || `${cost[resource]} ${RESOURCE_NAMES[resource]}`}">${CORNER_RESOURCE_ICONS[resource]}${cost[resource] > 1 ? `<b class="cf-count">${cost[resource]}</b>` : ''}</span>`).join('')}</span>`;
+  }
+  const faceEsc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  // definition: the card's design; card: the copy (its level, whether it converts).
+  // price: the price to show (default the printed market price; none for cards not for sale).
+  // convert: the resource it converts to (default: a level I starter's).
+  // art: false where the art manifest says the card has no picture yet (the gallery knows).
+  function cardFace(definition, card = {}, { price, priceMarks = {}, convert, hidden = false, art = true } = {}) {
+    // The gallery passes a copy of the design carrying its key.
+    const key = !art ? '' : FACE_ART_KEYS.get(definition) || (FACE_ART_KEYS.has(ALL_CARDS[definition.key] || BASIC_TACTICS[definition.key]) ? definition.key : '');
+    const level = starterLevel(card);
+    const levelMark = level === 3 ? ' III' : level === 2 ? ' II' : '';
+    const text = definition.text + (levelMark ? ` ${levelMark.trim()}: ${upgradedOrderText(card)}${level === 3 && card.key !== 'construct' ? ' Draw one card when using the order.' : ''}` : '');
+    const parts = cardEffectParts(definition, card);
+    const shownPrice = price !== undefined ? price : /^[NM]\d/.test(definition.code || '') ? definition.cost : null;
+    // A copy converts by its own level (a design in the gallery shows what its level I converts to).
+    const gain = convert !== undefined ? convert : card.key ? (canConvertCard(card) ? conversionGain(card) : null) : definition.resource || null;
+    const gainResource = RESOURCES.find(resource => gain?.[resource]);
+    const type = definition.military ? 'Military' : definition.kind || '', small = faceText(text, parts);
+    const motif = definition.military || definition.affinity === 'Military' ? 'fleet' : { move: 'fleet', construct: 'starbase', colonize: 'colony', probe: 'explorer', excavate: 'harvester' }[definition.order] || (definition.affinity === 'Settlement' || definition.kind === 'Expansion' ? 'colony' : 'starbase');
+    // hidden: the card around it already names and reads the card for screen readers.
+    return `<span class="card-face" style="--face-accent:${definition.accent || 'var(--gold)'}"${key ? ` data-art="${key}"` : ''}${hidden ? ' aria-hidden="true"' : ''}><span class="cf-sheet">`
+      + `<span class="cf-backdrop" aria-hidden="true">${boardGlyph(motif, false)}</span>`
+      + (key ? `<img class="cf-art" src="card-art/${key}.webp" alt="" loading="lazy" decoding="async" draggable="false">` : '')
+      + `<span class="cf-shade"><span class="cf-name">${definition.name}${levelMark}</span>`
+      + `<span class="cf-text" aria-hidden="true">${parts.length ? `<span class="cf-headline">${faceHeadline(parts)}</span>` : ''}${parts.length && small ? '<span class="cf-rule"></span>' : ''}${small}</span>`
+      + `<span class="sr-only cf-said">${faceEsc(text)}</span>`
+      + `<span class="cf-foot"><span class="cf-left"><span class="cf-convert${gainResource ? ` ${gainResource}` : ''}"${gainResource ? ` role="img" aria-label="Converts to ${gain[gainResource]} ${RESOURCE_NAMES[gainResource]}" title="Converts to ${gain[gainResource]} ${RESOURCE_NAMES[gainResource]}"` : ''}>${gainResource ? CORNER_RESOURCE_ICONS[gainResource] : ''}</span><span class="cf-type">${faceEsc(type)}</span></span>${facePrice(shownPrice, priceMarks)}</span>`
+      + `</span><span class="cf-frame" aria-hidden="true"></span></span></span>`;
+  }
+
+  // Each picture's focal point (card-art/manifest.json "focus": [x, y], fractions of the picture;
+  // default the centre). The face shows a 63:88 crop of a wider picture: this places the crop so
+  // the focal point sits as near its middle as the picture allows, as CSS for every face.
+  function cardArtFocusCss(manifest) {
+    const place = (focus, picture, box) => Math.min(100, Math.max(0, picture === box ? 50 : (focus * picture - box / 2) / (picture - box) * 100));
+    return Object.entries(manifest?.cards || {}).filter(([, work]) => Array.isArray(work.focus)).map(([key, work]) => {
+      const [w, h] = work.crop?.output || [2, 1], scale = Math.max(63 / w, 88 / h);
+      return `.card-face[data-art="${key}"] .cf-art { --focus-x: ${place(work.focus[0], w * scale, 63).toFixed(1)}%; --focus-y: ${place(work.focus[1], h * scale, 88).toFixed(1)}%; }`;
+    }).join('\n');
+  }
+  function loadCardArtFocus() {
+    if (!globalThis.document?.head || !globalThis.fetch || document.querySelector('#card-art-focus')) return;
+    fetch('card-art/manifest.json').then(response => response.ok ? response.json() : null).then(manifest => {
+      const style = document.createElement('style'); style.id = 'card-art-focus'; style.textContent = cardArtFocusCss(manifest); document.head.append(style);
+    }).catch(() => { /* Every picture keeps its centred crop. */ });
+  }
+
   // Card data only, for the card gallery page: no galaxy, state, timers or storage.
   if (options.catalog === true) return {
     rulesVersion: `galactic-reach/${SAVE_FORMAT_VERSION}.${RULES_REVISION}`, MARKET_CARDS, ADVANCED_CARDS, MARKET_MILITARY, BASIC_TACTICS, BASIC_CARDS, RELIC_CARDS,
     MARKET_SIZE, MARKET_COPIES, MARKET_TIERS, MARKET_TIER_SLOTS, marketTier, STARTING_LIMIT, DEFAULT_VICTORY_TARGET, VICTORY_TARGET_CHOICES, RESOURCES, RESOURCE_NAMES,
     // Shared, state-free presentation for the gallery's costs and card descriptions.
-    resourceDots, iconText, BOARD_ICONS, boardGlyph, cardSymbols, cornerDots, costClusters, cardEffectParts, cardEffectLabel
+    resourceDots, iconText, BOARD_ICONS, boardGlyph, cardSymbols, cornerDots, costClusters, cardEffectParts, cardEffectLabel, cardFace, cardArtFocusCss, SUPPLY_CARDS
   };
 
 
@@ -1323,8 +1410,12 @@ function createGalacticReach(options = {}) {
 
   // A card's effect in the vocabulary: the same sentence with its recurring ideas as glyphs.
   function iconText(text) {
+    return resourceText(iconTokens(text)).replace(/@(prestige|draw|hit|miss|build|colonize|move|limit)@/g, (m, key) => VOCAB_ICONS[key]);
+  }
+  // The same sentence with each recurring idea as an @key@ token, before any markup.
+  function iconTokens(text) {
     const count = word => COUNT_WORDS[String(word).toLowerCase()] || word;
-    return resourceText(String(text)
+    return String(text)
       .replace(/This card enters discard and has no effect in hand; trash it later to remove it from your deck\./g, 'No effect in hand.')
       .replace(/When bought, gain (\d+) permanent Prestige\./g, (m, n) => `On purchase: +${n} @prestige@.`)
       .replace(/\bgain (\d+) (?:more )?permanent Prestige/gi, (m, n) => `+${n} @prestige@`)
@@ -1341,8 +1432,7 @@ function createGalacticReach(options = {}) {
       .replace(/\bRaise your (Matter|Energy|Life|Data) limit by (\d+)/g, (m, r, n) => `+${n} ${r} @limit@`)
       .replace(/\bamong your resource limits\b/g, 'among your @limit@')
       .replace(/\bBuild or commission\b/g, '@build@')
-      .replace(/\bColonize\b/g, '@colonize@'))
-      .replace(/@(prestige|draw|hit|miss|build|colonize|move|limit)@/g, (m, key) => VOCAB_ICONS[key]);
+      .replace(/\bColonize\b/g, '@colonize@');
   }
 
   function resourceText(text) {
@@ -5413,7 +5503,12 @@ function createGalacticReach(options = {}) {
     const convertCorner=!gain?'':canResource?`<button type="button" class="card-footer corner-button${gainTab}" data-resource-card="${card.id}" aria-label="Convert to ${gainText}${canStoreCard?'':' (choose excess resources first)'}" title="${canStoreCard?`Convert to ${gainText}`:'Choose excess resources first'}" ${canStoreCard?'':'disabled'}>${cornerDots(gain,'Converts to')}</button>`
       :location==='hand'?`<button type="button" class="card-footer corner-button${gainTab}" disabled aria-label="Convert to ${gainText} (not now)" title="Convert to ${gainText} (not now)">${cornerDots(gain,'Converts to')}</button>`:`<div class="card-footer">${cornerDots(gain,'Converts to')}</div>`;
     const textButtons=location!=='hand'?'':`${canOrder&&!iconOrder?`<button class="button ${isSelectedOrder?'button-danger':'button-primary'}" data-order-card="${card.id}" ${card.key==='probe'?'data-order-mode="probe"':''} aria-pressed="${isSelectedOrder&&state.actionMode!=='excavate'}">${isSelectedOrder&&state.actionMode!=='excavate'?'Cancel order':buyExchange?'Use 2:1':card.key==='probe'?'Probe':'Use order'}</button>`:''}${canOrder&&canConstructDraw(ME,card.id)?`<button class="button button-primary" data-construct-draw="${card.id}" aria-label="Play Construct III to draw one card without building">Draw 1 only</button>`:''}${canOrder&&canOrderDraw(ME,card.id)?`<button class="button button-primary" data-order-draw="${card.id}" aria-label="Play Seed Ark to draw two cards instead of colonizing">Draw 2 instead</button>`:''}${canOrder&&card.key==='probe'?`<button class="button button-primary" data-order-card="${card.id}" data-order-mode="excavate" aria-pressed="${isSelectedOrder&&state.actionMode==='excavate'}">${isSelectedOrder&&state.actionMode==='excavate'?'Cancel Excavate':'Excavate'}</button>`:''}${canBuyEffect?`<button class="button button-primary" data-buy-effect="${card.id}">Use in Buy</button>`:''}${canTrash?`<button class="button" data-trash-hand="${card.id}" aria-label="Trash ${esc(definition.name)}: choose a payment">Trash…</button>`:''}${definition.battleRelic?'<span class="muted">Play during battle</span>':definition.reaction&&isHumanOps?'<span class="muted">Automatic reaction</span>':''}`;
-    return `<article class="game-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''}${parts.length?' has-symbols':''}${gain?' has-corner-dots':''}${textButtons?' has-buttons':''}${cardHeadline(card)&&!parts.length?' has-headline':''}" style="--card-accent:${definition.accent}"${card.id?` data-card-id="${card.id}"`:''}${location==='hand'&&definition.order?` data-order="${definition.order}"`:''}>${effectCorner}<span class="card-name">${definition.name}${starterLevel(card)===3?' III':card.upgraded?' II':''}</span>${convertCorner}${cardHeadline(card)&&!parts.length?`<span class="card-headline"><span aria-hidden="true">${iconText(cardHeadline(card))}</span><span class="sr-only">${cardHeadline(card)}</span></span>`:''}${cardIllustration(definition)}${definition.lore?`<span class="card-lore">${esc(definition.lore)}</span>`:''}<span class="card-effect">${resourceText(definition.text)}${card.upgraded?` ${starterLevel(card)===3?'III':'II'}: ${upgradedOrderText(card)}${starterLevel(card)===3&&card.key!=='construct'?' Draw one card when using the order.':''}`:''}</span>${textButtons?`<div class="card-buttons">${textButtons}</div>`:''}</article>`;
+    // The card itself is its face (rules #card-face). In the hand a resting card shows only its corner
+    // buttons (its picture where it has no symbols); raising it shows the face, corners and all.
+    const name=`${definition.name}${starterLevel(card)===3?' III':card.upgraded?' II':''}`;
+    const said=`${definition.text}${card.upgraded?` ${starterLevel(card)===3?'III':'II'}: ${upgradedOrderText(card)}${starterLevel(card)===3&&card.key!=='construct'?' Draw one card when using the order.':''}`:''}`;
+    const inHand=location==='hand';
+    return `<article class="game-card face-card ${definition.kind==='Alien Relic'?'alien-relic':''} ${card.upgraded?'upgraded':''} ${isSelectedOrder?'order-selected':''}${parts.length?' has-symbols':''}${gain?' has-corner-dots':''}${textButtons?' has-buttons':''}" style="--card-accent:${definition.accent}"${card.id?` data-card-id="${card.id}"`:''}${inHand&&definition.order?` data-order="${definition.order}"`:''}>${inHand?effectCorner+convertCorner:''}<span class="card-name sr-only">${name}</span><span class="card-said sr-only">${esc(said)}</span>${cardFace(definition,card,{hidden:true})}${textButtons?`<div class="card-buttons">${textButtons}</div>`:''}</article>`;
 
   }
 
@@ -5451,7 +5546,8 @@ function createGalacticReach(options = {}) {
     face.classList.toggle('face-up', !!definition);
     face.style.setProperty('--card-accent', definition?.accent || 'transparent');
     const topName = definition ? `${definition.name}${starterLevel(top)===3?' III':top.upgraded?' II':''}` : '';
-    face.innerHTML = topName ? `<span class="pile-name">${topName}</span>` : '';
+    // Face up, the top card shows its face (rules #card-face); Max's table keeps its name label.
+    face.innerHTML = !topName ? '' : globalThis.document?.body?.classList?.contains('background-stars') ? `<span class="pile-name">${topName}</span>` : cardFace(definition, top, { hidden: true });
     button.dataset.title ||= button.title;
     button.title = topName ? `${button.dataset.title}. Top card: ${topName}.` : button.dataset.title;
   }
@@ -5519,7 +5615,11 @@ function createGalacticReach(options = {}) {
     const level=card.starter&&starterLevel(card)>1?` ${starterLevel(card)===3?'III':'II'}`:'';
     const text=def.text+(level?` ${level.trim()}: ${upgradedOrderText(card)}${starterLevel(card)===3&&card.key!=='construct'?' Draw one card when using the order.':''}`:'');
     const note=cost?marketBlockReason(player,cost,true).note:'';
-    return `<button type="button" class="game-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}${cardEffectParts(def,card).length?' has-symbols':''}" style="--card-accent:${def.accent}" ${attributes} ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${esc(tier.name)}: ${esc(def.code||'')} ${esc(def.name+level)}${def.military?', military deck':''}${disabled?`. Unavailable: ${esc(why)}`:''}">${cardSymbols(def,card)}<span class="card-name">${def.name}${level}</span>${def.resource?`<span class="card-gain" title="Converts for">${eachResourceGain(def.resource)?`<span class="gain-each">${eachResourceGain(def.resource)} each</span>`:resourceDots(def.resource)}</span>`:''}${cardIllustration(def)}<span class="card-effect">${resourceText(text)}</span><span class="card-icons" aria-hidden="true">${iconText(text)}</span><span class="card-footer"><small>${cost?'Buy':'In play'}</small>${cost?marketCostDots(player,cost):''}</span>${note?`<span class="card-limit-note">${esc(note)}</span>`:''}</button>`;
+    // The market shows each card's face (rules #card-face), its price marked where you cannot pay it yet.
+    const limits=cost?resourceLimits(ME):{};
+    const priceMarks=Object.fromEntries(RESOURCES.filter(resource=>cost?.[resource]).map(resource=>{const mark=cost[resource]>limits[resource]?'locked':cost[resource]>player.resources[resource]?'short':'';
+      return [resource,{mark,label:mark==='locked'?`, above your limit of ${limits[resource]}`:'',title:`${cost[resource]} ${RESOURCE_NAMES[resource]}${mark==='locked'?` · your limit is ${limits[resource]}`:mark==='short'?` · you hold ${player.resources[resource]}`:''}`}];}));
+    return `<button type="button" class="game-card face-card ${def.military?'military-market-card':''} ${disabled?'unavailable':''}${cardEffectParts(def,card).length?' has-symbols':''}" style="--card-accent:${def.accent}" ${attributes} ${disabled?`disabled title="${esc(why)}"`:''} aria-label="${esc(tier.name)}: ${esc(def.code||'')} ${esc(def.name+level)}${def.military?', military deck':''}${cost?`, price ${RESOURCES.filter(r=>cost[r]).map(r=>`${cost[r]} ${RESOURCE_NAMES[r]}${priceMarks[r].label}`).join(', ')}`:''}${disabled?`. Unavailable: ${esc(why)}`:''}"><span class="card-name sr-only">${def.name}${level}</span>${cardFace(def,card,{price:cost||null,priceMarks,hidden:true})}${note?`<span class="card-limit-note">${esc(note)}</span>`:''}</button>`;
   }
 
   function renderMarket() {
@@ -7033,6 +7133,7 @@ function createGalacticReach(options = {}) {
     }
     setupMatTrades();
     setupPhoneCardSheet();
+    loadCardArtFocus();
     setupLogCard();
     setupTradeDrawer();
     setupMarketDrawer();

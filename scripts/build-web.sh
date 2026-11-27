@@ -13,7 +13,7 @@ cp crates/web/style.css dist/style.css
 cp prototypes/galactic-reach/index.html dist/galactic-reach/index.html
 cp prototypes/galactic-reach/max-ui.css dist/galactic-reach/
 cp prototypes/galactic-reach/styles.css prototypes/galactic-reach/palette.css dist/galactic-reach/
-cp prototypes/galactic-reach/card-feel.js prototypes/galactic-reach/card-feel.css dist/galactic-reach/
+cp prototypes/galactic-reach/card-feel.js prototypes/galactic-reach/card-feel.css prototypes/galactic-reach/card-face.css dist/galactic-reach/
 # On-table guidance and the Learn to play walkthrough (index.html?tutorial=1).
 cp prototypes/galactic-reach/guide.js prototypes/galactic-reach/guide.css prototypes/galactic-reach/tutorial.js dist/galactic-reach/
 cp prototypes/galactic-reach/rulebook.html prototypes/galactic-reach/rulebook.css dist/galactic-reach/
