@@ -6581,6 +6581,8 @@ function createGalacticReach(options = {}) {
     handle.title = open ? 'Close the market' : marketBuyKey ? 'Open the market: your Buy turn' : 'Open the market';
     handle.dataset.buying = String(Boolean(marketBuyKey));
     size.hidden = !open || marketUpright();
+    const gallery=$('#market-gallery');
+    if(gallery)gallery.hidden=!open;
     size.firstElementChild.textContent = view === 'full' ? 'Smaller' : 'Larger';
     size.setAttribute('aria-label', view === 'full' ? 'Smaller market: the side panel' : 'Larger market: whole cards');
   }

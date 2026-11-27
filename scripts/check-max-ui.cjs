@@ -38,8 +38,10 @@ async function main() {
     }))`);
   }
   async function click(selector) {
-    const point = await evaluate(`(() => { const e = document.querySelector(${source(selector)}); if (!e?.checkVisibility() || e.disabled) return null; const r = e.getBoundingClientRect(); return {x:r.left+r.width/2,y:r.top+r.height/2}; })()`);
+    const point = await evaluate(`(() => { const e = document.querySelector(${source(selector)}); if (!e?.checkVisibility() || e.disabled) return null; const r = e.getBoundingClientRect(),x=r.left+r.width/2,y=r.top+r.height/2,hit=document.elementFromPoint(x,y); return {x,y,covered:!e.contains(hit),hit:hit?.outerHTML.slice(0,200)}; })()`);
     assert(point, 'visible, enabled control: ' + selector);
+    if(/data-(score|faction)-player/.test(selector))assert(!point.covered,'Uncovered faction control '+selector+': '+JSON.stringify(point));
+    delete point.covered;delete point.hit;
     if (touch) {
       await browser.send('Input.dispatchTouchEvent', {type:'touchStart', touchPoints:[{...point, radiusX:2, radiusY:2, force:1, id:1}]});
       await browser.send('Input.dispatchTouchEvent', {type:'touchEnd', touchPoints:[]});

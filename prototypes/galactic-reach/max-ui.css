@@ -873,3 +873,7 @@ body.max-card-gallery .gallery-card .resource-symbol svg { transform: none; }
 body.max-card-gallery .card-footer .resource-chip strong { color: var(--ink); }
 body.max-card-gallery .max-reference-card .card-footer .resource-chip { background: none; border: 0; box-shadow: none; gap: 1px; }
 body.max-card-gallery .max-reference-card .card-name { text-align: left; }
+/* The Table drawer’s faction names must receive taps above the bank shortcuts. */
+@media (max-width: 599px), (max-height: 599px) {
+  body.background-stars[data-drawer="table"] #max-bank-nav { visibility: hidden; pointer-events: none; }
+}

@@ -13,7 +13,7 @@ const plain = x => JSON.parse(JSON.stringify(x));
 function fixture(kind = 'large', secret = 'concentratedFire') {
   const { engine: e, state: s } = freshEngine();
   s.activePlayer = 0; s.phase = 'operations'; s.turnStage = 'action';
-  s.fleets = { '10,-10': { 0: { fleet: 12, settler: 6, explorer: 0 } }, '9,-10': { 1: { fleet: 12, settler: 6, explorer: 0 } } };
+  s.fleets = { '10,-10': { 0: { fleet: 5, settler: 6, explorer: 0 } }, '9,-10': { 1: { fleet: 5, settler: 6, explorer: 0 } } };
   s.players.forEach(p => { p.hand = []; p.resources = { matter: 0, energy: 0, biomass: 0, data: 0 }; });
   for (const p of s.players.slice(0, 2)) p.military = Object.keys(e.MILITARY_CARDS).filter(k => !['concentratedFire','defensiveScreen'].includes(k)).map(key => ({key, id:`mat-${p.id}-${key}`}));
   e.executeMove(0, '10,-10', '9,-10', {moveGroup:'all'});
@@ -90,7 +90,7 @@ async function main() {
       assert.match(await evaluate('document.querySelector(".combat-own .battle-instruments").innerHTML'),/Hull: 3. Fleet · of 7/);
       await pointer('[data-mat-units="attacker:fleet"]',touch);
       const hull=await evaluate('document.querySelector("#battle-reference-body").textContent');
-      assert.match(hull,/3\/7 hull/);assert.match(hull,/5\/7 hull/);assert.equal((hull.match(/7\/7 hull/g)||[]).length,10);
+      assert.match(hull,/3\/7 hull/);assert.match(hull,/5\/7 hull/);assert.equal((hull.match(/7\/7 hull/g)||[]).length,3);
       await key('Escape');assert.equal(await evaluate('document.querySelector("#battle-reference-dialog").open'),false);
       assert.equal(await snapshot(),before,'Inspecting exact piece state is read-only');
       const seen=new Set();
@@ -120,7 +120,7 @@ async function main() {
       await pointer('[data-mat-spent="attacker"]',touch);assert.match(await evaluate('document.querySelector("#battle-reference-body").textContent'),/Phase Lance/);await key('Escape');
       await pointer('#battle-record-open',touch);assert.match(await evaluate('document.querySelector("#battle-reference-body").textContent'),/Volley 1/);await key('Escape');
       await load(fixture('report'));assert(await evaluate('document.querySelector("#message-dialog").open'));assert.match(await evaluate('document.querySelector("#message-details").textContent'),/Volley 3/);await shot(`report-${width}x${height}`);
-      await load(fixture('secret'),true);assert.equal(await evaluate('document.querySelectorAll(".battle-mat").length'),0);assert.equal(await evaluate('document.querySelectorAll(".combat-unit").length'),36);await shot(`max-${width}x${height}`);
+      await load(fixture('secret'),true);assert.equal(await evaluate('document.querySelectorAll(".battle-mat").length'),0);assert.equal(await evaluate('document.querySelectorAll(".combat-unit").length'),22);await shot(`max-${width}x${height}`);
       console.log(`ok - combat mats ${width}x${height}: ${touch?'native touch':'mouse/keyboard'}, paging, exact hull, private commit/reload, reveal, record/report, Max branch`);
     }
     assert.deepEqual(b.errors,[],'No browser exceptions');
