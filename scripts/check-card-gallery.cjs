@@ -161,6 +161,27 @@ async function main() {
       }
       console.log(`ok - gallery ${width}×${height}${touch ? ' touch' : ''}`);
     }
+    // Max’s gallery uses its shared in-game card face, numeric prices and every earlier symbol.
+    await browser.navigate(`${origin}/galactic-reach/cards.html?ui=max`);
+    await wait('document.querySelectorAll(".max-reference-card").length === '+allKeys.length);
+    assert(await evaluate('document.body.classList.contains("background-stars")'));
+    assert.equal(await evaluate('document.querySelectorAll(".corner-dots").length'),0,'Max prices stay numeric');
+    assert.equal(await evaluate('document.querySelectorAll(".card-symbols").length'),0,'Max keeps its own card arrangement');
+    const maxCards=await evaluate('[...document.querySelectorAll(".gallery-card")].map(c=>({key:c.dataset.cardKey,name:c.querySelector(".card-name").textContent,cost:c.querySelector(".card-footer .resource-dots")?.getAttribute("aria-label"),numbers:[...c.querySelectorAll(".card-footer .resource-chip strong")].map(e=>Number(e.textContent))}))');
+    for(const card of maxCards){const def=market[card.key]||relics[card.key];assert.equal(card.name,def.name);if(market[card.key]){assert.deepEqual(card.numbers,Array.from(catalog.RESOURCES).filter(r=>def.cost[r]).map(r=>def.cost[r]));assert.equal(card.cost,catalog.RESOURCES.filter(r=>def.cost[r]).map(r=>`${def.cost[r]} ${catalog.RESOURCE_NAMES[r]}`).join(', '));}}
+    assert(await evaluate('[...document.querySelectorAll("#icon-grid svg")].every(svg=>[...svg.children].every(child=>child.matches(".max-symbol-shape")?getComputedStyle(child).display!=="none":getComputedStyle(child).display==="none"))'),'All twenty gallery symbols use Max’s earlier drawings');
+    for(const [width,height,touch] of [[1280,720,false],[1440,900,false],[1024,768,true],[768,1024,true],[390,844,true],[320,700,true]]){
+      await browser.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor:1,mobile:touch});
+      await browser.send('Emulation.setTouchEmulationEnabled',{enabled:touch,maxTouchPoints:1});
+      await evaluate('scrollTo(0,0)');
+      const fits=await evaluate('({page:document.documentElement.scrollWidth,width:innerWidth,cards:[...document.querySelectorAll(".max-reference-card")].map(c=>{const name=c.querySelector(".card-name"),effect=c.querySelector(".card-effect"),cost=c.querySelector(".card-footer"),n=name.getBoundingClientRect(),p=cost.getBoundingClientRect();return {height:c.getBoundingClientRect().height,name:name.scrollHeight<=name.clientHeight+1,effect:effect.scrollHeight<=effect.clientHeight+1,price:!cost.querySelector(".resource-dots")||n.right<=p.left+2,width:c.scrollWidth<=c.clientWidth+2};})})');
+      assert(fits.page<=fits.width+1,`Max gallery ${width}×${height}: no horizontal scrolling`);assert(fits.cards.every(c=>c.height>=300&&c.name&&c.effect&&c.price&&c.width),`Max gallery ${width}×${height}: full names, effects and numeric prices fit ${JSON.stringify(fits.cards.filter(c=>!c.name||!c.effect||!c.price||!c.width))}`);
+      if(process.env.SHOTS){fs.mkdirSync(process.env.SHOTS,{recursive:true});fs.writeFileSync(path.join(process.env.SHOTS,`max-gallery-${width}x${height}.png`),Buffer.from((await browser.send('Page.captureScreenshot',{format:'png'})).data,'base64'));}
+      console.log(`ok - Max gallery ${width}×${height}`);
+    }
+    await browser.navigate(`${origin}/galactic-reach/cards.html?ui=max&deck=relic`);await wait('document.querySelectorAll(".gallery-card").length === '+Object.keys(relics).length);assert(await evaluate('document.querySelector("[data-filter=relic]").getAttribute("aria-pressed")==="true"'));
+    await evaluate('localStorage.setItem("galactic-reach-background","stars")');
+    await browser.navigate(`${origin}/galactic-reach/cards.html?ui=willem`);await wait('document.querySelectorAll(".gallery-card").length === '+allKeys.length);assert(!await evaluate('document.body.classList.contains("background-stars")'),'An explicit Willem link wins over a different saved preference');
     assert.deepEqual(browser.errors, [], 'No gallery runtime errors');
   } catch (error) {
     console.error('Gallery diagnostics:', await evaluate('({cards:document.querySelectorAll(".gallery-card").length,art:document.querySelectorAll(".gallery-art").length,status:document.querySelector("#store-status")?.textContent,title:document.title})'));

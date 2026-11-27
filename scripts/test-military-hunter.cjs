@@ -51,7 +51,7 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
 {
   const g=game(),world=second(g);yard(g,g.s.clusters[1]);const forward=yard(g,world),card={id:'move',key:'move',starter:true,upgraded:true};
   g.s.fleets={[forward]:{1:{fleet:4}},'0,0':{0:{settler:1}}};let move=g.e.chooseAiMove(1,card);assert.equal(move,null,'A smaller group waits when no fight can be reached this Move');
-  g.s.fleets[forward][1].fleet=10;move=g.e.chooseAiMove(1,card);assert.equal(move.goal,'0,0');assert.equal(move.units.fleet,10,'Keep a larger hunting group together');legal(g,move,card);
+  g.s.fleets[forward][1].fleet=5;move=g.e.chooseAiMove(1,card);assert.equal(move.goal,'0,0');assert.equal(move.units.fleet,5,'Keep a full five-Fleet hunting group together');legal(g,move,card);
   const before=JSON.stringify(g.s),calls=g.calls(),hand=g.s.players[0].hand;g.s.players[0].hand=[{id:'secret',key:'phaseLance'}];g.s.players[0].deck.reverse();
   assert.deepEqual(plain(g.e.chooseAiMove(1,card)),plain(move),'Hunting ignores enemy private cards');assert.equal(g.calls(),calls);
   g.s.players[0].hand=hand;assert(JSON.stringify(g.s)===before,'Planning does not mutate the position');
@@ -63,7 +63,7 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   const move=g.e.chooseAiMove(1,card);assert.equal(move.goal,'2,0','Prefer a weaker group over the stronger leader');legal(g,move,card);
   g.s.fleets['2,0']={0:{explorer:2}};g.s.players[0].resources.energy=1;
   assert.equal(g.e.chooseAiMove(1,card).goal,'0,2','Prefer a decisive fight over Explorers that can escape');
-  g.s.fleets['0,2']={2:{fleet:10}};delete g.s.fleets['2,0'];assert.equal(g.e.chooseAiMove(1,card),null,'Do not attack an overwhelming group');
+  g.s.fleets['0,2']={2:{fleet:5}};delete g.s.fleets['2,0'];assert.equal(g.e.chooseAiMove(1,card),null,'Do not attack an overwhelming group');
 }
 {
   const g=game(),world=second(g),forward=yard(g,world),card={id:'early',key:'move',starter:true,upgraded:true};
@@ -74,14 +74,14 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
 {
   for(const count of [2,3,4]){
     const g=game({minRaid:count}),card={id:'blocked-raid',key:'move',starter:true,upgraded:true,level:2};second(g);g.s.round=2;
-    g.s.fleets={'0,0':{1:{fleet:count}},'1,0':{0:{fleet:10}},'3,0':{2:{fleet:1}}};
+    g.s.fleets={'0,0':{1:{fleet:count}},'1,0':{0:{fleet:5}},'3,0':{2:{fleet:1}}};
     const before=JSON.stringify(g.s),calls=g.calls();
     assert.equal(g.e.chooseAiMove(1,card),null,'A small group waits when its legal detour cannot reach combat this Move');
     assert.equal(JSON.stringify(g.s),before,'Blocked-raid planning preserves the position');assert.equal(g.calls(),calls,'Blocked-raid planning consumes no random choices');
     delete g.s.fleets['1,0'];const immediate=g.e.chooseAiMove(1,card);assert.equal(immediate.destination,'3,0');assert.equal(immediate.goal,'3,0');legal(g,immediate,card);
   }
   const g=game(),card={id:'cohesive-detour',key:'move',starter:true,upgraded:true,level:2};second(g);
-  g.s.fleets={'0,0':{1:{fleet:5}},'1,0':{0:{fleet:10}},'3,0':{2:{fleet:1}}};
+  g.s.fleets={'0,0':{1:{fleet:5}},'1,0':{0:{fleet:5}},'3,0':{2:{fleet:1}}};
   const approach=g.e.chooseAiMove(1,card);assert(approach);assert.equal(approach.goal,'3,0');assert.notEqual(approach.destination,approach.goal,'A full hunting group may take a longer legal approach');legal(g,approach,card);
 }
 {
@@ -101,13 +101,13 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
 {
   const g=game(),world=second(g),forward=yard(g,world),card={id:'move',key:'move',starter:true,upgraded:true};
   g.s.fleets={'0,0':{1:{fleet:3}},'3,0':{1:{fleet:3}}};
-  const move=g.e.chooseAiMove(1,card);assert(move);assert.equal(move.units.fleet,3,'Merge the incomplete groups when no useful scoring fight is available');legal(g,move,card);
+  const move=g.e.chooseAiMove(1,card);assert(move);assert.equal(move.units.fleet,2,'Merge only enough Fleets to fill five places in the incomplete groups when no useful scoring fight is available');legal(g,move,card);
   g.s.fleets={'0,0':{1:{fleet:4}}};assert.equal(g.e.chooseAiMove(1,card).goal,forward,'Survivors return for reinforcement');
 }
 {
   for(const distancePenalty of [4,8]){
     const g=game({distancePenalty}),card={id:'short-hunt',key:'move',starter:true,upgraded:true};second(g);
-    g.s.fleets={'0,0':{1:{fleet:10}},'2,0':{0:{fleet:2}},'-6,0':{2:{fleet:1}}};
+    g.s.fleets={'0,0':{1:{fleet:5}},'2,0':{0:{fleet:2}},'-6,0':{2:{fleet:1}}};
     const move=g.e.chooseAiMove(1,card);assert.equal(move.goal,distancePenalty===8?'2,0':'-6,0','Favor a reachable weak group over a slightly weaker distant target');
     if(distancePenalty===8)assert.equal(move.destination,move.goal,'Start scoring in one Move');legal(g,move,card);
   }
@@ -121,7 +121,7 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   g.p.strategy='military';assert.equal(g.e.chooseCombatAction(view,actions).tactic,'novaBarrage','Original Military tactic choices are unchanged');
 }
 {
-  const g=game(),world=second(g);yard(g,g.s.clusters[1]);const forward=yard(g,world);g.s.fleets={[forward]:{1:{fleet:10}}};
+  const g=game(),world=second(g);yard(g,g.s.clusters[1]);const forward=yard(g,world);g.s.fleets={[forward]:{1:{fleet:5}}};
   let builds=0;
   for(let n=0;n<20;n++){
     g.p.resources={matter:20,energy:20,biomass:20,data:20};const build=g.e.chooseAiBuild(1);if(!build)break;
@@ -154,4 +154,4 @@ function legal(g,move,card){g.p.hand=[card];const fresh=g.c.createGalacticAdapte
   g.s.activePlayer=1;g.s.pendingColonyBuild={playerId:1,colony:world.center};g.e.aiColonyBuild(1);
   assert.equal(world.coords.filter(c=>g.s.planets[c].upgrade==='starbase').length,1,'Bonus construction cannot add another forward Shipyard');
 }
-console.log('Military Focused: one expansion, forward supply/production, cohesive five-to-ten-Fleet groups, actual-route small raids, weaker targets, legal regrouping, private information, both worlds filled, capacity, combat-reward tactics and original-policy isolation passed.');
+console.log('Military Focused: one expansion, forward supply/production, cohesive five-Fleet groups, actual-route small raids, weaker targets, legal regrouping, private information, both worlds filled, capacity, combat-reward tactics and original-policy isolation passed.');

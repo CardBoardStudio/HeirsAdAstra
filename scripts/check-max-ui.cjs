@@ -162,9 +162,23 @@ async function main() {
       assert.equal((await saved()).phase,'buy','converting the last starters automatically passes');
       await load(operationsState(['move','construct','move','construct','move']));
       const before = await snapshot(); await fit(phone);
+      const profiles=(await saved()).players;
+      for(const player of profiles){
+        if(phone&&await evaluate('document.body.dataset.drawer!=="table"'))await click('.phone-drawers [data-drawer="table"]');
+        const selector=await evaluate(`(()=>{const e=document.querySelector('.prestige-lane-name[data-faction-player="${player.id}"]');return e?.checkVisibility()?'.prestige-lane-name[data-faction-player="${player.id}"]':'[data-score-player="${player.id}"]';})()`);
+        await click(selector);assert(await evaluate('document.querySelector("#prestige-dialog").open'));
+        const names={militaryFocused:'Military Focused',military:'Military',economy:'Economy',expansion:'Expansion',maxbot:'MaxBot'};
+        assert.equal(await evaluate('document.querySelector("#faction-profile-name").textContent'),player.strategy==='human'?'Human player':names[player.strategy]+' bot');
+        assert((await evaluate('document.querySelector("#faction-profile-description").textContent')).length>30);await key('Escape');
+        assert.equal(await snapshot(),before,'Inspecting a faction profile changes no saved state');
+      }
+      if(phone&&await evaluate('document.body.dataset.drawer==="table"'))await click('.phone-drawers [data-drawer="table"]');
+      assert(await evaluate('[...document.querySelectorAll("[data-card-gallery]")].every(a=>new URL(a.href).searchParams.get("ui")==="max")'),'Every Max gallery link carries the current interface');
+      assert(await evaluate('[...document.querySelectorAll("#galaxy-board svg[data-icon],#symbol-legend svg[data-icon],#prestige-track svg[data-icon],#hand-row svg[data-icon],[data-hx-slot] svg")].every(svg=>[...svg.children].every(e=>e.matches(".max-symbol-shape")?getComputedStyle(e).display!=="none":getComputedStyle(e).display==="none"))'),'Map, standings, cards, legends and static slots use the earlier symbols');
+
       for (const name of ['relics','market','basics']) {
         await click(`#max-bank-nav [data-card-bank="${name}"]`);
-        assert(await open()); assert.equal(await bank(), name); await key('Tab'); assert(await evaluate('!!document.activeElement.closest("#max-bank-dialog")'), 'keyboard focus stays in the bank'); await fit(phone);
+        assert(await open()); assert.equal(await bank(), name); assert(await evaluate('document.querySelector("#max-bank-dialog [data-card-gallery]").checkVisibility()'),'The open card bank has a gallery link'); await key('Tab'); assert(await evaluate('!!document.activeElement.closest("#max-bank-dialog")'), 'keyboard focus stays in the bank'); await fit(phone);
         if (process.env.SHOTS) { fs.mkdirSync(process.env.SHOTS,{recursive:true}); fs.writeFileSync(path.join(process.env.SHOTS,`${width}x${height}-${name}.png`),Buffer.from((await browser.send('Page.captureScreenshot',{format:'png'})).data,'base64')); }
         await key('Escape'); assert(!await open());
         assert.equal(await snapshot(), before, 'browsing and Escape preserve the save');

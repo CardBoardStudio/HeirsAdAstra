@@ -272,6 +272,11 @@ function createGalacticAdapter(e) {
       else { p.hand = []; p.deck = []; p.buyStartHandIds = []; }
     });
     state.probeStatus = e.probeStatus(seat);
+    // Oracle privately lists available designs, including ones the player cannot afford.
+    // Expose neither copy counts, instance ids nor the remaining decks’ order.
+    state.oracleMarketKeys = state.phase==='operations' && state.activePlayer===seat
+      && state.players[seat].hand.some(card=>card.key==='oracleOfTheUnmade')
+      ? [...new Set(Object.values(state.marketDecks).flat().map(card=>card.key))].sort() : [];
     state.marketDecks = Object.fromEntries(Object.entries(state.marketDecks).map(([tier, deck]) => [tier, stub(deck.length)]));
     state.relicDeckCount = state.relicDeck.length;
     state.relicDeck = stub(state.relicDeck.length);

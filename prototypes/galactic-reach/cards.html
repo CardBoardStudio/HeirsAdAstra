@@ -97,8 +97,19 @@
     :focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
     @media (pointer: coarse) { .gallery .button, .gallery select { min-height: 44px; } }
   </style>
+  <link rel="stylesheet" href="max-ui.css?v=1">
 </head>
 <body>
+  <script>
+    (() => {
+      const ui=new URLSearchParams(location.search).get('ui');
+      let max=ui==='max';
+      if(!ui)try{max=localStorage.getItem('galactic-reach-background')==='stars';}catch{}
+      document.body.classList.toggle('background-stars',max);
+      document.body.classList.add('card-gallery-page');
+      if(max)document.body.classList.add('max-card-gallery');
+    })();
+  </script>
   <main class="gallery" id="gallery">
     <header>
       <div>
@@ -144,6 +155,12 @@
   'use strict';
   (() => {
     const catalog = createGalacticReach({ catalog: true });
+    const maxUI=document.body.classList.contains('background-stars');
+    if(maxUI){document.querySelector('main.gallery').classList.add('max-card-gallery');document.querySelector('#card-grid').classList.add('market-choice-content');}
+    if(maxUI)document.querySelector('#icon-set .lede').textContent='The earlier symbols used throughout Max’s UI, shown at the sizes used on the table and cards.';
+    document.querySelectorAll('.gallery .links a[href]').forEach(link=>{
+      const url=new URL(link.href);url.searchParams.set('ui',maxUI?'max':'willem');link.href=url.href;
+    });
     // Symbols: every icon in icons.js, by name, in its colour on the table.
     const ICON_COLOURS = { matter: 'var(--matter)', energy: 'var(--energy)', life: 'var(--biomass)', data: 'var(--data)', limit: 'var(--gold)' };
     const icons = globalThis.heirsIcons;
@@ -178,7 +195,7 @@
     const chips = gain => catalog.RESOURCES.filter(r => gain?.[r]).map(r => `<span class="chip ${r}">${gain[r]} ${catalog.RESOURCE_NAMES[r]}</span>`).join('') || '<span class="muted">None</span>';
     const storeKey = 'galactic-reach-card-feedback-31-36';
     const feedbackViewKey = 'galactic-reach-gallery-feedback-visible';
-    let saved = {}, serverEnabled = false, filter = 'all', art = {};
+    let saved = {}, serverEnabled = false, filter = new URLSearchParams(location.search).get('deck')==='relic'?'relic':'all', art = {};
     let feedbackVisible = false;
     try { feedbackVisible = localStorage.getItem(feedbackViewKey) === 'true'; } catch { /* Start compact when storage is unavailable. */ }
     try { saved = JSON.parse(localStorage.getItem(storeKey) || '{}') || {}; } catch { saved = {}; }
@@ -210,6 +227,10 @@
         const note = `note-${card.code}`;
         const work = art[card.key];
         return `<article class="gallery-card ${family(card)}" data-card-key="${card.key}" data-card-code="${card.code}" style="--accent:${card.accent}" aria-labelledby="name-${card.code}">
+          ${maxUI ? `<div class="game-card max-reference-card ${card.military?'military-market-card':''}" style="--card-accent:${card.accent}"><h3 id="name-${card.code}" class="sr-only">${esc(card.name)}</h3>${catalog.maxCardFace(card,{
+            illustration: work ? `<span class="card-art has-picture"><img class="card-picture" src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"></span>` : `<span class="card-art">${catalog.boardGlyph(card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase',false)}</span>`,
+            costMarkup: card.relic ? '' : catalog.resourceDots(card.cost)
+          })}</div>` : `
           <div class="gallery-card-heading">
           ${catalog.cardSymbols ? catalog.cardSymbols(card) : ''}
           <h3 id="name-${card.code}">${esc(card.name)}</h3>
@@ -217,6 +238,7 @@
           <p class="effect" title="${esc(card.text)}"><span class="effect-symbols" aria-hidden="true">${catalog.iconText ? catalog.iconText(card.text) : esc(card.text)}</span><span class="sr-only">${esc(card.text)}</span></p>
           </div>
           ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.boardGlyph?.(card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase', false) || ''}</figure>`}
+          `}
           <p class="needs"><span class="code" title="Card id for feedback">${card.code}</span>${card.relic ? ' · Excavation reward · no market price' : card.military ? ' · Military deck' : ''}${!card.relic && needs(card) ? ` · Needs ${esc(needs(card))}` : ''}</p>
           <div class="gallery-feedback" ${feedbackVisible ? '' : 'hidden'}>
           <div class="vote" role="group" aria-label="Your verdict on ${esc(card.name)}">

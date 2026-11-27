@@ -73,6 +73,30 @@
     // A plain diamond of stars.
     excavate: { label: 'Excavate', stars: [[12, 3, LG], [20, 12, SM], [12, 21, LG], [4, 12, SM]], joins: loop(4) },
   };
+  // Max’s pre-constellation symbols, restored from the parent of PR #184.
+  // Keep both drawings in each inline SVG so theme switches, static slots and text agree.
+  const MAX_SHAPES = {
+    "matter": "<path fill=\"currentColor\" d=\"m12 2 8 7-3 11H7L4 9z\"/><path d=\"m4 9 8 4 8-4M12 13v7M8 6l4 7 4-7\"/>",
+    "energy": "<path fill=\"currentColor\" d=\"M13.5 2 5 13h6l-.5 9L19 10h-6z\"/>",
+    "life": "<path fill=\"currentColor\" d=\"M20 4C11 4 5 8.5 5 15c0 2.8 2.2 5 5 5 6.5 0 10-7 10-16Z\"/><path d=\"M4 21c2.6-5.1 6.3-8.8 11-11\"/>",
+    "data": "<circle fill=\"currentColor\" cx=\"12\" cy=\"5\" r=\"2.5\"/><circle fill=\"currentColor\" cx=\"6\" cy=\"18\" r=\"2.5\"/><circle fill=\"currentColor\" cx=\"18\" cy=\"18\" r=\"2.5\"/><path d=\"m10.7 7.2-3.4 8.6M13.3 7.2l3.4 8.6M8.5 18h7\"/>",
+    "settler": "<polygon points=\"12 2 19 21 12 17 5 21 12 2\"></polygon>",
+    "explorer": "<circle cx=\"9\" cy=\"8\" r=\"3\"></circle><path d=\"M4 21v-3a5 5 0 0 1 10 0v3\"></path><path d=\"m15 11 2 2 4-5\"></path>",
+    "fleet": "<path d=\"M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5\"></path><path d=\"M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09\"></path><path d=\"M9 12a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.4 22.4 0 0 1-4 2z\"></path><path d=\"M9 12H4s.55-3.03 2-4c1.62-1.08 5 .05 5 .05\"></path>",
+    "colony": "<path d=\"M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8\"></path><path d=\"M3 10a2 2 0 0 1 .709-1.528l7-6a2 2 0 0 1 2.582 0l7 6A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z\"></path>",
+    "harvester": "<path d=\"m14 13-8.381 8.38a1 1 0 0 1-3.001-3L11 9.999\"></path><path d=\"M15.973 4.027A13 13 0 0 0 5.902 2.373c-1.398.342-1.092 2.158.277 2.601a19.9 19.9 0 0 1 5.822 3.024\"></path><path d=\"M16.001 11.999a19.9 19.9 0 0 1 3.024 5.824c.444 1.369 2.26 1.676 2.603.278A13 13 0 0 0 20 8.069\"></path><path d=\"M18.352 3.352a1.205 1.205 0 0 0-1.704 0l-5.296 5.296a1.205 1.205 0 0 0 0 1.704l2.296 2.296a1.205 1.205 0 0 0 1.704 0l5.296-5.296a1.205 1.205 0 0 0 0-1.704z\"></path>",
+    "shipyard": "<path d=\"M20.341 6.484A10 10 0 0 1 10.266 21.85\"></path><path d=\"M3.659 17.516A10 10 0 0 1 13.74 2.152\"></path><circle cx=\"12\" cy=\"12\" r=\"3\"></circle><circle cx=\"19\" cy=\"5\" r=\"2\"></circle><circle cx=\"5\" cy=\"19\" r=\"2\"></circle>",
+    "draw": "<rect x=\"5\" y=\"3\" width=\"11\" height=\"15\" rx=\"2\"></rect><path d=\"M9 21h8a2 2 0 0 0 2-2V7\"></path>",
+    "hit": "<path d=\"M5 5l14 14M19 5 5 19\"></path><path d=\"M3 9l3-3M15 21l3-3M21 9l-3-3M9 21l-3-3\"></path>",
+    "shield": "<path d=\"M12 2 4 5v6c0 5 3.4 9.3 8 11 4.6-1.7 8-6 8-11V5z\"></path>",
+    "colonize": "<path d=\"M5 21V4\"></path><path d=\"M5 4h12l-2.5 4L17 12H5\"></path>",
+    "build": "<path d=\"m14 4 6 6-3 3-6-6z\"></path><path d=\"m11 7-8 8 3 3 8-8\"></path>",
+    "move": "<path d=\"M4 12h13\"></path><path d=\"m13 6 6 6-6 6\"></path>",
+    "prestige": "<path fill=\"currentColor\" stroke=\"none\" d=\"m12 1 3.3 6.9 7.6 1.1-5.5 5.4 1.3 7.6-6.7-3.6-6.7 3.6 1.3-7.6L1.1 9l7.6-1.1z\"/>",
+    "limit": "<circle cx=\"12\" cy=\"12\" r=\"9\" fill=\"currentColor\" stroke=\"none\"/>",
+    "trade": "<path d=\"M3 7h18m-4-4 4 4-4 4M21 17H3m4-4-4 4 4 4\"/>",
+    "excavate": "<path d=\"m12 2 10 10-10 10L2 12z\"/><path fill=\"currentColor\" stroke=\"none\" d=\"m12 7 5 5-5 5-5-5z\"/>"
+};
   const NAMES = Object.keys(ICONS);
   // The game's own keys for three of them.
   const ALIASES = { biomass: 'life', miss: 'shield', starbase: 'shipyard', relic: 'excavate' };
@@ -126,7 +150,9 @@
   function svg(name, { small = false, className = '' } = {}) {
     const key = resolve(name);
     const body = small === 'auto' ? `<g class="hx-r-small">${inner(key, true)}</g><g class="hx-r-ghost">${inner(key, false)}</g>` : inner(key, small);
-    return `<svg class="hx-icon${small === 'auto' ? ' hx-auto' : ''}${className ? ` ${className}` : ''}" data-icon="${key}" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}</svg>`;
+    const resource = ['matter','energy','life','data'].includes(key);
+    const max = `<g class="max-symbol-shape${resource ? ' max-resource-shape' : ''}" display="none" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${MAX_SHAPES[key]}</g>`;
+    return `<svg class="hx-icon${small === 'auto' ? ' hx-auto' : ''}${className ? ` ${className}` : ''}" data-icon="${key}" data-max-symbol="true"${resource ? ' data-max-resource="true"' : ''} viewBox="0 0 24 24" aria-hidden="true" focusable="false">${body}${max}</svg>`;
   }
   // A standalone SVG file (design exports): one rendering, drawn in `color` at 24 px.
   function file(name, { small = false, color = '#f4e3bd' } = {}) {
