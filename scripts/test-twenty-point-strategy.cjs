@@ -13,7 +13,7 @@ function game(){
  assert.equal(e.calculatePrestige(0),18);p.relicsExcavated=1;assert.equal(e.calculatePrestige(0),20);
  assert.deepEqual(plain(e.prestigeBreakdown(0)),{colonies:18,expansionBonus:0,relics:2,combat:0,cards:0,total:20});
  Object.assign(s.planets[s.clusters[4].center],{owner:1});assert.equal(e.calculatePrestige(0),17);
- p.combatVictories=3;assert.equal(e.calculatePrestige(0),23,'34.39: a decisive win scores 2');p.cardsPurchased=100;assert.equal(e.calculatePrestige(0),23);p.cardPrestige=6;assert.equal(e.calculatePrestige(0),29,'31.36 card Prestige counts; purchases alone still score nothing');p.cardPrestige=0;
+ p.combatVictories=3;assert.equal(e.calculatePrestige(0),20,'A qualifying decisive win scores 1');p.cardsPurchased=100;assert.equal(e.calculatePrestige(0),20);p.cardPrestige=6;assert.equal(e.calculatePrestige(0),26,'31.36 card Prestige counts; purchases alone still score nothing');p.cardPrestige=0;
 }
 {
  // Rules #capacity-module: a module always costs 1 of each; buying one raises nothing until it is played and stored.

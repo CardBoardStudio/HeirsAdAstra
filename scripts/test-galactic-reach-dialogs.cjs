@@ -1111,13 +1111,13 @@ test('Buildings have no upgrade actions; Shipyard still offers commissions', () 
 
 test('decisive combat awards Prestige once and the saved report preserves it', () => {
  const storage=combatStorage(0,'tactic'),state=JSON.parse(storage.getItem(SAVE_KEY));
- state.pendingCombat.defenderPieces=[{type:'settler',hull:4,power:1,damage:0}];
- state.fleets['9,-10'][1]={settler:1,explorer:0,fleet:0};writeSave(storage,state);
+ state.pendingCombat.defenderPieces=[{type:'fleet',hull:7,power:3,damage:6}];
+ state.fleets['9,-10'][1]={settler:0,explorer:0,fleet:1};writeSave(storage,state);
  const game=boot(storage);let choices=0;
  while(game.saved().pendingCombat){assert(choices++<8);continueCombat(game);}
  assert.equal(game.saved().players[0].combatVictories,1);
  assert.equal(game.saved().lastCombat.prestigeWinner,0);
- assert.match(game.dom.element('message-details').innerHTML,/gained 2 Prestige/);
+ assert.match(game.dom.element('message-details').innerHTML,/gained 1 Prestige/);
  assert(game.dialog('message').open);
  const reloaded=boot(storage);assert(reloaded.dialog('message').open);
  assert.equal(reloaded.saved().players[0].combatVictories,1);
@@ -1135,10 +1135,10 @@ test('point buttons show all scoring components and ignore yards and purchases',
  const game=boot(storage),before=storage.snapshot(),randomBefore=game.randomCalls();
  const button=game.dom.lastQuery('[data-score-player]').find(b=>b.dataset.scorePlayer==='0');
  assert(button);button.click();assert(game.dialog('prestige').open);
- assert.match(game.dom.element('prestige-title').textContent,/15 Prestige/,'34.39: a decisive win scores 2');
+ assert.match(game.dom.element('prestige-title').textContent,/14 Prestige/,'A qualifying decisive win scores 1');
  const rows=game.dom.element('prestige-breakdown').innerHTML;
  assert.match(rows,/Colonies · 3 each<\/dt><dd>9/);assert(!rows.includes('Expansion bonus'));
- assert.match(rows,/Excavated relics · 2 each<\/dt><dd>4/);assert.match(rows,/Decisive combat victories · 2 each<\/dt><dd>2/);
+ assert.match(rows,/Excavated relics · 2 each<\/dt><dd>4/);assert.match(rows,/Decisive combat victories · 1 each<\/dt><dd>1/);
  assert(!/Shipyard|Purchased/.test(rows));game.click('close-prestige');
  assert.deepEqual(storage.snapshot(),before);assert.equal(game.randomCalls(),randomBefore);
 });

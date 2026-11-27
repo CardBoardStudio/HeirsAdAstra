@@ -1,4 +1,4 @@
-// Balance package: captures need a Fleet, decisive wins score 2, Wonder trim, cheap-card fixes,
+// Balance package: captures need a Fleet, decisive Fleet wins score 1, Wonder trim, cheap-card fixes,
 // Archive Purge choice and the dealt solo lineup. Rules: rulebook #combat, #victory, #cards,
 // #buy, #construct-two-builds, #setup, #rival-cards.
 const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
@@ -62,14 +62,14 @@ for (const key of ['colonize', 'colonyPods']) {
   assert(!move || move.source !== center || move.units?.fleet === 0, 'The escort stays on the capturable center');
 }
 
-// #victory: a decisive combat victory is worth 2 Prestige; the observation says so.
+// #victory: a qualifying decisive combat victory is worth 1 Prestige.
 {
   const g = game(), { s, e } = g;
-  assert.equal(e.COMBAT_VICTORY_PRESTIGE, 2);
+  assert.equal(e.COMBAT_VICTORY_PRESTIGE, 1);
   s.players[0].combatVictories = 3; assert.equal(plain(e.state.players[0]).combatVictories, 3);
-  assert.equal(e.calculatePrestige(0), 3 + 6, 'Home Colony 3 + three decisive wins at 2');
+  assert.equal(e.calculatePrestige(0), 3 + 3, 'Home Colony 3 + three qualifying decisive wins at 1');
   const view = g.adapter().observe(0);
-  assert.equal(view.combatVictoryPrestige, 2); assert.equal(view.captureNeedsFleet, true);
+  assert.equal(view.combatVictoryPrestige, 1); assert.equal(view.captureNeedsFleet, true);
 }
 
 // #cards: printed values of the trimmed Wonders and reworked cheap cards.

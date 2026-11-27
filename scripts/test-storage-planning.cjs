@@ -30,9 +30,9 @@ function game(prefix='crates/galactic-reach/rules/v27-', browserDiscards=false){
 }
 {
  const g=game();g.p.storageUpgrades=5;g.p.resources={matter:2,energy:2,biomass:2,data:2};assert(!g.e.aiStorageBudget(1),'Free capacity removes pressure');
- const h=game();h.p.storagePurchases=3;h.p.storageUpgrades=3;h.p.resources={matter:6,energy:6,biomass:6,data:6};h.s.players[0].combatVictories=13;
+ const h=game();h.p.storagePurchases=3;h.p.storageUpgrades=3;h.p.resources={matter:6,energy:6,biomass:6,data:6};h.s.players[0].combatVictories=26;
  assert(!h.e.aiStorageBudget(1),'An expensive tier cannot repay over the short late horizon');
- const k=game();k.p.resources={matter:3,energy:3,biomass:2,data:2};k.s.players[0].combatVictories=17;assert(!k.e.aiManageStorage(1),'No upgrade when a faction already qualifies for victory');
+ const k=game();k.p.resources={matter:3,energy:3,biomass:2,data:2};k.s.players[0].combatVictories=34;assert(!k.e.aiManageStorage(1),'No upgrade when a faction already qualifies for victory');
 }
 for(const phase of ['production','draw','cleanup']){
  const g=game();g.s.phase=phase;g.p.resources={matter:3,energy:3,biomass:2,data:2};const before=JSON.stringify(g.s);assert(!g.e.aiManageStorage(1));assert.equal(JSON.stringify(g.s),before);

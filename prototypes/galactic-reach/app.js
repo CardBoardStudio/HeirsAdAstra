@@ -149,8 +149,8 @@ function createGalacticReach(options = {}) {
   };
   // 32.37: a Harvester hex produces 2 of its resource (31.36 and earlier: 1).
   const HARVESTER_YIELD = 2;
-  // Rules #victory: Prestige per decisive combat victory (2 from this package; 1 earlier).
-  const COMBAT_VICTORY_PRESTIGE = 2;
+  // Rules #victory: each qualifying decisive victory scores 1 Prestige.
+  const COMBAT_VICTORY_PRESTIGE = 1;
   const RELIC_STORAGE_POINTS = 4;
   const EXCAVATION_COST = {"energy": 1, "data": 3};
   const LEGEND_TOOLTIPS = {
@@ -239,7 +239,7 @@ function createGalacticReach(options = {}) {
     phaseLance: { code: 'M07', name: 'Phase Lance', kind: 'Military', military: true, accent: 'var(--red)', cost: { energy: 6, data: 2 }, attack: 2, shield: 0, pierce: true, text: '+2 hits this volley. The opponent’s shields prevent none of your hits.' },
     novaBarrage: { code: 'M08', name: 'Nova Barrage', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 3, energy: 7 }, attack: 5, shield: 0, text: '+5 hits this volley.' },
     aegisLattice: { code: 'M09', name: 'Aegis Lattice', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 7, energy: 2 }, attack: 0, shield: 8, text: 'Prevent 8 hits this volley.' },
-    victoryDoctrine: { code: 'M10', name: 'Victory Doctrine', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 1, energy: 2, data: 6 }, attack: 2, shield: 0, victoryPrestige: 2, text: '+2 hits this volley. If your side wins a decisive combat victory, gain 2 more permanent Prestige.' }
+    victoryDoctrine: { code: 'M10', name: 'Victory Doctrine', kind: 'Military', military: true, accent: 'var(--red)', cost: { matter: 1, energy: 2, data: 6 }, attack: 2, shield: 0, victoryPrestige: 2, text: '+2 hits this volley. If your side wins a decisive combat victory against at least one enemy Fleet, gain 2 more permanent Prestige.' }
   };
   const RETIRED_MARKET_KEYS = ['strikeVector', 'prefabYards', 'seedArk', 'colonyPods', 'procurementHub', 'tradeSyndicate', 'archivePurge'];
   const MARKET_CARDS = Object.fromEntries(Object.entries({ ...ADVANCED_CARDS, ...MARKET_MILITARY }).filter(([key]) => !RETIRED_MARKET_KEYS.includes(key)));
@@ -1784,7 +1784,7 @@ function createGalacticReach(options = {}) {
     const relics = position.players[playerId].relicsExcavated || 0;
     const combat = position.players[playerId].combatVictories || 0;
     const cards = position.players[playerId].cardPrestige || 0;
-    // Rules #victory: each decisive combat victory scores 2 Prestige (1 before this package).
+    // Rules #victory: only qualifying victories are stored in combatVictories.
     return {colonies:3*colonies,expansionBonus,relics:2*relics,combat:COMBAT_VICTORY_PRESTIGE*combat,cards,total:3*colonies+2*relics+COMBAT_VICTORY_PRESTIGE*combat+cards};
   }
 
@@ -3121,7 +3121,7 @@ function createGalacticReach(options = {}) {
     if (winnerSide) {
       const loserSide=winnerSide==='attacker'?'defender':'attacker';
       const enemyUnits=b[`${loserSide}Pieces`].filter(piece=>SHIP_STATS[piece.type]);
-      if (enemyUnits.length && enemyUnits.every(piece=>piece.damage>=piece.hull) && b.escapedUnits?.[loserSide]===0) {
+      if (enemyUnits.some(piece=>piece.type==='fleet') && enemyUnits.every(piece=>piece.damage>=piece.hull) && b.escapedUnits?.[loserSide]===0) {
         prestigeWinner=b[`${winnerSide}Id`];
         const player=state.players[prestigeWinner];
         player.combatVictories=(player.combatVictories||0)+1;
