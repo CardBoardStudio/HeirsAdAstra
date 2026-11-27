@@ -1143,6 +1143,18 @@ test('point buttons show all scoring components and ignore yards and purchases',
  assert.deepEqual(storage.snapshot(),before);assert.equal(game.randomCalls(),randomBefore);
 });
 
+test('faction names inspect the assigned rival profile and distinguish human seats without changing the save',()=>{
+ const labels={militaryFocused:'Military Focused',military:'Military',economy:'Economy',expansion:'Expansion',maxbot:'MaxBot'};
+ for(const [strategy,label] of Object.entries(labels)){
+  const storage=createStorage(),state=boot(storage).saved();state.players[1].strategy=strategy;state.players[1].name='Renamed rival';writeSave(storage,state);
+  const game=boot(storage),before=storage.snapshot(),rng=game.randomCalls();
+  const name=game.dom.lastQuery('[data-faction-player]').find(b=>b.dataset.factionPlayer==='1');assert(name);name.click();assert(game.dialog('prestige').open);
+  assert.equal(game.dom.element('faction-profile-name').textContent,label+' bot');assert(game.dom.element('faction-profile-description').textContent.length>40);game.click('close-prestige');
+  assert.deepEqual(storage.snapshot(),before);assert.equal(game.randomCalls(),rng);
+ }
+ const storage=createStorage(),state=boot(storage).saved();state.players[1].controller='human';writeSave(storage,state);const game=boot(storage);game.dom.lastQuery('[data-faction-player]').find(b=>b.dataset.factionPlayer==='1').click();assert.equal(game.dom.element('faction-profile-name').textContent,'Human player');
+});
+
 test('export downloads a private read-only report without using RNG or changing the save', () => {
  const storage=createStorage(),snapshots=[];
  const game=boot(storage,20261013,undefined,{onSave:value=>snapshots.push(JSON.parse(JSON.stringify(value)))});
@@ -1331,12 +1343,12 @@ function cardChooserSave(kind='oracle',key='signalRelay') {
  writeSave(storage,state);return storage;
 }
 function maxCardChooser(storage){const game=boot(storage);game.dom.document.body.classList.contains=name=>name==='background-stars';game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();game.settle();assert(game.dialog('relic-card').open);return game;}
-test('Max UI Oracle shows every design, guards unavailable cards and purchases the selected real copy',()=>{
+test('Max UI Oracle hides sold-out designs, retains unaffordable deck designs and purchases the selected real copy',()=>{
  const storage=cardChooserSave(),state=JSON.parse(storage.getItem(SAVE_KEY));
  // Leave the face-up row full, so restoring the fixture does not consume its hidden offer.
- state.marketDecks.cheap.push({id:'spare-one',key:'barterNetwork'},{id:'spare-two',key:'clearingHouse'},{id:'spare-three',key:'exchangeProtocol'});writeSave(storage,state);
+ state.marketDecks.expensive=[{id:'unaffordable-copy',key:'worldEngine'}];state.marketDecks.cheap.push({id:'spare-one',key:'barterNetwork'},{id:'spare-two',key:'clearingHouse'},{id:'spare-three',key:'exchangeProtocol'});writeSave(storage,state);
  const game=maxCardChooser(storage),before=game.saved(),cards=game.dom.lastQuery('[data-relic-card]');
- assert.equal(cards.length,27);assert(cards.some(b=>b.disabled));const unavailable=cards.find(b=>b.dataset.relicCard==='worldEngine');assert(unavailable.disabled);unavailable.click();assert.deepEqual(game.saved(),before);
+ assert.equal(cards.length,5);assert(!cards.some(b=>b.dataset.relicCard==='dysonLattice'),'A sold-out design is hidden');assert(cards.some(b=>b.disabled));const unavailable=cards.find(b=>b.dataset.relicCard==='worldEngine');assert(unavailable.disabled);unavailable.click();assert.deepEqual(game.saved(),before);
  const offer=cards.find(b=>b.dataset.relicCard==='signalRelay');assert(!offer.disabled);offer.click();assert.deepEqual(game.saved(),before,'Selecting spends nothing');game.click('relic-card-confirm');
  assert(game.saved().players[0].hand.some(c=>c.id==='oracle-copy'));assert(!game.saved().marketDecks.cheap.some(c=>c.id==='oracle-copy'));assert.equal(game.saved().players[0].resources.energy,2);assert.equal(game.saved().players[0].resources.data,3);
 });
@@ -1349,13 +1361,13 @@ test('Max UI Echoes selects individual used cards, keeps the two-card limit and 
  game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();const again=game.dom.lastQuery('[data-relic-card]');again.find(b=>b.dataset.relicCard==='return-two').click();again.find(b=>b.dataset.relicCard==='return-one').click();game.click('relic-card-confirm');
  const p=game.saved().players[0];assert(p.hand.some(c=>c.id==='return-one'&&c.level===3));assert(p.hand.some(c=>c.id==='return-two'));assert(p.inPlay.some(c=>c.id==='return-three'));assert(p.inPlay.some(c=>c.id==='chooser'));
 });
-test('Shared Max UI Oracle renders the public catalog with redacted decks and sends only a legal purchase',()=>{
+test('Shared Max UI Oracle renders private remaining designs with redacted decks and sends only a legal purchase',()=>{
  const context=vm.createContext({});vm.runInContext(adapterSource+source,context);let engine;const factory=context.createGalacticAdapter;context.createGalacticAdapter=e=>{engine=e;return factory(e);};const authority=context.createGalacticReach({headless:true});
- const state=JSON.parse(cardChooserSave('oracle','phaseLance').getItem(SAVE_KEY));Object.assign(engine.state,state);
+ const state=JSON.parse(cardChooserSave('oracle','phaseLance').getItem(SAVE_KEY));state.marketDecks.expensive.push({id:'hidden-world',key:'worldEngine'});state.players[0].resources={matter:0,energy:6,biomass:0,data:2};Object.assign(engine.state,state);
  const sent=[],view={seq:1,state:authority.privateState(0),hints:authority.hints(0)};
- assert(view.state.marketDecks.expensive.every(c=>c.hidden&&!c.key));const network={seat:0,rules:authority.rulesVersion,initial:view,busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
+ assert.deepEqual(JSON.parse(JSON.stringify(view.state.oracleMarketKeys)),['phaseLance','worldEngine']);assert.equal(authority.privateState(1).oracleMarketKeys.length,0);assert(!('oracleMarketKeys' in authority.publicState()));assert(view.state.marketDecks.expensive.every(c=>c.hidden&&!c.key));const network={seat:0,rules:authority.rulesVersion,initial:view,busy:()=>false,act:commands=>{sent.push(JSON.parse(JSON.stringify(commands)));return true;}};
  const game=boot(createStorage(),1729,undefined,{network});game.dom.document.body.classList.contains=name=>name==='background-stars';game.dom.lastQuery('[data-order-card]').find(b=>b.dataset.orderCard==='chooser').click();
- const cards=game.dom.lastQuery('[data-relic-card]');assert.equal(cards.length,27);cards.find(b=>b.dataset.relicCard==='phaseLance').click();assert.deepEqual(sent,[]);game.click('relic-card-confirm');assert.equal(sent.length,1);assert.equal(sent[0].length,1);assert.equal(sent[0][0].purchase,'oracle-copy');authority.applyAction(0,sent[0][0]);assert(engine.state.players[0].military.some(c=>c.id==='oracle-copy'));
+ const cards=game.dom.lastQuery('[data-relic-card]');assert.equal(cards.length,2);assert(cards.find(b=>b.dataset.relicCard==='worldEngine').disabled,'Available but unaffordable designs remain visible');cards.find(b=>b.dataset.relicCard==='phaseLance').click();assert.deepEqual(sent,[]);game.click('relic-card-confirm');assert.equal(sent.length,1);assert.equal(sent[0].length,1);assert.equal(sent[0][0].purchase,'oracle-copy');authority.applyAction(0,sent[0][0]);assert(engine.state.players[0].military.some(c=>c.id==='oracle-copy'));
 });
 
 function reservoirSave(pending=false) {

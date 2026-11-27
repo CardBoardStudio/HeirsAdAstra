@@ -9,7 +9,7 @@ function fixture(kind){const g=game(),{s,p,e}=g;
  if(kind==='gravity'){
   p.hand=[card('gravityScepter')];
   for(const at of ['0,0','2,0'])if(s.planets[at])Object.assign(s.planets[at],{owner:null,hasColony:false,upgrade:null});
-  s.fleets['0,0']={1:{settler:2,explorer:3,fleet:10}};
+  s.fleets['0,0']={1:{settler:2,explorer:3,fleet:5}};
  }
  if(kind==='echoes'){p.hand=[card('firstDawnEchoes')];p.inPlay=[{...card('construct'),starter:true,upgraded:true,level:3},card('foldedWarehouse')];}
  if(kind==='keepers'){p.hand=[card('keepersArchive')];p.resources={matter:10,energy:10,biomass:10,data:10};p.resourceLimits={matter:20,energy:20,biomass:20,data:20};s.market=[card('worldEngine')];}
@@ -18,11 +18,11 @@ function fixture(kind){const g=game(),{s,p,e}=g;
  if(kind==='oracle'||kind==='oracle-empty'){
   p.hand=[card('oracleOfTheUnmade')];p.resources={matter:4,energy:4,biomass:4,data:4};p.resourceLimits={matter:4,energy:4,biomass:4,data:4};
   s.marketDecks=Object.fromEntries(e.MARKET_TIERS.map(tier=>[tier.id,Object.keys(e.MARKET_CARDS).filter(key=>e.marketTier(key)===tier.id&&(kind!=='oracle-empty'||key!=='signalRelay')).map(card)]));
-  s.market=[card('worldEngine')];
+  s.market=e.MARKET_TIERS.flatMap(tier=>Object.keys(e.MARKET_CARDS).filter(key=>e.marketTier(key)===tier.id).slice(0,3).map(card));
  }
  if(kind==='battle-five'||kind==='battle-many'){
   const at=s.clusters[4].center;s.activePlayer=1;p.hand=[];s.players[1].military=[card('deflectorGrid'),card('phaseLance')];
-  const units=kind==='battle-many'?{settler:8,explorer:5,fleet:10}:{settler:0,explorer:0,fleet:5};
+  const units=kind==='battle-many'?{settler:8,explorer:5,fleet:5}:{settler:0,explorer:0,fleet:5};
   s.fleets[at]={0:kind==='battle-many'?{...units}:{settler:1,explorer:0,fleet:0},1:{...units}};
   assert(e.executeMove(1,at,at,{units:{...units,explorer:0},moveGroup:'ships'}));
   assert(s.pendingCombat,'The battle fixture starts combat');
@@ -88,7 +88,7 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
     assert.equal(await evaluate('getComputedStyle(document.querySelector("#resource-grid .max-resource-shape")).display!=="none"'),!stars);
     await evaluate('document.body.classList.toggle("background-stars")');
     const badges=await evaluate(`(()=>{const hex=document.querySelector('.hex[data-coord="0,0"]'),h=hex.getBoundingClientRect();return [...hex.querySelectorAll('.board-icon-count')].map(e=>{const r=e.getBoundingClientRect();return {count:e.dataset.count,clipped:e.scrollWidth>e.clientWidth+1,corners:[[r.left,r.top],[r.right,r.top],[r.left,r.bottom],[r.right,r.bottom]].map(([x,y])=>[(x-h.left)/h.width,(y-h.top)/h.height])};});})()`);
-    assert.deepEqual(badges.map(b=>b.count).sort(),['10','2','3']);
+    assert.deepEqual(badges.map(b=>b.count).sort(),['2','3','5']);
     for(const badge of badges){assert(!badge.clipped,'Full mixed ship count fits');for(const [x,y] of badge.corners){const inset=y<.25?.5-2*y:y>.75?2*y-1.5:0;assert(x>=inset-.02&&x<=1-inset+.02&&y>=0&&y<=1,'Mixed ship count stays inside the hex: '+JSON.stringify(badge));}}
     const before=await saved();await click('[data-order-card]');
     assert.deepEqual(await evaluate('[...document.querySelectorAll(".hex.target")].map(e=>e.dataset.coord)'),['0,0'],'Start by highlighting enemy ships only');
@@ -103,7 +103,7 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
     await click('[data-order-card]');await pointer('.hex[data-coord="0,0"]',touch);await wait('document.querySelector("#relic-map-controls").textContent.includes("destination within")');await pointer('.hex[data-coord="2,0"]',touch);await wait('document.querySelector("#relic-map-units")');
     await evaluate('(()=>{const e=document.querySelector("#relic-map-units");e.value=[...e.options].find(o=>o.textContent==="1 Fleet").value;})()');
     await shot(`gravity-${stars?'max':'willem'}-${width}x${height}`);await pointer('#relic-map-confirm',touch);await wait('document.querySelector("#relic-map-controls").hidden');
-    const after=await saved();assert.deepEqual(after.fleets['0,0'][1],{settler:2,explorer:3,fleet:9});assert.deepEqual(after.fleets['2,0'][1],{settler:0,explorer:0,fleet:1});
+    const after=await saved();assert.deepEqual(after.fleets['0,0'][1],{settler:2,explorer:3,fleet:4});assert.deepEqual(after.fleets['2,0'][1],{settler:0,explorer:0,fleet:1});
    }
    await load('echoes');await click('[data-order-card]');await wait('document.querySelector("#relic-action-dialog").open');await fit();
    await select('#relic-choice-options','Construct III + Folded Warehouse');await shot(`echoes-${width}x${height}`);
@@ -137,7 +137,7 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
    await load('reservoir-draft',true);await wait('document.querySelector("#storage-allocation-dialog").open');await fit();assert.equal(await evaluate('document.querySelector("#storage-points-matter").value'),'1');assert.equal(await evaluate('document.querySelector("#storage-points-data").value'),'-1');await click('#storage-allocation-cancel');await wait(`!JSON.parse(localStorage.getItem(${JSON.stringify(saveKey)})).pendingRelic`);s=await saved();assert(!s.pendingRelic);assert.equal(s.players[0].resourceLimits.data,8);assert(s.players[0].hand.some(c=>c.key==='prismaticReservoir'));
    await load('oracle',true);await click('[data-order-card]');await wait('document.querySelector("#relic-card-dialog").open');await fit();
    assert.equal(await evaluate('document.querySelectorAll("#relic-card-options .card-choice-tier").length'),3);
-   assert.equal(await evaluate('document.querySelectorAll("#relic-card-options [data-relic-card]").length'),27);
+   const oracleSupply=Object.values((await saved()).marketDecks).flat();assert.deepEqual(await evaluate('[...document.querySelectorAll("#relic-card-options [data-relic-card]")].map(e=>e.dataset.relicCard).sort()'),[...new Set(oracleSupply.map(c=>c.key))].sort(),'Oracle shows exactly the remaining deck designs, including unaffordable ones');
    assert((await evaluate('document.querySelectorAll("[data-relic-card]:disabled").length'))>0);assert((await evaluate('document.querySelectorAll("[data-relic-card]:not(:disabled)").length'))>0);
    assert(await evaluate('!!document.querySelector("[data-relic-card=worldEngine] .resource-chip.locked")'));
    assert.equal(await evaluate('document.querySelector("[data-relic-card=worldEngine] .resource-dots").outerHTML'),await evaluate('document.querySelector("#market-row .resource-dots").outerHTML'),'Oracle and Market use identical price markers');
@@ -146,11 +146,11 @@ async function main(){const chrome=findChrome();assert(chrome,'Chrome is require
    await pointer('[data-card-page="1"][data-card-row="expensive"]',touch);await wait('document.querySelector("#relic-cards-expensive").scrollLeft>5');
    await pointer('[data-relic-card=signalRelay]',touch);assert.deepEqual(await saved(),beforeOracle,'Selecting a card spends nothing');await pointer('#relic-card-confirm',touch);await wait('!document.querySelector("#relic-card-dialog").open');
    s=await saved();assert(s.players[0].hand.some(c=>c.key==='signalRelay'));assert(s.players[0].inPlay.some(c=>c.key==='oracleOfTheUnmade'));assert(!s.marketDecks.cheap.some(c=>c.key==='signalRelay'));
-   await load('oracle-empty',true);await click('[data-order-card]');await wait('document.querySelector("#relic-card-dialog").open');assert(await evaluate('document.querySelector("[data-relic-card=signalRelay]").disabled'));assert((await evaluate('document.querySelector("[data-relic-card=signalRelay]").title')).includes('No copy'));await click('#relic-card-close');
+   await load('oracle-empty',true);await click('[data-order-card]');await wait('document.querySelector("#relic-card-dialog").open');assert.equal(await evaluate('document.querySelector("[data-relic-card=signalRelay]")'),null,'Oracle hides a design with no remaining deck copy');await click('#relic-card-close');
    await load('keepers',true);await click('[data-order-card]');await wait('document.querySelector("#relic-card-dialog").open');await fit();const beforeKeeper=await saved();await pointer('[data-relic-card=worldEngine]',touch);assert.deepEqual(await saved(),beforeKeeper);assert.equal(await evaluate('document.querySelector("#relic-card-payment-label").hidden'),false);const printed=await evaluate('document.querySelector("[data-relic-card=worldEngine] .card-footer").innerHTML');await select('#relic-card-payment','Pay 4 Matter');assert.equal(await evaluate('document.querySelector("[data-relic-card=worldEngine] .card-footer").innerHTML'),printed);await fit();await shot(`keepers-cards-${width}x${height}`);await pointer('#relic-card-confirm',touch);s=await saved();assert.equal(s.players[0].resources.matter,6);assert(s.players[0].discard.some(c=>c.key==='worldEngine'));
    await load('echoes',true);await click('[data-order-card]');await wait('document.querySelector("#relic-card-dialog").open');await fit();const beforeEchoes=await saved();const ids=await evaluate('[...document.querySelectorAll("[data-relic-card]")].map(e=>e.dataset.relicCard)');assert.equal(ids.length,2);for(const id of ids)await pointer(`[data-relic-card="${id}"]`,touch);assert.deepEqual(await saved(),beforeEchoes);assert((await evaluate('document.querySelector("#relic-card-status").textContent')).includes('2 of 2'));await shot(`echoes-cards-${width}x${height}`);await pointer('#relic-card-confirm',touch);s=await saved();assert.equal(s.players[0].hand.length,2);assert(s.players[0].hand.some(c=>c.key==='construct'&&c.level===3));
    await load('battle-five',true);await wait('document.querySelector("#combat-dialog").open');await fit();assert.equal(await evaluate('document.querySelectorAll(".combat-enemy .combat-unit").length'),5);assert.equal(await evaluate('document.querySelectorAll(".combat-own .combat-unit").length'),1);assert(!(await evaluate('document.querySelector(".combat-enemy .combat-units").textContent')).includes('×'));await shot(`battle-five-${width}x${height}`);
-   await load('battle-many',true);await wait('document.querySelector("#combat-dialog").open');await fit();assert.equal(await evaluate('document.querySelectorAll(".combat-enemy .combat-unit").length'),23);assert.equal(await evaluate('document.querySelectorAll(".combat-own .combat-unit").length'),23);await shot(`battle-many-${width}x${height}`);
+   await load('battle-many',true);await wait('document.querySelector("#combat-dialog").open');await fit();assert.equal(await evaluate('document.querySelectorAll(".combat-enemy .combat-unit").length'),18);assert.equal(await evaluate('document.querySelectorAll(".combat-own .combat-unit").length'),18);await shot(`battle-many-${width}x${height}`);
    await load('tactics');await wait('document.querySelector("#combat-dialog").open');await fit();await select('#battle-volley-relic','War-Song');await pointer('#battle-volley-relic-confirm',touch);s=await saved();assert.equal(s.pendingCombat.hands.attacker.defensiveScreen,2);
    await select('#battle-volley-relic','The Silent Hour');await pointer('#battle-volley-relic-confirm',touch);s=await saved();assert(s.pendingCombat.silent.attacker);await shot(`battle-relics-${width}x${height}`);
    await load('reinforce');await wait('document.querySelector("#battle-relic-option")');await fit();await select('#battle-relic-option','2 Fleets');if(touch){const point=await evaluate('(()=>{const e=document.querySelector("#battle-relic-confirm");e.scrollIntoView({block:"center"});const r=e.getBoundingClientRect();return {x:r.left+r.width/2,y:r.top+r.height/2};})()');await b.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[point]});await b.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});}else await click('#battle-relic-confirm');s=await saved();assert.equal(s.pendingCombat.defenderPieces.filter(p=>p.type==='fleet').length,3);assert.equal(s.pendingCombat.stage,'tactic');

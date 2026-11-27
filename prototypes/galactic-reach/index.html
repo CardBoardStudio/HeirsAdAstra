@@ -51,7 +51,7 @@
         <button class="button button-ghost" id="symbol-legend-toggle" type="button" aria-pressed="true">Symbol legend: on</button>
         <button class="button button-ghost" id="background-toggle" type="button" aria-pressed="false">Max’s UI</button>
         <button class="button button-ghost" id="open-relic-catalog" type="button" aria-label="Preview all 23 alien relics">Alien relics</button>
-        <a class="button button-ghost" id="card-gallery-link" href="cards.html" target="_blank" rel="noopener" style="text-decoration:none">Card gallery</a>
+        <a class="button button-ghost" id="card-gallery-link" data-card-gallery href="cards.html" target="_blank" rel="noopener" style="text-decoration:none">Card gallery</a>
         <button class="button button-ghost" id="new-game-button" type="button">New game</button>
       </div>
       <p class="site-footer" id="site-footer"><span id="site-footer-version">Heirs Ad Astra</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="cards.html#card-art-credits" target="_blank" rel="noopener">Credits</a></p>
@@ -300,6 +300,7 @@
         <div class="market-handles" id="market-handles" hidden>
           <button class="market-handle" id="market-handle" type="button" aria-expanded="false" aria-controls="relics-panel market-panel upgrade-group"><span>Market</span></button>
           <button class="market-size" id="market-size" type="button" aria-controls="relics-panel market-panel upgrade-group" hidden><span>Larger</span></button>
+          <a class="market-size market-gallery" id="market-gallery" data-card-gallery href="cards.html" target="_blank" rel="noopener" hidden><span>Card gallery ↗</span></a>
         </div>
         <div class="console-body">
           <div class="tab-panel chain-panel" id="chain-panel" data-panel="chain" aria-label="Testnet seat" hidden>
@@ -321,7 +322,7 @@
           <div class="tab-panel active" id="market-panel" data-panel="market" role="tabpanel" aria-labelledby="market-tab" tabindex="0">
             <div class="section-intro">
               <div><div class="eyebrow">THE SHARED SUPPLY</div><h2>Acquisition market</h2><p id="market-help">Buy one of ten cards during your Buy turn. Normal cards enter discard; military cards join your military deck.</p><p class="turn-notice" id="market-notice" role="status" hidden></p></div>
-              <div class="hand-tools"><button class="button button-primary" id="finish-buy-button" type="button" hidden>Finish Buy</button></div>
+              <div class="hand-tools"><a class="button button-ghost" data-card-gallery href="cards.html" target="_blank" rel="noopener">Card gallery ↗</a><button class="button button-primary" id="finish-buy-button" type="button" hidden>Finish Buy</button></div>
             </div>
             <div class="basic-market" id="basic-market"></div>
             <div class="market-cards">
@@ -329,7 +330,7 @@
             </div>
           </div>
           <div class="tab-panel" id="relics-panel" data-panel="relics" role="tabpanel" aria-labelledby="relics-tab" tabindex="0" hidden>
-            <div class="section-intro"><div><h2 id="relic-row-title">Alien relics</h2><p id="relic-deck-count"></p></div><button class="button" id="cancel-excavate" type="button" hidden>Cancel Excavate</button></div>
+            <div class="section-intro"><div><h2 id="relic-row-title">Alien relics</h2><p id="relic-deck-count"></p></div><a class="button button-ghost" data-card-gallery href="cards.html?deck=relic" target="_blank" rel="noopener" aria-label="Open relic card gallery">Gallery ↗</a><button class="button" id="cancel-excavate" type="button" hidden>Cancel Excavate</button></div>
             <p class="muted" id="relic-row-help">Browse rewards here. Use Excavate with your Explorer at a relic to choose one.</p>
             <p class="relic-payment">Excavation cost <span id="relic-cost"></span></p>
             <div class="relic-row" id="relic-row"></div>
@@ -342,7 +343,7 @@
   <dialog id="max-bank-dialog" aria-labelledby="max-bank-title" aria-describedby="max-bank-help">
     <header class="max-bank-heading">
       <div><div class="eyebrow">THE SHARED SUPPLY</div><h2 id="max-bank-title">Market</h2></div>
-      <button class="button button-ghost" type="button" id="max-bank-close" autofocus aria-label="Close card bank">Close <span aria-hidden="true">×</span></button>
+      <div class="max-bank-actions"><a class="button button-ghost" data-card-gallery href="cards.html" target="_blank" rel="noopener">Card gallery ↗</a><button class="button button-ghost" type="button" id="max-bank-close" autofocus aria-label="Close card bank">Close <span aria-hidden="true">×</span></button></div>
     </header>
     <nav class="max-bank-tabs" aria-label="Choose a card bank">
       <button type="button" data-card-bank="relics" aria-pressed="false">Relics</button>
@@ -382,6 +383,7 @@
 
   <dialog id="prestige-dialog" aria-labelledby="prestige-title">
     <div class="dialog-heading"><div><div class="eyebrow">POINT BREAKDOWN</div><h2 id="prestige-title">Prestige</h2></div><button class="button button-ghost dialog-close" id="close-prestige" type="button" aria-label="Close point breakdown">Close</button></div>
+    <section class="faction-profile" aria-labelledby="faction-profile-name"><h3 id="faction-profile-name"></h3><p id="faction-profile-description"></p></section>
     <p class="prestige-stats" id="prestige-stats"></p>
     <dl class="prestige-breakdown" id="prestige-breakdown"></dl>
     <p class="muted">Each Colony scores 3 and each excavated relic 2. A decisive victory scores 1 only against a group containing an enemy Fleet. Civilian-only fights give no combat or Victory Doctrine Prestige. Relic, combat and card points are permanent.</p>

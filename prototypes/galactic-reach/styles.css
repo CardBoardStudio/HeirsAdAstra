@@ -4410,3 +4410,16 @@ body:not(.background-stars) .battle-page-button:hover { background: #38513d; }
 
 body:not(.background-stars) .battle-card strong { overflow-wrap: anywhere; }
 body:not(.background-stars) .battle-card:has(.battle-copies) > span { padding-right: 18px; }
+
+/* Faction names open the public profile and score inspector in either interface. */
+.faction-name-button { appearance: none; border: 0; border-radius: 3px; padding: 0; margin: 0; background: transparent; color: inherit; font-family: inherit; text-align: left; cursor: pointer; }
+.faction-name-button:hover { text-decoration: underline; }
+.faction-name-button:focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+.faction-profile p { line-height: 1.5; color: var(--muted); }
+
+.max-bank-actions { display: flex; align-items: center; gap: 8px; }
+
+@media (min-width: 600px) and (min-height: 600px) {
+  body:not(.background-stars) #market-panel .section-intro [data-card-gallery] { display: none; }
+  :root.market-drawer .market-gallery { text-decoration: none; }
+}
