@@ -3795,7 +3795,8 @@ function createGalacticReach(options = {}) {
       }
     }
     if(state.phase==='operations'&&!p.passed&&(state.pendingConstruct||aiConstructCard(p))){
-      for(const build of chooseAiBuild(playerId,true).filter(b=>b.score>=28))goals.push({kind:'build',build:build.kind,coord:build.coord,cost:build.cost,priority:85+Math.min(85,build.score)*.3});
+      const investment=aiBuyInvestment(playerId);
+      for(const build of chooseAiBuild(playerId,true).filter(b=>b.score>=28))goals.push({kind:'build',build:build.kind,coord:build.coord,cost:build.cost,keep:build.score>=50?undefined:investment?.cost,priority:85+Math.min(85,build.score)*.3});
     }
     if(state.pendingConstruct)return goals;
     if(controlledPlanets(playerId).some(([,planet])=>planet.upgrade==='starbase')){
@@ -3941,6 +3942,26 @@ function createGalacticReach(options = {}) {
     return RESOURCES.every(r=>p.resources[r]-(moduleCost[r]||0)>=Math.min(keep[r]||0,p.resources[r]))&&buyCapacity(playerId);
   }
 
+  // #rival-cards: keep an already-payable investment through discretionary builds.
+  // Recompute from held stock, public offers and our unordered cards each decision.
+  function aiBuyInvestment(playerId) {
+    const p=state.players[playerId];
+    if(!controlledPlanets(playerId).some(([,planet])=>planet.upgrade==='starbase')
+      ||!aiCards(playerId).some(c=>c.starter&&c.key==='construct'&&starterLevel(c)>=2)
+      ||p.strategy==='militaryFocused'&&!aiFocusedMilitaryWorlds(playerId).forward)return null;
+    const keep=aiImmediateProtection(playerId);
+    const budget=cost=>Object.fromEntries(RESOURCES.map(r=>[r,(cost[r]||0)+Math.min(keep[r]||0,p.resources[r])]));
+    const card=marketOffers().map(card=>({key:card.key,score:aiBuyValue(playerId,card.key),cost:purchaseCost(p,card.key)}))
+      .filter(c=>c.score>=18&&canAfford(p,budget(c.cost))).sort((a,b)=>b.score-a.score)[0];
+    if(card)return {key:card.key,cost:budget(card.cost)};
+    const target=aiTargetCard(playerId),cost=storageUpgradeCost(playerId);
+    if(target&&aiBuyValue(playerId,target.key)>=18&&aiInvestmentHorizon()>=3
+      &&state.capacitySupply>0&&!aiUnplayedModules(playerId)
+      &&RESOURCES.some(r=>(purchaseCost(p,target.key)[r]||0)>resourceLimits(playerId)[r])
+      &&canAfford(p,budget(cost)))return {key:'capacityModule',cost:budget(cost)};
+    return null;
+  }
+
   function aiUseResources(player, exceptCardId, desiredCost = {}) {
     const plan=aiFundingPlan(player,exceptCardId,desiredCost);
     if (!plan) return false;
@@ -4066,7 +4087,18 @@ function createGalacticReach(options = {}) {
       if(!fundingByCost.has(costKey))fundingByCost.set(costKey,aiFundingPlan(p,state.pendingConstruct?null:card?.id,build.cost));
       build.funding=fundingByCost.get(costKey);
     }
-    const ranked=options.filter(b=>b.score>2).sort((a,b)=>b.score-a.score||aiCompareCoords(a.coord,b.coord,playerId));
+    const investment=aiBuyInvestment(playerId);
+    const keepsInvestment=build=>{
+      if(!investment||build.score>=50||!build.funding)return true;
+      const funds={...p.resources};
+      for(const step of build.funding.steps) {
+        if(step.type==='bank'){funds[step.giveType]-=bankTradeRate(playerId,step.giveType);funds[step.getType]++;}
+        else {const gain=conversionGain(p.hand.find(c=>c.id===step.card));RESOURCES.forEach(r=>{funds[r]=Math.min(limits[r],funds[r]+(gain[r]||0));});}
+      }
+      RESOURCES.forEach(r=>{funds[r]-=build.cost[r]||0;});
+      return canAfford({resources:funds},investment.cost);
+    };
+    const ranked=options.filter(b=>b.score>2&&keepsInvestment(b)).sort((a,b)=>b.score-a.score||aiCompareCoords(a.coord,b.coord,playerId));
     return (!yards.length?ranked[0]:ranked.find(b=>b.funding)||ranked[0])||null;
   }
 
@@ -4439,7 +4471,6 @@ function createGalacticReach(options = {}) {
     if (TUTORIAL) { nextBuyPlayer(); return; }
     const id=state.activePlayer,p=state.players[id];
     while (aiTryExchange(id)) {}
-    aiManageStorage(id);
     const reserve=aiReserves(id);
     for (const card of p.hand.filter(c=>ALL_CARDS[c.key].buyEffect)) {applyBuyEffect(p,ALL_CARDS[card.key]);removeHandCard(p,card.id);logEvent(`${p.name} activated ${ALL_CARDS[card.key].name} during Buy.`);}
     const surplus=()=>[...RESOURCES].sort((a,b)=>(p.resources[b]-reserve[b])-(p.resources[a]-reserve[a]));
@@ -4455,13 +4486,13 @@ function createGalacticReach(options = {}) {
     const marketChoices=()=>marketOffers().map((card,index)=>({source:catalogMarketEnabled()?'catalog':'market',index,key:card.key})).map(x=>({...x,score:aiBuyValue(id,x.key),bank:bankPlanForCost(p,purchaseCost(p,x.key),immediate)})).filter(x=>x.score>0&&preservesPayment(x)).sort((a,b)=>b.score-a.score||a.bank.length-b.bank.length);
     const purchase=choice=>choice&&choice.bank.every(t=>bankTrade(id,t.giveType,t.getType))&&buyCard(id,choice.source,choice.source==='catalog'?choice.key:choice.index);
     const horizon=victoryTarget()-Math.max(...state.players.map((_,i)=>calculatePrestige(i)));
-    const early=marketChoices()[0],marketFirst=['market','maxbot'].includes(p.strategy);
+    const early=marketChoices()[0];
     const established=aiCards(id).some(c=>c.starter&&c.key==='construct'&&starterLevel(c)>=2);
     const openingMoveNeeded=()=>p.strategy==='militaryFocused'&&!aiFocusedMilitaryWorlds(id).forward
       &&(FOCUSED_MILITARY_POLICY.moveBeforeSettler||countPlacedShips(id,'settler')>0)
       &&aiCards(id).filter(c=>c.starter&&c.key==='move'&&starterLevel(c)>=2).length<FOCUSED_MILITARY_POLICY.openingMoves;
-    if(yard&&early&&!(p.strategy==='militaryFocused'&&FOCUSED_MILITARY_POLICY.deferOpeningBuys&&openingMoveNeeded())&&(marketFirst?established&&early.score>=18:established&&early.score>=24))purchase(early);
-    if(marketFirst&&established)aiCapacityForTarget(id);
+    if(yard&&early&&established&&early.score>=18&&!(p.strategy==='militaryFocused'&&FOCUSED_MILITARY_POLICY.deferOpeningBuys&&openingMoveNeeded()))purchase(early);
+    if(established&&!openingMoveNeeded())aiCapacityForTarget(id);
     for(let n=0;yard&&n<(p.strategy==='maxbot'?2:4)&&horizon>3;n++) {
       const candidates=[...p.hand,...p.discard,...p.inPlay].filter(c=>c.starter&&starterLevel(c)<3);
       const rank=c=>openingMoveNeeded()&&c.key==='move'&&starterLevel(c)===1&&aiCards(id).some(c=>c.key==='construct'&&c.upgraded)?60:starterLevel(c)===2?40:c.key==='construct'&&!aiCards(id).some(c=>c.key==='construct'&&c.upgraded)?45:c.key==='construct'?25:20;
