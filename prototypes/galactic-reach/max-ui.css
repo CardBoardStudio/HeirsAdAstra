@@ -885,3 +885,9 @@ body.max-card-gallery .max-reference-card .card-name { text-align: left; }
     line-height: 1.3 !important;
   }
 }
+/* Share column space by content when excavation adds a reward button. */
+body.background-stars #max-bank-dialog #max-bank-content #relics-panel .relic-row .game-card {
+  height: auto !important;
+  flex: 1 0 auto;
+  min-height: min-content !important;
+}
