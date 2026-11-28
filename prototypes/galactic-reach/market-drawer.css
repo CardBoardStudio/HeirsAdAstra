@@ -1,0 +1,152 @@
+/* ==== The market drawer (rules #shared-board). On the table the supply - the relics, the market's
+   three rows and the Upgrades - is a drawer on the table's right edge:
+   - closed (the default): no column at all, the map takes the room; only the Market handle shows;
+   - side: the supply column as before (compact cards), the map re-fitted beside it;
+   - full (your Buy turn): the market and the Upgrades as whole cards on a sheet laid over the map's
+     right-hand side. The column under it keeps its width, so the map does not move for it.
+   An upright table (an iPad held upright) has only closed and open: its supply band under the map.
+   app.js (showMarket) sets :root.market-drawer and one of .market-closed, .market-side,
+   .market-full (.market-no-column while the column under them is closed); .market-in and
+   .market-out run the one movement in or out, .market-moving lasts until it has settled. Without
+   .market-drawer (Max's table, retained engines) nothing here applies. ==== */
+.market-handles[hidden], .market-sheet { display: none; }
+
+@media (min-width: 600px) and (min-height: 600px) and (orientation: landscape) {
+  :root.market-drawer .market-handles {
+    grid-column: 3; grid-row: 1 / 9; align-self: start; justify-self: start; z-index: 32;
+    display: flex; flex-direction: column; align-items: flex-end; gap: 8px; margin: 172px 0 0; transform: translateX(-100%);
+  }
+  /* The turn prompt (for screen readers on the table) lies in the supply's column: with no column it
+     must not run past the table, which would scale the whole table down (see fitTable). */
+  :root.market-drawer.market-no-column .board-toolbar { overflow: clip; }
+  /* Closed, the map is centred in the room it has, or as near the middle as its corners allow (see fitMap). */
+  :root.market-drawer.market-no-column .board-map-region { place-items: start !important; }
+  :root.market-drawer.market-no-column .board-map-region > .galaxy-board { justify-self: start !important; margin-left: var(--map-left, 0px) !important; }
+  :root.market-drawer.market-full .market-handles { grid-column: 2 / 4; align-self: center; justify-self: end; margin: 0 var(--sheet-w) 0 0; }
+}
+/* Upright: the handle on the table's right edge in the map's empty upper-right corner, under the map tools. */
+@media (min-width: 600px) and (min-height: 600px) and (orientation: portrait) {
+  :root.market-drawer .market-handles {
+    grid-column: 1 / -1; grid-row: 3; align-self: start; justify-self: end; z-index: 32;
+    display: flex; flex-direction: column; align-items: flex-end; margin: 150px 0 0 0;
+  }
+  /* Closed, the map grows into the band's room but starts below the notices' place at the top left
+     (notices never move; the map makes way). */
+  :root.market-drawer.market-closed .board-map-region { margin-top: 120px !important; }
+}
+
+@media (min-width: 600px) and (min-height: 600px) {
+  /* A tab on the edge, like Trade's on the left edge. */
+  :root.market-drawer :is(.market-handle, .market-size) {
+    position: relative; display: flex; align-items: center; justify-content: center; min-width: 30px; min-height: 104px; margin: 0; padding: 10px 4px;
+    border: 1.5px solid #a49c6f; border-right: 0; border-radius: 10px 0 0 10px;
+    background: linear-gradient(270deg, #22322f, #2d403b); box-shadow: -2px 3px 0 #0a1513, -4px 8px 14px -4px #000a;
+    color: var(--text); font: 700 12.5px/1 ui-sans-serif, system-ui, sans-serif; letter-spacing: .06em; writing-mode: vertical-rl; transform: rotate(180deg); white-space: nowrap; cursor: pointer;
+  }
+  :root.market-drawer .market-size { min-height: 72px; font-size: 11px; font-weight: 600; color: var(--muted); }
+  :root.market-drawer .market-size[hidden] { display: none; }
+  /* A finger-sized target on a touch table, larger than the tab it belongs to. */
+  :root.market-drawer :is(.market-handle, .market-size)::before { content: ''; position: absolute; inset: -4px -8px; }
+  :root.market-drawer :is(.market-handle, .market-size):hover { color: var(--gold); }
+  :root.market-drawer :is(.market-handle, .market-size):focus-visible { outline: 2px solid var(--cyan); outline-offset: 2px; }
+  :root.market-drawer .market-handle[aria-expanded="true"] { color: var(--gold); border-color: var(--gold); }
+  /* Your Buy turn: the handle says so until you close the market. */
+  :root.market-drawer body.my-turn .market-handle[data-buying="true"][aria-expanded="false"] { border-color: var(--gold); box-shadow: -2px 3px 0 #0a1513, 0 0 12px #f2c94c80; }
+
+  /* Closed: nothing of the supply on the table (app.js sets --supply-w to 0). */
+  :root.market-drawer.market-closed :is(#relics-panel, #market-panel, #upgrade-group) { display: none !important; }
+
+  /* One short movement on the table's right edge, in and out: the panel unrolls from the edge.
+     A clip, not a shift, so nothing runs past the table while it moves (see fitTable). */
+  :root.market-drawer :is(#relics-panel, #market-panel, #upgrade-group, .market-sheet) { clip-path: inset(-40px -40px -40px -40px); transition: clip-path .2s ease, opacity .2s ease; }
+  :root.market-drawer:is(.market-in, .market-out) :is(#relics-panel, #market-panel, #upgrade-group, .market-sheet) { clip-path: inset(-40px -40px -40px 100%); opacity: 0; }
+  :root.market-drawer.market-in :is(#relics-panel, #market-panel, #upgrade-group, .market-sheet) { transition: none; }
+  :root.market-drawer:not(.market-moving) :is(#relics-panel, #market-panel, #upgrade-group, .market-sheet) { clip-path: none; }
+
+  /* Full: a sheet over the map's right-hand side, just large enough for the market's three rows of
+     three whole cards and the Upgrades in two columns at its right (Move, Construct, then Capacity
+     and Trash). The strip of map it leaves is a guidance note's place (see fitMarketSheet). */
+  :root.market-drawer.market-full .market-sheet {
+    display: block; grid-column: 2 / 4; grid-row: 1 / 9; justify-self: end; align-self: start; z-index: 20; box-sizing: border-box; margin: 0;
+    width: var(--sheet-w); height: calc(2 * var(--sheet-pad) + 3 * var(--card-h) + 2 * var(--card-gap));
+    border: 1.5px solid #a49c6f99; border-right: 0; border-radius: 12px 0 0 12px;
+    background: linear-gradient(160deg, #22352f, #182824); box-shadow: -18px 0 40px -12px #000c, inset 0 0 0 4px #101d1d66;
+  }
+  :root.market-drawer.market-full #relics-panel { display: none !important; }
+  /* The sheet is sized to the table (see fitMarketSheet); while the table re-fits it must not push
+     the table past the window for a moment. */
+  :root.market-drawer.market-full .app-shell { overflow-x: clip; }
+  :root.market-drawer.market-full #market-panel {
+    grid-column: 2 / 4 !important; grid-row: 1 / 9 !important; justify-self: end !important; align-self: start !important; z-index: 21;
+    width: calc(3 * var(--card-w) + 2 * var(--card-gap)); margin: var(--sheet-pad) calc(var(--sheet-pad) + 2 * var(--card-w) + var(--card-gap) + var(--sheet-split)) 0 0 !important;
+  }
+  :root.market-drawer.market-full #upgrade-group {
+    grid-column: 2 / 4 !important; grid-row: 1 / 9 !important; justify-self: end !important; align-self: start !important; z-index: 21;
+    width: calc(2 * var(--card-w) + var(--card-gap)); margin: var(--sheet-pad) var(--sheet-pad) 0 0 !important;
+  }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market { grid-template-columns: repeat(2, var(--card-w)) !important; gap: var(--card-gap) !important; }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > [data-upgrade-level="2"][data-upgrade-offer="move"] { order: 1; }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > [data-upgrade-level="3"][data-upgrade-offer="move"] { order: 2; }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > [data-upgrade-level="2"][data-upgrade-offer="construct"] { order: 3; }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > [data-upgrade-level="3"][data-upgrade-offer="construct"] { order: 4; }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > .capacity-offer { order: 5; }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > .trash-pile { order: 6; }
+  :root.market-drawer.market-full #market-row { gap: var(--card-gap) !important; }
+
+  /* Whole cards: the same card face as the tiles, in card proportions, read from the corners
+     (rules #card-corners) - the symbols upper left, the price upper right and the name between
+     them, then the effect and the picture, whole and readable. A name that does not fit between
+     the corners lies under them, across the card (card-feel.js fitNames). */
+  :root.market-drawer.market-full .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) {
+    grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "head head head" "art art art" !important;
+    grid-template-rows: auto auto minmax(0, 1fr) !important; column-gap: 6px !important; row-gap: 6px !important; padding-bottom: 8px !important; padding-left: 9px !important;
+  }
+  :root.market-drawer.market-full .market-cards #market-row > .game-card:not(.has-symbols):not(:hover):not(:focus):not(:focus-within) { grid-template-areas: "name name cost" "head head head" "art art art" !important; }
+  :root.market-drawer.market-full .market-cards #market-row > .game-card.name-under:not(:hover):not(:focus):not(:focus-within) {
+    grid-template-areas: "sym . cost" "name name name" "head head head" "art art art" !important; grid-template-rows: auto auto auto minmax(0, 1fr) !important;
+  }
+  /* A name wraps only between words and is never cut off: where a word is wider than the card it
+     gets smaller (card-feel.js sets --name-fs, down to 9px). */
+  :root.market-drawer.market-full :is(.market-cards #market-row, .upgrade-group #upgrade-market) > .game-card:not(:hover):not(:focus):not(:focus-within) .card-name {
+    display: block !important; -webkit-line-clamp: unset !important; line-clamp: unset !important; max-height: none !important;
+    white-space: normal !important; overflow-wrap: normal !important; word-break: normal !important; hyphens: manual !important; text-overflow: clip !important;
+  }
+  :root.market-drawer.market-full :is(.market-cards #market-row, .upgrade-group #upgrade-market) > .game-card.name-under:not(:hover):not(:focus):not(:focus-within) .card-name { margin-right: 8px !important; }
+  :root.market-drawer.market-full .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { font-size: var(--name-fs, 15px) !important; line-height: 1.15 !important; }
+  :root.market-drawer.market-full .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-icons {
+    display: block !important; grid-area: head !important; margin: 0 8px 0 0 !important; font-size: var(--rules-fs, 12.5px) !important; line-height: 1.3 !important;
+    white-space: normal !important; overflow: visible !important; -webkit-line-clamp: unset !important; line-clamp: unset !important; -webkit-mask-image: none !important; mask-image: none !important;
+  }
+  :root.market-drawer.market-full .market-cards #market-row > .game-card:not(:hover):not(:focus):not(:focus-within) .card-art.has-picture { display: block !important; grid-area: art !important; min-height: 0; margin-right: 8px; }
+  :root.market-drawer.market-full .market-cards #market-row > .game-card .card-picture { object-position: 50% 40%; }
+  /* Upgrade cards keep their price box and show their picture under the effect, like the market's. */
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) {
+    grid-template-columns: max-content minmax(0, 1fr) auto !important; grid-template-areas: "sym name cost" "effect effect cost" "art art art" !important;
+    grid-template-rows: auto auto minmax(0, 1fr) !important; column-gap: 6px !important; row-gap: 6px !important; padding-bottom: 8px !important;
+  }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > .upgrade-offer:not(.has-symbols):not(:hover):not(:focus):not(:focus-within) { grid-template-areas: "name name cost" "effect effect cost" "art art art" !important; }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > .upgrade-offer.name-under:not(:hover):not(:focus):not(:focus-within) {
+    grid-template-areas: "sym . cost" "name name name" "effect effect effect" "art art art" !important; grid-template-rows: auto auto auto minmax(0, 1fr) !important;
+  }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > .upgrade-offer:not(:hover):not(:focus):not(:focus-within) .card-art.has-picture { display: block !important; grid-area: art !important; min-height: 0; margin-right: 8px; }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market > .capacity-offer:not(:hover):not(:focus):not(:focus-within) { padding-bottom: 22px !important; }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-effect { font-size: var(--rules-fs, 12px) !important; line-height: 1.3 !important; -webkit-line-clamp: unset !important; line-clamp: unset !important; }
+  :root.market-drawer.market-full .upgrade-group #upgrade-market .game-card:not(:hover):not(:focus):not(:focus-within) .card-name { font-size: var(--name-fs, 14px) !important; }
+  /* An effect too long for the card even at its smallest is left to the raised card (kept for
+     screen readers), and a picture with almost no height left is left out (card-feel.js). */
+  :root.market-drawer.market-full :is(.market-cards #market-row, .upgrade-group #upgrade-market) > .game-card.rules-tucked:not(:hover):not(:focus):not(:focus-within) > :is(.card-icons, .card-effect) {
+    position: absolute !important; width: 1px !important; height: 1px !important; overflow: hidden !important; clip-path: inset(50%) !important; margin: 0 !important;
+  }
+  :root.market-drawer.market-full :is(.market-cards #market-row, .upgrade-group #upgrade-market) > .game-card.art-tucked:not(:hover):not(:focus):not(:focus-within) > .card-art { display: none !important; }
+}
+
+/* Beside the whole cards a guidance note fits the strip of map they leave (see fitMarketSheet). */
+:root.market-drawer.market-full .gr-coach:not(.in-dialog):not(.quiet) { width: min(320px, var(--sheet-note-w, 320px)); }
+
+@media (prefers-reduced-motion: reduce) {
+  :root.market-drawer :is(#relics-panel, #market-panel, #upgrade-group, .market-sheet) { transition: none !important; }
+}
+/* Phones keep their Supply drawer (the drawer buttons); the handles are for the table. */
+@media (max-width: 599px), (max-height: 599px) {
+  .market-handles, .market-sheet { display: none !important; }
+}

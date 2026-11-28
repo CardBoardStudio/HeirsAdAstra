@@ -13,24 +13,32 @@ function game(){
  assert.equal(e.calculatePrestige(0),18);p.relicsExcavated=1;assert.equal(e.calculatePrestige(0),20);
  assert.deepEqual(plain(e.prestigeBreakdown(0)),{colonies:18,expansionBonus:0,relics:2,combat:0,cards:0,total:20});
  Object.assign(s.planets[s.clusters[4].center],{owner:1});assert.equal(e.calculatePrestige(0),17);
- p.combatVictories=3;assert.equal(e.calculatePrestige(0),23,'34.39: a decisive win scores 2');p.cardsPurchased=100;assert.equal(e.calculatePrestige(0),23);p.cardPrestige=6;assert.equal(e.calculatePrestige(0),29,'31.36 card Prestige counts; purchases alone still score nothing');p.cardPrestige=0;
+ p.combatVictories=3;assert.equal(e.calculatePrestige(0),20,'A qualifying decisive win scores 1');p.cardsPurchased=100;assert.equal(e.calculatePrestige(0),20);p.cardPrestige=6;assert.equal(e.calculatePrestige(0),26,'31.36 card Prestige counts; purchases alone still score nothing');p.cardPrestige=0;
 }
 {
- const {e,s,a}=game(),p=s.players[0];p.storageUpgrades=3;
+ // Rules #capacity-module: a module always costs 1 of each; buying one raises nothing until it is played and stored.
+ const {e,s,a}=game(),p=s.players[0];p.storageUpgrades=3;p.resourceLimits={matter:8,energy:8,biomass:8,data:8};
  for(let tier=1;tier<=3;tier++){
-  p.resources=Object.fromEntries(e.RESOURCES.map(r=>[r,tier]));
+  s.phase='buy';s.activePlayer=0;
+  p.resources=Object.fromEntries(e.RESOURCES.map(r=>[r,1]));
   assert.deepEqual(plain(e.storageUpgradeCost(0)),p.resources);
-  assert(e.increaseStorage(0,{matter:1,energy:1,biomass:1,data:1}));assert.equal(p.storagePurchases,tier);assert.equal(e.playerCapacity(0),16+4*tier);
+  assert(e.buyCapacity(0));assert.equal(p.storagePurchases,tier);assert.equal(e.playerCapacity(0),32+4*(tier-1));
   assert.deepEqual(plain(p.resources),{matter:0,energy:0,biomass:0,data:0});
+  assert.equal(e.storageUpgradeCost(0).matter,1,'Neither bought nor stored modules raise the price');
+  const module=p.discard.find(c=>c.key==='capacityModule');p.discard.splice(p.discard.indexOf(module),1);p.hand.push(module);
+  s.phase='operations';s.activePlayer=0;assert(e.resolveHumanSpecial(module,e.ALL_CARDS.capacityModule,0,{matter:1,energy:1,biomass:1,data:1}));
+  assert.equal(p.storage.length,tier);assert.equal(p.storage.at(-1).id,module.id);assert.deepEqual(plain(p.storage.at(-1).allocation),{matter:1,energy:1,biomass:1,data:1});
+  assert.equal(e.playerCapacity(0),32+4*tier);
  }
- assert.deepEqual(plain(a.observe(0).players[0].storageUpgradeCost),{matter:4,energy:4,biomass:4,data:4});
+ s.phase='buy';s.activePlayer=0;
+ assert.deepEqual(plain(a.observe(0).players[0].storageUpgradeCost),{matter:1,energy:1,biomass:1,data:1});
  assert.equal(a.observe(0).players[0].storagePurchases,3);
- assert.equal(e.storageUpgradeCost(1).biomass,1,'Paid tiers belong to one faction');
- p.resources={matter:4,energy:4,biomass:3,data:4};const before=JSON.stringify(s);assert(!e.increaseStorage(0));assert.equal(JSON.stringify(s),before);
+ assert.equal(e.storageUpgradeCost(1).biomass,1,'Every faction pays 1 of each');
+ p.resources={matter:1,energy:1,biomass:0,data:1};const before=JSON.stringify(s);assert(!e.buyCapacity(0));assert.equal(JSON.stringify(s),before);s.phase='operations';
  // The actual free relic effect, rather than a synthetic count increment.
  p.hand=[{id:'cradle',key:'foldedWarehouse'}];p.resources={matter:0,energy:0,biomass:0,data:0};
  const paid=p.storagePurchases,capacity=e.playerCapacity(0);e.resolveHumanSpecial(p.hand[0],e.ALL_CARDS.foldedWarehouse,0);
- assert.equal(p.storagePurchases,paid);assert.equal(e.playerCapacity(0),capacity+4);assert.equal(e.storageUpgradeCost(0).matter,4);
+ assert.equal(p.storagePurchases,paid);assert.equal(e.playerCapacity(0),capacity+4);assert.equal(e.storageUpgradeCost(0).matter,1);
 }
 {
  const g=game(),{e,s}=g,p=s.players[1];p.strategy='military';p.hand=[{id:'move',key:'move',upgraded:true}];s.activePlayer=1;
@@ -60,4 +68,4 @@ for(const [file,expected] of Object.entries(hashes)){
 }
 assert(read('prototypes/galactic-reach/table.js').includes("'galactic-reach/22.27':{format:22,path:'/galactic-reach/rules/22.27/'}"));
 assert(!read('prototypes/galactic-reach/index.html').includes('extra point per pair'),'Point dialog help must follow the new scoring');
-console.log('Twenty Point Strategy: weighted scoring, 1/2/3 escalating storage, free relic isolation, per-player prices, atomic rejection, report threat regression, private information, rallying, Data opening and frozen22.27/policy18 passed.');
+console.log('Twenty Point Strategy: weighted scoring, repeated fixed-price storage, free relic isolation, per-player prices, atomic rejection, report threat regression, private information, rallying, Data opening and frozen22.27/policy18 passed.');

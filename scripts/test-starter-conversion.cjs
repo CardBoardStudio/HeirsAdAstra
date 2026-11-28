@@ -22,13 +22,13 @@ const forbidden=[
 {
  const g=game(),cards=g.e.ALL_CARDS;
  for(const key of removed)assert(!cards[key],`${key} is absent from the current catalog`);
- assert.equal(Object.keys(g.e.MARKET_CARDS).length,31);assert.equal(Object.keys(g.e.RELIC_CARDS).length,15);
+ assert.equal(Object.keys(g.e.MARKET_CARDS).length,29);assert.equal(Object.keys(g.e.RELIC_CARDS).length,16);
  for(const [key,d] of Object.entries(cards)){
   assert(!d.effect?.gain&&!d.effect?.produce&&!d.buildGain&&!d.loot&&d.reaction!=='salvage',key);
   if(!['move','construct'].includes(key))assert(!d.resource&&!d.wildcard,`${key} prints no conversion gain`);
  }
  for(const card of [...g.s.market,...Object.values(g.s.marketDecks).flat(),...g.s.relicRow,...g.s.relicDeck])assert(!removed.includes(card.key));
- assert.equal(g.s.market.length+Object.values(g.s.marketDecks).flat().length,62);assert.equal(g.s.relicRow.length+g.s.relicDeck.length,15);
+ assert.equal(g.s.market.length+Object.values(g.s.marketDecks).flat().length,58);assert.equal(g.s.relicRow.length+g.s.relicDeck.length,16);
  const book=fs.readFileSync(path.join(root,'prototypes/galactic-reach/rulebook.html'),'utf8');
  for(const key of removed)assert(!book.includes(`data-card="${key}"`));
   for(const [key,d] of Object.entries({...g.e.MARKET_CARDS,...g.e.RELIC_CARDS})){

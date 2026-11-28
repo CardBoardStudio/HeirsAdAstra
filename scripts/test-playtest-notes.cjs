@@ -2,7 +2,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const path = require('node:path');
 const {safeUrl, issueBody, issueLink, normalize} = require('../prototypes/galactic-reach/playtest-notes.js');
-const context = {game: 'Galactic Reach', rules: '10.15', round: '3', phase: 'Buy', active: 'You', url: 'http://127.0.0.1:3110/?table=private&invite=secret#token'};
+const context = {game: 'Heirs Ad Astra', rules: '10.15', round: '3', phase: 'Buy', active: 'You', url: 'http://127.0.0.1:3110/?table=private&invite=secret#token'};
 assert.equal(safeUrl(context.url), 'http://127.0.0.1:3110/');
 assert.equal(safeUrl('javascript:alert(1)'), '');
 assert.equal(safeUrl('https://person:password@example.com/game?session=secret'), 'https://example.com/game');

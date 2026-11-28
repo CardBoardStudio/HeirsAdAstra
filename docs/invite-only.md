@@ -21,13 +21,15 @@ The check runs on every request, so a change takes effect on the visitor's next 
 - **Expiry** only limits claiming. Members who claimed an invitation before it expired keep access.
 - **Revoking a Nido passkey** signs the session out within a minute.
 
+A sign-in lasts 60 days by default (`SESSION_TTL_DAYS` changes it). Logging out, a revoked invitation, a removed passkey, or **Sign out other sessions** ends it sooner.
+
 ## What is public
 
 Without membership, a visitor can reach only:
 
 | Path | Why |
 | --- | --- |
-| `/`, `/index.html`, `/lab/lab.css`, `/lab/lab.js`, `/lab/replay.js` | The landing page, which shows the sign-in and claim steps |
+| `/`, `/index.html`, `/lab/lab.css`, `/lab/lab.js`, `/lab/replay.js`, `/lab/heirs-emblem.svg`, `/lab/heirs-emblem-round.svg`, `/lab/heirs-emblem-mark.svg`, `/lab/heirs-emblem-favicon.svg`, `/galactic-reach/palette.css` | The landing page, which shows the sign-in and claim steps, its emblem and favicon, and the game's colours it and the invite-required page use |
 | `/api/health` | Health checks |
 | `/api/session` | Tells the landing page whether this browser is signed in and admitted |
 | `/api/auth/nido`, `/api/auth/nido/callback` | The Nido sign-in flow |
@@ -43,6 +45,16 @@ Everything else is refused, including the game pages, rulebooks, game APIs, and 
 3. To remove access, revoke the link in **Invitations**.
 
 **Shared-table links** (`/?game=galactic-reach#lobby/<table>/<invite>`) go through the same steps. A table link seats someone at a table; it does not admit them to the server. A visitor who signs in with only a table link is asked for an invitation. The landing page remembers the table in that browser and returns to it after they accept.
+
+## Admin dashboard
+
+**Members** in the sidebar (administrators only, `GET /api/admin/overview`) is a read-only view of what the server already stores:
+
+- **Totals:** member links created and still active, people accepted out of seats offered, accounts, administrators and accounts with an active session.
+- **Invitation links:** every link, including the one-time setup link, with its creator, created and expiry dates, uses accepted out of allowed, status (revoked, else used up, else expired, else active) and each account that claimed it with when.
+- **Accounts:** every person's display name, account id (shortened, with a copy button), how they joined (invitation link, administrator setup link, `grant-admin`, direct sign-in on an open host, or a temporary identity), when the account was created, active sessions, last seen, tables they own or sit at, administrator flag, and whether this host currently admits them.
+
+Search, filter and sort happen in the browser. Each list shows the newest 1,000 rows. **Last seen** is the last time the server rechecked one of the account's Nido sessions, at most once a minute while it is in use; the server records no sign-in time, so other sign-in methods show only their session count, and an expired session leaves no trace. The response never includes token or key hashes, recovery keys, Nido public keys or signatures. Creating and revoking links stays on **Invitations**; the dashboard adds no new actions.
 
 ## Making the first administrator
 
@@ -76,12 +88,12 @@ This prints `https://<origin>/#invite/<token>`. Open it, sign in with Nido, and 
 
 ## Dev host
 
-The self-hosted [dev host](release.md#dev-host) (`deploy/dev-host/`) writes `ACCESS=invite-only` into a new `dev.env`. A host installed earlier needs one line added:
+The self-hosted [dev host](release.md#dev-host) (`deploy/dev-host/`) writes `ACCESS=invite-only` into a new `dev.env` (or `stable.env` for a [stable instance](release.md#stable-instance)). A host installed earlier needs one line added:
 
 ```sh
 # /opt/drawing-board-dev/dev.env
 ACCESS=invite-only
-APP_ORIGIN=https://<host>.<tailnet>.ts.net:<public port>
+APP_ORIGIN=https://<public origin of the tunnel or proxy>
 ```
 
 Docker reads `dev.env` only when the container is created, so the change takes effect on the next deploy. To apply it now, remove the container and redeploy the same commit: `docker rm -f drawing-board-dev && /opt/drawing-board-dev/bin/dev-host.sh update`. Check `curl -s http://127.0.0.1:3200/api/session` reports `"invite_only":true`, then make the first administrator as above. Only after that should the host be made public.

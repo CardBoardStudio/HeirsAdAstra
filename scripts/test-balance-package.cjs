@@ -1,4 +1,4 @@
-// Balance package: captures need a Fleet, decisive wins score 2, Wonder trim, cheap-card fixes,
+// Balance package: captures need a Fleet, decisive Fleet wins score 1, Wonder trim, cheap-card fixes,
 // Archive Purge choice and the dealt solo lineup. Rules: rulebook #combat, #victory, #cards,
 // #buy, #construct-two-builds, #setup, #rival-cards.
 const assert = require('node:assert/strict'), fs = require('node:fs'), vm = require('node:vm'), path = require('node:path');
@@ -11,7 +11,8 @@ function game(options = {}) {
   const c = vm.createContext({});
   vm.runInContext(adapterSource + app.replace('      clone, deckContents,', '      runAiOperation, findColonizeTarget, chooseAiMove, clone, deckContents,'), c);
   let e; const factory = c.createGalacticAdapter; c.createGalacticAdapter = x => { e = x; return factory(x); };
-  c.createGalacticReach({ headless: true, random: rng(39), ...options });
+  // Capture-planning fixtures exercise the original broad-scoring Military profile.
+  c.createGalacticReach({ headless: true, militaryFocused: false, random: rng(39), ...options });
   return { e, s: e.state, p: e.state.players[0], adapter: () => factory(e) };
 }
 const legal = (g, seat = 0) => g.adapter().legalActions(seat);
@@ -61,14 +62,14 @@ for (const key of ['colonize', 'colonyPods']) {
   assert(!move || move.source !== center || move.units?.fleet === 0, 'The escort stays on the capturable center');
 }
 
-// #victory: a decisive combat victory is worth 2 Prestige; the observation says so.
+// #victory: a qualifying decisive combat victory is worth 1 Prestige.
 {
   const g = game(), { s, e } = g;
-  assert.equal(e.COMBAT_VICTORY_PRESTIGE, 2);
+  assert.equal(e.COMBAT_VICTORY_PRESTIGE, 1);
   s.players[0].combatVictories = 3; assert.equal(plain(e.state.players[0]).combatVictories, 3);
-  assert.equal(e.calculatePrestige(0), 3 + 6, 'Home Colony 3 + three decisive wins at 2');
+  assert.equal(e.calculatePrestige(0), 3 + 3, 'Home Colony 3 + three qualifying decisive wins at 1');
   const view = g.adapter().observe(0);
-  assert.equal(view.combatVictoryPrestige, 2); assert.equal(view.captureNeedsFleet, true);
+  assert.equal(view.combatVictoryPrestige, 1); assert.equal(view.captureNeedsFleet, true);
 }
 
 // #cards: printed values of the trimmed Wonders and reworked cheap cards.
@@ -79,7 +80,7 @@ for (const key of ['colonize', 'colonyPods']) {
   assert(!C.boardingMarines);
   assert(!C.miningCharter && !C.bioReactor);
   assert(C.prefabYards.secondBuild && !C.orbitalFoundry && !C.worldEngine.secondBuild);
-  // Prices are unchanged by this package.
+  // Current retained Wonder prices.
   assert.deepEqual(plain(C.dysonLattice.cost), { matter: 4, energy: 8, data: 2 });
   assert.deepEqual(plain(C.monumentOfAccord.cost), { matter: 6, biomass: 2, data: 2 });
 }

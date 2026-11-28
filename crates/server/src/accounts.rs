@@ -36,6 +36,31 @@ pub fn rate_limit(db: &Connection) -> ApiResult<()> {
     }
     Ok(())
 }
+/// Default sign-in lifetime; `SESSION_TTL_DAYS` overrides it for operators.
+pub const DEFAULT_SESSION_TTL_DAYS: u64 = 60;
+/// Seconds a new session lasts: the cookie Max-Age and the sessions.expires offset.
+pub fn session_ttl() -> u64 {
+    static TTL: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    *TTL.get_or_init(|| session_ttl_days(std::env::var("SESSION_TTL_DAYS").ok().as_deref()) * 86400)
+}
+fn session_ttl_days(value: Option<&str>) -> u64 {
+    value
+        .and_then(|v| v.trim().parse::<u64>().ok())
+        .filter(|days| (1..=3650).contains(days))
+        .unwrap_or(DEFAULT_SESSION_TTL_DAYS)
+}
+/// The Set-Cookie value for a freshly issued session token.
+pub fn session_cookie(app: &App, token: &str) -> String {
+    let secure = if app.origin.starts_with("https://") {
+        "; Secure"
+    } else {
+        ""
+    };
+    format!(
+        "drawing_board_alien_v11_session={token}; HttpOnly; SameSite=Lax; Path=/; Max-Age={}{secure}",
+        session_ttl()
+    )
+}
 pub fn issue_session(
     db: &Connection,
     headers: &HeaderMap,
@@ -53,18 +78,17 @@ pub fn issue_session(
     let token = random_key();
     db.execute(
         "INSERT INTO sessions VALUES(?,?,?,?,?)",
-        params![digest(&token), id, name, false, now() + 86400],
+        params![digest(&token), id, name, false, now() + session_ttl()],
     )
     .map_err(internal)?;
     Ok(token)
 }
 pub fn session_response(app: &App, token: &str, body: serde_json::Value) -> Response {
-    let secure = if app.origin.starts_with("https://") {
-        "; Secure"
-    } else {
-        ""
-    };
-    ([(header::SET_COOKIE, format!("drawing_board_alien_v11_session={token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400{secure}"))],Json(body)).into_response()
+    (
+        [(header::SET_COOKIE, session_cookie(app, token))],
+        Json(body),
+    )
+        .into_response()
 }
 /// Invite-only hosts admit Nido accounts only (docs/invite-only.md).
 fn nido_only(app: &App) -> ApiResult<()> {
@@ -237,4 +261,17 @@ pub async fn rotate_key(State(app): State<App>, headers: HeaderMap) -> ApiResult
         &token,
         json!({"ok":true,"recovery_key":key}),
     ))
+}
+#[cfg(test)]
+mod ttl_tests {
+    #[test]
+    fn session_ttl_days_reads_operator_override() {
+        use super::session_ttl_days as days;
+        assert_eq!(days(None), 60);
+        assert_eq!(days(Some("7")), 7);
+        assert_eq!(days(Some(" 90 ")), 90);
+        for bad in ["0", "-1", "abc", "", "4000"] {
+            assert_eq!(days(Some(bad)), 60, "{bad}");
+        }
+    }
 }

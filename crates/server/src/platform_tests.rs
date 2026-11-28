@@ -29,6 +29,30 @@ async fn register_account(a: &App, name: &str) -> (String, String) {
     )
 }
 #[tokio::test]
+async fn sign_in_sessions_last_sixty_days() {
+    let a = app(true);
+    let (status, headers, _) = call(
+        &a,
+        "POST",
+        "/api/accounts/register",
+        "",
+        json!({"name":"Ada"}),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let set_cookie = headers[header::SET_COOKIE].to_str().unwrap();
+    assert!(set_cookie.contains("; Max-Age=5184000"), "{set_cookie}");
+    let expires: u64 = a
+        .store
+        .0
+        .lock()
+        .unwrap()
+        .query_row("SELECT expires FROM sessions", [], |r| r.get(0))
+        .unwrap();
+    assert!(expires.abs_diff(now() + 60 * 86400) <= 5);
+    assert_eq!(accounts::session_ttl(), 60 * 86400);
+}
+#[tokio::test]
 async fn accounts_survive_logout_and_keys_rotate_atomically() {
     let a = app(true);
     let (cookie, key) = register_account(&a, "Ada").await;
@@ -397,14 +421,14 @@ async fn arena_enforces_ownership_pairs_seats_and_rates_exactly_once() {
 }
 
 #[tokio::test]
-async fn galactic_reach_uses_shared_accounts_rotations_and_isolated_ratings() {
+async fn heavy_galactic_reach_arena_series_rotations_and_ratings() {
     let _serial = ARENA_TEST.lock().await;
     let mut a = app(true);
     a.arena_seed = Some([8; 32]);
     let (owner, _) = register_account(&a, "Four factions").await;
     let (other, _) = register_account(&a, "Other lab").await;
     let mut bots = vec![];
-    for strategy in ["gr-military", "gr-economy", "gr-expansion", "gr-wanderer"] {
+    for strategy in ["gr-military", "gr-economy", "gr-expansion", "gr-market"] {
         let (status, _, result) = call(
             &a,
             "POST",
@@ -572,7 +596,7 @@ async fn galactic_reach_uses_shared_accounts_rotations_and_isolated_ratings() {
             .is_empty()
     );
     // Replay the second adapter from the exact same stored data used by Voidwright.
-    use galactic_reach::{BuiltinAgent, GalacticReach, Strategy};
+    use galactic_reach::{BrowserProfile, GalacticReach};
     use game_core::{PlayerAgent, run_match};
     let m = &result["matches"][0];
     let mut game = GalacticReach::new(
@@ -582,15 +606,20 @@ async fn galactic_reach_uses_shared_accounts_rotations_and_isolated_ratings() {
             .unwrap(),
     )
     .unwrap();
+    game.set_browser_profiles(std::array::from_fn(|i| {
+        BrowserProfile::parse(m["result"]["policies"][i].as_str().unwrap())
+    }))
+    .unwrap();
     let mut agents: Vec<Box<dyn PlayerAgent<GalacticReach>>> = (0..4)
         .map(|i| {
-            Box::new(BuiltinAgent::new(
-                Strategy::parse(m["result"]["policies"][i].as_str().unwrap()).unwrap(),
+            galactic_reach::agent(
+                m["result"]["policies"][i].as_str().unwrap(),
                 hex::decode(m["agent_seeds"][i].as_str().unwrap())
                     .unwrap()
                     .try_into()
                     .unwrap(),
-            )) as Box<dyn PlayerAgent<GalacticReach>>
+            )
+            .unwrap()
         })
         .collect();
     assert_eq!(

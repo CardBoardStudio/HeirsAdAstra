@@ -1,4 +1,9 @@
 html { min-width: 0; }
+/* styles.css fits the game table to the window: on phones it clips html and body to the
+   screen, and on larger windows body is a window-high flex column. The rulebook is a
+   document, so it flows and scrolls on every screen (the docs site's site.css does the same). */
+html, body.rulebook { height: auto; overflow: visible; }
+body.rulebook { display: block; min-height: 100vh; }
 .rulebook { line-height: 1.7; }
 .rulebook a { color: var(--cyan); text-underline-offset: .2em; }
 .rulebook a:focus-visible, .rulebook summary:focus-visible, .book-table:focus-visible { outline: 2px solid var(--cyan); outline-offset: 4px; }
@@ -53,16 +58,269 @@ html { min-width: 0; }
 .book-resource.energy { color: var(--energy); }
 .book-resource.biomass { color: var(--biomass); }
 .book-resource.data { color: var(--data); }
-.rulebook .book-resource.data { color: #d0b3ff; }
 .rulebook .resource-symbol { width: 1em; height: 1em; }
 .rulebook td .book-resource { padding: 2px 5px; margin: 2px 1px; border: 1px solid var(--line); border-radius: 5px; background: var(--surface-2); }
 .book-unit { display: inline-flex; align-items: center; gap: 8px; }
-.book-unit svg { width: 24px; height: 24px; flex: none; fill: none; stroke: var(--cyan); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.book-unit svg { width: 24px; height: 24px; flex: none; color: var(--cyan); }
 .book-legend { display: flex; flex-wrap: wrap; gap: 12px 24px; padding: 16px; background: var(--surface-2); border-radius: 8px; }
 .book-legend b { font-size: 1.3em; margin-right: 5px; }
 .rich-mark { color: var(--gold); }
 .relic-mark { color: var(--data); }
+/* Prestige and relic symbols in running text, 1em square on the text's baseline. */
+.rb-glyph { display: inline-block; width: 1em; height: 1em; vertical-align: -.14em; }
+:is(.rb-star, .rb-stars) .rb-glyph { color: var(--gold); }
 .gate-mark { color: var(--cyan); }
 @media print { .book-resource.matter, .book-resource.energy, .book-resource.biomass, .book-resource.data { color: inherit; } }
 
 .book-table th small { display: block; margin-top: 4px; font-weight: 400; font-style: italic; line-height: 1.4; opacity: .78; }
+
+/* ---- Reading aids --------------------------------------------------------------------
+   Each chapter opens with the one thing to know (.rb-key). Exceptions, examples and notes
+   about the screen each get their own marked line, so the rule itself reads plainly. */
+.rb-key { margin: 0 0 22px; padding: 4px 0 4px 16px; border-left: 3px solid var(--gold); font-size: 1.12rem; line-height: 1.55; color: var(--text); }
+.rb-ex, .rb-eg, .rb-ui { position: relative; margin: 12px 0; padding: 10px 14px 10px 14px; border-radius: 8px; font-size: .94rem; line-height: 1.6; }
+.rb-ex::before, .rb-eg::before, .rb-ui::before { display: block; margin-bottom: 2px; font-size: .7rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; }
+.rb-ex { background: color-mix(in srgb, var(--energy) 9%, var(--surface)); border-left: 3px solid var(--energy); }
+.rb-ex::before { content: 'Except'; color: var(--energy); }
+.rb-eg { background: color-mix(in srgb, var(--gold) 8%, var(--surface)); border-left: 3px solid var(--gold); }
+.rb-eg::before { content: 'Example'; color: var(--gold); }
+.rb-ui { background: var(--surface); border-left: 3px solid var(--cyan); color: var(--muted); }
+.rb-ui::before { content: 'On the table'; color: var(--cyan); }
+.rb-ui strong, .rb-ui b { color: var(--text); }
+ul.rb-ex { padding-left: 34px; }
+ul.rb-ex::before { margin-left: -20px; }
+ul.rb-ex li { margin: 4px 0; }
+.rulebook h3 { margin: 30px 0 10px; font-size: 1.08rem; }
+.book-layout section h2 { scroll-margin-top: 24px; }
+.book-layout section[id] [id] { scroll-margin-top: 24px; }
+.rb-appendix > h2::before { content: 'Appendix'; display: block; margin-bottom: 2px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: .7rem; font-weight: 750; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.book-nav .rb-nav-gap { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+.book-table.rb-fit table { min-width: 0; }
+.book-table.rb-fit :is(th, td) { min-width: 0; }
+.rb-yes { color: var(--green); font-weight: 650; }
+.rb-no { color: var(--energy); font-weight: 650; }
+
+/* ---- Figures: drawn here in HTML/CSS and inline SVG, with the game's palette ---------- */
+.rb-fig { margin: 26px 0; padding: 18px; background: color-mix(in srgb, var(--felt-deep) 55%, var(--surface)); border: 1px solid var(--line); border-radius: 12px; }
+.rb-fig > figcaption, .rb-fig .rb-cap { margin-top: 12px; color: var(--muted); font-size: .9rem; line-height: 1.55; }
+.rb-fig > figcaption strong { color: var(--text); }
+.rb-svg { display: block; width: 100%; height: auto; margin: 0 auto; overflow: visible; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+.rb-svg text { fill: var(--text); font-size: 11px; font-weight: 650; }
+.rb-svg .muted { fill: var(--muted); font-weight: 500; }
+.rb-svg .t-matter { fill: var(--matter-tile); }
+.rb-svg .t-energy { fill: var(--energy-tile); }
+.rb-svg .t-biomass { fill: var(--biomass-tile); }
+.rb-svg .t-data { fill: var(--data-tile); }
+.rb-svg .empty { fill: #1b2a2c; stroke: #2e4642; stroke-width: .7; }
+.rb-svg .portal { fill: #1b2a2c; stroke: var(--cyan); stroke-width: .9; stroke-dasharray: 2 1.6; }
+.rb-svg .portal-link { fill: none; stroke: var(--cyan); stroke-width: 1.4; stroke-dasharray: 4 3; opacity: .75; }
+.rb-svg .moon { fill: #4a5552; stroke: var(--muted); stroke-width: .8; stroke-dasharray: 1.6 1.2; }
+.rb-svg :is(.ring-human, .ring-ai-1, .ring-ai-2, .ring-ai-3) { fill: none; stroke-width: 2.2; }
+.rb-svg .ring-human { stroke: var(--human); }
+.rb-svg .ring-ai-1 { stroke: var(--ai-1); }
+.rb-svg .ring-ai-2 { stroke: var(--ai-2); }
+.rb-svg .ring-ai-3 { stroke: var(--ai-3); }
+.rb-svg .badge circle { fill: var(--gold); stroke: var(--on-gold); stroke-width: 1; }
+.rb-svg .badge text { fill: var(--on-gold); font-size: 10px; font-weight: 800; text-anchor: middle; }
+.rb-svg .unit { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rb-svg .you { stroke: var(--human); color: var(--human); }
+.rb-svg .rival { stroke: var(--ai-1); color: var(--ai-1); }
+.rb-svg .path { fill: none; stroke: var(--gold); stroke-width: 2; stroke-linecap: round; }
+.rb-svg .arrowhead { fill: var(--gold); }
+.rb-galaxy { max-width: 520px; }
+
+/* Numbered callouts under a figure. */
+.rb-legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr)); gap: 6px 18px; margin: 14px 0 0; padding: 0; list-style: none; counter-reset: rb-legend; font-size: .92rem; line-height: 1.45; }
+.rb-legend li { position: relative; margin: 0; padding: 0 0 0 29px; }
+.rb-legend li::before { counter-increment: rb-legend; content: counter(rb-legend); position: absolute; top: 1px; left: 0; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--gold); color: var(--on-gold); font-size: .72rem; font-weight: 800; }
+.rb-badge { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--gold); color: var(--on-gold); font-size: .72rem; font-weight: 800; line-height: 1; vertical-align: middle; }
+
+/* Printed paper cards, drawn like the table's: a name between two corner boxes. */
+.rb-cards { display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 22px; }
+.rb-card { --accent: var(--gold); position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; grid-template-areas: "tl name tr" "art art art" "text text text"; align-items: start; align-content: start; gap: 6px 8px; width: 196px; min-height: 238px; padding: 0 12px 12px 0; border: 1px solid var(--paper-edge); border-top: 4px solid var(--accent); border-radius: 10px; background: var(--paper); color: var(--ink); box-shadow: 0 3px 0 #9b8d72, 0 8px 16px #0005, inset 0 0 0 4px #fff8; }
+.rb-card.small { width: 152px; min-height: 92px; padding-right: 8px; font-size: .78rem; }
+.rb-card.name-below { grid-template-areas: "tl . tr" "name name name" "art art art" "text text text"; }
+.rb-card.name-below .rb-name { padding: 0 0 0 12px; }
+.rb-card .rb-art { grid-area: art; height: 72px; margin: 4px 0 2px 12px; border-radius: 6px; background: radial-gradient(ellipse at 28% 30%, color-mix(in srgb, var(--accent) 40%, #fff8), transparent 65%), linear-gradient(160deg, color-mix(in srgb, var(--accent) 50%, #2b3a3a), #233033); box-shadow: inset 0 0 0 1px #0003; }
+.rb-card .rb-tl, .rb-card .rb-tr { display: inline-flex; align-items: center; gap: 2px; min-width: 34px; min-height: 32px; padding: 4px 7px; border: 1px solid color-mix(in srgb, var(--accent) 60%, var(--paper-edge)); background: color-mix(in srgb, var(--accent) 12%, var(--paper)); color: var(--ink); }
+.rb-card .rb-tl { grid-area: tl; border-width: 0 1px 1px 0; border-radius: 6px 0 9px 0; }
+.rb-card .rb-tr { grid-area: tr; justify-self: end; margin: 0 -12px 0 0; border-width: 0 0 1px 1px; border-radius: 0 6px 0 9px; }
+.rb-card.small .rb-tr { margin-right: -8px; }
+.rb-card .rb-tl:empty { visibility: hidden; }
+.rb-card .rb-tl svg, .rb-card .rb-tr > svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.rb-card .rb-num { font-weight: 800; font-size: .8rem; }
+.rb-card .rb-name { grid-area: name; padding-top: 6px; font-family: Georgia, 'Times New Roman', serif; font-size: 1.04rem; line-height: 1.15; }
+.rb-card.small .rb-name { font-size: .86rem; }
+.rb-card .rb-text { grid-area: text; padding-left: 12px; font-size: .8rem; line-height: 1.45; color: var(--ink-muted); }
+.rb-card .rb-text strong { color: var(--ink); }
+.rb-card .rb-pin { position: absolute; z-index: 1; }
+.rb-card .rb-pin.tl { top: -12px; left: -10px; }
+.rb-card .rb-pin.tr { top: -12px; right: -10px; }
+.rb-card .rb-pin.name { top: 40px; left: -12px; }
+.rb-card .rb-pin.text { bottom: 18px; left: -12px; }
+.rb-card.relic { background: radial-gradient(ellipse at 100% 0, #fff4d2, transparent 80%), #e8dfc6; }
+.rb-card.military { --accent: var(--red); }
+.rb-card.face-down { background: repeating-linear-gradient(45deg, #24384a 0 6px, #1e3040 6px 12px); border-color: #3c5266; border-top-color: #3c5266; box-shadow: 0 2px 0 #0b1218; }
+/* Resource chips, as on the cards: the resource's colour behind its dark glyph. */
+.rb-chip { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 28%; color: var(--ink); vertical-align: middle; }
+.rb-chip svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rb-chip.matter { background: var(--matter); }
+.rb-chip.energy { background: var(--energy); }
+.rb-chip.biomass { background: var(--biomass); }
+.rb-chip.data { background: var(--data); }
+.rb-chip.gold { background: var(--gold); }
+.rb-chips { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 3px; }
+.rb-chips b { font-size: .82em; }
+
+/* Steps that follow one another: the round, a Construct II turn, an excavation. */
+.rb-steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; counter-reset: rb-step; }
+.rb-steps > li { position: relative; margin: 0; padding: 12px 14px 12px 14px; border: 1px solid var(--line-bright); border-radius: 10px; background: var(--surface-2); font-size: .9rem; line-height: 1.45; }
+.rb-steps > li::before { counter-increment: rb-step; content: counter(rb-step); display: grid; place-items: center; width: 24px; height: 24px; margin-bottom: 6px; border-radius: 50%; background: var(--gold); color: var(--on-gold); font-size: .78rem; font-weight: 800; }
+.rb-steps > li > strong:first-child { display: block; margin-bottom: 3px; color: var(--text); font-size: .98rem; }
+.rb-steps > li:not(:last-child)::after { content: '→'; position: absolute; top: 14px; right: -12px; z-index: 1; color: var(--gold); font-weight: 800; }
+.rb-steps.loop > li:last-child::after { content: '↺'; position: absolute; top: 14px; right: 10px; color: var(--gold); font-weight: 800; }
+.rb-steps > li.rb-optional { border-style: dashed; }
+.rb-band { margin: 12px 0 0; padding: 9px 14px; border: 1px dashed var(--cyan); border-radius: 10px; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+.rb-band strong { color: var(--cyan); }
+
+/* Worked examples told as numbered frames. */
+.rb-frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr)); gap: 12px; margin: 0; padding: 0; list-style: none; counter-reset: rb-frame; }
+.rb-frames > li { margin: 0; padding: 12px 14px; border: 1px solid var(--line-bright); border-radius: 10px; background: var(--surface-2); font-size: .9rem; line-height: 1.5; }
+.rb-frames > li::before { counter-increment: rb-frame; content: counter(rb-frame); display: inline-grid; place-items: center; width: 22px; height: 22px; margin: 0 8px 6px 0; border-radius: 50%; background: var(--gold); color: var(--on-gold); font-size: .74rem; font-weight: 800; vertical-align: middle; }
+.rb-frames > li > strong:first-of-type { color: var(--text); }
+.rb-math { display: block; margin: 6px 0; padding: 5px 8px; border-radius: 6px; background: var(--bg); font-variant-numeric: tabular-nums; color: var(--text); }
+
+/* Card piles and how cards move between them. */
+.rb-flow { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 6px; }
+.rb-pile { display: grid; justify-items: center; gap: 5px; min-width: 74px; font-size: .78rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; color: var(--text); }
+.rb-pile i { display: block; width: 46px; height: 62px; border-radius: 6px; border: 1px solid var(--paper-edge); background: var(--paper); box-shadow: 2px 2px 0 #9b8d72, 4px 4px 0 #6f6552; }
+.rb-pile.down i { border-color: #3c5266; background: repeating-linear-gradient(45deg, #24384a 0 5px, #1e3040 5px 10px); box-shadow: 2px 2px 0 #0f1a22, 4px 4px 0 #0b1218; }
+.rb-pile.out i { background: transparent; border: 2px dashed var(--line-bright); box-shadow: none; }
+.rb-go { display: grid; justify-items: center; min-width: 64px; color: var(--gold); font-size: .74rem; font-weight: 650; line-height: 1.25; text-align: center; }
+.rb-go::after { content: '→'; font-size: 1.3rem; line-height: 1; }
+.rb-go.back::after { content: '↺'; }
+.rb-exits { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 10px; margin: 16px 0 0; padding: 0; list-style: none; }
+.rb-exits li { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); font-size: .86rem; line-height: 1.45; color: var(--muted); }
+.rb-exits li strong { display: block; color: var(--text); }
+
+/* Score tiles and a stacked Prestige bar. */
+.rb-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 160px), 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+.rb-tiles li { margin: 0; padding: 12px 14px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line-bright); font-size: .88rem; line-height: 1.45; color: var(--muted); }
+.rb-tiles li strong { display: block; color: var(--text); font-size: .98rem; }
+.rb-tiles .rb-stars { display: block; margin-bottom: 4px; font-family: Georgia, serif; font-size: 1.5rem; color: var(--gold); line-height: 1.1; }
+.rb-bar { display: flex; overflow: hidden; margin: 6px 0 4px; border-radius: 8px; border: 1px solid var(--line-bright); }
+.rb-bar span { display: grid; place-items: center; min-height: 36px; padding: 2px 4px; color: var(--ink); font-size: .78rem; font-weight: 750; text-align: center; line-height: 1.15; }
+.rb-bar span + span { border-left: 2px solid var(--bg); }
+.rb-scale { display: flex; justify-content: space-between; color: var(--muted); font-size: .74rem; font-variant-numeric: tabular-nums; }
+
+/* Mini market: the relic row, three price rows and the Upgrades. */
+.rb-market { display: grid; grid-template-columns: auto repeat(3, minmax(0, 1fr)); gap: 6px; align-items: stretch; font-size: .78rem; }
+.rb-market > b { align-self: center; padding-right: 6px; color: var(--muted); font-size: .7rem; letter-spacing: .1em; text-transform: uppercase; }
+.rb-market > span { padding: 6px 8px; border-radius: 6px; border: 1px solid var(--paper-edge); border-top: 3px solid var(--accent, var(--gold)); background: var(--paper); color: var(--ink); font-family: Georgia, serif; line-height: 1.2; }
+.rb-market > span small { display: block; margin-top: 2px; font-family: Inter, ui-sans-serif, system-ui, sans-serif; font-size: .7rem; color: var(--ink-muted); }
+.rb-market > span.relic { background: #e8dfc6; border-top-color: #b69b5d; }
+.rb-market > span.tray { background: var(--surface-2); color: var(--text); border-color: var(--line-bright); border-top-color: var(--gold); }
+.rb-market > span.tray small { color: var(--muted); }
+.rb-market > span.rb-gap { grid-column: 1 / -1; height: 4px; padding: 0; border: 0; background: none; }
+.rb-frames.wide { grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); }
+.rb-frames > li.rb-span { grid-column: 1 / -1; }
+
+/* Combat pieces with their remaining hull. */
+.rb-side { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 4px 0; }
+.rb-side > b { flex: 0 0 100%; min-width: 46px; font-size: .74rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.rb-piece { display: inline-flex; align-items: center; gap: 4px; font-size: .78rem; }
+.rb-piece svg { width: 18px; height: 18px; color: var(--human); }
+.rb-piece.rival svg { color: var(--ai-1); }
+.rb-piece.gone { opacity: .45; text-decoration: line-through; }
+.rb-hull { display: inline-flex; gap: 1px; }
+.rb-hull i { width: 5px; height: 10px; border-radius: 1px; background: var(--green); }
+.rb-hull i.hit { background: #4a2e33; outline: 1px solid var(--energy); outline-offset: -1px; }
+.rb-tactic { display: inline-block; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-bright); background: var(--bg); font-size: .76rem; font-weight: 650; color: var(--text); }
+.rb-order { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.rb-order li { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 6px 10px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line-bright); font-size: .86rem; font-weight: 650; }
+.rb-order li + li::before { content: '→'; margin: 0 6px 0 -10px; color: var(--gold); }
+.rb-order svg { width: 18px; height: 18px; fill: none; stroke: var(--cyan); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* Icons inline in text and tables. */
+.rb-ico { display: inline-block; width: 1.1em; height: 1.1em; vertical-align: -.18em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rb-star { color: var(--gold); font-family: Georgia, serif; }
+.rb-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 18px; align-items: start; }
+
+@media (max-width: 850px) {
+  .rb-fig { padding: 14px 12px; margin-inline: -4px; }
+  .rb-steps > li:not(:last-child)::after { content: '↓'; top: auto; right: auto; bottom: -15px; left: 22px; }
+  .rb-key { font-size: 1.04rem; }
+}
+@media (max-width: 520px) {
+  .rb-cards .rb-card:not(.small) { width: calc(50% - 11px); min-height: 0; }
+  .rb-cards .rb-card:only-child { width: 100%; max-width: 230px; }
+  .rb-card .rb-art { height: 46px; }
+  .rb-card .rb-text { font-size: .74rem; }
+  .book-nav .rb-nav-gap { grid-column: 1 / -1; }
+  .rb-market { font-size: .7rem; gap: 4px; }
+  .rb-market > span { padding: 4px 5px; }
+  .rb-go { min-width: 44px; }
+  .rb-pile { min-width: 60px; }
+}
+@media print {
+  .rb-fig { background: none; break-inside: avoid; }
+  .rb-ex, .rb-eg, .rb-ui { background: none; }
+  .rb-steps > li, .rb-frames > li, .rb-tiles li { background: none; }
+}
+
+/* ---- Diagram parts: the galaxy, the table overview, your mat and a world ---- */
+.rb-svg .board { fill: #1b2a2c; }
+.rb-svg .grid { fill: none; stroke: #2e4642; stroke-width: .7; }
+.rb-svg .world-ring { fill: none; stroke: var(--human); stroke-width: 2.5; }
+.rb-svg .claim { fill: var(--text); font-size: 15px; font-weight: 800; }
+.rb-world { max-width: 300px; }
+.rb-portal { max-width: 560px; }
+.rb-overview { max-width: 600px; }
+.rb-mat { max-width: 640px; }
+.rb-svg .ov-felt { fill: var(--felt); stroke: var(--felt-deep); stroke-width: 2; }
+.rb-svg .ov-panel { fill: var(--surface); stroke: var(--line-bright); stroke-width: 1; }
+.rb-svg .ov-lines { fill: none; stroke: var(--line-bright); stroke-width: 2.4; stroke-linecap: round; opacity: .7; }
+.rb-svg .ov-tab { fill: var(--surface-2); stroke: var(--line-bright); }
+.rb-svg .ov-map { fill: #1b2a2c; stroke: #2e4642; }
+.rb-svg .ov-card { fill: var(--paper); stroke: var(--paper-edge); }
+.rb-svg .ov-down { fill: #24384a; stroke: #3c5266; }
+.rb-svg .ov-slot { fill: none; stroke: var(--line-bright); stroke-dasharray: 2 2; }
+.rb-svg .ov-btn { fill: var(--button); stroke: var(--button-edge); }
+.rb-svg .ov-pass { fill: var(--danger); stroke: var(--danger-edge); }
+.rb-svg .ov-dots { fill: none; stroke: #0a1514; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 0 7; }
+.rb-svg .mat-icon { fill: var(--bg); stroke-width: 1.6; }
+.rb-svg .mat-glyph { fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.rb-svg :is(.mat-icon, .mat-glyph).matter { stroke: var(--matter); }
+.rb-svg :is(.mat-icon, .mat-glyph).energy { stroke: var(--energy); }
+.rb-svg :is(.mat-icon, .mat-glyph).biomass { stroke: var(--biomass); }
+.rb-svg :is(.mat-icon, .mat-glyph).data { stroke: var(--data); }
+.rb-svg .sock, .rb-svg .hole { fill: #0a1514; }
+.rb-svg .hole.closed { fill: none; stroke: #3d5a51; stroke-width: 1; }
+.rb-svg .rim { fill: none; stroke: #b9ab8e; stroke-width: 1; }
+.rb-svg .cube.matter, .rb-svg .now.matter { color: var(--matter); }
+.rb-svg .cube.energy, .rb-svg .now.energy { color: var(--energy); }
+.rb-svg .cube.biomass, .rb-svg .now.biomass { color: var(--biomass); }
+.rb-svg .cube.data, .rb-svg .now.data { color: var(--data); }
+.rb-svg .cube .front, .rb-svg .now { fill: currentColor; }
+.rb-svg .cube .top { fill: color-mix(in srgb, currentColor 55%, #fff); }
+.rb-svg .cube .side { fill: color-mix(in srgb, currentColor 65%, #000); }
+.rb-svg .cap { fill: #f3e2a6; stroke: var(--gold); }
+.rb-svg .cap-ring { fill: none; stroke: var(--gold); stroke-width: 2.4; }
+.rb-mat-key { display: flex; flex-wrap: wrap; gap: 4px 16px; margin: 0 0 10px; font-size: .72rem; font-weight: 750; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.rb-mat-key i { display: inline-block; width: 10px; height: 10px; margin-right: 5px; vertical-align: -1px; border-radius: 50%; background: var(--muted); }
+.rb-mat-key i.cube { border-radius: 2px; background: var(--matter); }
+.rb-mat-key i.cap { background: #f3e2a6; }
+.rb-readout { margin: 12px 0 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 250px), 1fr)); gap: 6px 18px; font-size: .9rem; line-height: 1.45; }
+.rb-readout li { margin: 0; padding: 0; }
+
+/* ---- Prices: one resource symbol per unit, four or more as one symbol and its number,
+   in the markup the game's map key used before its clusters (styles.css .cost-clusters, .corner-count). ---- */
+.rulebook .legend-cost-symbols { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; vertical-align: -.22em; }
+.rulebook .legend-cost-group { display: inline-flex; align-items: center; gap: 1px; white-space: nowrap; }
+.rulebook .legend-cost-symbols .resource-symbol { width: 1.15em; height: 1.15em; }
+.rulebook .rb-cost .legend-cost-symbols .resource-symbol { width: 20px; height: 20px; }
+.rulebook .rb-any { gap: 2px 4px; }
+.rb-or { margin: 0 1px; font-size: .72em; font-weight: 650; color: var(--muted); }
+.rb-market .legend-cost-symbols { font-size: .9em; }
+.rb-reskey { padding-top: 12px; border-top: 1px solid var(--line); font-size: .94rem; color: var(--muted); }
+.rb-reskey strong:first-child { color: var(--text); }

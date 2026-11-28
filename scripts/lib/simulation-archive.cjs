@@ -1,12 +1,28 @@
-// Lossless, append-only archives for offline Galactic Reach simulations.
+// Lossless, append-only archives for offline Heirs Ad Astra simulations.
 const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'),zlib=require('node:zlib');
-const ROOT=path.resolve(__dirname,'../..'),FORMAT='galactic-reach-simulation/1';
+const ROOT=path.resolve(__dirname,'../..'),FORMAT='galactic-reach-simulation/1',COMPACT_FORMAT='galactic-reach-simulation/2';
 const RECORDER_SOURCE=fs.readFileSync(__filename,'utf8');
 const active=new Set();let handlers=false;
 const plain=x=>x===undefined?null:JSON.parse(JSON.stringify(x));
 const hash=x=>crypto.createHash('sha256').update(typeof x==='string'||Buffer.isBuffer(x)?x:JSON.stringify(x)).digest('hex');
 function resultDirectory(base){base=path.resolve(base);fs.mkdirSync(base,{recursive:true});return fs.mkdtempSync(path.join(base,'run-'));}
 function atomic(file,value){const tmp=file+'.tmp';fs.writeFileSync(tmp,JSON.stringify(value,null,2)+'\n');fs.renameSync(tmp,file);}
+function freezeSource(file,content,pool,digest=hash(content)){
+ if(!pool){fs.writeFileSync(file,content);return digest;}
+ fs.mkdirSync(pool,{recursive:true});const blob=path.join(pool,digest+'.source');
+ if(!fs.existsSync(blob)){
+  const temporary=path.join(pool,'.source-'+crypto.randomUUID()+'.tmp');
+  try{fs.writeFileSync(temporary,content,{flag:'wx'});try{fs.linkSync(temporary,blob);}catch(error){if(error.code!=='EEXIST')throw error;}}
+  finally{if(fs.existsSync(temporary))fs.unlinkSync(temporary);}
+ }
+ if(!fs.lstatSync(blob).isFile()||hash(fs.readFileSync(blob))!==digest)throw Error('Frozen source pool hash mismatch: '+digest);
+ // A new hard link atomically replaces only this archive's path, never blob bytes.
+ const temporary=file+'.link-'+crypto.randomUUID();
+ try{fs.linkSync(blob,temporary);fs.renameSync(temporary,file);}
+ catch(error){if(error.code==='EXDEV')throw Error('Frozen source pool and archives must share a filesystem');throw error;}
+ finally{if(fs.existsSync(temporary))fs.unlinkSync(temporary);}
+ return digest;
+}
 function patch(before,after,at=[],out=[]){
  if(JSON.stringify(before)===JSON.stringify(after))return out;
  if(before&&after&&!Array.isArray(before)&&!Array.isArray(after)&&typeof before==='object'&&typeof after==='object'){
@@ -23,16 +39,20 @@ function applyPatch(state,changes){
  return state;
 }
 class SimulationArchive{
- constructor({directory=process.env.GR_SIMULATION_ARCHIVE_DIR||path.join(ROOT,'output/simulations'),metadata={},sources={}}={}){
-  fs.mkdirSync(directory,{recursive:true});this.directory=fs.mkdtempSync(path.join(path.resolve(directory),'game-'));this.file=path.join(this.directory,'trace.partial.jsonl');this.fd=fs.openSync(this.file,'wx');this.previous=null;this.randomCalls=0;this.index=0;this.depth=0;this.closed=false;
-  fs.mkdirSync(path.join(this.directory,'sources'));const sourceHashes={};
-  for(const [name,content] of Object.entries(sources)){if(!/^[a-zA-Z0-9_.-]+$/.test(name))throw Error('Unsafe archive source name');fs.writeFileSync(path.join(this.directory,'sources',name),content);sourceHashes[name]=hash(content);}
-  for(const [name,file] of [['recorder.cjs',__filename],['rulebook.html',path.join(ROOT,'prototypes/galactic-reach/rulebook.html')]])if(fs.existsSync(file)){const text=file===__filename?RECORDER_SOURCE:fs.readFileSync(file,'utf8');fs.writeFileSync(path.join(this.directory,'sources',name),text);sourceHashes[name]=hash(text);}
-  this.manifest={format:FORMAT,status:'running',createdAt:new Date().toISOString(),node:process.version,metadata:plain(metadata),sourceHashes,trace:'trace.partial.jsonl',retention:'No local automatic deletion'};
-  this.writeManifest();this.write({type:'header',format:FORMAT,metadata:plain(metadata)});active.add(this);
+ constructor({directory=process.env.GR_SIMULATION_ARCHIVE_DIR||path.join(ROOT,'output/simulations'),metadata={},sources={},rulebookSource=null,sourcePool=process.env.GR_SIMULATION_SOURCE_POOL_DIR||null,layout=process.env.GR_SIMULATION_ARCHIVE_LAYOUT||'tree'}={}){
+  if(!['tree','compact'].includes(layout))throw Error('Unknown simulation archive layout: '+layout);
+  this.compact=layout==='compact';
+  this.sourcePool=sourcePool?path.resolve(sourcePool):null;
+  fs.mkdirSync(directory,{recursive:true});this.directory=fs.mkdtempSync(path.join(path.resolve(directory),this.compact&&Number.isSafeInteger(metadata.id)&&metadata.id>=0?'game-'+String(metadata.id).padStart(6,'0')+'-':'game-'));this.file=path.join(this.directory,'trace.partial.jsonl');this.fd=fs.openSync(this.file,'wx');this.previous=null;this.randomCalls=0;this.index=0;this.depth=0;this.closed=false;
+  if(!this.compact)fs.mkdirSync(path.join(this.directory,'sources'));const sourceHashes={};
+  for(const [name,content] of Object.entries(sources)){if(!/^[a-zA-Z0-9_.-]+$/.test(name))throw Error('Unsafe archive source name');sourceHashes[name]=freezeSource(this.sourceFile(name),content,this.sourcePool);}
+  for(const [name,file] of [['recorder.cjs',__filename],['rulebook.html',path.join(ROOT,'prototypes/galactic-reach/rulebook.html')]])if(fs.existsSync(file)){const text=file===__filename?RECORDER_SOURCE:rulebookSource??fs.readFileSync(file,'utf8');sourceHashes[name]=freezeSource(this.sourceFile(name),text,this.sourcePool);}
+  this.manifest={format:this.compact?COMPACT_FORMAT:FORMAT,...(this.compact?{sourceLayout:'flat'}:{}),status:'running',createdAt:new Date().toISOString(),node:process.version,metadata:plain(metadata),sourceHashes,...(this.sourcePool?{sourceStorage:{kind:'immutable-hard-links',pool:this.sourcePool}}:{}),trace:'trace.partial.jsonl',retention:'No local automatic deletion'};
+  this.writeManifest();this.write({type:'header',format:this.manifest.format,metadata:plain(metadata)});active.add(this);
   if(!handlers){handlers=true;process.once('exit',code=>{for(const recorder of active)recorder.finish({reason:'process-exit',exitCode:code,incomplete:true});});process.once('uncaughtExceptionMonitor',error=>{for(const recorder of active)recorder.finish({reason:'uncaught-exception',incomplete:true,error:{message:error.message,stack:error.stack}});});}
  }
- addSources(sources){for(const [name,content] of Object.entries(sources)){if(!/^[a-zA-Z0-9_.-]+$/.test(name))throw Error('Unsafe archive source name');const digest=hash(content);if(this.manifest.sourceHashes[name]&&this.manifest.sourceHashes[name]!==digest)throw Error('Archive source collision');if(!this.manifest.sourceHashes[name]){fs.writeFileSync(path.join(this.directory,'sources',name),content);this.manifest.sourceHashes[name]=digest;}}this.writeManifest();}
+ sourceFile(name){return path.join(this.directory,this.compact?'source-'+name:path.join('sources',name));}
+ addSources(sources){for(const [name,content] of Object.entries(sources)){if(!/^[a-zA-Z0-9_.-]+$/.test(name))throw Error('Unsafe archive source name');const digest=hash(content);if(this.manifest.sourceHashes[name]&&this.manifest.sourceHashes[name]!==digest)throw Error('Archive source collision');if(!this.manifest.sourceHashes[name]){freezeSource(this.sourceFile(name),content,this.sourcePool,digest);this.manifest.sourceHashes[name]=digest;}}this.writeManifest();}
  writeManifest(){atomic(path.join(this.directory,'manifest.json'),this.manifest);}
  write(record,sync=false){fs.writeFileSync(this.fd,JSON.stringify(record)+'\n');if(sync)fs.fsyncSync(this.fd);}
  random(fn){return()=>{const value=fn();if(!this.closed)this.write({type:'random',sequence:this.randomCalls++,value});return value;};}
@@ -46,12 +66,12 @@ class SimulationArchive{
   catch(error){this.depth--;this.finish({reason:'error',incomplete:true,error:{name:error.name,message:error.message,stack:error.stack}});throw error;}
  }
  finish(outcome={}){
-  if(this.closed){if(outcome.summary){atomic(path.join(this.directory,'summary.json'),outcome.summary);this.manifest.summary='summary.json';this.writeManifest();}return;}
+  if(this.closed){if(outcome.summary){if(this.compact)this.manifest.summaryInline=plain(outcome.summary);else{atomic(path.join(this.directory,'summary.json'),outcome.summary);this.manifest.summary='summary.json';}this.writeManifest();}return;}
   this.checkpoint('end',{outcome:plain(outcome)});fs.closeSync(this.fd);this.fd=null;
   const compressed=path.join(this.directory,'trace.jsonl.gz');fs.writeFileSync(compressed+'.tmp',zlib.gzipSync(fs.readFileSync(this.file)));fs.renameSync(compressed+'.tmp',compressed);
   this.closed=true;active.delete(this);const state=this.previous;
   this.manifest={...this.manifest,status:outcome.error?'failed':outcome.incomplete?'incomplete':state?.winner!==null&&state?.winner!==undefined?'complete':'incomplete',finishedAt:new Date().toISOString(),records:this.index,trace:'trace.jsonl.gz',traceHash:hash(fs.readFileSync(compressed)),finalStateHash:hash(state),outcome:plain(outcome)};this.writeManifest();fs.unlinkSync(this.file);
-  if(outcome.summary)atomic(path.join(this.directory,'summary.json'),outcome.summary);
+  if(outcome.summary){if(this.compact){this.manifest.summaryInline=plain(outcome.summary);this.writeManifest();}else atomic(path.join(this.directory,'summary.json'),outcome.summary);}
  }
 }
 function instrumentSource(source,event='options.simulationArchiveEvent'){
@@ -67,14 +87,17 @@ function instrumentSource(source,event='options.simulationArchiveEvent'){
     const pay_=payCost;payCost=(p,...args)=>{const before={...p.resources},result=pay_(p,...args);emit({type:'resource-payment',round:state?.round||1,player:p.id,args,before,after:p.resources,result});return result;};
     const production_=produceAll;produceAll=()=>{const before=resources(),prior=productionBucket,bucket=state.players.map(()=>({gross:Object.fromEntries(RESOURCES.map(r=>[r,0])),lost:Object.fromEntries(RESOURCES.map(r=>[r,0]))}));productionBucket=bucket;let result;try{result=production_();}finally{productionBucket=prior;}emit({type:'production',round:state.round,before,gross:bucket.map(p=>p.gross),lost:bucket.map(p=>p.lost),after:resources()});return result;};
     const cleanup_=cleanupRound;cleanupRound=()=>{emit({type:'round-end',round:state.round,players:state.players.map((p,id)=>({id,resources:{...p.resources},limits:{...p.resourceLimits},production:aiIncome(id),prestige:calculatePrestige(id),hand:p.hand,inPlay:p.inPlay||[]}))});return cleanup_();};
-    ${['bankTrade','convertCard','upgradeStarter','decommission','discardResources','trimResourcesToCapacity','respondTrade','increaseStorage','applyCombatAction','performMoveOrder','performConstructOrder','useConstructDraw','applyColonizeOrder','probeRelic','excavate','resolveHumanSpecial','useBuyEffect','buyCard','passOperations','nextBuyPlayer','offerTrade','cancelTrade','consortiumGain','consortiumExchange','finishConsortium','finishConstruct','finishColonyBuild','constructAt','buildShip','colonizePlanet','gainCard','removeHandCard','resolveCombat','executeMove'].map(name=>`if(typeof ${name}==='function'){const original=${name};${name}=(...args)=>{${({probeRelic:3,excavate:4,constructAt:4,buildShip:4,colonizePlanet:3})[name]!==undefined?`if(args[${({probeRelic:3,excavate:4,constructAt:4,buildShip:4,colonizePlanet:3})[name]}]===true)return original(...args);`:''}const before=resources(),result=original(...args);emit({type:'action',name:'${name}',round:state?.round||1,args:args.map(x=>x&&typeof x==='object'&&'deck'in x?{player:x.id}:x),before,after:resources(),result});return result;};}`).join('\n')}
+    ${['bankTrade','convertCard','upgradeStarter','decommission','discardResources','trimResourcesToCapacity','respondTrade','increaseStorage','applyCombatAction','performMoveOrder','performConstructOrder','useConstructDraw','useOrderDraw','applyColonizeOrder','probeRelic','excavate','resolveHumanSpecial','useBuyEffect','buyCard','passOperations','nextBuyPlayer','offerTrade','cancelTrade','consortiumGain','consortiumExchange','finishConsortium','finishConstruct','finishColonyBuild','constructAt','buildShip','colonizePlanet','gainCard','removeHandCard','resolveCombat','executeMove'].map(name=>`if(typeof ${name}==='function'){const original=${name};${name}=(...args)=>{${({probeRelic:3,excavate:4,constructAt:4,buildShip:4,colonizePlanet:3})[name]!==undefined?`if(args[${({probeRelic:3,excavate:4,constructAt:4,buildShip:4,colonizePlanet:3})[name]}]===true)return original(...args);`:''}const before=resources(),result=original(...args);emit({type:'action',name:'${name}',round:state?.round||1,args:args.map(x=>x&&typeof x==='object'&&'deck'in x?{player:x.id}:x),before,after:resources(),result});return result;};}`).join('\n')}
   }
 `;
  return source.replace(anchor,hook+'\n'+anchor);
 }
 function* archiveRecords(directory){
- const manifest=JSON.parse(fs.readFileSync(path.join(directory,'manifest.json'),'utf8')),file=path.join(directory,manifest.trace);
- for(const [name,expected] of Object.entries(manifest.sourceHashes)){if(hash(fs.readFileSync(path.join(directory,'sources',name)))!==expected)throw Error('Archive source hash mismatch: '+name);}
+ const manifest=JSON.parse(fs.readFileSync(path.join(directory,'manifest.json'),'utf8'));
+ if(![FORMAT,COMPACT_FORMAT].includes(manifest.format))throw Error('Unsupported simulation archive format: '+manifest.format);
+ if(manifest.format===COMPACT_FORMAT&&manifest.sourceLayout!=='flat')throw Error('Invalid compact simulation source layout');
+ const file=path.join(directory,manifest.trace);
+ for(const [name,expected] of Object.entries(manifest.sourceHashes)){const source=path.join(directory,manifest.format===COMPACT_FORMAT?'source-'+name:path.join('sources',name));if(hash(fs.readFileSync(source))!==expected)throw Error('Archive source hash mismatch: '+name);}
  if(manifest.traceHash&&hash(fs.readFileSync(file))!==manifest.traceHash)throw Error('Archive trace hash mismatch');
  const text=manifest.trace.endsWith('.gz')?zlib.gunzipSync(fs.readFileSync(file)).toString():fs.readFileSync(file,'utf8');
  const lines=text.split('\n');let state=null,randomCalls=0,nextIndex=0;

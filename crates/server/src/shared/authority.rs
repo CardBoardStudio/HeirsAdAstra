@@ -29,6 +29,10 @@ pub trait HiddenInfoAuthority: Send + Sync {
     /// Everything `seat` may see: public table state plus its own hand and deck
     /// contents. Never another seat's hand, any deck order, or unlocated relics.
     fn private_view(&self, engine: &GalacticReach, seat: usize) -> Result<Value, String>;
+    /// Public board information only, including after the game ends.
+    fn public_view(&self, engine: &GalacticReach) -> Result<Value, String> {
+        engine.public_state()
+    }
     /// After the game ends: opens every hidden shuffle so anyone holding the log
     /// can replay the whole game and check each commitment.
     fn reveal(&self, table: &str, events: &[Event]) -> Result<NewEvent, String>;
@@ -48,23 +52,27 @@ fn commitment(table: &str, index: u64, purpose: &str, order: &[usize], salt: &st
     )
 }
 
+fn deal(table: &str, index: u64, n: usize, purpose: &str, rng: &mut impl RngCore) -> Shuffle {
+    let mut order: Vec<usize> = (0..n).collect();
+    order.shuffle(rng);
+    let mut salt = [0u8; 32];
+    rng.fill_bytes(&mut salt);
+    let salt = hex::encode(salt);
+    let event = NewEvent {
+        kind: "shuffle",
+        seat: None,
+        public: json!({"index":index,"purpose":purpose,"n":n,"commitment":commitment(table,index,purpose,&order,&salt)}),
+        private: Some(json!({"order":order,"salt":salt})),
+    };
+    Shuffle { order, event }
+}
+
 impl HiddenInfoAuthority for TrustedAuthority {
     fn name(&self) -> &'static str {
         "trusted-server/1"
     }
     fn shuffle(&self, table: &str, index: u64, n: usize, purpose: &str) -> Result<Shuffle, String> {
-        let mut order: Vec<usize> = (0..n).collect();
-        order.shuffle(&mut OsRng);
-        let mut salt = [0u8; 32];
-        OsRng.fill_bytes(&mut salt);
-        let salt = hex::encode(salt);
-        let event = NewEvent {
-            kind: "shuffle",
-            seat: None,
-            public: json!({"index":index,"purpose":purpose,"n":n,"commitment":commitment(table,index,purpose,&order,&salt)}),
-            private: Some(json!({"order":order,"salt":salt})),
-        };
-        Ok(Shuffle { order, event })
+        Ok(deal(table, index, n, purpose, &mut OsRng))
     }
     fn replay_shuffle(&self, event: &Event, n: usize, purpose: &str) -> Result<Vec<usize>, String> {
         if event.kind != "shuffle"
@@ -108,5 +116,39 @@ impl HiddenInfoAuthority for TrustedAuthority {
             public: json!({"authority":self.name(),"shuffles":openings}),
             private: None,
         })
+    }
+}
+
+/// Tests only: `TrustedAuthority` with every shuffle drawn from a fixed seed, so
+/// a shared game deals the same cards on every run. The table id is left out of
+/// the seed because tables get random ids.
+#[cfg(test)]
+pub struct SeededAuthority(pub [u8; 32]);
+
+#[cfg(test)]
+impl HiddenInfoAuthority for SeededAuthority {
+    fn name(&self) -> &'static str {
+        TrustedAuthority.name()
+    }
+    fn shuffle(&self, table: &str, index: u64, n: usize, purpose: &str) -> Result<Shuffle, String> {
+        use rand::SeedableRng;
+        let seed: [u8; 32] =
+            Sha256::digest(format!("{}\n{index}\n{purpose}", hex::encode(self.0))).into();
+        Ok(deal(
+            table,
+            index,
+            n,
+            purpose,
+            &mut rand::rngs::StdRng::from_seed(seed),
+        ))
+    }
+    fn replay_shuffle(&self, event: &Event, n: usize, purpose: &str) -> Result<Vec<usize>, String> {
+        TrustedAuthority.replay_shuffle(event, n, purpose)
+    }
+    fn private_view(&self, engine: &GalacticReach, seat: usize) -> Result<Value, String> {
+        TrustedAuthority.private_view(engine, seat)
+    }
+    fn reveal(&self, table: &str, events: &[Event]) -> Result<NewEvent, String> {
+        TrustedAuthority.reveal(table, events)
     }
 }

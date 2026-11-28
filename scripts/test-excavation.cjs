@@ -20,17 +20,17 @@ function fixture() {
   g.coord=Object.keys(g.s.planets).find(k=>g.s.planets[k].special==='relic');
   g.s.clusters[g.s.planets[g.coord].cluster].scannedBy=[0]; // Excavation fixture begins after Probe.
   g.p.hand=[{key:'excavate',id:'dig'}];
-  g.p.resources={matter:1,energy:1,biomass:0,data:2};
+  g.p.resources={matter:0,energy:1,biomass:0,data:3};
   g.s.fleets[g.coord]={0:{explorer:1}};
   return g;
 }
 {
   const {e,a,s}=game();
-  assert.equal(a.rulesVersion,'galactic-reach/38.43');
+  assert.equal(a.rulesVersion,'galactic-reach/39.44');
   assert.equal(s.clusters.filter(c=>c.kind==='world').length,13);
   assert.equal(s.clusters.filter(c=>c.kind==='moon').length,4);
   assert.equal(Object.values(s.planets).filter(p=>p.special==='relic').length,13);
-  assert.equal(s.relicRow.length,3); assert.equal(s.relicDeck.length,12);
+  assert.equal(s.relicRow.length,3); assert.equal(s.relicDeck.length,13);
   assert(!e.STRUCTURES.research && e.BASIC_CARDS.probe.order==='probe');
   assert(s.players.every(p=>p.relicsExcavated===0));
   for (const seat of [0,1,2,3]) {
@@ -56,7 +56,7 @@ for (const index of [0,1,2]) {
   assert(!g.s.planets[g.coord].upgrade && !g.s.planets[g.coord].hasColony,'No station or ownership created');
   assert.equal(g.p.relicsExcavated,1);assert.equal(g.e.calculatePrestige(0),5);
   assert.equal(g.s.activePlayer,1,'Excavation uses exactly one action');
-  assert.equal(g.s.relicRow[index].id,top.id);assert.equal(g.s.relicDeck.length,11);
+  assert.equal(g.s.relicRow[index].id,top.id);assert.equal(g.s.relicDeck.length,12);
   row.forEach((card,i)=>{if(i!==index)assert.equal(g.s.relicRow[i].id,card.id);});
   assert.throws(()=>g.a.applyAction(0,action),/Illegal action/,'Cannot repeat a consumed card');
 }
@@ -73,20 +73,20 @@ for (const bad of ['missingExplorer','missingCost','wrongSeat','buy','alreadyCla
   assert(!g.e.excavate(0,g.coord,'dig',g.s.relicRow[0]?.id),bad);
   assert.equal(JSON.stringify(g.s),before,`${bad} is atomic`);
 }
-// Recover all thirteen physical sites; the expanded reward deck still has ten cards left.
+// Recover all thirteen physical sites; three of the sixteen rewards remain face-up.
 {
   const g=game(), sites=Object.keys(g.s.planets).filter(k=>g.s.planets[k].special==='relic'), rewards=new Set();
   for(let n=0;n<sites.length;n++) {
     const coord=sites[n];g.s.clusters[g.s.planets[coord].cluster].scannedBy=[0];g.s.phase='operations';g.s.activePlayer=0;
-    g.p.hand=[{key:'excavate',id:`dig-${n}`}];g.p.resources={matter:1,energy:1,biomass:0,data:2};
+    g.p.hand=[{key:'excavate',id:`dig-${n}`}];g.p.resources={matter:0,energy:1,biomass:0,data:3};
     g.s.fleets[coord]={0:{explorer:1}};
     const choice=g.s.relicRow[Math.min(n%3,g.s.relicRow.length-1)];rewards.add(choice.key);
     const a=g.freshAdapter(), action=a.legalActions(0).find(a=>a.type==='excavate'&&a.coord===coord&&a.relic===choice.id);
     assert(action);a.applyAction(0,action);
-    assert.equal(g.s.relicRow.length,Math.min(3,14-n));
+    assert.equal(g.s.relicRow.length,Math.min(3,15-n));
     assert.equal(g.p.relicsExcavated,n+1);
   }
-  assert.equal(rewards.size,13);assert.equal(g.s.relicRow.length,2);assert.equal(g.s.relicDeck.length,0);
+  assert.equal(rewards.size,13);assert.equal(g.s.relicRow.length,3);assert.equal(g.s.relicDeck.length,0);
   assert.equal(Object.values(g.s.planets).filter(p=>p.special==='relic').length,0);
   assert.equal(g.e.calculatePrestige(0),29,'Relic Prestige persists after its reward leaves the hand');
 }

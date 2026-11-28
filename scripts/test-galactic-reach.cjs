@@ -4,6 +4,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const root = path.join(__dirname, '..');
+require('./test-life-resource-costs.cjs');
+require('./test-buy-combat.cjs');
+require('./test-destroyed-shipyards.cjs');
 function engine() {
   const context = vm.createContext({});
   vm.runInContext(fs.readFileSync(path.join(root,'prototypes/galactic-reach/adapter.js'),'utf8') + fs.readFileSync(path.join(root,'prototypes/galactic-reach/app.js'),'utf8'), context);
@@ -14,7 +17,7 @@ function engine() {
   return {port,adapter};
 }
 const {port,adapter}=engine();
-assert.equal(adapter.rulesVersion,'galactic-reach/38.43');
+assert.equal(adapter.rulesVersion,'galactic-reach/39.44');
 const before=JSON.stringify(port.state);
 adapter.legalActions(0);adapter.observe(0);
 assert.equal(JSON.stringify(port.state),before,'Observation and legality must not mutate state');
@@ -28,8 +31,11 @@ p.storageUpgrades=20;p.resourceLimits={matter:1000,energy:1000,biomass:1000,data
 assert(e.buildUpgrade(0,home.coords[1],'starbase'));
 assert(e.buildShip(0,home.coords[1],'fleet'));
 assert(!e.buildShip(0,home.center,'explorer'));assert(e.buildShip(0,home.coords[1],'explorer'));
-assert(e.increaseStorage(0,{matter:1,energy:1,biomass:1,data:1}));
-assert(e.increaseStorage(0,{matter:1,energy:1,biomass:1,data:1}));
+// Rules #storage-allocation: capacity is a Capacity Module bought during your own Buy turn.
+assert(!e.buyCapacity(0),'No capacity purchase outside Buy');
+{const phase=e.state.phase,active=e.state.activePlayer,limits=p.resourceLimits,resources=p.resources;p.resourceLimits={matter:10,energy:10,biomass:10,data:10};p.resources={matter:10,energy:10,biomass:10,data:10};e.state.phase='buy';e.state.activePlayer=0;
+assert(e.buyCapacity(0));assert(e.buyCapacity(0));assert.equal(p.discard.filter(c=>c.key==='capacityModule').length,2);assert.equal(e.state.capacitySupply,e.CAPACITY_SUPPLY-2);
+e.state.phase=phase;e.state.activePlayer=active;p.resourceLimits=limits;p.resources=resources;}
 const center=e.state.clusters[4].center;
 e.state.fleets[center]={0:{settler:1,explorer:0,fleet:0}};
 assert(e.colonizePlanet(0,center));assert(!e.colonizePlanet(0,center));
@@ -48,7 +54,7 @@ assert.equal(t.adapter.activeSeat(),1,'Responding does not consume an order');
 assert.equal(t.port.state.players[1].resources.matter,5);
 assert.throws(()=>t.adapter.applyAction(1,accept),/Illegal action/,'An accepted offer cannot settle twice');
 assert(!t.adapter.legalActions(1).some(a=>a.type==='trade_accept'));
-console.log('Galactic Reach: mechanics, non-mutating legality, forged commands, shared open trades, and single settlement passed.');
+console.log('Heirs Ad Astra: mechanics, non-mutating legality, forged commands, shared open trades, and single settlement passed.');
 // Upgraded orders must be legal in exactly the same way for browser and arena.
 function orderFixture(key,upgraded=true) {
   const f=engine();f.port.state.phase='operations';f.port.state.activePlayer=0;
@@ -71,7 +77,7 @@ for(const upgraded of [false,true]){
 }
 for(const finish of ['build','skip']){
   const f=orderFixture('colonize'),s=f.port.state,p=s.players[0],world=s.clusters[4];
-  world.revealedBy=[0,1,2,3];s.fleets[world.center]={0:{settler:1}};p.resources={matter:1,energy:1,biomass:2,data:1}; // 32.37: a Harvester costs Matter, Energy, Data.
+  world.revealedBy=[0,1,2,3];s.fleets[world.center]={0:{settler:1}};p.resources={matter:1,energy:1,biomass:3,data:1}; // 32.37: a Harvester costs Matter, Energy, Data.
   const order=f.adapter.legalActions(0).find(a=>a.type==='colonize'&&a.coord===world.center);assert(order);f.adapter.applyAction(0,order);
   assert.equal(s.activePlayer,0);assert.equal(s.pendingColonyBuild.colony,world.center);assert.equal(p.hand.length,0);assert.equal(p.resources.biomass,0);
   const options=f.adapter.legalActions(0);assert(!options.some(a=>['pass','trade_offer','build'].includes(a.type)));
@@ -105,3 +111,28 @@ require('./test-corner-portals.cjs');
 require('./test-change-queue.cjs');
 
 require('./test-construct-iii-draw.cjs');
+require('./test-seed-ark-choice.cjs');
+require('./test-world-engine-draw.cjs');
+require('./test-public-card-metadata.cjs');
+
+require('./test-inward-worlds.cjs');
+
+require('./test-exchange-market.cjs');
+
+require('./test-random-solo-homes.cjs');
+
+require("./test-bot-family-plan.cjs");
+require("./test-bot-family-study.cjs");
+require('./test-browser-bot-policy.cjs');
+require("./test-maxbot.cjs");
+
+require("./test-maxbot-study.cjs");
+require("./test-captured-harvesters.cjs");
+
+require('./test-relic-deck.cjs');
+// Learn to play's saved place and Back review (tutorial.js) runs here too, so CI covers it without a workflow edit.
+require('./test-tutorial-progress.cjs');
+// Learn to play's notes (tutorial.js) run here too, so CI covers them without a workflow edit.
+require('./test-tutorial-wording.cjs');
+// Learn to play's steps 5 and 17 (tutorial.js) run here too, so CI covers them without a workflow edit.
+require('./test-tutorial-steps.cjs');

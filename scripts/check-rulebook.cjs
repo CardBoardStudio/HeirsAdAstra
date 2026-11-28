@@ -15,6 +15,7 @@ assert(!/<script\b/i.test(html), 'The rulebook is readable without running game 
 for (const match of html.matchAll(/href="([^"#]+)"/g)) assert(fs.existsSync(path.join(targetDir, match[1])), `Missing relative link: ${match[1]}`);
 const game = fs.readFileSync(path.join(targetDir, 'index.html'), 'utf8');
 assert(game.includes('href="rulebook.html"'), 'The game must link to its own rulebook');
+for (const [file, page] of [['rulebook.html', html], ['index.html', game]]) assert(page.includes('<title>Heirs Ad Astra · '), `${file} must carry the game name Heirs Ad Astra`);
 const changes = game.match(/<details[^>]*id="playtest-changes"[^>]*>([\s\S]*?)<\/details>/)?.[1];
 assert(changes && changes.includes('<summary>') && changes.includes(`${format}.${revision}`), 'Preview must show a change summary for the current rules version');
 for (const match of changes.matchAll(/href="rulebook\.html#([^"#]+)"/g)) assert(ids.includes(match[1]), `Broken preview rule link: ${match[1]}`);

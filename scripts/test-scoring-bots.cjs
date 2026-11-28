@@ -5,28 +5,48 @@ function game(prefix='prototypes/galactic-reach/',seed=53){
  const c=vm.createContext({});let e,calls=0;
  const source=prefix==='prototypes/galactic-reach/'?read(prefix+'app.js').replace('      clone, deckContents,','      runAiOperation,runAiBuy,chooseAiMove,chooseAiBuild,aiUseResources,aiFundingPlan,aiManageStorage,aiBuyValue,aiPath,clone,deckContents,'):read(prefix+'app.js');
  vm.runInContext(read(prefix+'adapter.js')+source,c);const original=c.createGalacticAdapter;c.createGalacticAdapter=x=>{e=x;return original(x);};
- const a=c.createGalacticReach({headless:true,random:()=>{calls++;return ((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}});
+ // Compare the original Military profile with its archived setup, independently of new defaults.
+ const a=c.createGalacticReach({headless:true,militaryFocused:false,random:()=>{calls++;return ((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}});
  return {e,a,s:e.state,calls:()=>calls};
 }
 function bot(g){g.s.activePlayer=1;g.s.phase='operations';g.s.turnStage='ai';g.s.players[1].strategy='military';return g.s.players[1];}
 function funds(p){p.storageUpgrades=100;p.resourceLimits={matter:1000,energy:1000,biomass:1000,data:1000};p.resources={matter:30,energy:30,biomass:30,data:30};}
 const record={fixtures:0,matchedSetups:0};
+// Absolute positions deliberately change in the inward-corner experiment. Keep
+// comparing the actual dealt terrain/resources and sector order within clusters.
+function relativeTerrain(s){
+ const origins=new Map(s.clusters.flatMap((c,i)=>typeof c.center==='string'?[[c.id??i,c.center.split(',').map(Number)]]:[]));
+ const relative=(key,origin)=>key.split(',').map((n,i)=>Number(n)-origin[i]);
+ s.planets=Object.fromEntries(Object.entries(s.planets).map(([key,p])=>{
+  const origin=origins.get(p.cluster);if(!origin)return[key,p];
+  const at=relative(key,origin),next={...p};
+  if('q' in next)next.q=at[0];if('r' in next)next.r=at[1];
+  return[`${p.cluster}:${at.join(',')}`,next];
+ }));
+ for(const [i,c] of s.clusters.entries()){const origin=origins.get(c.id??i);if(!origin)continue;c.center='0,0';c.coords=c.coords.map(key=>relative(key,origin).join(','));}
+ return s;
+}
 for(let n=0;n<32;n++){
  const current=game(undefined,20261111+n*7919),old=game('crates/galactic-reach/rules/v20-',20261111+n*7919);
- assert.equal(current.a.rulesVersion,'galactic-reach/38.43');assert.equal(old.a.rulesVersion,'galactic-reach/20.25');
+ assert.equal(current.a.rulesVersion,'galactic-reach/39.44');assert.equal(old.a.rulesVersion,'galactic-reach/20.25');
+ const now=current.a.observe(0);assert(now.goalDirectedTrading);for(const p of now.players){assert.deepEqual(plain(p.bankExchangeResources),[]);assert(Object.values(p.bankTradeRates).every(rate=>rate===4),'Before any exchange order all give resources retain4:1');}
+ // Current planning capabilities and public bank rates are new metadata; archived terrain/decks still match.
  // 31.36 replaces the market supply (72 cards, new serials) and adds a Prestige target; the map,
- // factions, decks and opening position still match 20.25. Supply-dependent fields are excluded.
+ // factions, decks and dealt sector contents still match 20.25. Supply-dependent fields are excluded.
+ // The inward corner worlds and re-enumerated moon positions are checked by the
+ // geometry suites; compare terrain relative to each cluster's center here.
  // 33.38 drops the ships-or-Explorers prompt (moveChoiceSource) for the unit picker.
  // Unlimited Buy removes the obsolete purchase cap; the dedicated Buy suite tests its new semantics.
  // Cleanup & draw deals the same opening hand at setup; only the draw's log line differs.
  // The tiered market splits the supply into three decks (marketDecks), excluded with the rest of the supply.
- const supply=['advancedDeck','marketDecks','market','marketDiscard','relicDeck','relicRow','victoryTarget'],newPlayer=['military','cardPrestige','buyLimit','buyDiscountEach','buyHubDiscounts','buyDiscountData','marketManipulated','resources'];
- const normalize=g=>{const s=plain(g.s);supply.forEach(k=>delete s[k]);s.players.forEach(p=>{delete p.storagePurchases;delete p.inPlay;delete p.resourceLimits;delete p.buyStartInPlayIds;delete p.buyStartHandIds;newPlayer.forEach(k=>delete p[k]);});delete s.portalLinks;delete s.pendingConstruct;delete s.moveChoiceSource;Object.values(s.planets).forEach(p=>{delete p.occupiedBy;if(p.cluster===12)p.special=null;});s.log=s.log.filter(line=>!/drew (five|its opening five) cards/.test(line));return {...s,version:0,rulesRevision:0,visibilityRevision:0};};assert.deepEqual(normalize(current),normalize(old));
- const observation=g=>{const v=plain(g.a.observe(0));['market','relicRow','relicDeckCount','victoryTarget'].forEach(k=>delete v[k]);['portalLinks','portalMovementCost','harvesterYield','marketCosts','combinedProbe','cardStats','marketPrestige','tacticStats','combatVictoryPrestige','captureNeedsFleet','constructDrawOnly'].forEach(k=>delete v[k]);v.players.forEach(p=>{delete p.cardPrestige;delete p.military;delete p.resources;p.deckContents?.forEach(c=>delete c.level);});delete v.pendingConstruct;Object.values(v.planets).forEach(p=>delete p.occupiedBy);v.clusters.forEach(c=>delete c.located);v.players.forEach(p=>{delete p.storagePurchases;delete p.storageUpgradeCost;delete p.inPlay;delete p.resourceLimits;p.capacity=0;p.prestige=0;});return v;};assert.deepEqual(observation(current),observation(old));const stable=g=>plain(g.a.legalActions(0)).filter(x=>!['trade_offer','bank_trade','discard_resources','resource','increase_storage'].includes(x.type));assert.deepEqual(stable(current),stable(old),'Orders match; resource-dependent actions differ with the 32.37 opening (issue #41)');record.matchedSetups++;
+ // Public card-Prestige attribution is new metadata; it does not change the archived setup.
+ const supply=['advancedDeck','marketDecks','market','marketDiscard','relicDeck','relicRow','victoryTarget','capacitySupply'],newPlayer=['storage','military','cardPrestige','cardPrestigeSources','buyLimit','buyDiscountEach','buyHubDiscounts','bankExchangeResources','buyDiscountData','marketManipulated','resources'];
+ const normalize=g=>{const s=plain(g.s);supply.forEach(k=>delete s[k]);s.players.forEach(p=>{delete p.storagePurchases;delete p.inPlay;delete p.resourceLimits;delete p.buyStartInPlayIds;delete p.buyStartHandIds;newPlayer.forEach(k=>delete p[k]);});delete s.portalLinks;delete s.pendingConstruct;delete s.moveChoiceSource;Object.values(s.planets).forEach(p=>{delete p.occupiedBy;if(p.cluster===12)p.special=null;});s.log=s.log.filter(line=>!/drew (five|its opening five) cards/.test(line));return {...s,version:0,rulesRevision:0,visibilityRevision:0};};assert.deepEqual(relativeTerrain(normalize(current)),relativeTerrain(normalize(old)));
+ const observation=g=>{const v=plain(g.a.observe(0));['market','relicRow','relicDeckCount','victoryTarget','capacitySupply'].forEach(k=>delete v[k]);['portalLinks','portalMovementCost','harvesterYield','marketCosts','combinedProbe','cardStats','marketPrestige','tacticStats','combatVictoryPrestige','captureNeedsFleet','constructDrawOnly','investmentPlanning','cardPurchasePlanning','goalDirectedTrading','tradeGoals','shipCosts','harvesterCost','marketPaymentCosts','simulationCatalogMarket','catalogCounts'].forEach(k=>delete v[k]);v.players.forEach(p=>{delete p.bankExchangeResources;delete p.bankTradeRates;delete p.cardPrestige;delete p.cardPrestigeSources;delete p.military;delete p.resources;p.deckContents?.forEach(c=>delete c.level);});delete v.pendingConstruct;Object.values(v.planets).forEach(p=>delete p.occupiedBy);v.clusters.forEach(c=>delete c.located);v.players.forEach(p=>{delete p.storage;delete p.storagePurchases;delete p.storageUpgradeCost;delete p.inPlay;delete p.resourceLimits;p.capacity=0;p.prestige=0;});return v;};assert.deepEqual(relativeTerrain(observation(current)),relativeTerrain(observation(old)));const stable=g=>plain(g.a.legalActions(0)).filter(x=>!['trade_offer','bank_trade','discard_resources','resource','increase_storage'].includes(x.type));assert.deepEqual(stable(current),stable(old),'Orders match; resource-dependent actions differ with the 32.37 opening (issue #41)');record.matchedSetups++;
 }
 {
  const g=game(),p=bot(g),center=g.s.clusters[4].center;funds(p);p.hand=[{id:'col',key:'colonize'},{id:'build',key:'construct'}];g.s.fleets={[center]:{1:{settler:1,explorer:0,fleet:0}}};
- g.e.runAiOperation();assert.equal(g.s.planets[center].owner,1);assert(g.s.planets[center].hasColony);assert(p.hand.some(c=>c.id==='build'));assert.equal(p.resources.biomass,28);record.fixtures++;
+ g.e.runAiOperation();assert.equal(g.s.planets[center].owner,1);assert(g.s.planets[center].hasColony);assert(p.hand.some(c=>c.id==='build'));assert.equal(p.resources.biomass,27);record.fixtures++;
 }
 {
  const g=game(),p=bot(g),world=g.s.clusters[4],site=g.e.relicCoordInCluster(world);world.revealedBy=[0,1,2,3];world.scannedBy=[1];funds(p);p.hand=[{id:'dig',key:'excavate'},{id:'build',key:'construct'}];g.s.fleets={[site]:{1:{explorer:1,settler:0,fleet:0}}};
@@ -68,8 +88,11 @@ for(let n=0;n<32;n++){
 }
 {
  const g=game(),p=bot(g),yard=g.s.clusters[1].coords[1];funds(p);assert(g.e.constructAt(1,yard,'starbase'));p.storageUpgrades=4;p.resources={matter:8,energy:7,biomass:8,data:5};
- const before=JSON.stringify(p.resources);for(let n=0;n<10;n++)g.e.aiManageStorage(1);assert.equal(p.storageUpgrades,4);assert.equal(JSON.stringify(p.resources),before);record.fixtures++;
- p.resources={matter:4,energy:4,biomass:4,data:3};const incomeSite=g.s.clusters[1].coords[2];Object.assign(g.s.planets[incomeSite],{owner:1,type:'matter',upgrade:'harvester',occupiedBy:null});p.storageUpgrades=1;p.resourceLimits={matter:4,energy:4,biomass:4,data:4};g.e.aiManageStorage(1);assert.equal(p.storageUpgrades,2);record.fixtures++;
+ // Rules #rival-planning: storage is a Capacity Module bought on the rival's own Buy turn.
+ g.s.phase='buy';g.s.activePlayer=1;
+ const before=JSON.stringify(p.resources);for(let n=0;n<10;n++)g.e.aiManageStorage(1);assert.equal(p.storagePurchases||0,0);assert.equal(JSON.stringify(p.resources),before);record.fixtures++;
+ p.resources={matter:4,energy:4,biomass:4,data:3};const incomeSite=g.s.clusters[1].coords[2];Object.assign(g.s.planets[incomeSite],{owner:1,type:'matter',upgrade:'harvester',occupiedBy:null});p.storageUpgrades=1;p.resourceLimits={matter:4,energy:4,biomass:4,data:4};g.e.aiManageStorage(1);assert.equal(p.storagePurchases,1);assert.equal(p.discard.filter(c=>c.key==='capacityModule').length,1);
+ g.e.aiManageStorage(1);assert.equal(p.storagePurchases,1,'At most one unplayed module');record.fixtures++;
 }
 {
  const g=game(),p=bot(g),yard=g.s.clusters[1].coords[1];funds(p);assert(g.e.constructAt(1,yard,'starbase'));

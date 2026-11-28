@@ -79,6 +79,9 @@ try {
   assert.match(app(), new RegExp(`SAVE_FORMAT_VERSION = ${to[0]};[\\s\\S]*RULES_REVISION = ${to[1]};`), 'one bump for the batch');
   const archived = path.join(repo, `crates/galactic-reach/rules/v${from[0]}-app.js`);
   assert.equal(fs.readFileSync(archived, 'utf8'), git('show', 'stable:prototypes/galactic-reach/app.js'), 'the released engine, byte for byte');
+  const archivedStyles = fs.readFileSync(path.join(repo, `crates/galactic-reach/rules/v${from[0]}-styles.css`), 'utf8');
+  assert.doesNotMatch(archivedStyles, /@import/, 'the archived styles.css needs no second file');
+  assert(archivedStyles.includes(git('show', 'stable:prototypes/galactic-reach/palette.css').trim()), 'the archived styles.css keeps the released palette inline');
   const lib = fs.readFileSync(path.join(repo, 'crates/galactic-reach/src/lib.rs'), 'utf8');
   assert.match(lib, new RegExp(`pub const RULES: &str = "galactic-reach/${to.join('.')}";`));
   const shared = /SHARED_RULES: \[&str; (\d+)\] = \[\n([\s\S]*?)\n\];/.exec(lib);

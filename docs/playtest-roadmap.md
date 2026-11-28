@@ -1,5 +1,52 @@
 # Playtest roadmap
 
+## Scepter and UI follow-up
+
+- Gravity Scepter highlights enemy source hexes first, then legal destinations, including ordinary space. Choose any nonempty subset of the enemy ships; leave the rest behind.
+- Fleets fight automatically. Ask about staying only when a legal, affordable Explorer escape is available.
+- Restore the earlier four resource shapes only in Max's UI, retaining Willem's constellation symbols.
+- Keep mixed ship-count badges inside the clipped hex, including two-digit Fleet counts.
+
+Implementation and validation are tracked in the accompanying change PR. The combat redesign below remains separate.
+
+## Combat discussion — not authorized for implementation
+
+The proposed hull/attack rebalance, unit-based tactic allowance and opening-only base attack remain discussion notes. They are not implemented or approved by this refinement request. Existing combat resolution remains in place; the requested relic targeting, interface and rival-targeting improvements do not adopt that redesign. See the canonical [combat rules](../prototypes/galactic-reach/rulebook.html#combat).
+
+## Max’s UI follow-up
+
+- Restore pre-Willem resource colors, hand/card arrangement, numeric price boxes, cost reference and button placement only in Max’s UI.
+- Shorten the resource box to 15 circles, compact its left key and use two continuous dashed dividers with extra room between groups of five.
+- Protect Max’s UI from automatic adoption of Willem’s changes in AGENTS.md and a dedicated stylesheet.
+- Publish the local package first, preserving its address and browser saves, then finish PR #176 and merge after checks.
+
+## Playtest refinements requested in this chat
+
+Implemented checklist (includes the earlier messages and the attached large-hand screenshot). Local mechanics and desktop, iPad and phone browser checks cover these changes. PR checks and deployment status are recorded in the implementation PR.
+
+- [x] Cap every resource capacity at 15.
+- [x] Add horizontal dashed counting guides after every five circles in Max’s UI.
+- [x] Verify and fix Oracle purchases with sufficient resources; distinguish an exhausted hidden supply from an unaffordable card.
+- [x] Keep Keepers’ Archive card pictures at their printed price; choose the two-resource reduction separately.
+- [x] Keep Pass & buy and conversion controls in place with a large hand.
+- [x] Target Starfarer’s Compass through highlighted located relic sites on the map.
+- [x] Center the units in the battle display.
+- [x] Remove the repeated purchase-cost sentence from Capacity Module card text.
+- [x] Trash Omniscient Chorus immediately after locating all relics and drawing one.
+- [x] Filter basic upgrades to the level II or III offer selected.
+- [x] Target Horizon Sail by selecting its receiving host, then the group to summon; use the same destination-first map flow for Gravity Scepter.
+- [x] Offer “Willem’s UI” in the menu while Max’s UI is active.
+- [x] Itemize card Prestige by the card that awarded it, including repeated awards.
+- [x] Add a remembered statistics-table visibility toggle.
+- [x] Add a remembered symbol-legend visibility toggle.
+- [x] Make every rival prioritize feasible attacks and captures against the public Prestige leader.
+- [x] Put playable battle relic choices directly at the bottom of combat.
+- [x] Allow Gravity Scepter to summon enemy ships onto your ships, starting combat.
+- [x] Spell out Folded Warehouse’s increase to every resource capacity.
+- [x] Give the nine new relics credited artwork matching the existing engraving/star-chart theme.
+
+Rules decisions: capacity gains stop at 15 per resource; a module allocates only the remaining total headroom when fewer than four points fit. Gravity Scepter may land on the caster’s ships on a building-free hex; the displaced owner attacks and the caster defends, and the caster’s Operations action finishes after combat. The new behavior goes to fresh games; existing tables keep their dealt engine. Oracle continues to buy a real remaining deck copy at normal cost; an exhausted design is unavailable even if affordable. Keepers keeps its existing player-chosen two-resource discount. See the canonical rules sections #resources, #storage-allocation, #alien-relics, #relic-targeting, #relic-purchases, #victory and #computer-rivals.
+
 ## Developer change queue
 
 - Add a desktop administrator side panel for requested changes stored as GitHub issues, with linked implementation PRs, current checks and exact-head previews.
@@ -33,7 +80,7 @@ Status: implemented; 28 JavaScript suites, 52 dialog checks and 1,800 replay dec
 - Keep each ship-type count visible within a hex, including mixed groups and buildings. Preserve zoom and Sector Scan; use a pannable map on narrow screens.
 - Rerun strategy and resource simulations on26.31 with single-use orders and the ten-Fleet cap, against matched archived25.30 controls.
 
-Status: implemented. Desktop, zoom and phone fixtures pass; 2,592 frozen 26.31 trials completed with resource/score/combat audits. See analysis/galactic-reach-26.31/report.html. See the PR deployment and checks for publication verification. No other pending changes were listed.
+Status: implemented. Desktop, zoom and phone fixtures pass; 2,592 frozen 26.31 trials completed with resource/score/combat audits. See the [26.31 study report](https://github.com/CardBoardStudio/drawing_board/blob/41df2dd53088a3854c5fae59c8e930daf03be1c3/analysis/galactic-reach-26.31/report.html) in retained repository history. See the PR deployment and checks for publication verification. No other pending changes were listed.
 
 ## Nearest Probe24.29 correction
 
@@ -90,9 +137,9 @@ This repository has three related pull requests with deliberately different jobs
 
 | Pull request | Lane | Purpose | State |
 | --- | --- | --- | --- |
-| [#3](https://github.com/CardBoardStudio/drawing_board/pull/3) | Stable prototype | Galactic Reach browser game, local rivals, board rules, and guest saves | Merged to `main` |
+| [#3](https://github.com/CardBoardStudio/drawing_board/pull/3) | Stable prototype | Heirs Ad Astra browser game, local rivals, board rules, and guest saves | Merged to `main` |
 | [#4](https://github.com/CardBoardStudio/drawing_board/pull/4) | Platform foundation | Shared library, accounts, invitations, saved tables, two game adapters, AI arena, and owner-scoped Elo | Merged into the stable lane |
-| [#5](https://github.com/CardBoardStudio/drawing_board/pull/5) | Breaking experiment | Galactic Reach 6.11 rules, pinned table versions, placement Elo, calibration, ranked games, and step-through replays | Adoption candidate |
+| [#5](https://github.com/CardBoardStudio/drawing_board/pull/5) | Breaking experiment | Heirs Ad Astra 6.11 rules, pinned table versions, placement Elo, calibration, ranked games, and step-through replays | Adoption candidate |
 
 PR #5 targets the stable lane after #4. It is an integration experiment because the new rules, table versioning, arena pool, and replay browser need the account and arena foundation together. The work inside #5 is organized into four review slices:
 
@@ -111,11 +158,11 @@ Base this on the tested PR #5 commit. Include only bugs, accessibility fixes, co
 
 ### PR 7 — promote the accepted ruleset
 
-If the playtest is accepted, rebase the experiment on the latest platform foundation, announce the save cutover, and promote 6.11 to the stable Galactic Reach lane. Verify the new stable deployment before asking players to start fresh tables. If the rules are rejected, close #5 and leave the stable 5.10 lane untouched.
+If the playtest is accepted, rebase the experiment on the latest platform foundation, announce the save cutover, and promote 6.11 to the stable Heirs Ad Astra lane. Verify the new stable deployment before asking players to start fresh tables. If the rules are rejected, close #5 and leave the stable 5.10 lane untouched.
 
 ### PR 8 — calibrated AI opponents in human tables
 
-Let a table owner choose one of their calibrated AI accounts as a Galactic Reach opponent. Reuse the existing `PlayerAgent` contract and owner checks, but keep human tables separate from rated arena matches. Define what happens when a policy version is unavailable before changing table saves.
+Let a table owner choose one of their calibrated AI accounts as an Heirs Ad Astra opponent. Reuse the existing `PlayerAgent` contract and owner checks, but keep human tables separate from rated arena matches. Define what happens when a policy version is unavailable before changing table saves.
 
 ### PR 9 — deployment and operations hardening
 

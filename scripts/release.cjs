@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Galactic Reach releases (docs/release.md).
+// Heirs Ad Astra releases (docs/release.md).
 //
 //   node scripts/release.cjs status [--released origin/stable]
 //   node scripts/release.cjs cut [--name "Harbor Ships playtest"] [--released origin/stable]
@@ -17,6 +17,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const { execFileSync } = require('child_process');
+const { inlinePalette } = require('./lib/palette.cjs');
 
 const ROOT = path.resolve(process.env.RELEASE_ROOT || path.join(__dirname, '..'));
 const CHANGES = 'changes';
@@ -25,7 +26,7 @@ const LIB = 'crates/galactic-reach/src/lib.rs';
 const NOTES = 'docs/releases.md';
 // The released browser and engine files an archive keeps (as for v32-*).
 const ARCHIVED = ['app.js', 'adapter.js', 'index.html', 'styles.css', 'rulebook.html', 'rulebook.css', 'replay.js',
-  'playtest-notes.js', 'playtest-notes.css', 'shared.js', 'cards.html'];
+  'playtest-notes.js', 'playtest-notes.css', 'shared.js', 'cards.html', 'icons.js'];
 // Files that assert or declare the current `galactic-reach/<save>.<rev>`.
 const DECLARES = [`${GAME}/adapter.js`, `${GAME}/replay.js`, 'crates/server/src/arena.rs', 'scripts/smoke.py'];
 // Player-facing labels that name the current version and release.
@@ -105,11 +106,15 @@ function replaceIn(rel, edits) {
 function bump(ref, from, to) {
   const prev = `galactic-reach/${from.save - 1}.${from.rev - 1}`;
   const v = n => `v${n}-`;
-  // 1. Archive the released files exactly as the stable branch has them.
+  // 1. Archive the released files exactly as the stable branch has them, except that
+  //    styles.css takes its palette.css inline (scripts/lib/palette.cjs).
   const hashes = {};
-  for (const asset of ARCHIVED) {
+  // A release made before a file existed (icons.js arrived after 38.43) archives without it.
+  const archived = ARCHIVED.filter(asset => { try { execFileSync('git', ['cat-file', '-e', `${ref}:${GAME}/${asset}`], { cwd: ROOT, stdio: 'ignore' }); return true; } catch (_) { return false; } });
+  for (const asset of archived) {
     const rel = `crates/galactic-reach/rules/v${from.save}-${asset}`;
-    write(rel, show(ref, `${GAME}/${asset}`));
+    const text = show(ref, `${GAME}/${asset}`);
+    write(rel, asset === 'styles.css' ? inlinePalette(text, () => show(ref, `${GAME}/palette.css`)) : text);
     hashes[rel] = sha256(fs.readFileSync(file(rel)));
   }
   write(`scripts/archive-hashes/v${from.save}.json`, `${JSON.stringify(hashes, null, 2)}\n`);
@@ -150,7 +155,7 @@ function bump(ref, from, to) {
     const marker = '# Testnet seat';
     build = build.replace(marker, `# Preserve the exact ${from.label} ${from.name.replace(/ playtest$/, '')} browser and shared-table engine.
 mkdir -p dist/galactic-reach/rules/${from.label}
-for asset in ${ARCHIVED.join(' ')}; do
+for asset in ${archived.join(' ')}; do
   cp "crates/galactic-reach/rules/v${from.save}-$asset" "dist/galactic-reach/rules/${from.label}/$asset"
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/${from.label}/table.js
@@ -188,7 +193,7 @@ ${marker}`);
     }
     write(rel, text);
   }
-  replaceIn('docs/rules/README.md', [[/\*\*Galactic Reach [\d.]+ \/ [^*]+\*\*/, `**Galactic Reach ${to.label} / ${to.name}**`]]);
+  replaceIn('docs/rules/README.md', [[/\*\*Heirs Ad Astra [\d.]+ \/ [^*]+\*\*/, `**Heirs Ad Astra ${to.label} / ${to.name}**`]]);
 }
 
 /** Adds this cycle's entries to docs/releases.md and the game's panel. */
@@ -199,7 +204,7 @@ function notes(from, to, entries, bumped) {
     ? `Rules-changing release: start a new game. Unfinished ${from.label} games and tables keep the archived ${from.label} ${from.name} engine.`
     : 'Save-compatible release: games in progress continue.';
   const line = e => `- **${e.title}**${e.compat === 'breaking' ? ' (rules change)' : ''}${e.pr ? ` (#${e.pr})` : ''}: ${e.body.replace(/\s*\n\s*/g, ' ')}`;
-  let doc = exists(NOTES) ? read(NOTES) : '# Galactic Reach releases\n\nNewest first. Each section is written by `node scripts/release.cjs cut` from the `changes/` entries merged since the previous release ([release process](release.md)).\n';
+  let doc = exists(NOTES) ? read(NOTES) : '# Heirs Ad Astra releases\n\nNewest first. Each section is written by `node scripts/release.cjs cut` from the `changes/` entries merged since the previous release ([release process](release.md)).\n';
   const first = !doc.includes(key);
   if (first) {
     const start = doc.indexOf('\n## ');

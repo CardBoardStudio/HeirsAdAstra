@@ -1,0 +1,4 @@
+# Paths removed from every commit by scripts/history-slim/rewrite.sh (git filter-repo
+# --paths-from-file --invert-paths). Archive and verify them before any rewrite (docs/history-slim.md).
+analysis/
+docs/screenshots/

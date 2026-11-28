@@ -1,0 +1,13 @@
+const fs=require('node:fs'),vm=require('node:vm'),path=require('node:path'),assert=require('node:assert/strict');
+const read=n=>fs.readFileSync(path.join(__dirname,'../prototypes/galactic-reach',n),'utf8'),plain=x=>JSON.parse(JSON.stringify(x));
+// Reproduce the unadopted mix without changing current retained prices.
+const baseline=read('app.js'),baselineLine=baseline.split('\n').find(x=>x.includes('monumentOfAccord: { code:'));assert(baselineLine.includes('cost: { matter: 6, biomass: 2, data: 2 }'));
+const app=baseline.replace(baselineLine,baselineLine.replace('matter: 6, biomass: 2','matter: 2, biomass: 6')),line=app.split('\n').find(x=>x.includes('monumentOfAccord: { code:'));
+function game(source){let seed=610010,calls=0;const c=vm.createContext({});vm.runInContext(read('adapter.js')+source,c);let e;const original=c.createGalacticAdapter;c.createGalacticAdapter=port=>{e=port;return original(port);};const a=c.createGalacticReach({headless:true,random:()=>{calls++;return ((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32);}});return {a,e,s:e.state,calls};}
+const g=game(app),old=game(app.replace(line,line.replace('matter: 2, biomass: 6','matter: 6, biomass: 2')));assert.equal(g.calls,old.calls);
+for(const k of ['planets','clusters','market','marketDecks'])assert.equal(JSON.stringify(g.s[k]),JSON.stringify(old.s[k]),'Unchanged initial '+k);
+const {a,e,s}=g,p=s.players[0];assert.equal(e.marketTier('monumentOfAccord'),'expensive');assert.deepEqual(plain(e.ALL_CARDS.monumentOfAccord.cost),{matter:2,biomass:6,data:2});
+let index=s.market.findIndex(c=>c.key==='monumentOfAccord');if(index<0){index=0;const deck=s.marketDecks.expensive,at=deck.findIndex(c=>c.key==='monumentOfAccord');assert(at>=0);[deck[at],s.market[index]]=[s.market[index],deck[at]];}
+const card=s.market[index],points=e.calculatePrestige(0);s.phase='buy';s.activePlayer=0;p.passed=true;p.resourceLimits={matter:8,energy:8,biomass:8,data:8};p.resources={matter:2,energy:0,biomass:6,data:2};
+const buy=a.legalActions(0).find(x=>x.type==='buy'&&x.source==='market'&&x.index===index);assert(buy);a.applyAction(0,buy);assert.deepEqual(plain(p.resources),{matter:0,energy:0,biomass:0,data:0});assert(p.discard.some(c=>c.id===card.id));assert.equal(e.calculatePrestige(0),points+3);assert.equal(p.cardPrestige,3);assert(!e.canConvertCard(card));assert(!e.ALL_CARDS.monumentOfAccord.order&&!e.ALL_CARDS.monumentOfAccord.effect,'Wonder stays inert');
+console.log('Monument resource mix: same total/tier/setup/market/RNG; exact2M6B2D payment, unchanged3Prestige, discard gain and inert/nonconvertible card.');

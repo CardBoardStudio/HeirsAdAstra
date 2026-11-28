@@ -18,32 +18,32 @@ function volley(g,a='concentratedFire',d='concentratedFire'){choose(g,{type:'com
 function finish(g){let n=0;while(g.s.pendingCombat){assert(n++<20);choose(g,g.e.combatActions(g.e.combatActor())[0]);}}
 function awards(g,expected){assert.deepEqual(plain(g.s.players.map(p=>p.combatVictories)),expected);}
 
-// All ship types qualify, for either attacker identity; an unrelated enemy fleet is irrelevant.
+// Only a Fleet in the defeated group qualifies, for either attacker identity.
 for(const attacker of [0,1])for(const unit of ['settler','explorer','fleet']){
  const g=fixture({attacker,a:{fleet:2},d:{[unit]:1}});g.s.fleets['5,0']={[g.defender]:{fleet:1}};
  g.start();stays(g);finish(g);
- assert.equal(g.s.players[attacker].combatVictories,1);assert.equal(g.s.players[g.defender].combatVictories,0);
- assert.equal(g.e.calculatePrestige(attacker),2,'34.39 #victory: a decisive win scores 2');assert.equal(g.s.lastCombat.prestigeWinner,attacker);
- assert.match(g.s.lastCombat.summary.at(-1),/gained 2 Prestige/);
- assert.equal(g.adapter().observe(attacker).players[attacker].combatVictories,1);
- assert.equal(g.adapter().replayView().players[attacker].combatVictories,1);
+ const eligible=unit==='fleet';assert.equal(g.s.players[attacker].combatVictories,eligible?1:0);assert.equal(g.s.players[g.defender].combatVictories,0);
+ assert.equal(g.e.calculatePrestige(attacker),eligible?1:0,'#victory: 1 point only against an enemy Fleet');assert.equal(g.s.lastCombat.prestigeWinner,eligible?attacker:null);
+ if(eligible)assert.match(g.s.lastCombat.summary.at(-1),/gained 1 Prestige/);else assert(!g.s.lastCombat.summary.some(line=>/gained .*Prestige/.test(line)));
+ assert.equal(g.adapter().observe(attacker).players[attacker].combatVictories,eligible?1:0);
+ assert.equal(g.adapter().replayView().players[attacker].combatVictories,eligible?1:0);
  const before=JSON.stringify(g.s);g.finishCombat();assert.equal(JSON.stringify(g.s),before,'Finished fight cannot award twice');
  assert(!g.e.applyCombatAction(attacker,{type:'combat_tactic',tactic:'concentratedFire'}));
 }
 // A defender earns the point; subsequent losses do not erase it.
 {
- const g=fixture({a:{settler:1},d:{fleet:1}});g.start();stays(g);finish(g);awards(g,[0,1,0,0]);
- g.s.fleets={};assert.equal(g.e.calculatePrestige(1),2);
- const restored=fixture();Object.assign(restored.s,plain(g.s));assert.equal(restored.e.calculatePrestige(1),2);
+ const g=fixture({a:{fleet:1},d:{fleet:2}});g.start();stays(g);finish(g);awards(g,[0,1,0,0]);
+ g.s.fleets={};assert.equal(g.e.calculatePrestige(1),1);
+ const restored=fixture();Object.assign(restored.s,plain(g.s));assert.equal(restored.e.calculatePrestige(1),1);
 }
 // Partial and total paid escapes disqualify the opponent's award.
 for(const d of [{explorer:1},{explorer:1,settler:1}]){
- const g=fixture({d});g.s.players[1].resources.energy=1;g.start();choose(g,{type:'combat_stay'});choose(g,{type:'combat_escape',destination:'2,0',amount:1});
+ const g=fixture({d});g.s.players[1].resources.energy=1;g.start();assert.equal(g.e.combatActor(),1);choose(g,{type:'combat_escape',destination:'2,0',amount:1});
  if(g.s.pendingCombat){assert.equal(g.s.pendingCombat.escapedUnits.defender,1);finish(g);}
  awards(g,[0,0,0,0]);assert.equal(g.s.lastCombat.prestigeWinner,null);assert.equal(g.s.fleets['2,0'][1].explorer,1);
 }
 {
- const g=fixture({a:{explorer:1,settler:1},d:{fleet:1}});g.s.players[0].resources.energy=1;g.start();choose(g,{type:'combat_escape',destination:'0,0',amount:1});choose(g,{type:'combat_stay'});finish(g);awards(g,[0,0,0,0]);
+ const g=fixture({a:{explorer:1,settler:1},d:{fleet:1}});g.s.players[0].resources.energy=1;g.start();choose(g,{type:'combat_escape',destination:'0,0',amount:1});assert.equal(g.s.pendingCombat.stage,'tactic');finish(g);awards(g,[0,0,0,0]);
 }
 // A legal withdrawal, an Emergency Jump, and mutual destruction award no points.
 {
@@ -74,8 +74,8 @@ for(const upgrade of [null,'starbase']){
 }
 // Serializing after an escape or a secret commitment preserves eligibility exactly.
 for(const escaped of [false,true]){
- const g=fixture({d:escaped?{explorer:1,settler:1}:{settler:1}});g.s.players[1].resources.energy=1;g.start();choose(g,{type:'combat_stay'});
- choose(g,escaped?{type:'combat_escape',destination:'2,0',amount:1}:{type:'combat_stay'});choose(g,{type:'combat_tactic',tactic:'concentratedFire'});
+ const g=fixture({a:{fleet:3},d:escaped?{explorer:1,fleet:1}:{fleet:1}});g.s.players[1].resources.energy=1;g.start();
+ if(escaped)choose(g,{type:'combat_escape',destination:'2,0',amount:1});choose(g,{type:'combat_tactic',tactic:'concentratedFire'});
  const resumed=fixture();Object.assign(resumed.s,plain(g.s));finish(g);finish(resumed);
  assert.deepEqual(plain(resumed.s.players.map(p=>p.combatVictories)),plain(g.s.players.map(p=>p.combatVictories)));
  assert.equal(resumed.s.players[0].combatVictories,escaped?0:1);assert.deepEqual(plain(resumed.s.lastCombat),plain(g.s.lastCombat));
@@ -86,8 +86,8 @@ for(const escaped of [false,true]){
  const archived=c.createGalacticReach({headless:true,random:()=>0});
  assert(archived.replayView().players.every(p=>!('combatVictories' in p)&&p.prestige===1));
 }
-// Reaching 10 through combat still waits for the round-end victory check.
+// Reaching the table's target through combat waits for round end.
 {
- const g=fixture();g.s.players[0].combatVictories=19;g.start();stays(g);finish(g);assert.equal(g.e.calculatePrestige(0),40);assert.equal(g.s.winner,null);g.finishRound();assert.equal(g.s.winner,0);
+ const g=fixture({a:{fleet:2},d:{fleet:1}});g.s.victoryTarget=30;g.s.players[0].combatVictories=29;g.start();stays(g);finish(g);assert.equal(g.e.calculatePrestige(0),30);assert.equal(g.s.winner,null);g.finishRound();assert.equal(g.s.winner,0);
 }
-console.log('Combat Prestige: attacker/defender and all ship types, one point per wipe, partial/full escapes, retreats/Jump, mutual loss, trapped destruction, no undefended-structure points, permanent totals, atomic continuation, reload/replay, and round-end victory passed.');
+console.log('Combat Prestige: attacker/defender, Fleet-only scoring, one point per qualifying wipe, partial/full escapes, retreats/Jump, mutual loss, trapped destruction, no undefended-structure points, permanent totals, atomic continuation, reload/replay, and round-end victory passed.');

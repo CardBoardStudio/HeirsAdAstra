@@ -1,4 +1,4 @@
-# Galactic Reach accessibility audit
+# Heirs Ad Astra accessibility audit
 
 This local fixture runs the real game and canonical rulebook with pinned axe-core 4.14.0. The published game never loads the library, audit controls, or prepared positions.
 

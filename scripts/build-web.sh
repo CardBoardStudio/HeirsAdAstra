@@ -11,19 +11,30 @@ mkdir -p dist/voidwright dist/galactic-reach dist/lab
 cp crates/web/index.html dist/voidwright/index.html
 cp crates/web/style.css dist/style.css
 cp prototypes/galactic-reach/index.html dist/galactic-reach/index.html
-cp prototypes/galactic-reach/styles.css dist/galactic-reach/styles.css
+cp prototypes/galactic-reach/max-ui.css dist/galactic-reach/
+cp prototypes/galactic-reach/styles.css prototypes/galactic-reach/palette.css dist/galactic-reach/
 cp prototypes/galactic-reach/card-feel.js prototypes/galactic-reach/card-feel.css dist/galactic-reach/
+# On-table guidance and the Learn to play walkthrough (index.html?tutorial=1).
+cp prototypes/galactic-reach/guide.js prototypes/galactic-reach/guide.css prototypes/galactic-reach/tutorial.js dist/galactic-reach/
 cp prototypes/galactic-reach/rulebook.html prototypes/galactic-reach/rulebook.css dist/galactic-reach/
-cp prototypes/galactic-reach/app.js dist/galactic-reach/app.js
+cp prototypes/galactic-reach/app.js prototypes/galactic-reach/icons.js dist/galactic-reach/
 cp prototypes/galactic-reach/playtest-notes.js prototypes/galactic-reach/playtest-notes.css dist/galactic-reach/
 cp prototypes/galactic-reach/change-queue.js prototypes/galactic-reach/change-queue.css dist/galactic-reach/
 cp prototypes/galactic-reach/table.js dist/galactic-reach/table.js
 cp prototypes/galactic-reach/cards.html dist/galactic-reach/cards.html
+# Card art (NGA open-access works, CC0) and its credits manifest; the card gallery lists them.
+rm -rf dist/galactic-reach/card-art && cp -R prototypes/galactic-reach/card-art dist/galactic-reach/card-art
 cp prototypes/galactic-reach/shared.js dist/galactic-reach/shared.js
+cp prototypes/galactic-reach/tabletop-controls.js prototypes/galactic-reach/tabletop-controls.css dist/galactic-reach/
+cp prototypes/galactic-reach/market-drawer.css dist/galactic-reach/
+# Phones: the sideways layout and the prompt to turn an upright phone.
+cp prototypes/galactic-reach/phone.css prototypes/galactic-reach/phone.js dist/galactic-reach/
 cp prototypes/galactic-reach/replay.js dist/galactic-reach/replay.js
 cp prototypes/lab/index.html dist/index.html
 cp prototypes/lab/index.html dist/lab/index.html
 cp prototypes/lab/lab.css prototypes/lab/lab.js prototypes/lab/replay.js dist/lab/
+# The emblem: the hanging astrolabe, its round version, and its reductions for the header (mark) and the favicon.
+cp prototypes/lab/heirs-emblem.svg prototypes/lab/heirs-emblem-round.svg prototypes/lab/heirs-emblem-mark.svg prototypes/lab/heirs-emblem-favicon.svg dist/lab/
 
 # Preserve the complete v4 through v10 browsers alongside v11; tables never upgrade implicitly.
 mkdir -p dist/galactic-reach/rules/4.9
@@ -253,6 +264,13 @@ for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css 
   cp "crates/galactic-reach/rules/v37-$asset" "dist/galactic-reach/rules/37.42/$asset"
 done
 cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/37.42/table.js
+
+# Preserve the exact 38.43 Construct III Playtest browser and shared-table engine.
+mkdir -p dist/galactic-reach/rules/38.43
+for asset in app.js adapter.js index.html styles.css rulebook.html rulebook.css replay.js playtest-notes.js playtest-notes.css shared.js cards.html; do
+  cp "crates/galactic-reach/rules/v38-$asset" "dist/galactic-reach/rules/38.43/$asset"
+done
+cp prototypes/galactic-reach/table.js dist/galactic-reach/rules/38.43/table.js
 
 # Testnet seat (Nido + zero-knowledge private draws) for the current tabletop.
 # The Docker image builds it in its own Node stage and sets SKIP_ZK_SEAT=1 here.

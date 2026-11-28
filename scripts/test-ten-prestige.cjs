@@ -3,7 +3,7 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('n
 const root=path.join(__dirname,'..'),read=f=>fs.readFileSync(path.join(root,f),'utf8'),plain=x=>JSON.parse(JSON.stringify(x));
 const source=read('prototypes/galactic-reach/app.js'),boot=source.indexOf('\n  if (headless) {\n    state = newState();');
 function game(){let seed=1729,calls=0;const c=vm.createContext({console});vm.runInContext(source.slice(0,boot)+`\nrender=()=>{};saveGame=()=>{};captureHumanTurn=()=>{};completeHumanTurn=()=>{};scheduleAiTurn=()=>{};showMessage=()=>{};toast=()=>{};return{get state(){return state},set state(s){state=s},newState,chooseAiBuild,chooseAiMove,aiHomeCluster,aiInitialShipyard,aiMovementNeighbors,nearestGoal,pathToCoord,constructAt,constructionCost,runAiOperation,reachableFrom,movementRange,fleetGroup,finishRound,calculatePrestige,SHIP_STATS,STRUCTURES,EXCAVATION_COST,ALL_CARDS,DEFAULT_VICTORY_TARGET,victoryTarget,SAVE_KEY,TURN_HISTORY_KEY};}\n`,c);const e=c.createGalacticReach({headless:true,random:()=>{calls++;return(seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32;}});e.state=e.newState();e.state.phase='operations';e.state.turnStage='ai';e.state.players.forEach(p=>{p.hand=[];p.resources={matter:0,energy:0,biomass:0,data:0};});return{e,s:e.state,calls:()=>calls};}
-const resource={matter:2,energy:1,biomass:1,data:1},yardFor=['-8,0','0,-8','8,0','0,8'];
+const resource={matter:2,energy:2,biomass:0,data:1},yardFor=['-8,0','0,-8','8,0','0,8'];
 for(let id=0;id<4;id++){
  const{e,s,calls}=game(),p=s.players[id];s.round=3;p.strategy='expansion';p.resources={...resource};p.hand=[{key:'construct',id:'build'}];
  const before=JSON.stringify(s),rng=calls();for(let n=0;n<10;n++){const b=e.chooseAiBuild(id);assert.equal(b.kind,'starbase');assert.equal(b.coord,yardFor[id]);assert.equal(s.planets[b.coord].type,'energy');e.aiMovementNeighbors('0,0',id);}
@@ -35,10 +35,10 @@ for(let id=0;id<4;id++){
  const{e,s}=game(),p=s.players[1];s.round=3;p.strategy='expansion';p.hand=[{key:'construct',id:'order'}];p.resources={matter:1,energy:1,biomass:1,data:0};
  assert.equal(e.chooseAiBuild(1).kind,'starbase');
  p.resources={...resource};assert(e.constructAt(1,yardFor[1],'starbase'));
- p.resources={matter:1,energy:1,biomass:0,data:0};assert.equal(e.chooseAiBuild(1).kind,'settler','Affordable Settler replaces unfundable Explorer');
- p.resources={matter:0,energy:1,biomass:0,data:0};p.hand[0].upgraded=true;const b=e.chooseAiBuild(1);assert.equal(b.kind,'settler','Fallback uses the same selected-resource discount as Construct II');
+ p.resources={matter:1,energy:0,biomass:2,data:0};assert.equal(e.chooseAiBuild(1).kind,'settler','A fully funded Settler replaces an unfundable Explorer');
+ p.resources={matter:0,energy:1,biomass:0,data:0};p.hand[0].upgraded=true;const b=e.chooseAiBuild(1);assert.deepEqual(plain(b.cost),plain(e.constructionCost(1,b.coord,b.kind)),'Construct II planning uses the full printed cost');
  assert(!e.constructAt(1,b.coord,b.kind,'matter',true),'Construct II offers no discount');
- p.hand[0].upgraded=false;p.resources={matter:0,energy:0,biomass:0,data:0};assert.equal(e.chooseAiBuild(1).kind,'settler','If nothing is affordable retain the scoring plan instead of discretionary infrastructure');
+ p.hand[0].upgraded=false;p.resources={matter:0,energy:0,biomass:0,data:0};const unfunded=e.chooseAiBuild(1);assert(!unfunded.funding,'An empty reserve does not invent a funded plan');assert(!e.constructAt(1,unfunded.coord,unfunded.kind,null,true),'An unfunded proposal cannot execute for free');
  s.planets[yardFor[1]].upgrade=null;p.resources={matter:1,energy:1,biomass:1,data:0};assert.equal(e.chooseAiBuild(1).kind,'starbase','Destroyed yard does not activate fallback');
 }
 function target(s,coord){const i=s.clusters.length,[q,r]=coord.split(',').map(Number);s.clusters.push({id:i,center:coord,coords:[coord],kind:'world',revealedBy:[],scannedBy:[]});s.planets[coord]={q,r,cluster:i,type:'matter',owner:null,occupiedBy:null,hasColony:false,upgrade:null};}
@@ -55,16 +55,17 @@ function target(s,coord){const i=s.clusters.length,[q,r]=coord.split(',').map(Nu
  s.planets['1,0']={q:1,r:0,cluster:0,type:'matter',owner:0,occupiedBy:null,hasColony:true,upgrade:null};s.fleets={'0,0':{1:{settler:0,explorer:0,fleet:1}}};
  assert.equal(e.chooseAiMove(1,p.hand[0]),null,'Pathfinder cannot choose its forbidden attack');const before=JSON.stringify(s);e.runAiOperation();assert.notEqual(JSON.stringify(s),before);assert(p.hand.some(c=>c.id==='pathfinder'));assert.deepEqual(plain(p.resources),JSON.parse(before).players[1].resources,'An unavailable market order stays in hand; it cannot convert for resources');
 }
-// 31.36 #victory: the target is a table setting, 40 by default; a table may choose 20.
-for(const [target,points] of [[undefined,39],[undefined,40],[undefined,41],[20,19],[20,20],[20,21]]){const{e,s}=game();if(target)s.victoryTarget=target;s.players[0].cardPrestige=points-3;assert.equal(e.calculatePrestige(0),points);e.finishRound();assert.equal(s.winner,points>=(target||40)?0:null);}
+// 31.36 #victory: the target is a table setting, 30 by default; a table may choose 20.
+for(const [target,points] of [[undefined,29],[undefined,30],[undefined,31],[20,19],[20,20],[20,21]]){const{e,s}=game();if(target)s.victoryTarget=target;s.players[0].cardPrestige=points-3;assert.equal(e.calculatePrestige(0),points);e.finishRound();assert.equal(s.winner,points>=(target||30)?0:null);}
 {
- const{e,s}=game();assert.equal(e.DEFAULT_VICTORY_TARGET,40);assert.equal(s.victoryTarget,40);assert.equal(e.victoryTarget(),40);assert.equal(s.version,38);assert.equal(s.rulesRevision,43);assert.equal(e.SAVE_KEY,'galactic-reach-save-v38');assert.equal(e.TURN_HISTORY_KEY,'galactic-reach-turn-history-v38');
- assert.deepEqual(plain(e.STRUCTURES.starbase.cost),{matter:2,energy:1,biomass:1,data:1});assert.deepEqual(plain(e.EXCAVATION_COST),{matter:1,energy:1,data:2});
- assert.deepEqual(plain(e.SHIP_STATS.explorer.cost),{energy:1,data:2});assert.deepEqual(plain(e.SHIP_STATS.settler.cost),{matter:1,energy:1,biomass:1},'32.37 (issue #41): Settlers cost 1 Biomass more');assert.deepEqual(plain(e.STRUCTURES.harvester.cost),{matter:1,energy:1,data:1});assert.deepEqual(plain(e.SHIP_STATS.fleet.cost),{matter:2,energy:1,biomass:1});
+ const{e,s}=game();assert.equal(e.DEFAULT_VICTORY_TARGET,30);assert.equal(s.victoryTarget,30);assert.equal(e.victoryTarget(),30);assert.equal(s.version,39);assert.equal(s.rulesRevision,44);assert.equal(e.SAVE_KEY,'galactic-reach-save-v39');assert.equal(e.TURN_HISTORY_KEY,'galactic-reach-turn-history-v39');
+ assert.deepEqual(plain(e.STRUCTURES.starbase.cost),{matter:2,energy:2,data:1});assert.deepEqual(plain(e.EXCAVATION_COST),{energy:1,data:3});
+ assert.deepEqual(plain(e.SHIP_STATS.explorer.cost),{energy:1,data:2});assert.deepEqual(plain(e.SHIP_STATS.settler.cost),{matter:1,biomass:2},'Settlers use Matter and Life');assert.deepEqual(plain(e.STRUCTURES.harvester.cost),{matter:1,energy:1,data:1});assert.deepEqual(plain(e.SHIP_STATS.fleet.cost),{matter:2,energy:2});
 }
+{const{e,s}=game();s.victoryTarget=40;assert.equal(e.victoryTarget(),40);delete s.victoryTarget;assert.equal(e.victoryTarget(),40,'Legacy targetless saves retain40');}
 const hashes={"app.js": "c36b02100e148189bc5c8f542b1c29814e873f5b781ecb1071e7a51950f60ae2", "adapter.js": "6b986e56978ce183b6386cbd5992b499575c4b2e26ce1f4dc1425f656ee759c4", "index.html": "d24e4726f9126a3d04142d43c901e3fa68a54ecdef5778659eee1484dfee4405", "styles.css": "f4ef51fc6b513bc66de56a12557430d8c4538dc16cdc3882150935da4220af0c", "rulebook.html": "b3cae049588e59b049a820503514243c1f52fededa79dc12b6d496ecd666856d", "rulebook.css": "c89d7ff15fc902e2dda07d2ef54213e9ec09796a736c596dbc411c12fa5c1e5b", "replay.js": "41f5753456c68842db80977a12496761d16927847a14554f75e54214b53457d9"};
 for(const [asset,hash] of Object.entries(hashes))assert.equal(crypto.createHash('sha256').update(read(`crates/galactic-reach/rules/v16-${asset}`)).digest('hex'),hash,`16.21 ${asset} remains immutable`);
 assert.equal(crypto.createHash('sha256').update(read('crates/galactic-reach/src/legacy_v12.rs').split('#[derive(Clone, Copy, Debug)]')[1].trim()).digest('hex'),'ceeaf920a83ce9efda451179de795cbf116fe074050334fc6c769e89725019ad','Archived policy12 stays byte-for-byte identical');
 const c=vm.createContext({});vm.runInContext(read('crates/galactic-reach/rules/v16-adapter.js')+read('crates/galactic-reach/rules/v16-app.js'),c);const a=c.createGalacticReach({headless:true,random:()=>0});assert.equal(a.rulesVersion,'galactic-reach/16.21');
 assert(read('prototypes/galactic-reach/table.js').includes("'galactic-reach/16.21':{format:16,path:'/galactic-reach/rules/16.21/'}"));assert(read('prototypes/lab/replay.js').includes("'galactic-reach/16.21':'/galactic-reach/rules/16.21/'"));assert(read('scripts/build-web.sh').includes('dist/galactic-reach/rules/16.21'));
-console.log('Ten Prestige: 10-point victory, physical-home-aware inward launch/path ties, pure affordable build selection/discounts, capacity/Pathfinder safeguards, unchanged costs, save isolation and immutable16.21/policy12 passed.');
+console.log('Ten Prestige: 10-point victory, physical-home-aware inward launch/path ties, pure affordable build selection/discounts, capacity/Pathfinder safeguards, current costs, save isolation and immutable16.21/policy12 passed.');

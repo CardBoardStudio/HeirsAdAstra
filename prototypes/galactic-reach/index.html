@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#101d22">
-  <title>Galactic Reach · 38.43 · Construct III Playtest</title>
-  <meta name="description" content="Play Galactic Reach against three computer-controlled rival factions.">
+  <title>Heirs Ad Astra · 39.44 · Playtest 2026-11-16</title>
+  <meta name="description" content="Play Heirs Ad Astra against three computer-controlled rival factions.">
   <script type="importmap">{"imports":{
     "@aztec/bb.js":"/galactic-reach/zk/vendor/bb.js/index.js",
     "@noir-lang/noir_js":"/galactic-reach/zk/vendor/noir_js/index.mjs",
@@ -14,12 +14,23 @@
     "pako":"/galactic-reach/zk/vendor/pako/pako.esm.mjs"
   }}</script>
   <link rel="stylesheet" href="/galactic-reach/zk/seat.css">
-  <link rel="stylesheet" href="styles.css?v=construct-iii-38-43">
-  <link rel="stylesheet" href="card-feel.css?v=2">
+  <link rel="stylesheet" href="styles.css?v=corner-tabs-1">
+  <link rel="stylesheet" href="card-feel.css?v=3">
   <link rel="stylesheet" href="playtest-notes.css?v=1">
   <link rel="stylesheet" href="change-queue.css?v=1">
+  <link rel="stylesheet" href="guide.css?v=3">
+  <link rel="stylesheet" href="tabletop-controls.css">
+  <link rel="stylesheet" href="market-drawer.css?v=1">
+  <link rel="stylesheet" href="max-ui.css?v=1">
+  <link rel="stylesheet" href="phone.css?v=3">
 </head>
 <body>
+  <!-- Phones are played sideways (rules #shared-board): held upright, a phone sees only this (phone.js). -->
+  <div class="rotate-prompt" id="rotate-prompt" role="dialog" aria-modal="true" aria-labelledby="rotate-prompt-text" aria-hidden="true">
+    <img class="rotate-prompt-emblem" src="/lab/heirs-emblem-mark.svg" alt="" width="56" height="56">
+    <svg class="rotate-prompt-icon" viewBox="0 0 96 96" aria-hidden="true" focusable="false"><rect class="rotate-from" x="33" y="12" width="30" height="54" rx="6"/><rect class="rotate-to" x="21" y="48" width="58" height="32" rx="6"/><path class="rotate-arrow" d="M70 18c8 5 13 13 14 23"/><path class="rotate-arrow" d="m78 39 6 4 4-7"/></svg>
+    <p id="rotate-prompt-text">Turn your phone sideways to play.</p>
+  </div>
   <a class="skip-link" href="#console">Skip to player controls</a>
   <div class="starfield" aria-hidden="true"></div>
   <main class="app-shell">
@@ -27,40 +38,135 @@
       <div class="brand-block">
         <div class="brand-seal" aria-hidden="true">✦</div>
         <div><div class="eyebrow">A GAME OF EXPLORATION &amp; EMPIRE</div>
-        <h1>Galactic Reach</h1></div>
-        <small class="rules-badge">38.43 · playtest</small>
+        <h1>Heirs Ad Astra</h1></div>
+        <small class="rules-badge">39.44 · playtest</small>
       </div>
       <div class="header-actions">
-        <a class="button button-ghost" href="/" style="text-decoration:none">Game library</a>
+        <a class="button button-ghost" href="/" style="text-decoration:none">Home</a>
+        <a class="button button-ghost" id="learn-to-play" href="?tutorial=1" style="text-decoration:none">Learn to play</a>
+        <button class="button button-ghost" id="guide-toggle" type="button" aria-pressed="true">Guidance: on</button>
         <button class="button button-ghost" id="undo-turn-button" type="button" disabled title="Available after you complete a turn">Undo turn</button>
         <button class="button button-ghost" id="rules-button" type="button">Rules</button>
+        <button class="button button-ghost" id="statistics-toggle" type="button" aria-pressed="true">Statistics table: on</button>
+        <button class="button button-ghost" id="symbol-legend-toggle" type="button" aria-pressed="true">Symbol legend: on</button>
+        <button class="button button-ghost" id="background-toggle" type="button" aria-pressed="false">Max’s UI</button>
         <button class="button button-ghost" id="open-relic-catalog" type="button" aria-label="Preview all 23 alien relics">Alien relics</button>
-        <a class="button button-ghost" id="card-gallery-link" href="cards.html" target="_blank" rel="noopener" style="text-decoration:none">Card gallery</a>
+        <a class="button button-ghost" id="card-gallery-link" data-card-gallery href="cards.html" target="_blank" rel="noopener" style="text-decoration:none">Card gallery</a>
         <button class="button button-ghost" id="new-game-button" type="button">New game</button>
       </div>
+      <p class="site-footer" id="site-footer"><span id="site-footer-version">Heirs Ad Astra</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="cards.html#card-art-credits" target="_blank" rel="noopener">Credits</a></p>
+      <script>document.querySelector('#site-footer-version').textContent = `Heirs Ad Astra ${document.querySelector('.rules-badge').textContent.trim()}`;</script>
     </header>
     <button class="table-menu-button" id="table-menu-button" type="button" aria-expanded="false" aria-controls="table-menu" aria-label="Game menu"><span aria-hidden="true"></span></button>
     <details class="playtest-changes" id="playtest-changes">
-      <summary><span class="new-feature">New in this playtest</span> <span class="summary-text"><!-- release:summary -->38.43 Construct III Playtest: Construct III can draw without building<!-- /release:summary --></span> <span class="summary-hint">View changes</span></summary>
+      <summary><span class="new-feature">New in this playtest</span> <span class="summary-text"><!-- release:summary -->39.44 Playtest 2026-11-16: One rival policy for games and simulations<!-- /release:summary --></span> <span class="summary-hint">View changes</span></summary>
       <ul><!-- release:items -->
-        <li><strong>Construct III can draw without building:</strong> Play Construct III to draw one card without building, or build normally and draw once. Rivals use the draw-only choice and prefer Construct III over equivalent Construct II orders. <a href="rulebook.html#construct-three-draw">Construct III</a>.</li>
-        <li><strong>Draw your next hand at cleanup:</strong> You now draw your opening five cards at setup, and each later hand at the end of the round, after everyone finishes Buy and nobody has won. The round reads Production, Operations, Buy, Cleanup &amp; draw, so you can plan your next hand while the round wraps up. <a href="rulebook.html#round">A round of play</a>.</li>
-        <li><strong>A real table that fits your window:</strong> On a desktop window the game no longer scrolls: the whole window is one table, scaled as a whole to fit. The map fills all the space the other pieces leave, in any window shape. In its top-left corner a small printed track races every faction to the Prestige goal (the acting faction's marker glows; point at a marker for that faction's overview, select it for the breakdown), and in its bottom-left corner a small comms card opens into the whole log. The turn and round and the whole supply at once (an Upgrades tray, the market and the alien relics) lie to the right, and your seat runs along the bottom: Deck and In play, your hand, a player mat of pips (no numbers) for production, stock and a gold capacity fence, and Discard with the turn's buttons. Drag 4 of one resource onto another on your mat to trade with the bank (<a href="rulebook.html#player-mat">Player mat</a>). Cards look like printed card stock in a slight fan; point at one to read it whole, drag it onto a lit hex to play it or onto your mat to convert it. Market prices sit in each card's corner with a padlock on any resource above your limit, cards you can't buy yet are shaded with the reason (<a href="rulebook.html#buy">Buy</a>), and held planets are ringed and buildings drawn in their owner's colour (<a href="rulebook.html#ownership-colours">Reading ownership</a>). iPads get the same table, and phones a full-screen map with the hand, supply, mat, comms and track in drawers.</li>
-        <li><strong>The market splits into three rows by price:</strong> The market is now three decks sorted by total price: <strong>Expensive</strong> (8 or more), <strong>Medium</strong> (6–7) and <strong>Cheap</strong> (5 or less), each with three face-up cards below the relics. A bought card is replaced from its own row's deck; when that deck runs out, the slot stays empty. <a href="rulebook.html#market-tiers">Market rows</a>.</li>
-        <li><strong>Trash cards from your hand during Buy:</strong> During your Buy turn you can now also trash cards that were still in your hand when Buy began, for the usual 3 of one resource each, alongside your discard and cards in play. Cards you buy, draw or use during that Buy stay ineligible. <a href="rulebook.html#buy">Buy</a>.</li>
-        <li><strong>The turn lies with your seat:</strong> The table is rearranged around your seat (<a href="rulebook.html#shared-board">Shared board</a>). The left column holds, top to bottom, the Prestige track, the round's phases, the comms log, your fleets at a glance, the Upgrades (Move II, Construct II, Add 4 capacity, Move III, Construct III and the Trash pile, each a card that lights the resources you can pay with now) and the map key with each piece's price. The map fills the middle. The right column shows the relics and the market as real cards (63:88), with the market in three rows of three from its most expensive to its cheapest cards. Along the bottom are the menu and piles, your hand as a low fanned hand, the turn prompt with small turn buttons and Trade, a large player mat and Discard. On your turn your hand glows and gently breathes instead of a "Your turn" banner. Cards read like printed cards: the name and effect start at the top-left, the cost runs down the right edge, and effects use a shared set of icons (★ Prestige, Draw, Move, Hit, Miss, resource limit, Colonize, Build), which are listed in the map key and also appear on the starter cards. Resource icons are filled. The mat no longer offers a Discard; resources above a limit are still discarded automatically (<a href="rulebook.html#resources">Resources</a>). Preview all relics is in the menu. Browser zoom works: zooming in makes the table's pieces larger and leaves the map less room.</li>
-        <li><strong>Keep human Undo through a release:</strong> New playtest releases retain human-turn Undo, including later bot actions until another human acts. Older tables keep their own rules. <a href="rulebook.html#shared-tables">Shared-table Undo</a>.</li>
-        <li><strong>Faster rival planning:</strong> Solo computer rivals plan movement and construction faster while preserving their decisions, costs and card order. <a href="rulebook.html#clarifications">Computer rivals</a>.</li>
-        <li><strong>Rivals find another bank exchange before skipping a card:</strong> When a bank exchange would spend the funds a rival keeps for its next unit, the rival now tries exchanging a different resource before it passes on the card. <a href="rulebook.html#rival-cards">Rival cards</a>.</li>
+        <li><strong>Keep the original resource mat on the green table:</strong> The green background restores production squares and the gold capacity marker. The star background keeps the combined circle display with thick production rings; switching backgrounds updates the mat immediately. <a href="rulebook.html#resources">Resources and storage</a>.</li>
+        <li><strong>Choose your table background:</strong> Toggle Star background in the game menu to switch between green and stars. Your browser remembers your choice. <a href="rulebook.html#background-preference">Background</a>.</li>
+        <li><strong>Read battles across the card table:</strong> Enemy ships and tactics now face yours across a battle table, using the map’s familiar unit symbols, attack values and hull tracks. See both public tactic inventories, select a card, then commit your secret choice. <a href="rulebook.html#combat-table">Combat</a>.</li>
+        <li><strong>A clearer starfield:</strong> The optional star background has brighter stars in three sizes, more stars, and full-height coverage. <a href="rulebook.html#background-preference">Background preference</a>.</li>
+        <li><strong>One rival policy for games and simulations:</strong> New shared tables and AI arena matches use the same computer rivals as solo play. Existing tables retain their dealt policies. <a href="rulebook.html#computer-rivals">Computer rivals</a>.</li>
+        <li><strong>Compare build costs in a resource table:</strong> The map key shows ships, buildings, and excavation in rows with four resource columns. Blank cells mean zero cost. <a href="rulebook.html#building">Ships and buildings</a>.</li>
+        <li><strong>Fleet protection and Buy exchanges:</strong> Fleets take combat hits before Settlers, followed by Explorers and Shipyards. Play held 2:1 exchange cards during your own Buy turn as well as Operations, and keep buying afterward. The Trash pile shows its price: 3 of one resource per card. <a href="rulebook.html#combat-tactics">Combat</a> · <a href="rulebook.html#exchange-orders">Exchange cards</a> · <a href="rulebook.html#buy">Buy</a>.</li>
+        <li><strong>Read battles on combat mats:</strong> Willem’s battles use automatic attack and hull dials, units in hit order, and separate spaces for available, committed and spent tactics. Follow simultaneous reveals on the shared volley tracker and revisit the calculations in the battle report; combat rules and Max’s UI are unchanged. <a href="rulebook.html#combat-table">Combat mats</a>.</li>
+        <li><strong>Keep Capacity Modules at a fixed price:</strong> Every Capacity Module costs 1 Matter, 1 Energy, 1 Biomass and 1 Data. Buying or storing modules never increases the price. <a href="rulebook.html#capacity-module">Capacity Modules</a>.</li>
+        <li><strong>Focus the Cheap market on draw and exchange cards:</strong> Cheap now contains only the three draw-two and three 2:1 exchange designs. Ion Thrusters, Slipstream Charts, Rail Battery and Deflector Grid move to Medium. Six other former Cheap designs leave the new-game supply. Prices and effects stay the same. <a href="rulebook.html#market-tiers">Market rows</a>.</li>
+        <li><strong>Exchange cards, market prices and goal-directed rivals:</strong> Three cheap exchange cards let you choose a resource to trade at 2:1 until your Buy ends; eight market cards cost less and World Engine draws after its free build. New games default to 30 Prestige, and rivals improve production, purchase planning and goal-directed exchanges. <a href="rulebook.html#exchange-orders">Exchange orders</a>, <a href="rulebook.html#cards">market cards</a>, <a href="rulebook.html#rival-planning">rival planning</a>, <a href="rulebook.html#rival-card-timing">exchange planning</a>, <a href="rulebook.html#victory-target">victory target</a>.</li>
+        <li><strong>Play against MaxBot:</strong> Choose MaxBot in New game to replace the Economy rival. It seeks reusable capacity, develops Harvesters and Colonies with local Shipyards, and turns toward combat and Prestige purchases later. New games only. <a href="rulebook.html#maxbot">MaxBot</a>.</li>
+        <li><strong>Military Focused hunts in five-Fleet groups:</strong> The optional Military Focused rival settles one additional world, builds its forward Shipyard there, and hunts weaker enemy groups with five Fleets at a time. The original Military rival stays available; Harvesters, Capacity Modules, card draw, exchange cards and tactics support the new plan. <a href="rulebook.html#military-focused-rival">Computer rivals</a>.</li>
+        <li><strong>Randomize your solo starting home:</strong> New solo games deal all four home-world positions at random, so you can start at any corner. The setup preview names your actual neighbor, and saved games keep their dealt positions. <a href="rulebook.html#solo-seating">Solo setup</a>.</li>
+        <li><strong>Replace enemy Harvesters on captured worlds:</strong> After capturing a world’s Colony, use Construct and pay the normal Harvester cost to replace an enemy Harvester there with your own. Its hex and production become yours. Colonies, Shipyards and your own buildings cannot be replaced. <a href="rulebook.html#building">Building</a>.</li>
+        <li><strong>Tiered gallery and unclaimed destroyed Shipyards:</strong> Browse the card gallery by Expensive, Medium and Cheap tiers, with sorting and deck filters inside each tier. Destroying a Shipyard now clears ownership of its hex, allowing a normal paid claim and build there again. <a href="rulebook.html#market-tiers">Market tiers</a> · <a href="rulebook.html#destroyed-shipyards">Destroyed Shipyards</a>.</li>
+        <li><strong>Members dashboard for hosts:</strong> Administrators get a <strong>Members</strong> page beside Invitations: every invitation link with how many people accepted it and who, and every registered account with how they joined, when they were last seen and how many tables they have. Players see no change.</li>
+        <li><strong>Capacity is now a card:</strong> <strong>Add 4 capacity</strong> is now the <strong>Capacity Module</strong>, a card you buy from the Upgrades tray during Buy for 1 + the cards in your Storage pile, of each resource (the table shares 20). It enters your discard like any purchase; play it during Operations as your action to add 4 capacity points where you choose, and it goes to your permanent Storage pile beside your mat. You can no longer buy capacity off turn. <a href="rulebook.html#storage-allocation">Resources &amp; storage</a>.</li>
+        <li><strong>Card art from the National Gallery of Art:</strong> Every card now shows a public-domain painting, print or photograph from the National Gallery of Art, Washington: Romantic seascapes and landscapes for market and starter cards, naval battles for the military deck, and Piranesi engravings and star charts for the alien relics. On the table a market card's picture fills the space its text leaves. The card gallery lists every work and its artist. The art never changes what a card does (<a href="rulebook.html#card-art">Card reference</a>). The game menu, rulebook and card gallery end with the version and a short art notice.</li>
+        <li><strong>Read a card from its corners:</strong> Every card shows what it does as symbols in its upper-left corner (one hammer on Construct, two on Construct II) and, in the upper-right corner, what a level I starter converts to or a market card's price. In your hand those corners are the card's buttons: press the symbols to use the order, the resource to convert. Your hand is a fan in which both corners of every card show; point at a card to raise it whole. <a href="rulebook.html#card-corners">Read a card from its corners</a>.</li>
+        <li><strong>A larger map key with prices beside their names:</strong> The map key's names and card icons are larger, each price sits just after its name, faint lines part the rows, and each resource's symbols form one cluster: two side by side, three as a small triangle. On an upright tablet the costs are in the Map key, not on the table. <a href="rulebook.html#shared-board">Shared board</a>.</li>
+        <li><strong>Bigger card corners that look like buttons:</strong> Every card in your hand shows its two corner buttons as big tabs set into the card's corners, about a third of the card's width, resting in the fan or raised. The order corner is tinted, the convert corner is in its resource's colour, and each has a raised edge that flattens when pressed. When a corner's action is not open (a rival's turn, another phase) its tab is dashed and dimmed but still shows what the card does. A name that no longer fits between a raised card's corners sits under them, and a resting card's name wraps onto two lines or gets a little smaller instead of being cut off. No resting card shows text cut short with "…": a rules line shows only when it fits whole, and in a hand too full for a name, a card without corner symbols shows its picture instead. On a touch screen the first tap on a resting card raises it and the next press acts. <a href="rulebook.html#card-corners">Read a card from its corners</a>, <a href="rulebook.html#orders">Orders</a>.</li>
+        <li><strong>The site is now Heirs Ad Astra:</strong> The home page, account, tables, AI arena, invitations and sign-in now carry the Heirs Ad Astra name, and the home page opens on Heirs Ad Astra. The other experimental game is no longer offered; your Heirs Ad Astra tables, accounts, AI players and replays are unchanged.</li>
+        <li><strong>Turn Guidance on or off from the table:</strong> A <strong>Guidance</strong> switch now sits just above Map key (on a phone, first among the turn's buttons): one click turns the notes off or back on, and it always matches Guidance in the menu. <a href="rulebook.html#guidance">Guidance</a>.</li>
+        <li><strong>Introducing Heirs Ad Astra:</strong> The game, its home page, rulebook, card gallery, tables, AI arena, invitations and sign-in now carry the name Heirs Ad Astra. Play it at <a href="https://heirsadastra.app/">heirsadastra.app</a>. Your saved tables, accounts, AI players and replays are unchanged.</li>
+        <li><strong>New resource colours and the Heirs Ad Astra emblem:</strong> Resources have new colours everywhere they appear: Matter is amber, Energy coral, Life mint and Data cyan. On cards each resource is a small chip in its colour. The home page and the browser tab show the Heirs Ad Astra emblem, a hanging astrolabe whose speed lines carry the four resource colours.</li>
+        <li><strong>The map shows what you can play on a hex:</strong> Point at a hex (or focus it with Tab) and the cards in your hand that could start an order there rise and glow. Select the hex to open its Sector Scan as a note beside it, its arrow aimed at the hex. It lists those orders with each card's picture; choosing one starts the order as Use order or a drag would. Escape or a click elsewhere closes it. <a href="rulebook.html#orders">Your basic orders</a>.</li>
+        <li><strong>The home page shows the emblem:</strong> The large picture on the home page is now the Heirs Ad Astra emblem, in place of the orbit drawing. On a phone held upright it sits beside the game's name.</li>
+        <li><strong>The market opens from the table's edge:</strong> The supply (relics, market and Upgrades) is now a drawer on the table's right edge, closed until you open it with the <strong>Market</strong> tab, so the map has its room. Your Buy turn brings the market forward as whole cards with their pictures, and afterwards it goes back to how you had it; on a phone the Supply drawer does the same. <a href="rulebook.html#shared-board">Shared board</a>.</li>
+        <li><strong>Phones are played sideways:</strong> On a phone, hold it sideways to play: the map fills the screen, your hand lies along the bottom as a fan with the turn's buttons at its right end (narrow: <strong>Pass &amp;</strong> over <strong>buy</strong>, and <strong>Convert all</strong> over its symbols), and the market, your mat, the comms log and the score track open from handles on the left edge. With the market closed the map has about two thirds of the screen, where it had about a third. The button beside your hand that converts level I starters is now <strong>Convert all</strong> on every screen. Held upright, the game shows a prompt to turn the phone and waits until you do, without losing your place. A guidance or Learn to play note has one place at the right edge and never covers the map; a step about your mat or the score track opens that drawer. The rulebook, home page and waiting room still work held upright. <a href="rulebook.html#shared-board">Shared board</a>.</li>
+        <li><strong>A waiting room never offers a Start it cannot keep:</strong> A game for playing with others starts once a second person joins. Its older waiting room used to offer <strong>Start</strong> with only computer rivals seated, then refuse with a pairing notice. It now says that Start waits for someone, and offers <strong>Play alone instead</strong>; opening such a game from the game page reaches the same waiting screen as <strong>Your tables</strong>. <a href="rulebook.html#shared-tables">Playing with friends</a>.</li>
+        <li><strong>A raised card's name never runs under a corner:</strong> A hand card you point at or tap shows its whole name, between its corners or just under them, also when your device is set to reduce motion and when you raise the card with a tap on a tablet. Before, a name such as Construct could run under the right-hand corner. <a href="rulebook.html#card-corners">Read a card from its corners</a>.</li>
+        <li><strong>Card rebalance from the card-evolution study:</strong> <strong>Toned down:</strong> Ascendancy Codex gives 1 Prestige per use without drawing, Dyson Lattice grants 4 Prestige, and Hyperspace Vaults raises each limit by 1 per use. Folded Warehouse raises each limit by 2 (up to 15), draws two cards, then trashes itself; its excavation Prestige stays. Genesis Charter costs 2 Matter, 7 Life and 1 Data. <strong>New tactic:</strong> Torpedo Barrage (M11) gives +3 hits and prevents 3 hits, for 6 Energy, 2 Life and 2 Data. Later market retirements and cheaper prices stay in place. <a href="rulebook.html#cards">Card reference</a>.</li>
+        <li><strong>A shorter rulebook with pictures:</strong> The rulebook is rewritten to be shorter and easier to follow. Each chapter opens with the one thing to know, exceptions and examples are marked, and diagrams show the round, a card's corners, your mat, the galaxy, the corner portal, a world, a battle and the market. Notes about the screen moved to an appendix, and the rulebook now scrolls on phones. The game itself is unchanged. <a href="rulebook.html#start">Start here</a>.</li>
+        <li><strong>A one-line, symbol-led Sector Scan:</strong> The Sector Scan's title line now holds the hex's resource, its name and symbols for its owner, building, colony site, relic and each faction's ships; point at a symbol to read it, and an X closes the scan. The Move shortcut names what it moves: Move Settlers, Move Fleets, Move Settlers &amp; Fleets or Move Explorers. <a href="rulebook.html#orders">Orders</a>.</li>
+        <li><strong>Stay signed in for 60 days:</strong> Signing in now keeps you signed in for 60 days instead of one day. Logging out, a revoked invitation or a removed Nido passkey still signs you out sooner.</li>
+        <li><strong>The site wears the game's colours:</strong> The home page, your tables, the waiting room, the AI arena, your account and the invitation pages now use the table's green felt, cream cards and gold, instead of navy and cyan. The sidebar no longer carries the "Play. Experiment." note.</li>
+        <li><strong>Start a game alone or with others:</strong> The home page now offers two choices. <strong>Play alone</strong> asks only for the Prestige target and starts your game against three computer rivals. <strong>Play with others</strong> opens a waiting screen with the link ready to share, copy or scan; whoever joins says whether their device is their hand or shows the whole game, and you make the same choice for yours. Games already started open as before. <a href="rulebook.html#victory-target">Victory target</a> · <a href="rulebook.html#phone-pairing">Playing with others</a>.</li>
+        <li><strong>Trade pulls out from the left edge; names beside the standings; a larger Convert:</strong> Trade is now a tab on the table's left edge. Select it to pull the trade channel out beside the map; the tab, Close or Escape tucks it back, and the tab still counts the offers waiting for you. In the standings, each faction's name now sits directly beside its counts, with the race to the Prestige goal after them. Convert level I starters is a larger button, still shown only while your hand holds a level I starter. <a href="rulebook.html#shared-board">Shared board</a>, <a href="rulebook.html#player-mat">Player mat</a>.</li>
+        <li><strong>Learn to play says what is true and what is lit:</strong> The score track now teaches the real way to win: when a round ends with anyone at the target, the highest Prestige wins. Each note names the card, hex or button that is lit, and the battle note uses the tactics' card names. Rules, costs and saved games are unchanged. <a href="rulebook.html#learn-to-play">Learn to play</a>, <a href="rulebook.html#victory">How to win</a>, <a href="rulebook.html#combat-tactics">Tactics</a>.</li>
+        <li><strong>Learn to play keeps the hex you select and flies the right ship:</strong> In Learn to play, the hex you select to look at your home world keeps its Sector Scan open. In the Explorer's move, your Settler first steps aside so the Move you drop flies the Explorer, and the walkthrough points only at the Explorer's destinations. Rules, costs and ordinary saved games are unchanged. <a href="rulebook.html#learn-to-play">Learn to play</a>, <a href="rulebook.html#movement">Movement</a>.</li>
+        <li><strong>Learn to play keeps its note in one place:</strong> On a computer or tablet the walkthrough's note now stays over the map key in the left column for every step, so its text and its Next button never move while you read. Reading steps label every part they show at once instead of one at a time. <a href="rulebook.html#learn-to-play">Learn to play</a>.</li>
+        <li><strong>Learn to play follows the round as you play it:</strong> Converting the rest of your hand now lights one card's convert corner at a time, and its ghost goes to that card's own row on your mat. When your hand runs out, the walkthrough says the table passed you to Buy and lights that notice, and its step count no longer skips a step you never see. Relics now start with only your Probe / Excavate card and a Move in hand, so reaching the relic ends the round and you excavate in the next one, without throwing cards away. Rules, costs and ordinary saved games are unchanged. <a href="rulebook.html#learn-to-play">Learn to play</a>.</li>
+        <li><strong>Learn to play lights the card you use next:</strong> Learn to play no longer has a "Find a Move" button: your first step lights the Move card to convert, and a step that waits for you has no button that does it for you. Doing it on the table moves you on. On a narrow screen the hand scrolls to the lit card as each step starts. Rules, costs and ordinary saved games are unchanged. <a href="rulebook.html#learn-to-play">Learn to play</a>.</li>
+        <li><strong>Learn to play, and a guide on the table:</strong> New players can choose <strong>Learn to play</strong> on the home page or in the game menu: a practice game teaches every part of a turn on the real table, one step at a time, and waits for you to do each one. In your own games, a short note suggests a useful next step each turn and explains a rule the first time it matters; switch it off with Guidance in the menu. <a href="rulebook.html#learn-to-play">Learn to play</a> · <a href="rulebook.html#guidance">Guidance</a>.</li>
+        <li><strong>A bigger map and mat, buttons where you use them, cards with corner boxes:</strong> The map is as large as your window allows: it reaches between the narrow left-hand panels and down between your hand, piles and mat, the map key sits in the middle of the left column, and on a wide window the supply cards grow wider instead of leaving bare table (<a href="rulebook.html#shared-board">Shared board</a>). Your player mat is larger, with bigger pips and icons. <strong>Convert level I starters</strong> sits left of the mat and appears only while you hold a level I starter you may convert; <strong>Trade</strong> sits beside it; a smaller <strong>Pass &amp; buy</strong> or <strong>Finish Buy</strong> stays just above Discard (<a href="rulebook.html#player-mat">Player mat</a>). A card's cost is one box in its top-right corner, and what a level I starter converts into is one box in its top-left corner; cards that cannot convert have no such box, so upgrade cards no longer say so. Upgrade cards use the card icons, and Construct III's upgrade card prints what Construct III does (<a href="rulebook.html#shared-board">Shared board</a>). Pointing at a card in your hand raises that card itself into the whole card above your hand, instead of showing a copy beside the map (<a href="rulebook.html#player-mat">Player mat</a>). Choosing <strong>Use order</strong> lights the same hexes as dragging the card; choose a lit hex to play it there.</li>
+        <li><strong>Playing with others wears the game's colours:</strong> The waiting screen, the screen a link opens, the phone pairing panels and the public board now use the table's green felt, cream cards and gold, like the rest of the site, instead of navy and cyan. The public board's map shows the game's own tile and seat colours. Nothing about joining or starting changes. <a href="rulebook.html#phone-pairing">Playing with others</a>.</li>
+        <li><strong>Guide players from invitation to game:</strong> Choose a personal screen or a shared board, then invite friends from a simpler lobby. Guests enter their name, wait for approval, and open their private game automatically when the host starts. <a href="rulebook.html#phone-pairing">Joining and device setup</a>.</li>
+        <li><strong>Separate resource stock from production rings:</strong> On the star background, resources appear as smaller discs inside their slots, leaving a dark gap so stock and production are easy to distinguish. Production rings return to their thinner width. The green mat is unchanged. <a href="rulebook.html#resources">Resources and storage</a>.</li>
+        <li><strong>Corner worlds move inward:</strong> Both neutral corner worlds move one hex toward the center, with the highlighted inward hex becoming the new world center. Home worlds, the middle worlds and portal endpoints stay in place. Start a new game for this layout. <a href="rulebook.html#setup">Setup</a>.</li>
+        <li><strong>Life and distinct resource costs:</strong> Biomass is now Life. Settlers cost 1 Matter and 2 Life; Fleets cost 2 Matter and 2 Energy; Shipyards cost 2 Matter, 2 Energy and 1 Data. Found a Colony for 3 Life, or excavate for 1 Energy and 3 Data. Captures still cost 1 Life, and printed free or reduced Colony costs still apply. Start a new game for these costs. <a href="rulebook.html#resource-costs">Resource costs</a>.</li>
+        <li><strong>Whole-card market reads cleanly on your Buy turn:</strong> On your Buy turn the whole cards no longer leave an empty strip beside them: the sheet is just wide enough for the cards, and the map shows beside it. Each card reads from its corners, symbols upper left and price upper right, and names wrap only between words. The Upgrades' effects are whole instead of cut off at the edge. <a href="rulebook.html#shared-board">The table</a>.</li>
+        <li><strong>The player mat shows one piece per value:</strong> On the green table's player mat, each resource row now has one round Now piece on the slot for your stock and one Rate cube, in that resource's colour, on the slot for your production, like markers on a track. The first slot is 0, and slots 5, 10, 15 and 20 have a brighter rim. When your stock equals your limit, the Now piece stands on the gold capacity marker. The legend's Rate swatch is a cube too. Values, trades and limits are unchanged. <a href="rulebook.html#resources">Resources &amp; storage</a>, <a href="rulebook.html#player-mat">Player mat</a>.</li>
+        <li><strong>Reliable hand controls and clearer Market rows in Max’s UI:</strong> In <strong>Max’s UI</strong>, empty space beside your hand no longer blocks <strong>Convert level I starters</strong> or <strong>Pass &amp; buy</strong> on wide screens. Vertical <strong>Expensive</strong>, <strong>Moderate</strong> and <strong>Cheap</strong> labels sit to the left of their Market cards; Moderate is the existing Medium deck. The map stays centered after the hand and bank update on iPad. <a href="rulebook.html#resources">Starter conversions</a> · <a href="rulebook.html#market">Passing to Buy</a> · <a href="rulebook.html#market-tiers">Market rows</a>.</li>
+        <li><strong>Clearer colours and legends in Max’s UI:</strong> <strong>Max’s UI</strong> uses the subdued Deep jewel board palette with a matching resource legend beneath the map. The building cost legend returns below Comms, Trade sits beneath it, and the card banks sit in the upper right above the lowered resource tracker. <a href="rulebook.html#background-preference">Background preference</a> · <a href="rulebook.html#card-banks">Table layout</a>.</li>
+        <li><strong>A centered map and upright resource bank:</strong> In <strong>Max’s UI</strong>, the map sits in the middle and slightly lower, while your resource bank stands on the right with resource symbols at the bottom, counts rising upward, and a vertical key on its left edge. Extra space separates the Prestige track from the round counter. <a href="rulebook.html#resources">Your resource bank</a> · <a href="rulebook.html#card-banks">Table layout</a>.</li>
+        <li><strong>More breathing room for round phases:</strong> <strong>Max’s UI</strong> gives the round panel larger, clearly spaced phase labels. Pass &amp; buy is centered above Convert, and the hand has matching gaps beside Military and Discard. <a href="rulebook.html#card-banks">Table layout</a>.</li>
+        <li><strong>A tidier seat in Max’s UI:</strong> In <strong>Max’s UI</strong>, your piles and turn buttons gather around your hand, and the map tools move to the bottom-right corner without resizing the pieces. Trade sits below Basics, and the resource tracker loses its empty space above the circles. <a href="rulebook.html#card-banks">Table layout</a>.</li>
+        <li><strong>More room at Max’s table:</strong> Star background is now <strong>Max’s UI</strong>, with slate panels, soft blue accents, and more space for the map and your hand. Open <strong>Relics</strong>, <strong>Market</strong>, or <strong>Basics</strong> from three buttons on the left; Buy and excavation open the right bank automatically, and existing games keep their cards and rules. <a href="rulebook.html#background-preference">Max’s UI</a>.</li>
+        <li><strong>Military Focused checks small raid routes:</strong> Military Focused sends an early four-Fleet group into combat only when its actual legal route reaches the enemy in this Move. A blocked direct route that needs a longer detour makes the small group wait or regroup. Its two-world combat strategy and five-to-ten-Fleet groups remain. <a href="rulebook.html#military-focused-rival">Military Focused</a>.</li>
+        <li><strong>Military Focused keeps larger hunting groups:</strong> Military Focused can keep five to ten Fleets together while hunting weaker enemy units, and values Victory Doctrine's combat reward. Its two-world limit and combat-scoring focus remain. <a href="rulebook.html#military-focused-rival">Military Focused</a>.</li>
+        <li><strong>Choose each solo rival:</strong> New games use Military Focused as the default military rival. Choose each of the three solo rivals independently in New game or Play alone, including repeated profiles. Military, Military Focused, Economy, Expansion and MaxBot remain available. Games in progress keep their assigned rivals. <a href="rulebook.html#solo-seating">Solo setup</a> · <a href="rulebook.html#military-focused-rival">Military Focused</a>.</li>
+        <li><strong>Military Focused takes immediate small raids:</strong> Military Focused can send two to four Fleets into a favourable fight when their actual legal route reaches it in one Move. It normally keeps five to ten Fleets together and reinforces smaller groups when no immediate fight is available. Its two-world combat strategy remains. <a href="rulebook.html#military-focused-rival">Military Focused</a>.</li>
+        <li><strong>Military Focused prepares its war economy earlier:</strong> Military Focused builds missing Data and Life Harvesters before its home Shipyard, protects its second Colony's payment, and upgrades Move cards earlier. Four Fleets can take a nearby early fight, while larger forces stay together. Its two-world limit and combat-scoring focus remain. <a href="rulebook.html#military-focused-rival">Military Focused</a>.</li>
+        <li><strong>Military Focused favours shorter hunts:</strong> Military Focused gives shorter routes to favourable fights more weight, helping its cohesive Fleet groups start scoring sooner. It keeps its two-world combat strategy and uses ordinary movement and battle rules. <a href="rulebook.html#military-focused-rival">Military Focused</a>.</li>
+        <li><strong>Market-style relic choices and individual battle ships in Max’s UI:</strong> In <strong>Max’s UI</strong>, Oracle of the Unmade shows every market design in <strong>Expensive, Moderate and Cheap</strong> rows, with the Market’s price and capacity markers. Browse with the arrows or swipe, then confirm an available purchase. Keepers’ Archive uses the same card layout with discounted payment choices, and Echoes of the First Dawn lets you select up to two cards In play. Battles show each ship separately with its own remaining hull, so five Fleets appear as five Fleet icons. <a href="rulebook.html#card-choice-display">Card choices</a> · <a href="rulebook.html#relic-purchases">Relic purchases</a> · <a href="rulebook.html#combat-tactics">Combat</a>.</li>
+        <li><strong>Keep game invitations separate from playtest management:</strong> Player invitations open the correct game without developer banners or a build picker, even after another browser tab opens a different playtest. Connection errors keep you in the game with a retry action. <a href="rulebook.html#phone-pairing">Playing with friends</a>.</li>
+        <li><strong>Playtest refinements for capacity, relics and the table:</strong> Resource limits stop at 15, Omniscient Chorus trashes after use, Gravity Scepter can summon onto your ships, and rivals pressure the Prestige leader. Relics use map targets and inline battle choices; clearer prices, upgrades, scoring, reference toggles and counting guides improve both tables. Max’s UI preserves its earlier colors, cards and price boxes, with two continuous five-count dividers. <a href="rulebook.html#resources">Resources</a>, <a href="rulebook.html#alien-relics">Relics</a>, <a href="rulebook.html#computer-rivals">Rivals</a>.</li>
+        <li><strong>Prismatic Reservoir uses the capacity selector in Max’s UI:</strong> Play <strong>Prismatic Reservoir</strong> in Max’s UI to adjust four resource counters, just like a Capacity Module. Its counters are signed changes: increases and decreases must total <strong>zero</strong> before confirming. Each row previews the new limit, with the existing minimum of 4 and held-resource protection. <a href="rulebook.html#relic-capacity">Prismatic Reservoir</a>.</li>
+        <li><strong>Keep excavation rewards selectable while reading them:</strong> The Choose button stays above a raised relic card, so hovering to read Echoes of the First Dawn or any other reward cannot block its selection. <a href="rulebook.html#excavation">Excavation</a>.</li>
+        <li><strong>Discover sixteen powerful alien relics:</strong> New games use sixteen relics with reinforcement, ship control, battle tricks, remote Colonies, market searches and capacity redistribution. Folded Warehouse and Omniscient Chorus keep their abilities. Archive Purge and Archive of Tides are retired; ordinary paid trashing remains. Existing games keep their dealt rules. <a href="rulebook.html#alien-relics">Alien relics</a>.</li>
+        <li><strong>Browse compact cards and alien relics in the gallery:</strong> The gallery now includes all alien relics and uses the game’s description symbols and upper-right cost boxes. Cards start compact; Show feedback reveals votes and notes without losing anything you saved. <a href="rulebook.html#card-gallery">Card gallery</a>.</li>
+        <li><strong>Align Alien relics in the menu:</strong> Alien relics now lines up with the other game menu items and uses their normal spacing and text size. <a href="rulebook.html#shared-board">Game menu</a>.</li>
+        <li><strong>Heirs Ad Astra throughout the release notes:</strong> Release summaries now use Heirs Ad Astra consistently. Saved games and tables keep their rules and continue as before. <a href="rulebook.html#shared-tables">Playing with friends</a>.</li>
+        <li><strong>The map key shows costs as repeated resource symbols:</strong> Read each piece's price directly beside its symbol in the left-hand map key. Each resource symbol means one of that resource: two Matter symbols mean 2 Matter. The Map key window uses the same notation. Prices and actions are unchanged. <a href="rulebook.html#shared-board">Shared board</a>, <a href="rulebook.html#building">Building</a>.</li>
+        <li><strong>Read stock and production together on the resource mat:</strong> Filled circles show available resources, thick rings show production, and faded circles show unavailable capacity. The separate production squares and gold limit marker are gone. <a href="rulebook.html#resources">Resources and storage</a>.</li>
+        <li><strong>Choose Gravity Scepter ships and skip forced fight prompts:</strong> Gravity Scepter starts by highlighting enemy ships; choose their destination and how many of each type to move, leaving the rest behind. Battles skip “Stay and fight” when no paid Explorer escape is available. Mixed ship-count badges stay inside their hex. Max’s UI restores its earlier four resource symbols. <a href="rulebook.html#relic-targeting">Relic targets</a>, <a href="rulebook.html#explorer-escape">escapes</a> and <a href="rulebook.html#background-preference">Max’s UI</a>.</li>
+        <li><strong>Return to a saved shared table without a whole-game clock:</strong> The rules clarify that you can leave a shared table while waiting for another player and return later. Accepted choices and dealt rules remain. Game behavior is unchanged. <a href="rulebook.html#shared-tables">Playing with friends</a>.</li>
+        <li><strong>Standings table and a Military pile replace the Fleet panel:</strong> The Prestige race now doubles as a standings table: each faction's lane starts with its name and carries its Settlers, Explorers, Fleets, strongest fleet power, Colonies, Harvesters, Shipyards, excavated relics and cards bought, under one row of icon headings. Your military deck is a pile of its own beside In play; select it to see your tactics. The Fleet panel, which could not be closed, is gone, and a price you hold too little of shows as a faded chip instead of a dashed outline. <a href="rulebook.html#shared-board">Shared board</a>, <a href="rulebook.html#military-deck">Military deck</a>.</li>
+        <li><strong>Symbols drawn as constellations:</strong> Every symbol in the game is redrawn as a small constellation of four-point stars: the four resources, the card icons (Move, Build, Colonize, Draw, Prestige, Hit, Shield, Limit, Trade), the units and buildings, and Excavate's relic diamond. Small symbols use solid lines and fuller stars so each one stays distinct at 16 px. The card gallery lists all twenty by name. <a href="rulebook.html#card-corners">Card corners</a>.</li>
+        <li><strong>Stars around the board:</strong> The star background stays outside the hex map; stars no longer show behind the board or between its hexes. <a href="rulebook.html#background-preference">Background preference</a>.</li>
+        <li><strong>Separate table setup from player and board screens:</strong> Create a table and choose where to play. Phones, desktops and personal tablets can use the full player view; a shared public board is optional and can join before or after the game starts. Closing that display leaves hosted play running. <a href="rulebook.html#phone-pairing">Device setup</a> · <a href="rulebook.html#public-board">Public board</a>.</li>
+        <li><strong>Keep confirmed tabletop choices final:</strong> Fresh phone-paired games use preview and confirmation without Undo. Human Pass and Finish Buy wait for confirmation, even with an empty hand; disconnecting never replaces a person with AI. Earlier tables keep their original behavior. <a href="rulebook.html#tabletop-commitment">Final choices</a>.</li>
+        <li><strong>Pair private phones without accounts:</strong> The host can pair their own phone and approve guests by name and pairing code. Scan a QR or use a link, then reconnect to the same seat. <a href="rulebook.html#phone-pairing">Phone pairing</a>.</li>
+        <li><strong>Confirm private phone choices:</strong> Tap the tablet to suggest a sector, keep a private card-and-sector reminder on your phone, and preview each choice before confirming it. A changed position requires a fresh choice. <a href="rulebook.html#private-confirmation">Private planning</a>.</li>
+        <li><strong>Open a public tablet board:</strong> Hosts can open a read-only shared board without exposing any hand, private relic signal or sealed tactic. Every player keeps their own phone. <a href="rulebook.html#public-board">Playing with friends</a>.</li>
+        <li><strong>Learn to play's Back looks back without lighting the table:</strong> Back in Learn to play shows an earlier step's note and says you have done it, but no longer rings a card, marks a hex or shows a drag for an action you already took. The note stays where it was, and Return to current step goes straight back. Doing the current step's action while looking back still counts, and reloading the page returns to the current step. <a href="rulebook.html#learn-to-play">Learn to play</a>.</li>
+        <li><strong>Learn to play starts a new practice game unless you left one part-way:</strong> Choosing Learn to play when you had not completed its first step, or after finishing it, now deals a new practice game at Lesson 1 instead of reopening the earlier practice table. A walkthrough left part-way still resumes where you left it (Continue Learn to play), and a walkthrough restarted in one tab is no longer overwritten by another open tab. <a href="rulebook.html#learn-to-play">Learn to play</a>.</li>
+        <li><strong>Upgrade cards respond to mouse clicks:</strong> Click Move or Construct upgrades below the market to choose a starter, including one already in play. The transparent market area no longer blocks the upgrade tray. <a href="rulebook.html#buy">Buy</a>.</li>
+        <li><strong>Learn to play starts with one glowing card:</strong> Begin with the marked Construct and its first build. You already have the Matter and Data: convert a Move for the missing Energy, then use the Construct to build a Harvester. Only the suggested card glows and gently grows. Its instructions appear when you hover, focus or touch it, and stay available while you complete that step. The table and mat introductions follow your first build. Rules, costs and ordinary saved games are unchanged. <a href="rulebook.html#learn-to-play">Learn to play</a>, <a href="rulebook.html#resources">Resources</a>, <a href="rulebook.html#building">Building</a>.</li>
+        <li><strong>Learn to play lights the button to use inside a window:</strong> In Learn to play, a note inside a window now lights the control to use next, as notes on the table already did: in a battle, Stay and fight, then the two tactics, then Commit; Continue on the battle report; Play Capacity Module, with the capacity split marked; and Done in the Trash window once the card is gone, instead of a note asking you to close the window. Inside a window the note is short (its title and one line) so the window's own controls stay in view, and every note, including one over a window the step does not use, offers Skip lesson. <a href="rulebook.html#learn-to-play">Learn to play</a>.</li>
         <!-- /release:items -->
       </ul>
-      <p>Start a new game for 38.43. Existing tables keep their archived rules. The adopted Balance Package rules are retained. <a href="rulebook.html#free-economy">Current rules</a> · <a href="rules/37.42/">Continue a 37.42 game</a> · <a href="rules/33.38/">Continue a 33.38 game</a>.</p>
+      <p>Start a new game for 39.44. Existing tables keep their archived rules. The adopted Balance Package rules are retained. <a href="rulebook.html#free-economy">Current rules</a> · <a href="rules/38.43/">Continue a 38.43 game</a> · <a href="rules/37.42/">Continue a 37.42 game</a> · <a href="rules/33.38/">Continue a 33.38 game</a>.</p>
     </details>
 
+    <nav class="max-bank-nav" id="max-bank-nav" aria-label="Card banks">
+      <span class="max-bank-label">CARD BANKS</span>
+      <button type="button" data-card-bank="relics" aria-haspopup="dialog" aria-controls="max-bank-dialog" aria-expanded="false"><span class="hx-slot" data-hx-slot="excavate" aria-hidden="true"></span>Relics<span aria-hidden="true">↗</span></button>
+      <button type="button" data-card-bank="market" aria-haspopup="dialog" aria-controls="max-bank-dialog" aria-expanded="false"><span aria-hidden="true">▤</span>Market<span aria-hidden="true">↗</span></button>
+      <button type="button" data-card-bank="basics" aria-haspopup="dialog" aria-controls="max-bank-dialog" aria-expanded="false"><span aria-hidden="true">⌘</span>Basics<span aria-hidden="true">↗</span></button>
+    </nav>
     <section class="game-layout">
       <div class="board-column" id="table-board" tabindex="-1">
         <div class="board-toolbar">
-          <div>
+          <div role="status">
             <span class="status-dot" id="turn-dot"></span>
             <strong id="turn-title">Preparing the galaxy</strong>
             <span id="turn-instruction">Please wait…</span>
@@ -76,7 +182,7 @@
         <div><span class="label">Round</span><strong id="round-value">1</strong></div>
         <div><span class="label">Phase</span><strong id="phase-value">Production</strong></div>
         <div><span class="label">Active</span><strong id="active-value">You</strong></div>
-        <div><span class="label">Goal</span><strong id="round-goal">40 Prestige</strong></div>
+        <div><span class="label">Goal</span><strong id="round-goal">30 Prestige</strong></div>
       </div>
             </div>
       <aside class="board-shared" aria-label="Shared table information">
@@ -86,7 +192,7 @@
           <ul class="board-resource-key">
             <li><span class="resource-swatch matter" aria-hidden="true"></span>Matter</li>
             <li><span class="resource-swatch energy" aria-hidden="true"></span>Energy</li>
-            <li><span class="resource-swatch biomass" aria-hidden="true"></span>Biomass</li>
+            <li><span class="resource-swatch biomass" aria-hidden="true"></span>Life</li>
             <li><span class="resource-swatch data" aria-hidden="true"></span>Data</li>
           </ul>
           <p>Worlds are public. Moons and unlocated relics stay hidden.</p><p class="territory-key"><span class="territory-swatch" aria-hidden="true"><i style="--territory:#55d9f4"></i><i style="--territory:#ff9f6e"></i><i style="--territory:#a58cff"></i><i style="--territory:#f2cf66"></i></span>A ring in a faction’s colour marks its planets; buildings wear their owner’s colour.</p><p class="portal-key"><span aria-hidden="true">⇄</span> Marked corner portals: 2 movement to cross.</p>
@@ -104,7 +210,7 @@
             <dt>Combat</dt><dd>2 per fight won with all enemy units destroyed. None if any escape or retreat.</dd>
             <dt>Cards</dt><dd>Permanent Prestige printed on Wonders, Ascendancy Codex, Genesis Charter and Victory Doctrine.</dd>
           </dl>
-          <p>Reach <strong id="victory-target-text">40 Prestige</strong>, set when this game was created. Victory is checked at round end.</p>
+          <p>Reach <strong id="victory-target-text">30 Prestige</strong>, set when this game was created. Victory is checked at round end.</p>
         </section>
         <section class="panel log-panel">
           <div class="panel-heading">
@@ -113,18 +219,23 @@
           <button type="button" class="log-toggle" id="log-toggle" aria-expanded="false" aria-controls="game-log"><span>Comms</span><small>Show all</small></button>
           <ol id="game-log" tabindex="0" aria-label="Comms feed" class="game-log" aria-live="polite"></ol>
         </section>
-        <section class="fleet-glance" id="fleet-glance" aria-label="Fleets at a glance"></section>
         </div>
       </aside>
             <nav class="phase-stepper" id="phase-stepper" aria-label="Round phases"><strong id="stepper-round">Round 1</strong><ol id="phase-stepper-steps"></ol></nav>
             <div class="prestige-track" id="prestige-track" role="group" aria-label="Faction standings: the race to the Prestige goal"></div>
             <div class="board-map-region">
               <div class="galaxy-board" id="galaxy-board" role="group" aria-label="Interactive galaxy map" aria-describedby="resource-legend symbol-legend"></div>
+              <div class="max-resource-legend" role="group" aria-label="Board resource colours">
+                <span><i class="resource-swatch matter" aria-hidden="true"></i>Matter</span>
+                <span><i class="resource-swatch energy" aria-hidden="true"></i>Energy</span>
+                <span><i class="resource-swatch biomass" aria-hidden="true"></i>Life</span>
+                <span><i class="resource-swatch data" aria-hidden="true"></i>Data</span>
+              </div>
             </div>
             <div class="map-legend-corner" id="map-legend-corner" aria-hidden="true"></div>
           </div>
         </div>
-        <div class="map-tools"><span class="map-pan-hint">Scroll or swipe to explore the board</span><label id="development-tools" hidden><input type="checkbox" id="reveal-entire-map"> Reveal entire map <small>Development</small></label><button class="button button-ghost" type="button" id="open-map-key" aria-label="Map key: resources, units and costs" title="Resources, units and costs">Map key</button><button class="button button-ghost" type="button" id="map-zoom" aria-pressed="false">Zoom map</button></div>
+        <div class="map-tools"><span class="map-pan-hint">Scroll or swipe to explore the board</span><button class="button button-ghost guide-switch" type="button" id="guide-switch" data-guide-switch aria-pressed="true" aria-label="Guidance"><svg class="guide-switch-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="guide-switch-bubble" d="M3 2.5h10A1.5 1.5 0 0 1 14.5 4v6a1.5 1.5 0 0 1-1.5 1.5H8.2L5 14v-2.5H3A1.5 1.5 0 0 1 1.5 10V4A1.5 1.5 0 0 1 3 2.5z"/><path class="guide-switch-lines" d="M4.5 5.5h7M4.5 8.2h4.5"/><path class="guide-switch-slash" d="M1.8 1.8l12.4 12.4"/></svg><span class="guide-switch-text" aria-hidden="true">Guidance <span class="guide-switch-state"><span class="guide-switch-on">on</span><span class="guide-switch-off">off</span></span></span></button><label id="development-tools" hidden><input type="checkbox" id="reveal-entire-map"> Reveal entire map <small>Development</small></label><button class="button button-ghost" type="button" id="open-map-key" aria-label="Map key: resources, units and costs" title="Resources, units and costs">Map key</button><button class="button button-ghost" type="button" id="map-zoom" aria-pressed="false">Zoom map</button></div>
       </div>
 
 
@@ -140,7 +251,7 @@
           </div>
         </div>
         <section class="upgrade-group market-cards" id="upgrade-group" aria-label="Upgrades">
-          <div class="upgrade-market" id="upgrade-market" role="group" aria-label="Upgrades: starter upgrades and Add 4 capacity"></div>
+          <div class="upgrade-market" id="upgrade-market" role="group" aria-label="Upgrades: starter upgrades, Capacity Modules and the Trash pile"></div>
           <button class="button" id="open-trash" type="button" hidden>Trash a card</button>
         </section>
         <div class="resource-grid" id="resource-grid"></div>
@@ -148,18 +259,22 @@
           <button id="deck-button" type="button" title="Inspect remaining cards without revealing draw order"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Deck</span> <strong id="deck-count">0</strong></button>
           <span>Hand <strong id="hand-pile-count">0</strong></span>
           <button id="in-play-button" type="button" title="Inspect used cards held outside discard until shared cleanup"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">In play</span> <strong id="in-play-count">0</strong></button>
+          <!-- Rules #military-deck: owned military cards, a pile of their own that is never drawn or discarded. -->
+          <button id="military-button" type="button" title="Inspect your military deck: the tactics you add to every battle"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Military</span> <strong id="military-count">0</strong></button>
           <button id="discard-button" type="button" title="Browse your discard pile"><span class="pile-card" aria-hidden="true"></span><span class="pile-label">Discard</span> <strong id="discard-count">0</strong></button>
         </div>
+        <!-- Rules #storage-pile: played Capacity Modules, on the mat where the +4 token was (its
+             former classes and ids keep that placement; the words are hidden on the desktop table). -->
         <div class="storage-upgrade-control">
-          <button class="button storage-upgrade-button" id="upgrade-storage-button" type="button" aria-describedby="storage-upgrade-help"><span>Add 4 capacity</span><span class="storage-each" id="storage-upgrade-each" aria-hidden="true"></span><span id="storage-upgrade-cost"></span></button>
-          <p class="muted" id="storage-upgrade-help">Choose how to split 4 points among your resource limits. Pay during Operations or Buy, including off turn.</p>
+          <button class="button storage-upgrade-button" id="storage-pile" type="button" aria-label="Storage pile: 0 Capacity Modules" aria-describedby="storage-upgrade-help"><b aria-hidden="true">▤</b><strong id="storage-pile-count">0</strong><span id="storage-upgrade-cost">in Storage</span></button>
+          <p class="muted" id="storage-upgrade-help">Storage pile: played Capacity Modules stay here for good. Your next one costs 1 + this count, of each resource.</p>
         </div>
         <details class="resource-tools" id="resource-tools">
           <summary>Bank &amp; discards</summary>
           <p id="resource-tools-help">Free during your Operations or Buy turn.</p>
           <form id="bank-trade-form" class="bank-trade-form">
             <div class="bank-resource-picker">
-              <fieldset><legend>Give 4</legend><div class="bank-resource-options" id="bank-give-options"></div></fieldset>
+              <fieldset><legend id="bank-give-rate">Give 4</legend><div class="bank-resource-options" id="bank-give-options"></div></fieldset>
               <span class="bank-resource-arrow" aria-hidden="true">→</span>
               <fieldset><legend>Receive 1</legend><div class="bank-resource-options" id="bank-get-options"></div></fieldset>
             </div>
@@ -176,10 +291,16 @@
         <div class="console-nav">
           <div class="console-tabs" role="tablist" aria-label="Player controls">
             <button class="console-tab active" id="market-tab" type="button" data-tab="market" role="tab" aria-selected="true" aria-controls="market-panel" tabindex="0">Market</button>
-            <button class="console-tab" id="fleet-tab" type="button" data-tab="fleet" role="tab" aria-selected="false" aria-controls="fleet-panel" tabindex="-1">Fleet</button>
             <button class="console-tab" id="relics-tab" type="button" data-tab="relics" role="tab" aria-selected="false" aria-controls="relics-panel" tabindex="-1">Relics</button>
           </div>
-          <button class="console-tab trade-open" id="open-trade" type="button" aria-haspopup="dialog" aria-controls="trade-dialog">Trade</button>
+        </div>
+        <!-- The market drawer (rules #shared-board): the supply's handle on the table's right edge
+             opens and closes it; the size button switches between the side panel and whole cards. -->
+        <div class="market-sheet" aria-hidden="true"></div>
+        <div class="market-handles" id="market-handles" hidden>
+          <button class="market-handle" id="market-handle" type="button" aria-expanded="false" aria-controls="relics-panel market-panel upgrade-group"><span>Market</span></button>
+          <button class="market-size" id="market-size" type="button" aria-controls="relics-panel market-panel upgrade-group" hidden><span>Larger</span></button>
+          <a class="market-size market-gallery" id="market-gallery" data-card-gallery href="cards.html" target="_blank" rel="noopener" hidden><span>Card gallery ↗</span></a>
         </div>
         <div class="console-body">
           <div class="tab-panel chain-panel" id="chain-panel" data-panel="chain" aria-label="Testnet seat" hidden>
@@ -193,7 +314,7 @@
           <div class="hand-panel" id="hand-panel" role="region" aria-labelledby="hand-title">
             <div class="section-intro">
               <div><div class="eyebrow">YOUR NEXT MOVE</div><h2 id="hand-title">Your hand</h2><p id="hand-help">Convert cards during Operations or Buy, including off turn. Play orders on your Operations turn.</p><p class="turn-notice" id="turn-notice" role="status" hidden></p></div>
-              <div class="hand-tools"><button class="button button-danger" id="pass-button" type="button" hidden>Pass &amp; buy</button><button class="button button-primary" id="hand-finish-buy-button" type="button" hidden>Finish Buy</button><a class="table-jump" href="#table-board">Board ↑</a><button class="button" id="convert-all-button" type="button" title="Converts cards from left to right and automatically discards excess above each resource’s limit. Includes Buy and reaction cards.">Convert level I starters</button><button class="button" id="finish-construct" hidden>Finish after one build</button><button class="button" id="skip-colony-build" hidden>Finish without building</button><button class="button board-primary" id="board-primary" type="button" hidden>Pass &amp; buy</button>
+              <div class="hand-tools"><button class="button guide-switch guide-switch-phone" type="button" id="guide-switch-phone" data-guide-switch aria-pressed="true" aria-label="Guidance"><svg class="guide-switch-icon" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path class="guide-switch-bubble" d="M3 2.5h10A1.5 1.5 0 0 1 14.5 4v6a1.5 1.5 0 0 1-1.5 1.5H8.2L5 14v-2.5H3A1.5 1.5 0 0 1 1.5 10V4A1.5 1.5 0 0 1 3 2.5z"/><path class="guide-switch-lines" d="M4.5 5.5h7M4.5 8.2h4.5"/><path class="guide-switch-slash" d="M1.8 1.8l12.4 12.4"/></svg><span class="guide-switch-text" aria-hidden="true">Guidance <span class="guide-switch-state"><span class="guide-switch-on">on</span><span class="guide-switch-off">off</span></span></span></button><button class="button button-danger" id="pass-button" type="button" hidden>Pass &amp; buy</button><button class="button button-primary" id="hand-finish-buy-button" type="button" hidden>Finish Buy</button><a class="table-jump" href="#table-board">Board ↑</a><button class="button" id="convert-all-button" type="button" aria-label="Convert all level I starters" title="Convert all level I starters, left to right">Convert all</button><button class="button" id="finish-construct" hidden>Finish after one build</button><button class="button" id="skip-colony-build" hidden>Finish without building</button><button class="button board-primary" id="board-primary" type="button" hidden>Pass &amp; buy</button>
               </div>
             </div>
             <div class="card-row" id="hand-row"></div>
@@ -201,7 +322,7 @@
           <div class="tab-panel active" id="market-panel" data-panel="market" role="tabpanel" aria-labelledby="market-tab" tabindex="0">
             <div class="section-intro">
               <div><div class="eyebrow">THE SHARED SUPPLY</div><h2>Acquisition market</h2><p id="market-help">Buy one of ten cards during your Buy turn. Normal cards enter discard; military cards join your military deck.</p><p class="turn-notice" id="market-notice" role="status" hidden></p></div>
-              <div class="hand-tools"><button class="button button-primary" id="finish-buy-button" type="button" hidden>Finish Buy</button></div>
+              <div class="hand-tools"><a class="button button-ghost" data-card-gallery href="cards.html" target="_blank" rel="noopener">Card gallery ↗</a><button class="button button-primary" id="finish-buy-button" type="button" hidden>Finish Buy</button></div>
             </div>
             <div class="basic-market" id="basic-market"></div>
             <div class="market-cards">
@@ -209,31 +330,52 @@
             </div>
           </div>
           <div class="tab-panel" id="relics-panel" data-panel="relics" role="tabpanel" aria-labelledby="relics-tab" tabindex="0" hidden>
-            <div class="section-intro"><div><h2 id="relic-row-title">Alien relics</h2><p id="relic-deck-count"></p></div><button class="button" id="cancel-excavate" type="button" hidden>Cancel Excavate</button></div>
+            <div class="section-intro"><div><h2 id="relic-row-title">Alien relics</h2><p id="relic-deck-count"></p></div><a class="button button-ghost" data-card-gallery href="cards.html?deck=relic" target="_blank" rel="noopener" aria-label="Open relic card gallery">Gallery ↗</a><button class="button" id="cancel-excavate" type="button" hidden>Cancel Excavate</button></div>
             <p class="muted" id="relic-row-help">Browse rewards here. Use Excavate with your Explorer at a relic to choose one.</p>
             <p class="relic-payment">Excavation cost <span id="relic-cost"></span></p>
             <div class="relic-row" id="relic-row"></div>
-          </div>
-          <div class="tab-panel" id="fleet-panel" data-panel="fleet" role="tabpanel" aria-labelledby="fleet-tab" tabindex="0" hidden>
-            <div class="section-intro"><div><h2>Fleet manifest</h2><p>Settlers move 1 and colonize. Fleets move 2. Explorers move 3 and excavate relics.</p></div></div>
-            <div class="fleet-summary" id="fleet-summary"></div>
-            <div class="military-deck-heading"><div><h3>Your military deck &amp; tactic hand</h3><p>Privately choose, then reveal together. Each battle you hold two Fire, two Screen and every military card you bought, each usable once.</p></div><strong id="military-deck-count">4 tactics each battle</strong></div>
-            <div class="military-card-grid" id="military-card-grid"></div>
           </div>
         </div>
       </section>
     </section>
   </main>
 
+  <dialog id="max-bank-dialog" aria-labelledby="max-bank-title" aria-describedby="max-bank-help">
+    <header class="max-bank-heading">
+      <div><div class="eyebrow">THE SHARED SUPPLY</div><h2 id="max-bank-title">Market</h2></div>
+      <div class="max-bank-actions"><a class="button button-ghost" data-card-gallery href="cards.html" target="_blank" rel="noopener">Card gallery ↗</a><button class="button button-ghost" type="button" id="max-bank-close" autofocus aria-label="Close card bank">Close <span aria-hidden="true">×</span></button></div>
+    </header>
+    <nav class="max-bank-tabs" aria-label="Choose a card bank">
+      <button type="button" data-card-bank="relics" aria-pressed="false">Relics</button>
+      <button type="button" data-card-bank="market" aria-pressed="true">Market</button>
+      <button type="button" data-card-bank="basics" aria-pressed="false">Basics</button>
+    </nav>
+    <p id="max-bank-help"></p>
+    <div id="max-bank-content"></div>
+    <footer class="max-bank-footer"><span id="max-bank-status" role="status"></span><button class="button button-primary" id="max-bank-finish" type="button" hidden>Finish Buy</button></footer>
+  </dialog>
+
   <nav class="phone-drawers" aria-label="Table drawers"><button type="button" data-drawer="hand" aria-pressed="false">Hand</button><button type="button" data-drawer="supply" aria-pressed="false">Supply</button><button type="button" data-drawer="mat" aria-pressed="false">Mat</button><button type="button" data-drawer="comms" aria-pressed="false">Comms</button><button type="button" data-drawer="table" aria-pressed="false">Table</button></nav>
 
   <dialog id="new-game-dialog" aria-labelledby="new-game-title">
     <form method="dialog" id="new-game-form">
-      <div class="dialog-heading"><div><div class="eyebrow">TABLE SETTINGS</div><h2 id="new-game-title">Start a new game</h2></div></div>
+      <div class="dialog-heading"><div><div class="eyebrow">GAME SETTINGS</div><h2 id="new-game-title">Start a new game</h2></div></div>
       <p>This replaces your current guest save.</p>
       <label for="new-game-target">Prestige target</label>
       <select id="new-game-target"></select>
-      <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 40.</p>
+      <p class="muted">The highest Prestige at or above the target wins when a round ends. This experiment defaults to 30.</p>
+      <div id="new-game-rivals" hidden>
+        <div><label for="new-game-rival-1">Ember Directorate</label><select id="new-game-rival-1"></select></div>
+        <div><label for="new-game-rival-2">Violet Assembly</label><select id="new-game-rival-2"></select></div>
+        <div><label for="new-game-rival-3">Helios Compact</label><select id="new-game-rival-3"></select></div>
+        <p class="muted">Choose each rival's strategy. Repeated strategies are allowed.</p>
+      </div>
+      <!-- Kept engines use these controls with the current shared markup. -->
+      <div id="new-game-legacy-rivals">
+        <label><input type="checkbox" id="new-game-maxbot"> Play against MaxBot instead of the Economy rival</label>
+        <label for="new-game-military-profile">Military rival</label>
+        <select id="new-game-military-profile"><option value="military">Military</option><option value="militaryFocused">Military Focused</option></select>
+      </div>
       <p id="new-game-neighbor" class="new-game-neighbor"></p>
       <div class="dialog-actions"><button class="button button-ghost" value="cancel" type="submit">Cancel</button><button class="button button-primary" value="start" type="submit" id="new-game-start">Start new game</button></div>
     </form>
@@ -241,30 +383,36 @@
 
   <dialog id="prestige-dialog" aria-labelledby="prestige-title">
     <div class="dialog-heading"><div><div class="eyebrow">POINT BREAKDOWN</div><h2 id="prestige-title">Prestige</h2></div><button class="button button-ghost dialog-close" id="close-prestige" type="button" aria-label="Close point breakdown">Close</button></div>
+    <section class="faction-profile" aria-labelledby="faction-profile-name"><h3 id="faction-profile-name"></h3><p id="faction-profile-description"></p></section>
     <p class="prestige-stats" id="prestige-stats"></p>
     <dl class="prestige-breakdown" id="prestige-breakdown"></dl>
-    <p class="muted">Each Colony scores 3, each excavated relic 2, and each decisive combat victory 1. Relic, combat and card points are permanent.</p>
+    <p class="muted">Each Colony scores 3 and each excavated relic 2. A decisive victory scores 1 only against a group containing an enemy Fleet. Civilian-only fights give no combat or Victory Doctrine Prestige. Relic, combat and card points are permanent.</p>
     <p><a href="rulebook.html#victory" target="_blank" rel="noopener">Scoring rules ↗</a></p>
   </dialog>
 
   <dialog id="rules-dialog" aria-labelledby="rules-title">
     <div class="dialog-heading"><div><div class="eyebrow">QUICK REFERENCE</div><h2 id="rules-title">How to command your faction</h2></div><button class="button button-ghost dialog-close" id="close-rules" type="button" aria-label="Close rules">Close</button></div>
-    <p><a class="button button-primary" href="rulebook.html" target="_blank" rel="noopener">Read the canonical rulebook · 38.43 ↗</a></p>
+    <p><a class="button button-primary" href="rulebook.html" target="_blank" rel="noopener">Read the canonical rulebook · 39.44 ↗</a></p>
     <div class="rules-grid">
       <section><h3>Your turn</h3><p>Convert level I starters for resources, then use one order, offer a trade, or pass. Passing immediately starts your Buy turn. Finish Buy, then the remaining factions continue Operations.</p></section>
       <section><h3>Your round</h3><p>Produce → Operations (pass → your Buy turn) → everyone finishes → cleanup → victory check → draw five → next round.</p></section>
-      <section><h3>Your deck</h3><p>Buy as many cards as you can afford during your Buy turn. Upgrade original starters to II for two of one resource, then III for three of one resource; III draws one card when used as an order. Only level I starters convert to resources. Trash eligible discarded cards, including starters, for three of one chosen resource type each. There is no one-card trash limit. Gained cards go to discard. Played and converted cards stay in play until shared cleanup. Successful Colonize, Excavate and Cargo Expansion are permanently trashed. Probe keeps its combined card. Stored resources carry forward.</p></section>
-      <section><h3>Your goal</h3><p>Reach the table’s Prestige target (40 unless chosen otherwise when the game was created) at the end of a round. Colonies, excavated relics, and decisive combat victories contribute. Click a point total to see its breakdown. The rulebook includes costs, scoring, and current card clarifications.</p></section>
+      <section><h3>Your deck</h3><p>Buy as many cards as you can afford during your Buy turn. Upgrade original starters to II for two of one resource, then III for three of one resource; III draws one card when used as an order. Only level I starters convert to resources. Trash eligible discarded cards, including starters, for three of one chosen resource type each. There is no one-card trash limit. Gained cards go to discard. Played and converted cards stay in play until shared cleanup. Buy a Capacity Module from the Upgrades tray (1 of each resource, every time); play it during Operations to add 4 capacity points, and it stays in your permanent Storage pile. Successful Colonize, Excavate and Cargo Expansion are permanently trashed. Probe keeps its combined card. Stored resources carry forward.</p></section>
+      <section><h3>Your goal</h3><p>Reach the table’s Prestige target (30 unless chosen otherwise when the game was created) at the end of a round. Colonies, excavated relics, and decisive combat victories contribute. Click a point total to see its breakdown. The rulebook includes costs, scoring, and current card clarifications.</p></section>
     </div>
   </dialog>
 
   <dialog id="combat-dialog" class="choice-dialog combat-dialog" aria-labelledby="combat-title" aria-describedby="combat-status">
-    <div class="dialog-heading"><div><div class="eyebrow">TACTICAL COMBAT</div><h2 id="combat-title">Battle</h2><p id="combat-status" role="status" aria-live="polite"></p></div></div>
+    <div class="dialog-heading"><div><div class="eyebrow">TACTICAL COMBAT</div><h2 id="combat-title">Battle</h2><p id="combat-status" role="status" aria-live="polite"></p></div><span id="combat-volley" class="combat-volley" hidden></span></div>
     <div id="combat-forces" class="combat-forces"></div>
-    <p id="combat-help"></p>
+    <p id="combat-help" role="status" aria-live="polite"></p>
     <div id="combat-options" class="combat-options"></div>
     <div id="combat-history" class="combat-history"></div>
-    <p class="muted">Finish the battle before normal play resumes. Your choices are saved.</p>
+    <p class="muted combat-save-note">Finish the battle before normal play resumes. Your committed choices are saved.</p>
+  </dialog>
+
+  <dialog id="battle-reference-dialog" class="battle-reference" aria-labelledby="battle-reference-title">
+    <div class="dialog-heading"><h2 id="battle-reference-title">Battle record</h2><button type="button" class="button" id="battle-reference-close">Close</button></div>
+    <div id="battle-reference-body"></div>
   </dialog>
 
   <dialog id="storage-allocation-dialog" class="storage-allocation-dialog" aria-labelledby="storage-allocation-title" aria-describedby="storage-allocation-help">
@@ -276,6 +424,12 @@
       <p id="storage-allocation-status" role="status" aria-live="polite"></p>
       <button type="submit" class="button button-primary" id="storage-allocation-confirm" disabled>Confirm allocation</button>
     </form>
+  </dialog>
+
+  <dialog id="exchange-resource-dialog" class="choice-dialog" aria-labelledby="exchange-resource-title" aria-describedby="exchange-resource-help">
+    <div class="dialog-heading"><h2 id="exchange-resource-title">Choose your exchange resource</h2><button type="button" class="button" id="exchange-resource-cancel">Cancel</button></div>
+    <p id="exchange-resource-help">Give two of your chosen resource for one other resource until your Buy turn ends. Choosing plays the card.</p>
+    <div id="exchange-resource-options" class="bank-resource-options"></div>
   </dialog>
 
   <dialog id="archive-purge-dialog" class="choice-dialog" aria-labelledby="archive-purge-title" aria-describedby="archive-purge-help">
@@ -314,18 +468,26 @@
     <div id="upgrade-options" class="upgrade-options"></div>
   </dialog>
 
+  <!-- Trade (rules #trade): a panel that pulls out from the table's left edge by its handle. It
+       stays open beside the map (non-modal) until the handle, Close or Escape tucks it back. -->
+  <aside class="trade-drawer" id="trade-drawer" aria-label="Trade">
+    <button class="trade-handle" id="open-trade" type="button" aria-expanded="false" aria-haspopup="dialog" aria-controls="trade-dialog">Trade</button>
+    <section id="trade-panel" class="trade-panel" aria-labelledby="trade-dialog-title"></section>
+  </aside>
+  <!-- Older retained dev engines keep their dialog. The current engine moves these
+       same controls into trade-panel during setup; their IDs remain unique. -->
   <dialog id="trade-dialog" class="choice-dialog trade-dialog" aria-labelledby="trade-dialog-title">
-            <div class="dialog-heading trade-heading"><div><div class="eyebrow">OPERATIONS</div><h2 id="trade-dialog-title">Trade channel</h2><p>Publish one open offer per round as your action. Each other faction can accept or reject on its turn, without spending an action. First acceptance settles the trade. Offers expire when Operations end; resources must still be available when accepted.</p></div><button class="button button-ghost dialog-close" id="close-trade" type="button">Close</button></div>
-            <form id="trade-form" class="trade-form">
-              <label>You give<select id="trade-give-type"></select></label>
-              <label>Amount to give<input id="trade-give-amount" type="number" min="1" max="5" value="1"></label>
-              <label>You receive<select id="trade-get-type"></select></label>
-              <label>Amount to receive<input id="trade-get-amount" type="number" min="1" max="5" value="1"></label>
-              <button class="button button-primary" type="submit">Publish open offer</button>
-            </form>
-            <div class="trade-response" id="trade-response" role="status"></div>
-            <div id="trade-offers" role="group" class="trade-offers" aria-label="Open trade offers"></div>
-            <div class="trade-ledger" id="trade-ledger" role="group" aria-label="Completed trades by rival"></div>
+      <div class="dialog-heading trade-heading"><div><div class="eyebrow">OPERATIONS</div><h2 id="trade-dialog-title">Trade channel</h2><p>Publish one open offer per round as your action. Each other faction can accept or reject on its turn, without spending an action. First acceptance settles the trade. Offers expire when Operations end; resources must still be available when accepted.</p></div><button class="button button-ghost dialog-close" id="close-trade" type="button">Close</button></div>
+      <form id="trade-form" class="trade-form">
+        <label>You give<select id="trade-give-type"></select></label>
+        <label>Amount to give<input id="trade-give-amount" type="number" min="1" max="5" value="1"></label>
+        <label>You receive<select id="trade-get-type"></select></label>
+        <label>Amount to receive<input id="trade-get-amount" type="number" min="1" max="5" value="1"></label>
+        <button class="button button-primary" type="submit">Publish open offer</button>
+      </form>
+      <div class="trade-response" id="trade-response" role="status"></div>
+      <div id="trade-offers" role="group" class="trade-offers" aria-label="Open trade offers"></div>
+      <div class="trade-ledger" id="trade-ledger" role="group" aria-label="Completed trades by rival"></div>
   </dialog>
 
   <dialog id="trash-dialog" class="choice-dialog trash-dialog" aria-labelledby="trash-dialog-title">
@@ -353,6 +515,15 @@
     <div id="in-play-row" class="card-row"></div>
   </dialog>
 
+  <dialog id="military-dialog" class="pile-dialog military-dialog" aria-labelledby="military-dialog-title">
+    <div class="dialog-heading">
+      <div><div class="eyebrow">YOUR TACTICS</div><h2 id="military-dialog-title">Military deck <span id="military-dialog-count">0</span></h2><p id="military-dialog-help"></p></div>
+      <button class="button button-ghost dialog-close" id="close-military" type="button" aria-label="Close military deck">Close</button>
+    </div>
+    <div class="discard-scroll"><div class="card-row discard-row" id="military-row"></div>
+      <h3 class="military-basic-title">Basic tactics in every battle</h3><div class="military-card-grid" id="military-basic-row"></div></div>
+  </dialog>
+
   <dialog id="discard-dialog" class="pile-dialog" aria-labelledby="discard-title">
     <div class="dialog-heading">
       <div><div class="eyebrow">YOUR CARDS</div><h2 id="discard-title">Discard pile <span id="discard-dialog-count">0</span></h2><p>Most recently discarded cards appear first.</p></div>
@@ -361,31 +532,35 @@
     <div class="discard-scroll"><div class="card-row discard-row" id="discard-row"></div></div>
   </dialog>
 
-        <section class="panel inspector-panel sector-popover" id="sector-popover" popover="auto" role="dialog" aria-labelledby="inspect-title">
-          <div class="panel-heading">
-            <div><div class="eyebrow">SECTOR SCAN</div><h2 id="inspect-title">Select a hex</h2></div>
-            <span class="coordinate" id="inspect-coordinate">—</span><button class="button button-ghost dialog-close" id="close-sector-scan" type="button" aria-label="Close sector scan" popovertarget="sector-popover" popovertargetaction="hide">Close</button>
+        <!-- The Sector Scan is a guide bubble (guide.css .gr-bubble) laid beside the chosen hex, its arrow aimed at it. -->
+        <section class="inspector-panel sector-popover gr-bubble" id="sector-popover" popover="auto" role="dialog" aria-labelledby="inspect-title">
+          <div class="scan-body">
+            <div class="panel-heading">
+              <!-- The title line: resource, name, then a symbol per fact (owner, building, ships); wraps rather than truncates. -->
+              <div class="scan-title-line"><span id="inspect-kind" class="scan-kind"></span><h2 class="gr-coach-title" id="inspect-title">Select a hex</h2><span id="inspect-facts" class="scan-facts"></span></div>
+              <button class="scan-close" id="close-sector-scan" type="button" aria-label="Close" title="Close (Esc)" popovertarget="sector-popover" popovertargetaction="hide"><span aria-hidden="true">×</span></button>
+            </div>
+            <div id="inspect-detail" class="scan-notes muted">Choose a planet or space hex to inspect fleets, control, and possible actions.</div>
+            <div id="context-actions" class="context-actions"></div>
           </div>
-          <p id="inspect-detail" class="muted">Choose a planet or space hex to inspect fleets, control, and possible actions.</p>
-          <div id="inspect-facts" class="fact-list"></div>
-          <div id="context-actions" class="context-actions"></div>
+          <span class="gr-coach-arrow" aria-hidden="true"></span>
         </section>
 
   <dialog id="map-key-dialog" class="map-key-dialog" aria-labelledby="map-key-title">
-    <div class="dialog-heading"><div><div class="eyebrow">GALACTIC REACH</div><h2 id="map-key-title">Map key</h2></div><button class="button button-ghost dialog-close" id="close-map-key" type="button" aria-label="Close map key">Close</button></div>
+    <div class="dialog-heading"><div><div class="eyebrow">HEIRS AD ASTRA</div><h2 id="map-key-title">Map key</h2></div><button class="button button-ghost dialog-close" id="close-map-key" type="button" aria-label="Close map key">Close</button></div>
         <div class="map-legend" id="resource-legend" role="group" aria-label="Map legend">
           <span><i class="resource-swatch matter"></i>Matter</span>
           <span><i class="resource-swatch energy"></i>Energy</span>
-          <span><i class="resource-swatch biomass"></i>Biomass</span>
+          <span><i class="resource-swatch biomass"></i>Life</span>
           <span><i class="resource-swatch data"></i>Data</span>
-          <span>◈ Located relic</span><span>● Gray moon · no production</span><span>Fog hides unvisited worlds</span>
+          <span><span class="hx-slot" data-hx-slot="excavate" aria-hidden="true"></span>Located relic</span><span>● Gray moon · no production</span><span>Fog hides unvisited worlds</span>
         </div>
         <div class="map-legend symbol-legend" id="symbol-legend" role="group" aria-label="Ship and building symbol legend"></div>
         <div class="map-legend card-frame-legend" role="group" aria-label="Card frame colours">
           <span class="legend-heading">Card frames</span>
           <span><i class="frame-swatch" style="--swatch:var(--matter)"></i>Matter</span>
           <span><i class="frame-swatch" style="--swatch:var(--energy)"></i>Energy · movement</span>
-          <span><i class="frame-swatch" style="--swatch:var(--biomass)"></i>Biomass · expansion</span>
+          <span><i class="frame-swatch" style="--swatch:var(--biomass)"></i>Life · expansion</span>
           <span><i class="frame-swatch" style="--swatch:var(--data)"></i>Data · deckcraft &amp; relics</span>
           <span><i class="frame-swatch" style="--swatch:var(--gold)"></i>Capacity, Buy &amp; Prestige</span>
           <span><i class="frame-swatch" style="--swatch:var(--red)"></i>Military &amp; attack</span>
@@ -393,18 +568,43 @@
   </dialog>
 
   <dialog id="relic-catalog-dialog" class="relic-catalog-dialog" aria-labelledby="relic-catalog-title">
-    <div class="dialog-heading"><div><div class="eyebrow">TECHNOLOGY FROM LOST CIVILIZATIONS</div><h2 id="relic-catalog-title">Alien relic deck</h2><p>23 unique cards, one of each. Use Excavate at a relic to choose one of the three face-up cards for your discard pile.</p></div><button class="button button-ghost" id="close-relic-catalog" type="button">Close relic preview</button></div>
+    <div class="dialog-heading"><div><div class="eyebrow">TECHNOLOGY FROM LOST CIVILIZATIONS</div><h2 id="relic-catalog-title">Alien relic deck</h2><p>16 unique cards, one of each. Use Excavate at a relic to choose one of the three face-up cards for your discard pile.</p></div><button class="button button-ghost" id="close-relic-catalog" type="button">Close relic preview</button></div>
     <div class="relic-catalog-grid" id="relic-catalog-grid"></div>
   </dialog>
 
+  <dialog id="relic-action-dialog" class="choice-dialog relic-choice-dialog" aria-labelledby="relic-choice-title">
+    <h2 id="relic-choice-title">Choose a relic action</h2>
+    <p id="relic-choice-help"></p>
+    <label for="relic-choice-filter">Find a card or location<input type="search" id="relic-choice-filter" autocomplete="off"></label>
+    <label for="relic-choice-options">Available choices<select id="relic-choice-options" size="7"></select></label>
+    <p id="relic-choice-detail" aria-live="polite" hidden></p>
+    <div class="dialog-actions"><button class="button button-primary" id="relic-choice-confirm" type="button">Play relic</button><button class="button" id="relic-choice-cancel" type="button">Cancel</button></div>
+  </dialog>
+
+  <dialog id="relic-card-dialog" class="market-choice-dialog" aria-labelledby="relic-card-title" aria-describedby="relic-card-help">
+    <div class="max-bank-heading"><div><div class="eyebrow">CHOOSE YOUR CARDS</div><h2 id="relic-card-title"></h2></div><button class="button button-ghost" id="relic-card-close" type="button">Cancel</button></div>
+    <p id="relic-card-help"></p>
+    <div id="relic-card-options" class="market-choice-content"></div>
+    <div class="card-choice-footer">
+      <p id="relic-card-status" role="status" aria-live="polite"></p>
+      <label id="relic-card-payment-label" hidden>Discounted payment<select id="relic-card-payment"></select></label>
+      <button class="button button-primary" id="relic-card-confirm" type="button" disabled>Choose a card</button>
+    </div>
+  </dialog>
+
+  <script src="phone.js?v=1"></script>
   <script src="channel.js"></script>
-  <script src="table.js?v=construct-iii-38-43"></script>
-  <script src="shared.js?v=construct-iii-38-43"></script>
-  <script src="replay.js?v=construct-iii-38-43"></script>
-  <script src="card-feel.js?v=2"></script>
-  <script src="app.js?v=construct-iii-38-43"></script>
+  <script src="icons.js?v=1"></script>
+  <script src="table.js?v=playtest-2026-11-16-39-44"></script>
+  <script src="tabletop-controls.js"></script>
+  <script src="shared.js?v=playtest-2026-11-16-39-44"></script>
+  <script src="replay.js?v=playtest-2026-11-16-39-44"></script>
+  <script src="card-feel.js?v=4"></script>
+  <script src="tutorial.js?v=2"></script>
+  <script src="guide.js?v=4"></script>
+  <script src="app.js?v=playtest-2026-11-16-39-44"></script>
   <script type="module" src="/galactic-reach/zk/seat.js"></script>
-  <script src="playtest-notes.js?v=2" data-game="Galactic Reach" data-rules="38.43"></script>
+  <script src="playtest-notes.js?v=2" data-game="Heirs Ad Astra" data-rules="39.44"></script>
   <script src="change-queue.js?v=1"></script>
 </body>
 </html>

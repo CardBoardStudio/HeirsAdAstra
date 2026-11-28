@@ -5,6 +5,7 @@ function createGalacticAdapter(e) {
   const activeSeat = () => {
     if (s().winner !== null) return null;
     if (s().pendingCombat) return e.combatActor();
+    if (s().pendingRelic) return s().pendingRelic.playerId;
     const pending = e.overflowPlayer();
     return pending >= 0 ? pending : s().activePlayer;
   };
@@ -12,19 +13,19 @@ function createGalacticAdapter(e) {
   let cached = null;
   function observe(seat) {
     if (!Number.isInteger(seat) || seat < 0 || seat >= 4) return null;
-    const state = s();
+    const state = s(),offers=e.marketOffers();
     return e.clone({
-      portalLinks: state.portalLinks, portalMovementCost: e.PORTAL_MOVEMENT_COST, combat: e.combatView(seat), combinedProbe:true, constructDrawOnly:true, seat, round: state.round, victoryTarget: e.victoryTarget(),
-      // 32.37: public card prices and Harvester yield, so server rivals need no rules-specific tables.
-      harvesterYield: e.HARVESTER_YIELD, marketCosts: state.market.map(card => e.ALL_CARDS[card.key]?.cost || {}),
+      portalLinks: state.portalLinks, portalMovementCost: e.PORTAL_MOVEMENT_COST, combat: e.combatView(seat), combinedProbe:true, constructDrawOnly:true, investmentPlanning:true, cardPurchasePlanning:true, goalDirectedTrading:true, tradeGoals:e.aiTradeGoals(seat), seat, round: state.round, victoryTarget: e.victoryTarget(),
+      // 32.37: public card/build prices and Harvester yield, so server rivals need no rules-specific tables.
+      shipCosts: Object.fromEntries(Object.entries(e.SHIP_STATS).map(([kind,stats])=>[kind,stats.cost])), harvesterYield: e.HARVESTER_YIELD, harvesterCost: e.STRUCTURES.harvester.cost, marketPaymentCosts: offers.map(card=>e.purchaseCost(state.players[seat],card.key)), marketCosts: offers.map(card => e.ALL_CARDS[card.key]?.cost || {}),
       // 34.39: printed Wonder Prestige, military card stats and the capture rule, published for the same reason.
-      marketPrestige: state.market.map(card => e.ALL_CARDS[card.key]?.gainPrestige || 0),
+      marketPrestige: offers.map(card => e.ALL_CARDS[card.key]?.gainPrestige || 0),
       // Printed effects are public; no deck order or private hand is included here.
-      cardStats: Object.fromEntries(Object.entries(e.ALL_CARDS).map(([key,c])=>[key,{order:c.order,kind:c.kind,tag:c.tag,military:!!c.military,draw:c.effect?.draw||(c.tag==='alienEchoes'?3:0),limits:c.effect?.limits,prestige:c.effect?.prestige||0,gainPrestige:c.gainPrestige||0,buildDiscount:c.buildDiscount||null,victoryPrestige:c.victoryPrestige||0,attack:c.attack||0,shield:c.shield||0,pierce:!!c.pierce}])),
+      cardStats: Object.fromEntries(Object.entries(e.ALL_CARDS).map(([key,c])=>[key,{order:c.order,kind:c.kind,tag:c.tag,relicAbility:c.relicAbility||null,battleRelic:!!c.battleRelic,military:!!c.military,draw:c.effect?.draw||c.orderDraw||(c.tag==='alienEchoes'?3:0),fallbackDraw:c.fallbackDraw||0,limits:c.effect?.limits,prestige:c.effect?.prestige||0,gainPrestige:c.gainPrestige||0,buildDiscount:c.buildDiscount||null,range:c.range||0,assault:c.assault||0,pathfinder:!!c.pathfinder,secondBuild:!!c.secondBuild,colonyCost:c.colonyCost??null,keepSettler:!!c.keepSettler,colonyPrestige:c.colonyPrestige||0,bankRate:c.effect?.bankRate||0,buyEffect:c.buyEffect||null,trashSelf:!!c.effect?.trashSelf,trashStarters:c.effect?.trashStarters||0,victoryPrestige:c.victoryPrestige||0,attack:c.attack||0,shield:c.shield||0,pierce:!!c.pierce}])),
       tacticStats: Object.fromEntries(Object.entries(e.MILITARY_CARDS).map(([key, c]) => [key, { attack: c.attack || 0, shield: c.shield || 0, pierce: !!c.pierce }])),
       combatVictoryPrestige: e.COMBAT_VICTORY_PRESTIGE, captureNeedsFleet: true, phase: state.phase, firstPlayer: state.firstPlayer, overflowPlayer: e.overflowPlayer(),
       players: state.players.map((p, id) => ({
-        id, resources: p.resources, relicsExcavated: e.excavatedRelicCount(id), combatVictories: p.combatVictories || 0, cardPrestige: p.cardPrestige || 0, military: p.military, storageUpgrades: p.storageUpgrades, storagePurchases: p.storagePurchases || 0, storageUpgradeCost: e.storageUpgradeCost(id),
+        id, bankExchangeResources:p.bankExchangeResources||[], bankTradeRates:Object.fromEntries(e.RESOURCES.map(r=>[r,e.bankTradeRate(id,r)])), resources: p.resources, relicsExcavated: e.excavatedRelicCount(id), combatVictories: p.combatVictories || 0, cardPrestige: p.cardPrestige || 0, cardPrestigeSources: p.cardPrestigeSources || {}, military: p.military, storageUpgrades: p.storageUpgrades, storagePurchases: p.storagePurchases || 0, storageUpgradeCost: e.storageUpgradeCost(id), storage: p.storage || [],
         prestige: e.calculatePrestige(id), capacity: e.playerCapacity(id), resourceLimits: e.resourceLimits(id),
         hand: id === seat ? p.hand : undefined, discard: p.discard, inPlay: p.inPlay,
         handCount: p.hand.length, deckCount: p.deck.length, deckContents: id === seat ? e.deckContents(p) : undefined,
@@ -38,7 +39,9 @@ function createGalacticAdapter(e) {
       clusters: state.clusters.map(c=>e.clusterKnown(c,seat)
         ? {kind:c.kind,center:c.center,coords:c.coords,surveyed:e.clusterRevealed(c,seat),located:e.relicKnown(c,seat)}
         : {kind:'unknown',center:null,coords:[],surveyed:false,located:e.relicKnown(c,seat)}),
-      fleets: state.fleets, market: state.market, relicRow: state.relicRow, relicDeckCount: state.relicDeck.length,
+      // Rules #storage-allocation: Capacity Modules left in the shared pile; each seat's price is storageUpgradeCost.
+      capacitySupply: state.capacitySupply,
+      fleets: state.fleets, simulationCatalogMarket:e.catalogMarketEnabled(), market: offers, catalogCounts:e.catalogMarketEnabled()?Object.fromEntries(offers.map(c=>[c.key,e.marketCopiesRemaining(c.key)])):null, relicRow: state.relicRow, relicDeckCount: state.relicDeck.length,
       pendingConsortium: state.pendingConsortium, tradeOffers: state.tradeOffers, pendingConstruct: state.pendingConstruct, pendingColonyBuild: state.pendingColonyBuild
     });
   }
@@ -47,12 +50,12 @@ function createGalacticAdapter(e) {
     if(activeSeat()!==seat) {
       if(!e.canManageResources(seat))return [];
       const p=s().players[seat],free=p.hand.filter(e.canConvertCard).map(card=>({type:'resource',card:card.id,key:card.key,gain:e.cardResources(card)}));
-      if(e.canIncreaseStorage(seat))for(const allocation of e.storageAllocations())free.push({type:'increase_storage',allocation});
       for(const giveType of e.RESOURCES)for(const getType of e.RESOURCES)if(e.canBankTrade(seat,giveType,getType))free.push({type:'bank_trade',giveType,getType});
       return e.clone(free);
     }
     if (cached) return e.clone(cached);
     const state = s(), p = state.players[seat], actions = [];
+    if(state.pendingRelic){cached=e.relicDraftActions(seat);return e.clone(cached);}
     if (state.pendingCombat) {
       cached=e.combatActions(seat);return e.clone(cached);
     }
@@ -75,10 +78,12 @@ function createGalacticAdapter(e) {
     } else if (state.phase === 'buy') {
       actions.push({ type: 'finish_buy' });
       // #buy: any number of affordable market purchases, including refilled cards.
-      state.market.forEach((card, index) => {
+      e.marketOffers().forEach((card, index) => {
         if (e.canAfford(p, e.purchaseCost(p, card.key)))
-          actions.push({ type: 'buy', source: 'market', index, key: card.key });
+          actions.push(e.catalogMarketEnabled()?{type:'buy',source:'catalog',key:card.key}:{ type: 'buy', source: 'market', index, key: card.key });
       });
+      // Rules #storage-allocation: the Upgrades tray's Capacity Module pile.
+      if (e.canBuyCapacity(seat)) actions.push({ type: 'buy', source: 'capacity', key: 'capacityModule' });
       [...p.hand, ...p.discard, ...p.inPlay].forEach(card => {
         if (card.starter && e.starterLevel(card)<3) for (const resource of e.RESOURCES)
           if (p.resources[resource] >= e.upgradePrice(card)) actions.push({type:'upgrade',card:card.id,resource});
@@ -86,6 +91,7 @@ function createGalacticAdapter(e) {
       p.hand.forEach(card => {
         const effect = e.ALL_CARDS[card.key].buyEffect;
         if (effect) actions.push({ type: 'buy_effect', card: card.id });
+        if (e.canPlayExchange(seat,card.id)) for (const resource of e.RESOURCES) actions.push({type:'special',card:card.id,key:card.key,resource});
       });
       // Cards in hand, discard or in play when this Buy began may be trashed (#buy).
       e.trashEligibleCards(p).forEach(card => {
@@ -118,7 +124,9 @@ function createGalacticAdapter(e) {
         const gain = e.cardResources(card);
         if (e.canConvertCard(card)) actions.push({ type: 'resource', ...base, gain });
         if (state.pendingColonyBuild) return;
+        if(def.relicAbility){actions.push(...e.relicOperations(seat,card.id));return;}
         if(e.canConstructDraw(seat,card.id))actions.push({type:'construct_draw',...base});
+        if (e.canOrderDraw(seat,card.id)) actions.push({type:'order_draw',...base});
         if (def.order === 'colonize') Object.keys(state.planets).forEach(coord => {
           if (e.colonizePlanet(seat, coord, { tag: def.tag }, true)) actions.push({ type: 'colonize', ...base, coord });
         });
@@ -148,15 +156,17 @@ function createGalacticAdapter(e) {
           });
         });
         if (def.order === 'special') {
-          if(def.tag==='alienCradle') for(const allocation of e.storageAllocations(e.RELIC_STORAGE_POINTS)) actions.push({type:'special',...base,allocation});
+          if(def.tag==='alienCradle') for(const allocation of e.capacityAllocations(seat,e.RELIC_STORAGE_POINTS)) actions.push({type:'special',...base,allocation});
+          // Capacity Module: every split of its points.
+          else if(def.effect?.allocate) for(const allocation of e.capacityAllocations(seat,def.effect.allocate)) actions.push({type:'special',...base,allocation});
           // Archive Purge: each choice of up to two level I starters in discard, in discard order.
+          else if(def.effect?.bankRate) { if(e.canPlayExchange(seat,card.id)) for(const resource of e.RESOURCES)actions.push({type:'special',...base,resource}); }
           else if(def.effect?.trashStarters) for(const trash of e.archivePurgeChoices(seat,def.effect.trashStarters)) actions.push({type:'special',...base,trash});
           else actions.push({ type: 'special', ...base });
         }
       });
     }
     if(state.phase==='buy'&&e.canManageResources(seat))p.hand.filter(e.canConvertCard).forEach(card=>actions.push({type:'resource',card:card.id,key:card.key,gain:e.cardResources(card)}));
-    if (e.canIncreaseStorage(seat)) for(const allocation of e.storageAllocations()) actions.push({type:'increase_storage',allocation});
     if (e.canManageResources(seat)) {
       for (const resource of e.RESOURCES) {
         for (let amount = 1; amount <= p.resources[resource]; amount++) actions.push({type:'discard_resources',resource,amount});
@@ -197,12 +207,13 @@ function createGalacticAdapter(e) {
     const state = s(), p = state.players[seat], card = p.hand.find(c => c.id === action.card);
     const def = card && e.ALL_CARDS[card.key];
     switch (action.type) {
+      case 'relic': case 'relic_shift': case 'relic_confirm': case 'relic_cancel': e.applyRelicAction(seat,action); return;
+      case 'combat_relic': case 'combat_continue': e.applyCombatAction(seat,action); return;
       case 'combat_escape': case 'combat_stay': case 'combat_tactic': e.applyCombatAction(seat,action); return;
       case 'consortium_gain': e.consortiumGain(seat,action.resource); return;
       case 'consortium_exchange': e.consortiumExchange(seat,action.giveType,action.getType); return;
       case 'finish_consortium': e.finishConsortium(seat); return;
       case 'cancel_consortium': e.finishConsortium(seat,true); return;
-      case 'increase_storage': e.increaseStorage(seat,action.allocation); return;
       case 'bank_trade': e.bankTrade(seat,action.giveType,action.getType); return;
       case 'discard_resources': e.discardResources(seat,action.resource,action.amount); return;
       case 'trade_offer': e.offerTrade(seat,action); return;
@@ -221,12 +232,13 @@ function createGalacticAdapter(e) {
       case 'finish_colony_build': e.finishColonyBuild(seat); return;
       case 'colony_build': e.finishColonyBuild(seat,action.coord,action.kind); return;
       case 'colonize': e.applyColonizeOrder(seat, action.coord, card); return;
+      case 'order_draw': e.useOrderDraw(seat,action.card); return;
       case 'construct_draw': e.useConstructDraw(seat,action.card); return;
       case 'build': e.performConstructOrder(seat,action.coord,action.kind,card); return;
       case 'move': e.performMoveOrder(seat, action.source, action.destination, card, { tag: def.tag, moveGroup: action.moveGroup, units: action.units }); return;
       case 'probe': e.probeRelic(seat,action.coord,action.card); return;
       case 'excavate': e.excavate(seat,action.coord,action.card,action.relic); return;
-      case 'special': e.resolveHumanSpecial(card, def, seat, action.trash ?? action.allocation); return;
+      case 'special': e.resolveHumanSpecial(card, def, seat, action.resource ?? action.trash ?? action.allocation); return;
       default: throw new Error('Unknown action.');
     }
     e.removeHandCard(p, action.card);
@@ -251,13 +263,20 @@ function createGalacticAdapter(e) {
   function privateState(seat) {
     if (!Number.isInteger(seat) || seat < 0 || seat >= 4) return null;
     const state = e.clone(s()), stub = n => Array.from({length:n}, () => ({hidden:true}));
+    if(state.pendingRelic?.playerId!==seat)state.pendingRelic=null;
     const byKey = (a,b) => a.key < b.key ? -1 : a.key > b.key ? 1 : String(a.id) < String(b.id) ? -1 : 1;
     state.players.forEach((p, id) => {
       p.handCount = p.hand.length; p.deckCount = p.deck.length;
       if (id === seat) p.deck = [...p.deck].sort(byKey);
-      else { p.hand = []; p.deck = []; }
+      // The ids a seat held when its Buy began name cards in its hand, so they stay private too.
+      else { p.hand = []; p.deck = []; p.buyStartHandIds = []; }
     });
     state.probeStatus = e.probeStatus(seat);
+    // Oracle privately lists available designs, including ones the player cannot afford.
+    // Expose neither copy counts, instance ids nor the remaining decks’ order.
+    state.oracleMarketKeys = state.phase==='operations' && state.activePlayer===seat
+      && state.players[seat].hand.some(card=>card.key==='oracleOfTheUnmade')
+      ? [...new Set(Object.values(state.marketDecks).flat().map(card=>card.key))].sort() : [];
     state.marketDecks = Object.fromEntries(Object.entries(state.marketDecks).map(([tier, deck]) => [tier, stub(deck.length)]));
     state.relicDeckCount = state.relicDeck.length;
     state.relicDeck = stub(state.relicDeck.length);
@@ -275,6 +294,35 @@ function createGalacticAdapter(e) {
     if (battle) for (const side of ['attacker','defender'])
       if (battle[`${side}Id`] !== seat && battle.commitments[side] !== null) battle.commitments[side] = 'hidden';
     return state;
+  }
+  // Deliberate public allowlist. Never clone the authoritative state or combine
+  // player views: either approach can disclose a private signal or a new field.
+  function publicState() {
+    const state = s();
+    const cards = list => list.map(c => ({key:c.key, name:e.ALL_CARDS[c.key]?.name || c.key, level:c.level || 1}));
+    const known = c => c.kind !== 'moon' || [0,1,2,3].every(seat => e.clusterRevealed(c, seat));
+    const located = c => [0,1,2,3].every(seat => e.relicKnown(c, seat));
+    return e.clone({
+      round:state.round, phase:state.phase, active:activeSeat(), winner:state.winner,
+      victoryTarget:e.victoryTarget(), boardRadius:e.BOARD_RADIUS, portalLinks:state.portalLinks,
+      players:state.players.map((p,id) => ({
+        id, name:p.name, color:p.color, resources:p.resources, limits:e.resourceLimits(id),
+        prestige:e.calculatePrestige(id), passed:p.passed,
+        handCount:p.hand.length, deckCount:p.deck.length,
+        discard:cards(p.discard), inPlay:cards(p.inPlay), military:cards(p.military)
+      })),
+      planets:Object.fromEntries(Object.entries(state.planets).filter(([,p]) => known(state.clusters[p.cluster])).map(([coord,p]) => [coord, {
+        name:p.name, type:p.type, owner:p.owner, hasColony:p.hasColony,
+        upgrade:p.upgrade, upgradeLevel:p.upgradeLevel,
+        relic:located(state.clusters[p.cluster]) && p.special === 'relic',
+        relicClaimed:located(state.clusters[p.cluster]) && p.relicClaimed
+      }])),
+      fleets:Object.fromEntries(Object.entries(state.fleets).map(([coord, fleets]) => [coord,
+        Object.fromEntries(Object.entries(fleets).map(([seat,f]) => [seat,{settler:f.settler||0,explorer:f.explorer||0,fleet:f.fleet||0}]))])),
+      market:cards(e.marketOffers()), relicRow:cards(state.relicRow), capacitySupply:state.capacitySupply,
+      // combatView already returns only public information to a nonparticipant.
+      combat:e.combatView(-1)
+    });
   }
   // Shared-table Undo (rulebook #shared-tables). `turn` identifies the current
   // turn; `reveal` changes whenever an action shows anyone hidden information:
@@ -298,12 +346,26 @@ function createGalacticAdapter(e) {
   }
   // Legal choices a seat's browser cannot check from its private view alone.
   function hints(seat) {
-    return { probe: legalActions(seat).filter(a => a.type === 'probe').map(a => ({card: a.card, coord: a.coord})) };
+    const actions=legalActions(seat);
+    return { probe: actions.filter(a => a.type === 'probe').map(a => ({card: a.card, coord: a.coord})), relics:actions.filter(a=>a.type==='relic'||a.type.startsWith('relic_')) };
+  }
+  // Server-only entry point: a registered AI seat uses the unmodified browser policy.
+  // Invalidate cached native commands before and after direct browser mutations.
+  function browserStep(seat, profile) {
+    if (activeSeat() !== seat || !['military','militaryFocused','economy','market','expansion'].includes(profile)) throw new Error('Invalid browser policy seat or profile');
+    cached = null;
+    s().players[seat].strategy = profile;
+    try {
+      if (s().pendingCombat) e.applyCombatAction(seat, e.chooseCombatAction(e.combatView(seat), e.combatActions(seat)));
+      else if (s().phase === 'operations') e.runAiOperation();
+      else if (s().phase === 'buy') e.runAiBuy();
+      else throw new Error('No browser policy action in this phase');
+    } finally { cached = null; }
   }
   function snapshot() {
     const seat = activeSeat();
     return { active: seat, observation: seat === null ? null : observe(seat), legal: legalActions(seat), scores: scores() };
   }
-  return { rulesVersion: 'galactic-reach/38.43', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, hints, undoMark, snapshotState };
+  return { browserStep, rulesVersion: 'galactic-reach/39.44', activeSeat, observe, legalActions, applyAction, scores, standings, snapshot, privateState, publicState, hints, undoMark, snapshotState };
 }
 if (typeof module !== 'undefined' && module.exports) module.exports = createGalacticAdapter;

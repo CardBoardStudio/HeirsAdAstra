@@ -3,7 +3,7 @@ on:
   push:
     branches: [main, stable]
   pull_request:
-  workflow_dispatch: # the Release cut workflow starts it on release/next
+  workflow_dispatch: # the Release cut workflow starts it on release/next; also runs the heavy jobs
 permissions:
   contents: read
 concurrency:
@@ -13,7 +13,7 @@ jobs:
   check:
     name: Rust checks and Wasm
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@master
@@ -22,25 +22,74 @@ jobs:
           targets: wasm32-unknown-unknown
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust
       - uses: actions/cache@v4
         with:
           path: .tools
           key: wasm-bindgen-cli-${{ runner.os }}-${{ runner.arch }}-0.2.114
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.152
       - run: cargo fmt --all --check
-      - run: cargo test --workspace --locked
+      # Every test except the heavy_ tier (.config/nextest.toml); stops at the first failure.
+      - run: cargo nextest run --workspace --locked
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: ./scripts/build-web.sh
       - run: node scripts/check-rulebook.cjs dist/galactic-reach
+      - name: Table setup and independent device roles
+        run: |
+          cargo build --locked -p server
+          DEV_AUTH=1 BIND_ADDR=127.0.0.1:3324 APP_ORIGIN=http://127.0.0.1:3324 DATABASE_PATH=/tmp/tabletop-roles.sqlite target/debug/server > /tmp/tabletop-roles.log 2>&1 &
+          server_pid=$!
+          trap 'kill "$server_pid"' EXIT
+          for attempt in $(seq 1 50); do
+            curl -fsS http://127.0.0.1:3324/api/health >/dev/null && break
+            sleep 1
+          done
+          TABLETOP_ORIGIN=http://127.0.0.1:3324 node scripts/check-tabletop-roles.cjs
       - uses: actions/upload-artifact@v4
         with:
           name: drawing-board-web
           path: dist/
           retention-days: 7
+  # The change queue (crates/server/src/change_queue.rs) requires this job's name, so it passes
+  # only when every JavaScript job below passed.
   javascript:
-    name: Galactic Reach JavaScript checks
+    name: Heirs Ad Astra JavaScript checks
+    needs: [javascript-tests, relic-interface]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
-    # Full draw engines and the existing 24-match balance smoke need more time.
-    timeout-minutes: 20
+    timeout-minutes: 5
+    steps:
+      - name: Every JavaScript job passed
+        env:
+          RESULTS: ${{ join(needs.*.result, ' ') }}
+        run: |
+          echo "JavaScript jobs: $RESULTS"
+          for result in $RESULTS; do [ "$result" = success ] || exit 1; done
+  # Every viewport runs every relic case; on a slow runner the desktop sizes take 1.5-4 minutes
+  # each and the phone sizes about 10 s, so the sizes run in parallel shards (CHECK_SHARD).
+  relic-interface:
+    name: Relic interface check (${{ matrix.shard }}/${{ strategy.job-total }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/check-relic-interface.cjs
+        env:
+          CHECK_SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
+  javascript-tests:
+    name: Heirs Ad Astra JavaScript tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -48,6 +97,17 @@ jobs:
           node-version: 24
       - run: node --check prototypes/galactic-reach/app.js
       - run: node scripts/test-galactic-reach.cjs
+      - run: node scripts/check-card-gallery.cjs
+      - run: node scripts/check-emblem.cjs
+      - run: node scripts/test-guide-switch.cjs
+      - run: node scripts/test-playtest-refinements.cjs
+      - run: node scripts/test-relic-deck.cjs
+      - run: node scripts/test-fleet-group-limit.cjs
+      - run: node scripts/test-resource-market.cjs
+      - name: Max UI controls and card banks
+        run: node scripts/check-max-ui.cjs
+        env:
+          CHECK_SIZES: 1920x1080
       - run: node scripts/test-playtest-notes.cjs
       - run: node scripts/test-change-queue.cjs
       - run: node scripts/test-long-reach.cjs
@@ -73,13 +133,63 @@ jobs:
       - run: node scripts/test-storage-planning.cjs
       - run: node scripts/test-twenty-point-strategy.cjs
       - run: node scripts/test-scoring-bots.cjs
+      - run: node scripts/test-human-win-bots.cjs
+      - run: node scripts/test-bot-plan-completion.cjs
+      - run: node scripts/test-military-hunter.cjs
+      - run: node scripts/check-rival-settings.cjs
       - run: node scripts/test-no-shipyard-upgrades.cjs
       - run: node scripts/test-combat-prestige.cjs
       - run: node scripts/test-tactical-combat.cjs
+      - run: node scripts/check-combat-mats.cjs
+      - run: node scripts/test-shared-tables.cjs
       - run: node scripts/test-replay-view.cjs
       - run: node scripts/test-galactic-reach-dialogs.cjs
       - run: node scripts/test-cleanup-draw.cjs
       - run: node scripts/test-simulation-archive.cjs
+      - run: node --test deploy/pr-mixer/pr-mixer.test.mjs
+      - run: node scripts/check-mixer-ui.cjs
+      - run: node --test deploy/dev-host/dev-host.test.mjs
+  # Heavy tier: whole simulated matches. They run on the release PRs, not on change
+  # PRs (docs/release.md#heavy-tests): the cut PR (release/next -> main, whose CI the
+  # Release cut workflow starts with workflow_dispatch, or pull_request when the cut
+  # uses a GitHub App token), the standing Release PR (main -> stable, synchronized
+  # on every merge to main), and any manual run from the Actions tab.
+  heavy:
+    name: Heavy simulations
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+        (github.base_ref == 'stable' || github.head_ref == 'release/next'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.97.1
+      # Reuse the check job's cache from main; only the check job saves it.
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: rust
+          save-if: false
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest@0.9.152
+      # Only the heavy_ tests; stops at the first failure.
+      - run: cargo nextest run --workspace --locked --profile heavy
+  heavy-js:
+    name: Balance harness
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'pull_request' &&
+        (github.base_ref == 'stable' || github.head_ref == 'release/next'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       - name: Balance harness smoke run
         run: node scripts/balance-simulations.cjs 1 > /dev/null
       - name: Retain full simulation archives

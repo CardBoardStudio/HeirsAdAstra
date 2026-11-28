@@ -69,7 +69,7 @@ function assertGalaxy(s) {
   assert.equal(Object.values(s.planets).filter(p=>p.special==='gate').length,0);
   assert(Object.values(s.planets).every(p=>!('rich' in p)&&p.special!=='rich'),'Rich is absent, not just visually hidden');
   const homes=s.clusters.slice(0,4), worlds=s.clusters.filter(c=>c.kind==='world'&&c.id>=4), moons=s.clusters.filter(c=>c.kind==='moon');
-  const expected=['9,-9','-9,9','6,-3','3,-6','-3,-3','-6,3','-3,6','3,3','0,0'];
+  const expected=['8,-8','-8,8','6,-3','3,-6','-3,-3','-6,3','-3,6','3,3','0,0'];
   assert.deepEqual(new Set(Array.from(worlds,w=>w.center)),new Set(expected),'The approved world geometry stays fixed');
   const access=homes.map(h=>Math.min(...moons.map(m=>r.hexDistance(h.center,m.center))));
   assert(access.every(d=>d>=4&&d<=7));assert(Math.max(...access)-Math.min(...access)<=1);
@@ -138,13 +138,13 @@ assert.equal(move.moveGroup,'explorer'); assert.equal(move.destination,'3,0');
 r.state.fleets['1,0']={2:{fleet:1}};
 assert(!r.chooseAiMove(1) || r.chooseAiMove(1).destination!=='3,0','Do not jump through a hostile fleet');
 // The end-of-round rule ends at 10 or above, and never one point below.
-for(const points of [39,40,41]) {
-  // 31.36: new games default to a 40 Prestige target (rules #victory).
+for(const points of [29,30,31]) {
+  // 31.36: new games default to a 30 Prestige target (rules #victory).
   const s=fresh(100); s.players[0].cardPrestige=points-3;
   assert.equal(r.calculatePrestige(0),points);
   r.finishRound();
-  assert.equal(s.winner,points>=40?0:null);
-  assert.equal(s.round,points>=40?1:2);
+  assert.equal(s.winner,points>=30?0:null);
+  assert.equal(s.round,points>=30?1:2);
 }
 fresh(99); r.state.phase='operations'; r.state.activePlayer=0; r.state.turnStage='prep';
 const order=r.makeCard('move'); r.state.players[0].hand=[order];
@@ -153,8 +153,8 @@ r.playOrder(order.id); assert.equal(r.state.actionMode,'move'); assert.equal(r.s
 r.playOrder(order.id); assert.equal(r.state.actionMode,null,'Clicking again cancels without spending the card');
 assert.equal(r.state.players[0].hand.length,1);
 const old='untouched-v4-save'; storage.set('galactic-reach-save-v4',old);
-assert.equal(r.SAVE_KEY,'galactic-reach-save-v38');
-assert.equal(r.TURN_HISTORY_KEY,'galactic-reach-turn-history-v38');
+assert.equal(r.SAVE_KEY,'galactic-reach-save-v39');
+assert.equal(r.TURN_HISTORY_KEY,'galactic-reach-turn-history-v39');
 const saved=JSON.stringify(fresh(123)); r.saveGame(); fresh(456);
 assert(r.loadGame()); assert.equal(JSON.stringify(r.state),saved,'Reload retains randomized placement');
 assert.equal(storage.get('galactic-reach-save-v4'),old);

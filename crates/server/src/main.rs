@@ -1,5 +1,6 @@
 mod access;
 mod accounts;
+mod admin;
 mod arena;
 mod card_feedback;
 mod change_queue;
@@ -13,6 +14,7 @@ mod platform_tests;
 mod shared;
 mod store;
 mod tables;
+mod tabletop;
 use axum::{
     Json, Router,
     extract::{Path, State},
@@ -181,6 +183,11 @@ async fn protect(State(app): State<App>, request: axum::extract::Request, next: 
     let gated = app.nido.access.invite_only && !access::is_public(path);
     let check = async {
         access::limit(&app, path, headers).map_err(IntoResponse::into_response)?;
+        // Delegated device routes validate their own narrowly scoped capability.
+        // Keep CSRF above this exception; do not issue a general account session.
+        if tabletop::delegated_path(path) {
+            return Ok(());
+        }
         if gated || (path.starts_with("/api/") && !path.starts_with("/api/auth/")) {
             nido::check_session(&app, headers)
                 .await
@@ -314,16 +321,17 @@ fn create_test_session(
     .map_err(internal)?;
     tx.execute(
         "INSERT INTO sessions VALUES(?,?,?,?,?)",
-        rusqlite::params![digest(&token), id, name, true, now() + 86400],
+        rusqlite::params![
+            digest(&token),
+            id,
+            name,
+            true,
+            now() + accounts::session_ttl()
+        ],
     )
     .map_err(internal)?;
     tx.commit().map_err(internal)?;
-    let secure = if app.origin.starts_with("https://") {
-        "; Secure"
-    } else {
-        ""
-    };
-    Ok(([(header::SET_COOKIE,format!("drawing_board_alien_v11_session={token}; HttpOnly; SameSite=Lax; Path=/; Max-Age=86400{secure}"))],Json(json!({"ok":true}))).into_response())
+    Ok(accounts::session_response(app, &token, json!({"ok":true})))
 }
 async fn logout(State(app): State<App>, headers: HeaderMap) -> ApiResult<Response> {
     if let Some(token) = cookie(&headers, "drawing_board_alien_v11_session") {
@@ -566,6 +574,7 @@ fn router(app: App) -> Router {
             get(invites::list).post(invites::create),
         )
         .route("/api/admin/invites/{id}/revoke", post(invites::revoke))
+        .route("/api/admin/overview", get(admin::overview))
         .route("/api/invites/inspect", post(invites::inspect))
         .route("/api/invites/accept", post(invites::accept))
         .route("/api/tables", get(tables::list).post(tables::create))
@@ -575,6 +584,34 @@ fn router(app: App) -> Router {
         .route("/api/tables/{id}/lobby/leave", post(lobby::leave))
         .route("/api/tables/{id}/lobby/settings", post(lobby::settings))
         .route("/api/tables/{id}/lobby/start", post(lobby::start))
+        .route("/tabletop/host.html", get(tabletop::host_page))
+        .route("/tabletop/phone.html", get(tabletop::phone_page))
+        .route("/tabletop/pairing.js", get(tabletop::pairing_script))
+        .route("/api/tabletop/{id}/phone-invite", post(tabletop::invite))
+        .route("/api/tabletop/{id}/host-phone", post(tabletop::host_phone))
+        .route("/api/tabletop/{id}/play-here", post(tabletop::play_here))
+        .route("/api/tabletop/{id}/requests", get(tabletop::requests))
+        .route("/api/tabletop/{id}/approve", post(tabletop::approve))
+        .route("/api/tabletop/{id}/join", post(tabletop::join))
+        .route("/api/tabletop/{id}/invite-details", post(tabletop::invite_details))
+        .route("/api/tabletop/{id}/seat", get(tabletop::seat))
+        .route("/api/tabletop/{id}/act", post(tabletop::act))
+        .route("/api/tabletop/{id}/undo", post(tabletop::undo))
+        .route("/api/tabletop/{id}/report", get(tabletop::report))
+        .route("/api/tabletop/{id}/player-stream", get(tabletop::player_stream))
+        .route("/api/tabletop/{id}/repair", post(tabletop::repair))
+        .route("/api/tabletop/{id}/client/", get(tabletop::client_index))
+        .route("/api/tabletop/{id}/client/{*file}", get(tabletop::client))
+        .route("/tabletop/board.html", get(tabletop::board_page))
+        .route("/tabletop/board.js", get(tabletop::board_script))
+        .route("/tabletop/board.css", get(tabletop::board_style))
+        .route("/tabletop/icons.js", get(tabletop::board_icons))
+        .route("/api/tabletop/{id}/board-grant", post(tabletop::issue_board))
+        .route("/api/tabletop/{id}/board-revoke", post(tabletop::revoke_board))
+        .route("/api/tabletop/{id}/redeem", post(tabletop::redeem))
+        .route("/api/tabletop/{id}/board", get(tabletop::board))
+        .route("/api/tabletop/{id}/focus", post(tabletop::focus))
+        .route("/api/tabletop/{id}/stream", get(tabletop::stream))
         .route("/api/shared", get(shared::list))
         .route("/api/shared/{id}", get(shared::view))
         .route("/api/shared/{id}/act", post(shared::act))
@@ -625,7 +662,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         shared: table_service_on(&store, shared::AI_PACE, {
             let channel = shared::channel::Channel::from_env(&store, |key| std::env::var(key).ok());
             let pruned = channel.keep_current(now())?;
-            tracing::info!(channel = channel.name, rules = %channel.rules, pruned, "galactic reach channel");
+            tracing::info!(channel = channel.name, rules = %channel.rules, pruned, "heirs ad astra channel");
             channel
         }),
         store,
@@ -1092,5 +1129,15 @@ mod tests {
             .query_row("SELECT user_id FROM sessions", [], |r| r.get(0))
             .unwrap();
         assert!(id.starts_with("preview:"));
+        assert!(
+            headers[header::SET_COOKIE]
+                .to_str()
+                .unwrap()
+                .contains("; Max-Age=5184000")
+        );
+        let expires: u64 = db
+            .query_row("SELECT expires FROM sessions", [], |r| r.get(0))
+            .unwrap();
+        assert!(expires.abs_diff(now() + 60 * 86400) <= 5);
     }
 }

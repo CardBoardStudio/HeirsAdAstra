@@ -1,0 +1,68 @@
+{
+  "$comment": "The Rules contract (docs/playtest-workflow.md), run in block mode by scripts/check-rules-contract.cjs. Only these rules: the advisory title, description and commit checks are .github/review-conventions.json. Keys: README.md \"Config reference\" in bitswell-hq/review-conventions.",
+  "body": {
+    "sections": [],
+    "comments": false,
+    "processHeadings": false
+  },
+  "rules": [
+    {
+      "id": "rules-grounding",
+      "section": "Rules grounding",
+      "match": "rulebook\\.html#[a-z0-9-]+|^Not applicable:\\s*\\S[\\s\\S]{20,}",
+      "message": "Rules grounding must cite rulebook.html#section and explain the connection, or say \"Not applicable: <reason and relevant specification>\""
+    },
+    {
+      "id": "rulebook-anchors",
+      "section": "Rules grounding",
+      "references": {
+        "file": "prototypes/galactic-reach/rulebook.html",
+        "definitions": "\\bid=\"([^\"]+)\"",
+        "pattern": "rulebook\\.html#([a-z0-9-]+)"
+      },
+      "message": "Rules grounding references an unknown rulebook section"
+    },
+    {
+      "id": "rule-bearing-grounding",
+      "when": {
+        "paths": [
+          "prototypes/galactic-reach/app.js",
+          "prototypes/galactic-reach/adapter.js",
+          "crates/galactic-reach/**/*.rs",
+          "crates/galactic-reach/**/*.js",
+          "crates/game-core/src/**/*.rs",
+          "crates/server/src/tables.rs",
+          "crates/server/src/arena.rs"
+        ]
+      },
+      "section": "Rules grounding",
+      "notMatch": "^Not applicable:",
+      "message": "Rule-bearing files changed: Heirs Ad Astra rules cannot be marked not applicable"
+    },
+    {
+      "id": "gameplay-impact",
+      "section": "Gameplay impact",
+      "match": "^(None|Changed):\\s*\\S[\\s\\S]{20,}",
+      "message": "Gameplay impact must start with \"None:\" or \"Changed:\" and explain the behavior or why it is preserved"
+    },
+    {
+      "id": "rulebook-updated",
+      "when": [
+        {
+          "paths": [
+            "prototypes/galactic-reach/app.js",
+            "prototypes/galactic-reach/adapter.js",
+            "crates/galactic-reach/**/*.rs",
+            "crates/galactic-reach/**/*.js",
+            "crates/game-core/src/**/*.rs",
+            "crates/server/src/tables.rs",
+            "crates/server/src/arena.rs"
+          ]
+        },
+        { "sections": { "Gameplay impact": "^Changed:" } }
+      ],
+      "requireFiles": ["prototypes/galactic-reach/rulebook.html"],
+      "message": "Game logic changes require a meaningful update to prototypes/galactic-reach/rulebook.html in the same PR"
+    }
+  ]
+}

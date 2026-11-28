@@ -1,5 +1,5 @@
 //! Shared table shelf. Voidwright retains its authoritative multiplayer API;
-//! Galactic Reach solo tables store private, unrated browser saves with CAS.
+//! Heirs Ad Astra solo tables store private, unrated browser saves with CAS.
 use crate::*;
 use rusqlite::{Connection, OptionalExtension, params};
 pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
@@ -19,6 +19,22 @@ pub fn migrate(db: &Connection) -> rusqlite::Result<()> {
     if !has_rules {
         db.execute_batch("ALTER TABLE solo_tables ADD COLUMN rules_version TEXT NOT NULL DEFAULT 'galactic-reach/4.9';
         UPDATE solo_tables SET rules_version='galactic-reach/' || json_extract(state,'$.state.version') || '.' || json_extract(state,'$.state.rulesRevision') WHERE state IS NOT NULL;")?;
+    }
+    // Additive: a game started alone keeps its chosen Prestige target with the table
+    // (rules #victory-target). Null means the table never chose one here.
+    let has_target = db
+        .prepare("PRAGMA table_info(solo_tables)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .any(|c| c.as_deref() == Ok("victory_target"));
+    if !has_target {
+        db.execute_batch("ALTER TABLE solo_tables ADD COLUMN victory_target INTEGER;")?;
+    }
+    let has_profiles = db
+        .prepare("PRAGMA table_info(solo_tables)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .any(|c| c.as_deref() == Ok("bot_profiles"));
+    if !has_profiles {
+        db.execute_batch("ALTER TABLE solo_tables ADD COLUMN bot_profiles TEXT;")?;
     }
     Ok(())
 }
@@ -69,7 +85,8 @@ pub async fn list(
         let (status, url) = if let Some(shared) = shared.as_deref() {
             (shared, crate::shared::url(&id))
         } else if waiting {
-            ("waiting", crate::lobby::url(&id))
+            // Played with others: back to the waiting screen that holds its link.
+            ("waiting", crate::lobby::host_url(&db, &id)?)
         } else {
             (status, table_url("galactic-reach", &id))
         };
@@ -99,9 +116,16 @@ pub struct Create {
     practice: bool,
     #[serde(default = "rounds")]
     round_limit: u16,
-    /// Galactic Reach: open a waiting room (invite link, seats, rivals) before Start.
+    /// Heirs Ad Astra: open a waiting room (invite link, seats, rivals) before Start.
     #[serde(default)]
     lobby: bool,
+    /// Heirs Ad Astra played alone: the Prestige target for its first game
+    /// (rules #victory-target). A waiting room's host chooses it in the room.
+    #[serde(default)]
+    victory_target: Option<u32>,
+    /// Solo setup only: profiles for Ember, Violet and Helios (rules #solo-seating).
+    #[serde(default)]
+    bot_profiles: Option<Vec<String>>,
 }
 fn rounds() -> u16 {
     20
@@ -133,6 +157,35 @@ pub async fn create(
     if input.game != "galactic-reach" {
         return Err(bad("Choose a supported game."));
     }
+    if let Some(target) = input.victory_target
+        && (input.lobby || !crate::lobby::VICTORY_TARGETS.contains(&target))
+    {
+        return Err(bad(if input.lobby {
+            "Choose the Prestige target in the waiting room."
+        } else {
+            "Choose a listed Prestige target."
+        }));
+    }
+    if let Some(profiles) = &input.bot_profiles
+        && (input.lobby
+            || profiles.len() != 3
+            || profiles.iter().any(|profile| {
+                !matches!(
+                    profile.as_str(),
+                    "militaryFocused" | "military" | "economy" | "expansion" | "maxbot"
+                )
+            }))
+    {
+        return Err(bad(
+            "Choose a listed profile for each of the three solo rivals.",
+        ));
+    }
+    let bot_profiles = input
+        .bot_profiles
+        .as_ref()
+        .map(serde_json::to_string)
+        .transpose()
+        .map_err(internal)?;
     let db = app.store.0.lock().map_err(internal)?;
     let count: u32 = db
         .query_row(
@@ -143,13 +196,14 @@ pub async fn create(
         .map_err(internal)?;
     if count >= 100 {
         return Err(bad(
-            "This account has reached its 100 Galactic Reach table limit.",
+            "This account has reached its 100 Heirs Ad Astra table limit.",
         ));
     }
     let id = uuid::Uuid::new_v4().simple().to_string();
+    // Played alone, this row is the whole game: no waiting room, invitation or shared table.
     db.execute(
-        "INSERT INTO solo_tables(id,owner_id,name,created,updated,rules_version) VALUES(?,?,?,?,?,?)",
-        params![id, u.id, name, now(), now(),galactic_reach::RULES],
+        "INSERT INTO solo_tables(id,owner_id,name,created,updated,rules_version,victory_target,bot_profiles) VALUES(?,?,?,?,?,?,?,?)",
+        params![id, u.id, name, now(), now(),galactic_reach::RULES,input.victory_target,bot_profiles],
     )
     .map_err(internal)?;
     if input.lobby {
@@ -186,6 +240,9 @@ pub async fn get(
     let lobby = crate::lobby::status(&db, &id)?;
     let settings = crate::lobby::table_settings(&db, &id)?;
     let shared = crate::shared::status(&db, &id)?.map(|_| crate::shared::url(&id));
+    // The game page sends a table still waiting here, so it reaches the same waiting
+    // screen as Your tables, never one whose Start cannot open the game.
+    let lobby_url = crate::lobby::host_url(&db, &id)?;
     drop(db);
     let save: serde_json::Value = state
         .as_deref()
@@ -193,8 +250,17 @@ pub async fn get(
         .transpose()
         .map_err(internal)?
         .unwrap_or_default();
+    // A save dealt on the dev channel plays only on its own dev revision: name the page
+    // that runs it, or null when this server does not keep that engine (table.js).
+    let channel = &app.shared.channel;
+    let dev_rules = save["state"]["devRules"]
+        .as_str()
+        .filter(|r| crate::shared::channel::is_dev_rules(r));
+    let dev_client = dev_rules
+        .filter(|r| channel.engine(r).is_some())
+        .map(|r| channel.client_path(r));
     Ok(Json(
-        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"save":save,"lobby":lobby,"lobby_url":crate::lobby::url(&id),"settings":settings,"shared_url":shared}),
+        json!({"id":id,"name":name,"owner_id":u.id,"revision":revision,"rules_version":rules,"dev_rules":dev_rules,"dev_client":dev_client,"save":save,"lobby":lobby,"lobby_url":lobby_url,"settings":settings,"shared_url":shared}),
     ))
 }
 #[derive(Deserialize)]
@@ -238,7 +304,8 @@ fn validate(save: &serde_json::Value) -> ApiResult<()> {
         || (s["version"] == 34 && s["rulesRevision"] == 39)
         || (s["version"] == 36 && s["rulesRevision"] == 41)
         || (s["version"] == 37 && s["rulesRevision"] == 42)
-        || (s["version"] == 38 && s["rulesRevision"] == 43))
+        || (s["version"] == 38 && s["rulesRevision"] == 43)
+        || (s["version"] == 39 && s["rulesRevision"] == 44))
         || (s["version"].as_u64().unwrap_or(0) >= 12 && s["phase"] == "directive")
         || (s["version"].as_u64().is_some_and(|v| v >= 9) && s["phase"] == "policy")
         || s["players"].as_array().is_none_or(|p| p.len() != 4)
@@ -262,7 +329,7 @@ fn validate(save: &serde_json::Value) -> ApiResult<()> {
         )
         || !(s["winner"].is_null() || s["winner"].as_u64().is_some_and(|r| r < 4))
     {
-        return Err(bad("This is not a supported Galactic Reach save."));
+        return Err(bad("This is not a supported Heirs Ad Astra save."));
     }
     Ok(())
 }
@@ -376,6 +443,95 @@ mod tests {
             .next()
             .unwrap()
             .into()
+    }
+    #[tokio::test]
+    async fn playing_alone_never_opens_a_waiting_room_invitation_or_shared_table() {
+        let a = app(true);
+        let me = account(&a, "Alone").await;
+        // An unlisted target is refused, and a waiting room chooses its target in the room.
+        for body in [
+            json!({"game":"galactic-reach","name":"Alone","victory_target":35}),
+            json!({"game":"galactic-reach","name":"Alone","victory_target":40,"lobby":true}),
+            json!({"game":"galactic-reach","name":"Alone","bot_profiles":["military"]}),
+            json!({"game":"galactic-reach","name":"Alone","bot_profiles":["human","economy","expansion"]}),
+            json!({"game":"galactic-reach","name":"Alone","bot_profiles":["militaryFocused","economy","expansion"],"lobby":true}),
+        ] {
+            assert_eq!(
+                call(&a, "POST", "/api/tables", &me, body).await.0,
+                StatusCode::BAD_REQUEST
+            );
+        }
+        let (s, _, t) = call(
+            &a,
+            "POST",
+            "/api/tables",
+            &me,
+            json!({"game":"galactic-reach","name":"Alone · Nov 21","victory_target":40,"bot_profiles":["military","military","maxbot"]}),
+        )
+        .await;
+        assert_eq!(s, StatusCode::OK, "{t}");
+        let id = t["id"].as_str().unwrap().to_string();
+        assert_eq!(t["url"], format!("/galactic-reach/?table={id}"));
+        let table = call(&a, "GET", &format!("/api/tables/{id}"), &me, json!({}))
+            .await
+            .2;
+        assert!(table["lobby"].is_null(), "{table}");
+        assert!(table["shared_url"].is_null(), "{table}");
+        assert_eq!(table["settings"]["victory_target"], 40);
+        assert_eq!(
+            table["settings"]["bot_profiles"],
+            json!(["military", "military", "maxbot"])
+        );
+        let shared_rows = |a: &App| {
+            let db = a.store.0.lock().unwrap();
+            [
+                "gr_lobbies",
+                "gr_lobby_seats",
+                "tabletop_rooms",
+                "tabletop_requests",
+                "tabletop_grants",
+                "gr_shared_tables",
+            ]
+            .map(|t| {
+                db.query_row(&format!("SELECT count(*) FROM {t}"), [], |r| {
+                    r.get::<_, u32>(0)
+                })
+                .unwrap()
+            })
+        };
+        assert_eq!(shared_rows(&a), [0; 6], "created alone");
+        // No waiting room, invitation, device link or shared table can be opened for it.
+        for (method, path) in [
+            ("GET", format!("/api/tables/{id}/lobby")),
+            ("POST", format!("/api/tables/{id}/lobby/start")),
+            ("POST", format!("/api/tabletop/{id}/phone-invite")),
+            ("POST", format!("/api/tabletop/{id}/play-here")),
+            ("POST", format!("/api/tabletop/{id}/host-phone")),
+            ("POST", format!("/api/tabletop/{id}/board-grant")),
+        ] {
+            assert!(
+                !call(&a, method, &path, &me, json!({})).await.0.is_success(),
+                "{path}"
+            );
+        }
+        assert_eq!(shared_rows(&a), [0; 6], "still alone after those requests");
+        let shelf = call(&a, "GET", "/api/tables", &me, json!({})).await.2;
+        assert_eq!(shelf[0]["url"], format!("/galactic-reach/?table={id}"));
+        assert_eq!(shelf[0]["status"], "new");
+        // A table created alone without a target keeps the engine default (null here).
+        let (_, _, plain) = call(
+            &a,
+            "POST",
+            "/api/tables",
+            &me,
+            json!({"game":"galactic-reach","name":"Plain"}),
+        )
+        .await;
+        let plain = plain["id"].as_str().unwrap();
+        let plain = call(&a, "GET", &format!("/api/tables/{plain}"), &me, json!({}))
+            .await
+            .2;
+        assert!(plain["settings"].is_null(), "{plain}");
     }
     #[tokio::test]
     async fn galactic_reach_waiting_room_invites_seats_and_starts() {
@@ -504,10 +660,10 @@ mod tests {
                 "fewer or Easy rivals are not offered"
             );
         }
-        // 31.36 #victory: the host picks the Prestige target; 40 by default.
+        // 31.36 #victory: the host picks the Prestige target; 30 by default.
         assert_eq!(
             call(&a, "GET", &lobby, &host, json!({})).await.2["victory_target"],
-            40
+            30
         );
         assert_eq!(
             call(
@@ -593,7 +749,7 @@ mod tests {
             galactic_reach::RULES
         );
         // A realistic size above the normal 16 KiB request limit is accepted here only.
-        let save = json!({"state":{"version":38,"rulesRevision":43,"players":[{},{},{},{}],"planets":{},"fleets":{},"clusters":[],"round":3,"activePlayer":0,"phase":"operations","winner":null,"log":"x".repeat(40000)},"turnHistory":{"pending":null,"undo":null},"gameHistory":{"format":1,"complete":true,"events":[{"text":"x".repeat(1100000)}]}});
+        let save = json!({"state":{"version":39,"rulesRevision":44,"players":[{},{},{},{}],"planets":{},"fleets":{},"clusters":[],"round":3,"activePlayer":0,"phase":"operations","winner":null,"log":"x".repeat(40000)},"turnHistory":{"pending":null,"undo":null},"gameHistory":{"format":1,"complete":true,"events":[{"text":"x".repeat(1100000)}]}});
         let body = json!({"revision":0,"save":save});
         let mut wrong = body.clone();
         wrong["save"]["state"]["version"] = json!(5);

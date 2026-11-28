@@ -1,0 +1,21 @@
+
+
+# Subject: "Area: what the commit does", imperative, ≤ 72 characters, no full stop.
+#   e.g. "Heirs Ad Astra: Harbors refit Fleets"   "Viewport check: wait for web fonts"
+# Leave one blank line, then the body. Lines starting with # are dropped.
+#
+# Why: the problem, and why this approach rather than the obvious alternative.
+#
+# What changes: what a player or caller sees differently; what deliberately does not.
+#
+# Evidence: the command you ran and its result, e.g. `node scripts/test-rules-contract.cjs` passed.
+#
+# Trailers, last paragraph, one per line, only when they apply:
+#   Refs: #57
+#   Security: who can now do what they could not before (or "None:" and why)
+#   Breaking-Change: what an ongoing playtest game loses (pairs with playtest-breaking)
+#   Co-authored-by: Name <email>
+#
+# A small, obvious commit needs only the subject. Over ~30 changed lines, say why.
+# Fixups: `git commit --fixup=<sha>`, then `git rebase -i --autosquash` before review.
+# Set up once per clone: git config commit.template .gitmessage

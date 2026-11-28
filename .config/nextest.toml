@@ -1,0 +1,30 @@
+# cargo-nextest runs every test binary in one pool, one process per test.
+# CI uses it (.github/workflows/ci.yml); plain `cargo test` still runs everything.
+#
+# The heavy tier plays whole Heirs Ad Astra matches and takes most of the suite's
+# time. The default profile skips it; the `heavy` profile runs only it. See
+# docs/release.md#heavy-tests. Keep the two filters below in step.
+#
+# Maintained heavy tests are named `heavy_*`, except the two native-policy tests
+# listed by name below. The frozen shared-replay fixture stays excluded from the
+# default profile; the heavy profile runs its maintained replacement instead.
+
+[profile.default]
+default-filter = """not (test(/(^|::)heavy_/) | (package(galactic-reach) & (
+    test(=archived_rust::tests::reference_policies_buy_and_play_capacity_cards)
+  | test(=archived_rust::tests::reference_policies_complete_reproducible_four_player_matches)
+  | test(=archived_rust::tests::shared_tables_resume_exactly_on_every_shared_revision))))"""
+# Stop at the first failure and kill the tests still running, so a red run
+# reports in seconds instead of waiting for the slowest test.
+fail-fast = { max-fail = 1, terminate = "immediate" }
+# A fast test that runs for 5 minutes is stuck: kill it and name it.
+slow-timeout = { period = "60s", terminate-after = 5 }
+
+[profile.heavy]
+# The old shared-revision fixture remains in the byte-frozen archive. Its maintained
+# replacement is shared_replay_tests::heavy_shared_tables_resume_exactly_on_every_shared_revision.
+default-filter = """test(/(^|::)heavy_/) | (package(galactic-reach) & (
+    test(=archived_rust::tests::reference_policies_buy_and_play_capacity_cards)
+  | test(=archived_rust::tests::reference_policies_complete_reproducible_four_player_matches)))"""
+# On CI's runners a heavy test takes a few minutes; 15 minutes means it is stuck.
+slow-timeout = { period = "60s", terminate-after = 15 }

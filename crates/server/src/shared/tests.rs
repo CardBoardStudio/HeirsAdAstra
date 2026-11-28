@@ -62,6 +62,7 @@ fn table(id: &str, people: &[(&str, &str)]) -> Table {
         status: "active".into(),
         seats: seats(&people),
         victory_target: 40,
+        committed_only: false,
     }
 }
 fn store_with(accounts: &[&str]) -> Arc<Store> {
@@ -211,7 +212,7 @@ async fn private_views_never_hold_another_seats_hand_or_deck_order() {
             .map(|deck| deck.as_array().unwrap().len())
             .sum::<usize>()
             + bo["state"]["market"].as_array().unwrap().len(),
-        62
+        58
     );
     // A seat's own deck is listed without its order.
     let deck: Vec<&str> = bo["state"]["players"][1]["deck"]
@@ -250,10 +251,16 @@ async fn account(a: &App, name: &str) -> String {
 }
 
 /// Two accounts play a whole shared game through the HTTP API, with the table
-/// service's AI rivals in the other two seats.
+/// service's AI rivals in the other two seats. The seeded service deals the same
+/// game every run, so the test's coverage and run time do not vary.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
-async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
-    let a = app(true);
+async fn heavy_two_accounts_play_a_shared_game_to_the_end_over_http() {
+    let mut a = app(true);
+    a.shared = Service::start_seeded(
+        Arc::new(SqliteTableLog(a.store.clone())),
+        Duration::ZERO,
+        [11; 32],
+    );
     let host = account(&a, "Ada").await;
     let friend = account(&a, "Bo").await;
     let stranger = account(&a, "Cy").await;
@@ -341,8 +348,8 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
 
     let cookies = [host.clone(), friend.clone()];
     let mut agents = [
-        BuiltinAgent::new(Strategy::Economy, [1; 32]),
-        BuiltinAgent::new(Strategy::Expansion, [2; 32]),
+        historical_fixture(Strategy::Economy, [1; 32]),
+        historical_fixture(Strategy::Expansion, [2; 32]),
     ];
     let mut human_moves = 0;
     let (mut undid, mut refused_after_reveal) = (false, false);
@@ -443,6 +450,10 @@ async fn two_accounts_play_a_shared_game_to_the_end_over_http() {
     // `undo_takes_back_this_turn_but_not_past_a_reveal_or_the_turn`.
     let _ = refused_after_reveal;
     let end = call(&a, "GET", &endpoint, &friend, json!({})).await.2;
+    eprintln!(
+        "shared game: seats {people:?}, {human_moves} human moves, seq {}, winner {}",
+        end["seq"], end["state"]["winner"]
+    );
     assert_eq!(end["status"], "finished");
     assert!(end["state"]["winner"].is_u64());
     a.shared.refolded(&id, 1).await;
@@ -521,6 +532,7 @@ async fn a_live_view_streams_the_current_seat_view_first() {
             status: "active".into(),
             seats: seats(&ids),
             victory_target: 40,
+            committed_only: false,
         })
         .await
         .unwrap();
@@ -1166,7 +1178,18 @@ fn start_deals_people_to_random_seats_and_rivals_fill_the_rest() {
                 seat.name, rivals[seat.seat],
                 "rivals keep their seat's faction"
             );
-            assert!(seat.policy.is_some());
+            assert!(
+                seat.policy
+                    .as_deref()
+                    .and_then(BrowserProfile::parse)
+                    .is_some()
+            );
+            if seat.seat < 2 {
+                assert_eq!(
+                    seat.policy.as_deref(),
+                    Some(BrowserProfile::MilitaryFocused.version())
+                );
+            }
         }
         host_seats.insert(ada);
         split += usize::from(ada / 2 != bo / 2);
@@ -1702,4 +1725,286 @@ async fn a_dev_table_keeps_its_build_when_a_rules_change_deploys() {
         StatusCode::NOT_FOUND,
         "released revisions are not dev builds"
     );
+}
+
+/// A private (server-saved) table dealt on a dev revision keeps that revision's
+/// engine through a rules-changing deploy and the [`KEEP_FOR`] prune while it is
+/// unfinished, and the table API names the page that runs it. Its save is never
+/// changed: the dealt revision is read from `state.devRules`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn a_private_dev_table_keeps_its_engine_until_it_finishes() {
+    use super::channel::{Channel, KEEP_FOR};
+    let mut a = app(true);
+    let store = a.store.clone();
+    let dev = |n: u32| format!("{}+dev.{n}", galactic_reach::RULES);
+    let label = |n: u32| dev(n).rsplit('/').next().unwrap().to_string();
+    let deploy = |rules: String, now: u64| {
+        let channel = Channel::dev(store.clone(), rules, format!("c{now}"));
+        channel
+            .keep_current_as(
+                galactic_reach::APP_SOURCE,
+                galactic_reach::ADAPTER_SOURCE,
+                now,
+            )
+            .unwrap();
+        channel
+    };
+    let host = account(&a, "Ada").await;
+    let mut tables = vec![];
+    for name in ["Open", "Finished", "Stable", "Broken"] {
+        let created = call(
+            &a,
+            "POST",
+            "/api/tables",
+            &host,
+            json!({"game":"galactic-reach","name":name}),
+        )
+        .await
+        .2;
+        tables.push(created["id"].as_str().unwrap().to_string());
+    }
+    let saves = [
+        json!({"state":{"devRules":dev(1),"winner":null}}).to_string(),
+        json!({"state":{"devRules":dev(0),"winner":2}}).to_string(),
+        json!({"state":{"winner":null}}).to_string(),
+        "not json".to_string(),
+    ];
+    {
+        let db = store.0.lock().unwrap();
+        for (id, save) in tables.iter().zip(&saves) {
+            db.execute(
+                "UPDATE solo_tables SET state=?,revision=1 WHERE id=?",
+                [save, id],
+            )
+            .unwrap();
+        }
+    }
+    let stored = || -> Vec<Option<String>> {
+        let db = store.0.lock().unwrap();
+        tables
+            .iter()
+            .map(|id| {
+                db.query_row("SELECT state FROM solo_tables WHERE id=?", [id], |r| {
+                    r.get(0)
+                })
+                .unwrap()
+            })
+            .collect()
+    };
+    let before = stored();
+
+    // dev.0 dealt the finished table; dev.1 dealt the open one.
+    deploy(dev(0), 1);
+    deploy(dev(1), 2);
+    // A rules-changing deploy (dev.2) long after both stopped being current.
+    let b = deploy(dev(2), 2 * KEEP_FOR);
+    assert!(
+        b.kept(&dev(1)).is_some(),
+        "an unfinished private table keeps its dealt engine past KEEP_FOR"
+    );
+    assert!(
+        b.kept(&dev(0)).is_none(),
+        "a finished private table does not keep its engine"
+    );
+
+    // The table API names the page that runs the dealt engine.
+    a.shared = Service::start_on(
+        Arc::new(SqliteTableLog(store.clone())),
+        Arc::new(TrustedAuthority),
+        Duration::ZERO,
+        Arc::new(b),
+    );
+    let get = |id: &str| {
+        let (a, host, path) = (a.clone(), host.clone(), format!("/api/tables/{id}"));
+        async move { call(&a, "GET", &path, &host, json!({})).await.2 }
+    };
+    let open = get(&tables[0]).await;
+    assert_eq!(open["rules_version"], galactic_reach::RULES);
+    assert_eq!(open["dev_rules"], dev(1));
+    assert_eq!(
+        open["dev_client"],
+        format!("/galactic-reach/dev/{}/", label(1))
+    );
+    let finished = get(&tables[1]).await;
+    assert_eq!(finished["dev_rules"], dev(0));
+    assert_eq!(
+        finished["dev_client"],
+        Value::Null,
+        "its engine is gone, and table.js says so"
+    );
+    let stable = get(&tables[2]).await;
+    assert_eq!(stable["dev_rules"], Value::Null);
+    assert_eq!(stable["dev_client"], Value::Null);
+
+    // Once the table finishes, its engine goes at the next prune.
+    {
+        let db = store.0.lock().unwrap();
+        db.execute(
+            "UPDATE solo_tables SET state=? WHERE id=?",
+            [
+                json!({"state":{"devRules":dev(1),"winner":0}}).to_string(),
+                tables[0].clone(),
+            ],
+        )
+        .unwrap();
+    }
+    let later = deploy(dev(2), 2 * KEEP_FOR + 1);
+    assert!(later.kept(&dev(1)).is_none());
+    assert!(later.kept(&dev(2)).is_some(), "the current revision stays");
+    let after = stored();
+    assert_eq!(
+        after[1..],
+        before[1..],
+        "loading and pruning never rewrite a save"
+    );
+}
+
+// Fast stand-ins on change PRs for the whole-match tests in the heavy tier
+// (.config/nextest.toml, docs/release.md#heavy-tests). They live here rather than in
+// crates/galactic-reach so that test-only edits there do not count as rule changes.
+
+/// The first 300 decisions of a four-rival match, twice: every pick is legal and
+/// the two runs choose identically.
+#[test]
+fn reference_rivals_open_a_match_legally_and_reproducibly() {
+    let play = || {
+        let mut game = GalacticReach::new([8; 32]).unwrap();
+        let mut agents: Vec<Box<dyn PlayerAgent<GalacticReach>>> = [
+            Strategy::Military,
+            Strategy::Economy,
+            Strategy::Expansion,
+            Strategy::Wanderer,
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(i, s)| historical_fixture(s, [i as u8; 32]))
+        .collect();
+        let mut trace = vec![];
+        for _ in 0..300 {
+            let seat = game.active_seat().expect("the match is still running");
+            let legal = game.legal_actions(seat);
+            let pick = agents[seat].select_action(&game.observe(seat).unwrap(), &legal);
+            game.apply_action(seat, legal[pick].clone()).unwrap();
+            trace.push((seat, legal[pick].clone()));
+        }
+        trace
+    };
+    assert_eq!(play(), play());
+}
+
+/// A shared table on the current rules resumes from its snapshot text exactly:
+/// the resumed engine re-snapshots byte for byte and plays on identically. The
+/// galactic-reach heavy test does the same for every revision in SHARED_RULES.
+#[test]
+fn shared_tables_resume_exactly_on_current_rules() {
+    use rand::{SeedableRng, rngs::StdRng, seq::SliceRandom};
+    use std::{cell::RefCell, rc::Rc};
+    let rules = galactic_reach::RULES;
+    assert!(galactic_reach::SHARED_RULES.contains(&rules));
+    let log: Rc<RefCell<Vec<Vec<usize>>>> = Rc::default();
+    let mut rng = StdRng::from_seed([9; 32]);
+    let record = log.clone();
+    let seats: [(String, bool); 4] = std::array::from_fn(|i| (format!("P{i}"), i < 2));
+    let mut game = GalacticReach::shared(rules, &seats, 20, move |n, _| {
+        let mut order: Vec<usize> = (0..n).collect();
+        order.shuffle(&mut rng);
+        record.borrow_mut().push(order.clone());
+        order
+    })
+    .unwrap();
+    assert_eq!(game.rules_version(), rules);
+    let mut agents: Vec<Box<dyn PlayerAgent<GalacticReach>>> = (0..4)
+        .map(|i| historical_fixture(Strategy::Economy, [i; 32]))
+        .collect();
+    let mut step = |g: &mut GalacticReach| {
+        let seat = g.active_seat().unwrap();
+        let legal = g.legal_actions(seat);
+        let pick = agents[seat].select_action(&g.observe(seat).unwrap(), &legal);
+        g.apply_action(seat, legal[pick].clone()).unwrap();
+        legal[pick].clone()
+    };
+    for _ in 0..120 {
+        step(&mut game);
+    }
+    let text = game.snapshot().unwrap();
+    let mut next = log.borrow().len();
+    let replay = log.clone();
+    let mut resumed = GalacticReach::shared_on(rules, &seats, 20, Some(&text), move |n, _| {
+        let order = replay.borrow()[next].clone();
+        assert_eq!(order.len(), n);
+        next += 1;
+        order
+    })
+    .unwrap();
+    assert_eq!(
+        resumed.snapshot().unwrap(),
+        text,
+        "resumed snapshot is identical"
+    );
+    for _ in 0..150 {
+        let action = step(&mut game);
+        let seat = resumed.active_seat().unwrap();
+        resumed.apply_action(seat, action).unwrap();
+    }
+    assert_eq!(
+        resumed.snapshot().unwrap(),
+        game.snapshot().unwrap(),
+        "plays on identically"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn new_browser_rivals_are_logged_and_refold_exactly() {
+    let store = store_with(&["a"]);
+    let log = Arc::new(SqliteTableLog(store));
+    let service = Service::start(log.clone(), Arc::new(TrustedAuthority), Duration::ZERO);
+    let mut t = table("browser-policy", &[("a", "Ada")]);
+    t.seats = seats_at(&[("a".into(), "Ada".into())], &[0, 1, 2, 3]);
+    service.open(t).await.unwrap();
+    let seq = service.view("browser-policy", "a").await.unwrap()["seq"]
+        .as_u64()
+        .unwrap();
+    assert!(
+        service
+            .act(
+                "browser-policy",
+                "a",
+                seq,
+                vec![json!({"type":"browser_policy","profile":"military"})]
+            )
+            .await
+            .is_err()
+    );
+    service
+        .act(
+            "browser-policy",
+            "a",
+            seq,
+            vec![json!({"type":"pass"}), json!({"type":"finish_buy"})],
+        )
+        .await
+        .unwrap();
+    let mut moved = false;
+    for _ in 0..400 {
+        let events = log.read("browser-policy").unwrap();
+        if [1, 2, 3].iter().all(|seat| {
+            events.iter().any(|e| {
+                e.seat == Some(*seat)
+                    && e.kind == "action"
+                    && e.public["action"]["type"] == "browser_policy"
+            })
+        }) {
+            moved = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(25)).await;
+    }
+    assert!(moved, "Every new rival must use the browser decision path");
+    assert!(service.view("browser-policy", "a").await.unwrap()["ai_error"].is_null());
+    service.refolded("browser-policy", 0).await;
+}
+
+// Frozen legacy drivers for archived-table and human-command compatibility fixtures.
+fn historical_fixture(strategy: Strategy, seed: [u8; 32]) -> Box<dyn PlayerAgent<GalacticReach>> {
+    galactic_reach::historical_agent(strategy.version(), seed).unwrap()
 }

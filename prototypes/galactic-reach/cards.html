@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#101d22">
-  <title>Card gallery · Galactic Reach 38.43</title>
-  <meta name="description" content="Every Galactic Reach 38.43 market card with its id, price, effect and a place to leave playtest feedback.">
+  <title>Card gallery · Heirs Ad Astra 39.44</title>
+  <meta name="description" content="Every Heirs Ad Astra 39.44 market card and alien relic with its art, effect and a place to leave playtest feedback.">
   <link rel="stylesheet" href="styles.css?v=cheaper-cards-32-37">
   <link rel="stylesheet" href="card-feel.css?v=2">
   <style>
@@ -20,21 +20,46 @@
     .toolbar legend { float: left; margin-right: 8px; color: var(--muted); font-size: .9rem; }
     .store-status { color: var(--muted); font-size: .9rem; margin: 0 0 16px; }
     .store-status strong { color: var(--text); }
+    .tier-group { margin-top: 28px; }
+    .tier-group > h2 { display: flex; gap: 12px; align-items: baseline; font-size: 1.4rem; }
+    .tier-count { color: var(--muted); font-size: .9rem; font-weight: 400; }
     .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px; }
-    .gallery-card { background: var(--surface); border: 1px solid var(--line); border-top: 4px solid var(--accent, var(--line-bright)); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 8px; }
+    .gallery-card { background: radial-gradient(ellipse at top left, #fff9ef, transparent 85%), var(--paper); color: var(--ink); border: 1px solid var(--paper-edge); border-top: 4px solid var(--accent, var(--line-bright)); border-radius: 9px; padding: 0; display: flex; flex-direction: column; box-shadow: 0 3px 0 #9b8d72, 0 6px 12px #0004; overflow: hidden; }
     .gallery-card.military { --accent: var(--red); }
-    .gallery-card .meta { display: flex; justify-content: space-between; gap: 8px; color: var(--muted); font-size: .8rem; letter-spacing: .04em; text-transform: uppercase; }
-    .gallery-card .code { color: var(--gold); font-weight: 700; }
-    .gallery-card h2 { margin: 0; font-size: 1.15rem; }
-    .gallery-card .effect { margin: 0; line-height: 1.45; }
-    .facts { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; margin: 0; font-size: .9rem; }
-    .facts dt { color: var(--muted); }
-    .facts dd { margin: 0; display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+    .gallery-card.relic { --accent: var(--gold); }
+    .gallery-card-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 9px; padding: 10px 12px; }
+    .gallery-card .meta { grid-column: 1; display: flex; flex-wrap: wrap; gap: 4px 8px; color: #4d6259; font-size: .68rem; letter-spacing: .04em; text-transform: uppercase; }
+    .gallery-card .code { color: #765721; font-weight: 750; }
+    .gallery-card h3 { grid-column: 1; margin: 0; font: 400 1.25rem/1.15 Georgia, 'Times New Roman', serif; color: var(--ink); overflow-wrap: anywhere; }
+    .gallery-card .effect { grid-column: 1; margin: 0; font-size: .875rem; line-height: 1.4; color: #36473e; }
+    .gallery-card-heading:not(:has(.gallery-cost)) { grid-template-columns: 1fr; }
+    .gallery-cost { grid-column: 2; grid-row: 1 / 4; align-self: start; margin: -10px -12px 0 0; padding: 5px 6px 6px; border-left: 1.5px solid color-mix(in srgb, var(--accent) 60%, #5c5442); border-bottom: 1.5px solid color-mix(in srgb, var(--accent) 60%, #5c5442); border-radius: 0 5px 0 7px; background: color-mix(in srgb, var(--accent) 20%, #fffaf0); }
+    .gallery-cost .resource-dots { flex-direction: column; align-items: flex-end; gap: 4px; }
+    .gallery-cost .resource-chip { min-height: 0; padding: 0; border: 0; background: none; box-shadow: none; gap: 3px; }
+    .gallery-cost .resource-chip strong { color: var(--ink); font-size: .875rem; }
+    /* The card's header is one line: effect symbols left, name between, price in the top-right corner. */
+    .gallery-card-heading { grid-template-columns: max-content minmax(0, 1fr) auto; align-items: start; }
+    .gallery-card-heading > .card-symbols { grid-column: 1; grid-row: 1; align-self: center; font-size: 18px; }
+    .gallery-card-heading > h3 { grid-column: 2; grid-row: 1; align-self: center; text-align: center; overflow-wrap: normal; }
+    .gallery-card-heading:not(:has(> .card-symbols)) > h3 { grid-column: 1 / 3; }
+    .gallery-card-heading > .effect { grid-column: 1 / 3; }
+    .gallery-card-heading > .gallery-cost { grid-column: 3; }
+    .gallery-card-heading:not(:has(.gallery-cost)) { grid-template-columns: max-content minmax(0, 1fr); }
+    .gallery-card .needs .code { color: #765721; font-weight: 750; letter-spacing: .04em; }
+    .gallery-cost .corner-dots .resource-chip { justify-content: flex-end; }
+    .gallery-card .resource-symbol, .gallery-card .inline-resource .resource-symbol { width: 18px; height: 18px; }
+    .gallery-card .resource-symbol { border-radius: 28%; color: var(--ink); } .gallery-card .resource-symbol svg { transform: scale(.72); }
+    .gallery-card .resource-symbol.matter { background: var(--matter); } .gallery-card .resource-symbol.energy { background: var(--energy); }
+    .gallery-card .resource-symbol.biomass { background: var(--biomass); } .gallery-card .resource-symbol.data { background: var(--data); }
+    .gallery-card .inline-resource { display: inline-flex; vertical-align: -.2em; }
+    .gallery-card .needs { margin: 0 12px 10px; color: #5a5138; font-size: .75rem; }
+    .gallery-feedback { display: flex; flex-direction: column; gap: 8px; padding: 12px; margin-top: auto; border-top: 1px solid #a89d8370; background: var(--surface); color: var(--text); }
+    .gallery-feedback[hidden], .gallery .store-status[hidden], .gallery .export[hidden] { display: none; }
     .chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line-bright); font-weight: 600; font-size: .85rem; }
     .chip::before { content: ""; width: .6rem; height: .6rem; border-radius: 50%; background: var(--dot); }
     .chip.matter { --dot: var(--matter); } .chip.energy { --dot: var(--energy); } .chip.biomass { --dot: var(--biomass); } .chip.data { --dot: var(--data); }
     .needs { color: var(--gold); font-size: .85rem; }
-    .vote { display: flex; gap: 6px; flex-wrap: wrap; margin-top: auto; padding-top: 6px; border-top: 1px solid var(--line); }
+    .vote { display: flex; gap: 6px; flex-wrap: wrap; }
     .vote button[aria-pressed="true"] { border-color: var(--cyan); background: color-mix(in srgb, var(--cyan) 22%, transparent); color: var(--text); }
     .gallery-card label { font-size: .85rem; color: var(--muted); }
     .gallery-card textarea { width: 100%; box-sizing: border-box; min-height: 3.2em; resize: vertical; background: var(--surface-2); color: var(--text); border: 1px solid var(--line-bright); border-radius: 6px; padding: 6px 8px; font: inherit; }
@@ -42,93 +67,195 @@
     .save-state { font-size: .82rem; color: var(--muted); }
     .export { margin-top: 28px; }
     .export textarea { width: 100%; box-sizing: border-box; min-height: 10em; background: var(--surface-2); color: var(--text); border: 1px solid var(--line-bright); border-radius: 6px; padding: 8px; font: .85rem/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .gallery-art { margin: 0 10px 10px; position: relative; aspect-ratio: 2 / 1; overflow: hidden; border-radius: 3px; background: var(--surface-2); }
+    .gallery-art-symbol { display: grid; place-items: center; color: #ebe5ce; }
+    .gallery-art-symbol .board-glyph { width: 48px; height: 48px; }
+    .gallery-art img { display: block; width: 100%; height: 100%; object-fit: cover; }
+    .gallery-art figcaption { position: absolute; left: 0; right: 0; bottom: 0; padding: 14px 10px 5px; background: linear-gradient(transparent, #000c); color: #f1ead6; font-size: .72rem; line-height: 1.3; }
+    /* The twenty symbols, by name, at the sizes the game draws them: 16 and 22 px with the small
+       rendering, 32 and 50 px with ghost lines. */
+    .icon-set { margin-top: 36px; border-top: 1px solid var(--line); padding-top: 8px; }
+    .icon-set .lede { margin-top: 0; }
+    .icon-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+    .icon-tile { display: grid; grid-template-columns: 1fr; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 9px; background: var(--surface); }
+    .icon-tile h3 { margin: 0; font-size: .95rem; }
+    .icon-tile small { color: var(--muted); font-weight: 400; }
+    .icon-sizes { display: flex; align-items: center; gap: 12px; min-height: 50px; color: var(--icon, var(--text)); }
+    .icon-sizes .hx-icon { flex: none; display: block; }
+    .icon-sizes .on-paper { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 6px; background: var(--paper); color: var(--ink); }
+    .credits { margin-top: 36px; border-top: 1px solid var(--line); padding-top: 8px; }
+    .credits .lede { margin-top: 0; }
+    .credits h3 { margin: 22px 0 10px; font-size: 1rem; color: var(--gold); letter-spacing: .04em; text-transform: uppercase; }
+    .credit-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 10px 16px; }
+    .credit-list li { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 10px; align-items: start; font-size: .85rem; line-height: 1.4; }
+    .credit-list img { width: 112px; aspect-ratio: 2 / 1; object-fit: cover; border-radius: 4px; background: var(--surface-2); }
+    .credit-list strong { display: block; color: var(--text); }
+    .credit-list .work { color: var(--muted); }
+    .credit-list a { color: var(--cyan); }
+    .site-footer { margin-top: 32px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: .8rem; }
+    .site-footer a { color: inherit; }
     :focus-visible { outline: 3px solid var(--cyan); outline-offset: 2px; }
+    @media (pointer: coarse) { .gallery .button, .gallery select { min-height: 44px; } }
   </style>
+  <link rel="stylesheet" href="max-ui.css?v=1">
 </head>
 <body>
+  <script>
+    (() => {
+      const ui=new URLSearchParams(location.search).get('ui');
+      let max=ui==='max';
+      if(!ui)try{max=localStorage.getItem('galactic-reach-background')==='stars';}catch{}
+      document.body.classList.toggle('background-stars',max);
+      document.body.classList.add('card-gallery-page');
+      if(max)document.body.classList.add('max-card-gallery');
+    })();
+  </script>
   <main class="gallery" id="gallery">
     <header>
       <div>
-        <div class="eyebrow" id="gallery-version">GALACTIC REACH · 38.43 CONSTRUCT III PLAYTEST</div>
+        <div class="eyebrow" id="gallery-version">HEIRS AD ASTRA · 39.44 PLAYTEST 2026-11-16</div>
         <h1>Card gallery</h1>
-        <p class="lede">Every market card in this playtest: 22 normal-deck designs and 9 military designs. Use the printed id when leaving feedback. Market cards cannot convert to resources. Three draw-two cards fit your starting limits of 4. Other market cards need raised limits.</p>
+        <p class="lede">Browse every market card and <a href="#alien-relic-gallery" id="show-relic-gallery">alien relic</a> in this playtest. Market cards follow the Expensive, Medium and Cheap tiers; relics have their own section. Use the printed id when leaving feedback. Neither market cards nor relics convert to resources. Each design's art is credited under <a href="#card-art-credits">Card art credits</a>.</p>
       </div>
-      <nav class="links" aria-label="Galactic Reach">
+      <nav class="links" aria-label="Heirs Ad Astra">
         <a class="button button-ghost" href="./" style="text-decoration:none">← Back to the game</a>
         <a class="button button-ghost" href="rulebook.html#cards" style="text-decoration:none">Card rules</a>
+        <a class="button button-ghost" href="#icon-set" style="text-decoration:none">Symbols</a>
       </nav>
     </header>
     <div class="toolbar">
+      <button class="button button-primary" id="toggle-feedback" type="button" aria-expanded="false" aria-controls="card-grid feedback-export">Show feedback</button>
       <fieldset id="deck-filter"><legend>Show</legend></fieldset>
-      <label>Sort <select id="sort-cards"><option value="id">By id</option><option value="price">By price</option></select></label>
+      <label>Sort market tiers <select id="sort-cards"><option value="id">By id</option><option value="price">By price</option></select></label>
     </div>
-    <p class="store-status" id="store-status" role="status">Checking where feedback is saved…</p>
-    <div class="card-grid" id="card-grid"></div>
-    <section class="export" aria-labelledby="export-title">
+    <p class="store-status" id="store-status" role="status" hidden>Checking where feedback is saved…</p>
+    <div id="card-grid"></div>
+    <section class="export" id="feedback-export" aria-labelledby="export-title" hidden>
       <h2 id="export-title">All your feedback</h2>
       <p class="store-status">Copy this text into a message if you prefer. It lists every card you marked or commented on.</p>
       <div class="save-row"><button class="button" id="copy-feedback" type="button">Copy all feedback</button><span class="save-state" id="copy-state" role="status"></span></div>
       <textarea id="feedback-text" readonly aria-label="All card feedback as text"></textarea>
     </section>
+    <section class="icon-set" id="icon-set" aria-labelledby="icon-set-title">
+      <h2 id="icon-set-title">Symbols</h2>
+      <p class="lede">The twenty symbols the game, the rulebook and these cards draw, each a small constellation. Each is shown at 16 and 22 px with solid lines (the rendering for small sizes), at 32 and 50 px with ghost lines, and at 16 px in a card's ink.</p>
+      <ul class="icon-grid" id="icon-grid"></ul>
+    </section>
+    <section class="credits" id="card-art-credits" aria-labelledby="credits-title">
+      <h2 id="credits-title">Card art credits</h2>
+      <p class="lede">Every card design shows a public-domain painting, print or photograph from the <a href="https://www.nga.gov/open-access-images.html">National Gallery of Art, Washington</a>, released as open access under CC0. The Gallery asks for a credit, given here. Use of these works does not imply endorsement by the Gallery. The art is decoration only: a card does what its text says (<a href="rulebook.html#card-art">rulebook</a>).</p>
+      <div id="credit-groups"><p class="store-status">Loading credits…</p></div>
+    </section>
+    <footer class="site-footer"><span id="site-footer-version">Heirs Ad Astra</span> · Card art: public-domain works from the National Gallery of Art, Washington (open access, CC0). Use does not imply endorsement by the Gallery. <a href="#card-art-credits">Credits</a></footer>
   </main>
   <script>globalThis.drawingBoardTableBoot = true;</script>
+  <script src="icons.js?v=1"></script>
   <script src="app.js?v=cheaper-cards-32-37"></script>
   <script>
   'use strict';
   (() => {
     const catalog = createGalacticReach({ catalog: true });
+    const maxUI=document.body.classList.contains('background-stars');
+    if(maxUI){document.querySelector('main.gallery').classList.add('max-card-gallery');document.querySelector('#card-grid').classList.add('market-choice-content');}
+    if(maxUI)document.querySelector('#icon-set .lede').textContent='The earlier symbols used throughout Max’s UI, shown at the sizes used on the table and cards.';
+    document.querySelectorAll('.gallery .links a[href]').forEach(link=>{
+      const url=new URL(link.href);url.searchParams.set('ui',maxUI?'max':'willem');link.href=url.href;
+    });
+    // Symbols: every icon in icons.js, by name, in its colour on the table.
+    const ICON_COLOURS = { matter: 'var(--matter)', energy: 'var(--energy)', life: 'var(--biomass)', data: 'var(--data)', limit: 'var(--gold)' };
+    const icons = globalThis.heirsIcons;
+    if (icons) document.querySelector('#icon-grid').innerHTML = icons.NAMES.map(name => {
+      const at = (size, small) => icons.svg(name, { small }).replace('<svg ', `<svg width="${size}" height="${size}" `);
+      return `<li class="icon-tile" data-icon-name="${name}"><h3>${icons.LABELS[name]} <small>${name}</small></h3><div class="icon-sizes" style="--icon:${ICON_COLOURS[name] || 'var(--text)'}">${at(16, true)}${at(22, true)}${at(32, false)}${at(50, false)}<span class="on-paper">${at(16, true)}</span></div></li>`;
+    }).join('');
     // The label follows the engine this page loaded, so an archived copy names its own rules.
     const version = catalog.rulesVersion.split('/').pop();
-    document.querySelector('#gallery-version').textContent = `GALACTIC REACH · ${version} · CARD GALLERY`;
-    document.title = `Card gallery · Galactic Reach ${version}`;
+    document.querySelector('#gallery-version').textContent = `HEIRS AD ASTRA · ${version} · CARD GALLERY`;
+    document.title = `Card gallery · Heirs Ad Astra ${version}`;
+    document.querySelector('#site-footer-version').textContent = `Heirs Ad Astra ${version} · playtest`;
     const $ = selector => document.querySelector(selector);
     const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-    const cards = [...Object.entries(catalog.ADVANCED_CARDS), ...Object.entries(catalog.MARKET_MILITARY)].map(([key, def]) => ({ key, ...def }));
-    const price = card => catalog.RESOURCES.reduce((n, r) => n + (card.cost[r] || 0), 0);
+    // Stable gallery feedback references, independent of deck order or sorting.
+    // Never renumber an existing relic: its votes and notes use this id.
+    const relicIds = {
+      phaseShearDrive: 'R01', firstDawnEchoes: 'R02', omniscientChorus: 'R03',
+      obeliskOfAnnihilation: 'R04', aegisOfSilentArchitects: 'R05', warSongOfHollowStars: 'R06',
+      starfarersCompass: 'R07', horizonSail: 'R08', memoryPrism: 'R09', archiveOfTides: 'R10',
+      stellarCrucible: 'R11', evergreenArk: 'R12', foldedWarehouse: 'R13', cinderDrive: 'R14', keepersArchive: 'R15'
+    };
+    const market = Object.entries(catalog.MARKET_CARDS || { ...catalog.ADVANCED_CARDS, ...catalog.MARKET_MILITARY }).map(([key, def]) => ({ key, ...def }));
+    const relics = Object.entries(catalog.RELIC_CARDS).map(([key, def]) => {
+      const code=def.code||relicIds[key];
+      if (!code) throw new Error(`Missing gallery feedback id for relic ${key}`);
+      return { key, ...def, code, relic: true };
+    });
+    const cards = [...market, ...relics];
+    const family = card => card.relic ? 'relic' : card.military ? 'military' : 'normal';
+    const price = card => catalog.RESOURCES.reduce((n, r) => n + (card.cost?.[r] || 0), 0);
     const chips = gain => catalog.RESOURCES.filter(r => gain?.[r]).map(r => `<span class="chip ${r}">${gain[r]} ${catalog.RESOURCE_NAMES[r]}</span>`).join('') || '<span class="muted">None</span>';
     const storeKey = 'galactic-reach-card-feedback-31-36';
-    let saved = {}, serverEnabled = false, filter = 'all';
+    const feedbackViewKey = 'galactic-reach-gallery-feedback-visible';
+    let saved = {}, serverEnabled = false, filter = new URLSearchParams(location.search).get('deck')==='relic'?'relic':'all', art = {};
+    let feedbackVisible = false;
+    try { feedbackVisible = localStorage.getItem(feedbackViewKey) === 'true'; } catch { /* Start compact when storage is unavailable. */ }
     try { saved = JSON.parse(localStorage.getItem(storeKey) || '{}') || {}; } catch { saved = {}; }
     const remember = () => { try { localStorage.setItem(storeKey, JSON.stringify(saved)); } catch { /* The text export still works. */ } };
+    function updateFeedbackVisibility() {
+      $('#toggle-feedback').textContent = feedbackVisible ? 'Hide feedback' : 'Show feedback';
+      $('#toggle-feedback').setAttribute('aria-expanded', String(feedbackVisible));
+      $('#card-grid').querySelectorAll('.gallery-feedback').forEach(panel => { panel.hidden = !feedbackVisible; });
+      $('#store-status').hidden = !feedbackVisible;
+      $('#feedback-export').hidden = !feedbackVisible;
+    }
+    $('#toggle-feedback').addEventListener('click', () => {
+      feedbackVisible = !feedbackVisible;
+      try { localStorage.setItem(feedbackViewKey, String(feedbackVisible)); } catch { /* The toggle still works for this visit. */ }
+      updateFeedbackVisibility();
+    });
 
     function needs(card) {
       const over = catalog.RESOURCES.filter(r => (card.cost[r] || 0) > catalog.STARTING_LIMIT);
       return over.map(r => `${catalog.RESOURCE_NAMES[r]} limit ${card.cost[r]}`).join(' and ');
     }
-    function extras(card) {
-      const notes = [];
-      if (card.military) notes.push(`Military deck · ${[card.attack ? `+${card.attack} hits` : '', card.shield ? `prevent ${card.shield}` : '', card.pierce ? 'ignores shields' : ''].filter(Boolean).join(', ')}`);
-      if (card.gainPrestige) notes.push(`${card.gainPrestige} Prestige when bought`);
-      if (card.effect?.prestige) notes.push(`${card.effect.prestige} Prestige each use`);
-      if (card.colonyPrestige) notes.push(`${card.colonyPrestige} Prestige per Colony founded`);
-      if (card.victoryPrestige) notes.push(`${card.victoryPrestige} Prestige per decisive win`);
-      return notes.join(' · ');
-    }
     function render() {
       $('#deck-filter').querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.filter === filter)));
       const order = $('#sort-cards').value;
-      const shown = cards.filter(c => filter === 'all' || (filter === 'military') === !!c.military)
-        .sort((a, b) => order === 'price' ? price(a) - price(b) || a.code.localeCompare(b.code) : Number(!!a.military) - Number(!!b.military) || a.code.localeCompare(b.code));
-      $('#card-grid').innerHTML = shown.map(card => {
+      const shown = cards.filter(c => filter === 'all' || family(c) === filter)
+        .sort((a, b) => (order === 'price' ? price(a) - price(b) : 0) || a.code.localeCompare(b.code));
+      const markup = card => {
         const entry = saved[card.code] || {};
         const note = `note-${card.code}`;
-        return `<article class="gallery-card ${card.military ? 'military' : ''}" style="--accent:${card.accent}" aria-labelledby="name-${card.code}">
-          <div class="meta"><span class="code">${card.code}</span><span>${card.military ? 'Military deck' : `Normal deck · ${esc(card.kind)}`}</span></div>
-          <h2 id="name-${card.code}">${esc(card.name)}</h2>
-          <p class="effect">${esc(card.text)}</p>
-          <dl class="facts">
-            <dt>Buy</dt><dd>${chips(card.cost)}</dd>
-            <dt>Needs</dt><dd class="needs">${esc(needs(card))}</dd>
-            ${extras(card) ? `<dt>Notes</dt><dd>${esc(extras(card))}</dd>` : ''}
-          </dl>
+        const work = art[card.key];
+        return `<article class="gallery-card ${family(card)}" data-card-key="${card.key}" data-card-code="${card.code}" style="--accent:${card.accent}" aria-labelledby="name-${card.code}">
+          ${maxUI ? `<div class="game-card max-reference-card ${card.military?'military-market-card':''}" style="--card-accent:${card.accent}"><h3 id="name-${card.code}" class="sr-only">${esc(card.name)}</h3>${catalog.maxCardFace(card,{
+            illustration: work ? `<span class="card-art has-picture"><img class="card-picture" src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"></span>` : `<span class="card-art">${catalog.boardGlyph(card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase',false)}</span>`,
+            costMarkup: card.relic ? '' : catalog.resourceDots(card.cost)
+          })}</div>` : `
+          <div class="gallery-card-heading">
+          ${catalog.cardSymbols ? catalog.cardSymbols(card) : ''}
+          <h3 id="name-${card.code}">${esc(card.name)}</h3>
+          ${card.relic ? '' : `<div class="gallery-cost">${catalog.cornerDots ? catalog.cornerDots(card.cost) : catalog.resourceDots ? catalog.resourceDots(card.cost) : chips(card.cost)}</div>`}
+          <p class="effect" title="${esc(card.text)}"><span class="effect-symbols" aria-hidden="true">${catalog.iconText ? catalog.iconText(card.text) : esc(card.text)}</span><span class="sr-only">${esc(card.text)}</span></p>
+          </div>
+          ${work ? `<figure class="gallery-art"><img src="${esc(work.image)}" alt="Card art: ${esc(work.title)} by ${esc(work.artist)}" loading="lazy" decoding="async"><figcaption>${esc(work.title)} · ${esc(work.artist)}, ${esc(work.date)}</figcaption></figure>` : `<figure class="gallery-art gallery-art-symbol" aria-label="${esc(card.kind)} card emblem">${catalog.boardGlyph?.(card.affinity==='Military'?'fleet':card.affinity==='Settlement'?'colony':'starbase', false) || ''}</figure>`}
+          `}
+          <p class="needs"><span class="code" title="Card id for feedback">${card.code}</span>${card.relic ? ' · Excavation reward · no market price' : card.military ? ' · Military deck' : ''}${!card.relic && needs(card) ? ` · Needs ${esc(needs(card))}` : ''}</p>
+          <div class="gallery-feedback" ${feedbackVisible ? '' : 'hidden'}>
           <div class="vote" role="group" aria-label="Your verdict on ${esc(card.name)}">
             ${['like', 'neutral', 'dislike'].map(vote => `<button type="button" class="button" data-card="${card.code}" data-vote="${vote}" aria-pressed="${entry.vote === vote}">${vote === 'like' ? 'Liked it' : vote === 'dislike' ? 'Disliked it' : 'Neutral'}</button>`).join('')}
           </div>
           <label for="${note}">What would you change?</label>
           <textarea id="${note}" data-note="${card.code}" maxlength="1000" placeholder="Cost, effect, timing…">${esc(entry.note || '')}</textarea>
           <div class="save-row"><button type="button" class="button button-primary" data-save="${card.code}">Save feedback</button><span class="save-state" id="state-${card.code}" role="status">${entry.savedAt ? `Saved ${entry.where}` : ''}</span></div>
+          </div>
         </article>`;
+      };
+      $('#card-grid').innerHTML = catalog.MARKET_TIERS.map(tier => {
+        const group = shown.filter(card => !card.relic && catalog.marketTier(card.key) === tier.id);
+        return group.length ? `<section class="tier-group" data-market-tier="${tier.id}" aria-labelledby="tier-${tier.id}"><h2 id="tier-${tier.id}">${esc(tier.name)}<span class="tier-count">${group.length} design${group.length === 1 ? '' : 's'}</span></h2><div class="card-grid">${group.map(markup).join('')}</div></section>` : '';
       }).join('');
+      const shownRelics = shown.filter(card => card.relic);
+      if (shownRelics.length) $('#card-grid').insertAdjacentHTML('beforeend', `<section class="tier-group" id="alien-relic-gallery" aria-labelledby="relic-gallery-title"><h2 id="relic-gallery-title">Alien relics<span class="tier-count">${shownRelics.length} designs</span></h2><p class="store-status">Choose relics as <a href="rulebook.html#excavation">excavation rewards</a>. They have no market price and stay in id order.</p><div class="card-grid">${shownRelics.map(markup).join('')}</div></section>`);
       $('#card-grid').querySelectorAll('[data-vote]').forEach(button => button.addEventListener('click', () => {
         const entry = saved[button.dataset.card] ||= {};
         entry.vote = entry.vote === button.dataset.vote ? undefined : button.dataset.vote;
@@ -139,6 +266,7 @@
         (saved[area.dataset.note] ||= {}).note = area.value; remember(); renderExport();
       }));
       $('#card-grid').querySelectorAll('[data-save]').forEach(button => button.addEventListener('click', () => save(button.dataset.save)));
+      updateFeedbackVisibility();
       renderExport();
     }
     async function save(code) {
@@ -161,15 +289,16 @@
       }
       renderExport();
     }
+    const retiredFeedbackNames={N17:'Archive Purge',R01:'Phase-Shear Drive',R04:'Obelisk of Annihilation',R05:'Aegis of the Silent Architects',R09:'Memory Prism',R10:'Archive of Tides',R11:'Stellar Crucible',R12:'Evergreen Ark',R14:'Cinder Drive'};
     function renderExport() {
-      const lines = cards.filter(c => saved[c.code]?.vote || saved[c.code]?.note?.trim())
-        .sort((a, b) => a.code.localeCompare(b.code))
-        .map(c => `${c.code} ${c.name}: ${saved[c.code].vote || 'no vote'}${saved[c.code].note?.trim() ? ` — ${saved[c.code].note.trim()}` : ''}`);
-      $('#feedback-text').value = lines.length ? `Galactic Reach ${catalog.rulesVersion} card feedback\n${lines.join('\n')}` : '';
+      const lines = Object.entries(saved).filter(([,entry])=>entry?.vote||entry?.note?.trim()).sort(([a],[b])=>a.localeCompare(b))
+        .map(([code,entry])=>`${code} ${cards.find(c=>c.code===code)?.name||retiredFeedbackNames[code]||'Retired card'}: ${entry.vote||'no vote'}${entry.note?.trim()?` — ${entry.note.trim()}`:''}`);
+      $('#feedback-text').value = lines.length ? `Heirs Ad Astra ${catalog.rulesVersion} card feedback\n${lines.join('\n')}` : '';
     }
-    $('#deck-filter').insertAdjacentHTML('beforeend', [['all', `All ${cards.length}`], ['normal', 'Normal deck'], ['military', 'Military deck']]
+    $('#deck-filter').insertAdjacentHTML('beforeend', [['all', `All ${cards.length}`], ['normal', 'Normal deck'], ['military', 'Military deck'], ['relic', 'Alien relics']]
       .map(([id, label]) => `<button type="button" class="button button-ghost" data-filter="${id}">${label}</button>`).join(''));
     $('#deck-filter').querySelectorAll('button').forEach(button => button.addEventListener('click', () => { filter = button.dataset.filter; render(); }));
+    $('#show-relic-gallery').addEventListener('click', () => { filter = 'relic'; render(); });
     $('#sort-cards').addEventListener('change', render);
     $('#copy-feedback').addEventListener('click', async () => {
       const text = $('#feedback-text').value;
@@ -183,7 +312,24 @@
         ? '<strong>Saving is on:</strong> “Save feedback” sends your verdict and note to this host for the developer, and keeps a copy in this browser.'
         : '<strong>Saved in this browser only:</strong> this host does not collect feedback. Use “Copy all feedback” below to send it.';
     });
+    // Credits for every card design, in the families the cards belong to.
+    function renderCredits() {
+      const names = Object.fromEntries([catalog.BASIC_CARDS, catalog.BASIC_TACTICS, catalog.ADVANCED_CARDS, catalog.MARKET_MILITARY, catalog.RELIC_CARDS]
+        .flatMap(set => Object.entries(set)).map(([key, def]) => [key, `${def.code ? `${def.code} · ` : ''}${def.name}`]));
+      for(const [key,code] of Object.entries(relicIds))if(!names[key]&&retiredFeedbackNames[code])names[key]=`${code} · ${retiredFeedbackNames[code]}`;
+      const families = {};
+      for (const [key, work] of Object.entries(art)) (families[work.family] ||= []).push([key, work]);
+      $('#credit-groups').innerHTML = Object.entries(families).map(([family, works]) => `<h3>${esc(family)}</h3><ul class="credit-list">${works.map(([key, work]) => `<li>
+          <img src="${esc(work.image)}" alt="" loading="lazy" decoding="async">
+          <div><strong>${esc(names[key] || key)}</strong><span class="work"><a href="${esc(work.objectPage)}"><cite>${esc(work.title)}</cite></a>, ${esc(work.artist)}, ${esc(work.date)}. ${esc(work.medium.charAt(0).toUpperCase() + work.medium.slice(1))}. National Gallery of Art, Washington, ${esc(work.creditLine)}, ${esc(work.accession)}. ${esc(work.license)}.</span></div>
+        </li>`).join('')}</ul>`).join('');
+    }
     render();
+    fetch('card-art/manifest.json').then(r => r.ok ? r.json() : Promise.reject(new Error(r.status))).then(manifest => {
+      art = manifest.cards || {}; render(); renderCredits();
+      if (location.hash === '#card-art-credits') $('#card-art-credits').scrollIntoView();
+      if (location.hash === '#alien-relic-gallery') $('#alien-relic-gallery')?.scrollIntoView();
+    }).catch(() => { $('#credit-groups').innerHTML = '<p class="store-status">The credits list could not load. See card-art/manifest.json.</p>'; });
   })();
   </script>
 </body>

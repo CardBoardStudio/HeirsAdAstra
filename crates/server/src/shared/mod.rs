@@ -1,4 +1,4 @@
-//! Shared multi-human Galactic Reach tables.
+//! Shared multi-human Heirs Ad Astra tables.
 //!
 //! The server is authoritative. A table is its event log (`log::TableLog`): seat
 //! actions plus the hidden-information authority's shuffles, so the live position
@@ -15,7 +15,9 @@ use crate::*;
 use authority::HiddenInfoAuthority;
 use axum::response::sse::{Event as SseEvent, KeepAlive, Sse};
 use channel::{Channel, Engine};
-use galactic_reach::{BuiltinAgent, GalacticReach, SHARED_STEP, Strategy};
+#[cfg(test)]
+use galactic_reach::Strategy;
+use galactic_reach::{BrowserProfile, GalacticReach, SHARED_STEP};
 use game_core::{GameAdapter, PlayerAgent};
 use log::{Event, NewEvent, Seat, Table, TableLog};
 use rusqlite::Connection;
@@ -168,12 +170,18 @@ impl Live {
     /// Undo (rulebook #shared-tables): only the seat to move, only within its
     /// current turn, and never back past an action that revealed hidden information.
     fn undo_window(&self, seat: usize) -> Result<UndoWindow, String> {
+        if self.table.committed_only {
+            return Err("Confirmed choices are final at this tabletop game.".into());
+        }
         if self.table.status == "finished" {
             return Err("The game is over.".into());
         }
         if matches!(
             self.table.rules.split('+').next().unwrap_or_default(),
-            "galactic-reach/36.41" | "galactic-reach/37.42" | "galactic-reach/38.43"
+            "galactic-reach/36.41"
+                | "galactic-reach/37.42"
+                | "galactic-reach/38.43"
+                | "galactic-reach/39.44"
         ) {
             if !self.table.seats[seat].human() {
                 return Err("Only human players can undo.".into());
@@ -348,7 +356,7 @@ fn fold(
         ),
         None => None,
     };
-    let engine = match engine {
+    let mut engine = match engine {
         Engine::Builtin => {
             GalacticReach::shared_on(&table.rules, &seats, table.victory_target, resume, shuffle)?
         }
@@ -361,6 +369,12 @@ fn fold(
             shuffle,
         )?,
     };
+    engine.set_browser_profiles(std::array::from_fn(|seat| {
+        table.seats[seat]
+            .policy
+            .as_deref()
+            .and_then(BrowserProfile::parse)
+    }))?;
     let mut live = Live {
         table: table.clone(),
         engine,
@@ -395,6 +409,7 @@ fn fold(
 /// The current rival for a seat's stored policy. A table keeps the policy it was
 /// dealt with, but its moves are in the log, so a newer version of the same
 /// profile (`gr-economy/25` to `/26`) takes over its future decisions.
+#[cfg(test)]
 fn rival(policy: &str) -> Option<Strategy> {
     Strategy::parse(policy).or_else(|| {
         [
@@ -437,6 +452,9 @@ struct Tables {
     log: Arc<dyn TableLog>,
     authority: Arc<dyn HiddenInfoAuthority>,
     channel: Arc<Channel>,
+    /// Tests only: rival seeds come from this instead of OS randomness.
+    #[cfg(test)]
+    seed: Option<[u8; 32]>,
 }
 impl Tables {
     fn live(&mut self, id: &str) -> Result<&mut Live, Refusal> {
@@ -570,9 +588,23 @@ impl Tables {
             "authority": live.table.authority, "status": live.table.status, "seq": live.head,
             "seat": seat, "active": active,
             "seats": live.table.seats.iter().map(|s| json!({"seat":s.seat,"name":s.name,"human":s.human(),"you":s.seat==seat})).collect::<Vec<_>>(),
-            "state": state, "hints": hints, "undo": undo,
+            "state": state, "hints": hints, "undo": undo, "committed_only":live.table.committed_only,
             "ai_error": ai_error,
         }))
+    }
+    fn public_view(&mut self, id: &str) -> Result<Value, Refusal> {
+        let authority = self.authority.clone();
+        let channel = self.channel.clone();
+        let live = self.live(id)?;
+        let state = authority.public_view(&live.engine).map_err(broken)?;
+        if state.is_null() {
+            return Err(Refusal::Conflict(
+                "This older table has no public-board view. Start a fresh table.".into(),
+            ));
+        }
+        Ok(json!({"id":id,"role":"board","name":live.table.name,
+            "rules_version":live.table.rules,"client_path":channel.client_path(&live.table.rules),
+            "status":live.table.status,"seq":live.head,"state":state,"committed_only":live.table.committed_only}))
     }
     fn act(
         &mut self,
@@ -697,6 +729,8 @@ impl Tables {
     }
     /// Plays one decision for an AI seat. Returns whether an AI seat acts next.
     fn step_ai(&mut self, id: &str) -> Result<bool, Refusal> {
+        #[cfg(test)]
+        let fixture = self.seed;
         let live = self.live(id)?;
         let Some(seat) = live.engine.active_seat() else {
             return Ok(false);
@@ -709,18 +743,19 @@ impl Tables {
             std::collections::hash_map::Entry::Vacant(slot) => {
                 let mut seed = [0u8; 32];
                 rand::rngs::OsRng.fill_bytes(&mut seed);
+                #[cfg(test)]
+                if let Some(fixture) = fixture {
+                    seed = fixture;
+                    seed[31] ^= seat as u8;
+                }
                 // The exact policy the table was dealt with (archived agents
-                // included), else the current version of the same profile.
-                let agent = galactic_reach::agent(&policy, seed)
-                    .or_else(|_| {
-                        rival(&policy)
-                            .map(|s| {
-                                Box::new(BuiltinAgent::new(s, seed))
-                                    as Box<dyn PlayerAgent<GalacticReach>>
-                            })
-                            .ok_or_else(|| format!("Unknown AI policy {policy}."))
-                    })
-                    .map_err(broken)?;
+                // included); never substitute a current policy for an unknown recorded ID.
+                let agent = if BrowserProfile::parse(&policy).is_some() {
+                    galactic_reach::agent(&policy, seed)
+                } else {
+                    galactic_reach::historical_agent(&policy, seed)
+                }
+                .map_err(broken)?;
                 slot.insert(agent)
             }
         };
@@ -797,8 +832,12 @@ pub struct Service {
     /// old process keeps serving a frozen copy of every table.)
     closing: tokio::sync::watch::Sender<bool>,
     ai_running: Mutex<HashSet<String>>,
+    board_focus: Mutex<HashMap<String, (std::time::Instant, u64, Value)>>,
     /// The rules this server deals and the engines it keeps (channel.rs).
     pub channel: Arc<Channel>,
+    /// Tests only: see [`Service::start_seeded`].
+    #[cfg(test)]
+    pub seed: Option<[u8; 32]>,
 }
 impl Service {
     /// A table service dealing the released rules (the stable channel).
@@ -809,6 +848,24 @@ impl Service {
         ai_pace: Duration,
     ) -> Arc<Self> {
         Self::start_on(log, authority, ai_pace, Arc::new(Channel::stable()))
+    }
+    /// Tests only: a table service whose shuffles, rival seeds and lobby seat
+    /// dealing all come from `seed`, so a shared game plays the same way on every
+    /// run, as the arena's `arena_seed` does for arena series.
+    #[cfg(test)]
+    pub fn start_seeded(log: Arc<dyn TableLog>, ai_pace: Duration, seed: [u8; 32]) -> Arc<Self> {
+        let mut service = Self::start(log, Arc::new(authority::SeededAuthority(seed)), ai_pace);
+        Arc::get_mut(&mut service)
+            .expect("a new service has one owner")
+            .seed = Some(seed);
+        // Jobs run in order, so every table sees the seed.
+        service
+            .jobs
+            .lock()
+            .unwrap()
+            .send(Box::new(move |t| t.seed = Some(seed)))
+            .expect("the table service is running");
+        service
     }
     pub fn start_on(
         log: Arc<dyn TableLog>,
@@ -828,6 +885,8 @@ impl Service {
                     log,
                     authority,
                     channel: tables_channel,
+                    #[cfg(test)]
+                    seed: None,
                 };
                 for job in rx {
                     job(&mut tables);
@@ -842,8 +901,40 @@ impl Service {
             ping_ms: (PING_EVERY.as_millis() as u64).into(),
             closing: tokio::sync::watch::channel(false).0,
             ai_running: Mutex::new(HashSet::new()),
+            board_focus: Mutex::new(HashMap::new()),
             channel,
+            #[cfg(test)]
+            seed: None,
         })
+    }
+    /// Bounded, short-lived presentation hints; never part of the game log/save.
+    pub fn suggest_sector(&self, id: &str, seq: u64, coord: &str) -> Result<(), Refusal> {
+        let mut focus = self.board_focus.lock().map_err(broken)?;
+        focus.retain(|_, (at, _, _)| at.elapsed() < Duration::from_secs(120));
+        if focus.len() >= 256 && !focus.contains_key(id) {
+            return Err(Refusal::Bad(
+                "Too many board suggestions; try again shortly.".into(),
+            ));
+        }
+        focus.insert(
+            id.into(),
+            (
+                std::time::Instant::now(),
+                seq,
+                json!({"coord":coord,"nonce":uuid::Uuid::new_v4().simple().to_string()}),
+            ),
+        );
+        drop(focus);
+        let _ = self.changes.send((id.into(), seq));
+        Ok(())
+    }
+    pub fn sector_suggestion(&self, id: &str, seq: u64) -> Option<Value> {
+        self.board_focus
+            .lock()
+            .ok()?
+            .get(id)
+            .filter(|(at, head, _)| *head == seq && at.elapsed() < Duration::from_secs(120))
+            .map(|(_, _, v)| v.clone())
     }
     /// Ends every live stream (server shutdown).
     pub fn close(&self) {
@@ -886,6 +977,17 @@ impl Service {
     pub async fn view(self: &Arc<Self>, id: &str, account: &str) -> Result<Value, Refusal> {
         let (id, account) = (id.to_string(), account.to_string());
         self.call(move |t| t.view(&id, &account)).await
+    }
+    /// Caller must authenticate a table-scoped board credential before using this.
+    pub async fn public_view(self: &Arc<Self>, id: &str) -> Result<Value, Refusal> {
+        let id = id.to_string();
+        self.call(move |t| t.public_view(&id)).await
+    }
+    pub fn subscribe(&self) -> tokio::sync::broadcast::Receiver<(String, u64)> {
+        self.changes.subscribe()
+    }
+    pub fn shutdown_subscription(&self) -> tokio::sync::watch::Receiver<bool> {
+        self.closing.subscribe()
     }
     pub async fn act(
         self: &Arc<Self>,
@@ -1009,7 +1111,24 @@ pub fn status(db: &Connection, id: &str) -> ApiResult<Option<String>> {
 /// Seats people in join order, then AI rivals (test fixtures; Start uses [`random_seats`]).
 #[cfg(test)]
 pub fn seats(humans: &[(String, String)]) -> Vec<Seat> {
-    seats_at(humans, &[0, 1, 2, 3])
+    // Historical fixture tables may select an archived engine. They retain native IDs.
+    let mut seats = seats_at(humans, &[0, 1, 2, 3]);
+    for seat in &mut seats {
+        if let Some(policy) = &seat.policy {
+            let profile = policy
+                .trim_start_matches("gr-browser-")
+                .split('/')
+                .next()
+                .unwrap();
+            let profile = if profile == "military-focused" {
+                "military"
+            } else {
+                profile
+            };
+            seat.policy = Some(format!("gr-{profile}/29"));
+        }
+    }
+    seats
 }
 
 /// Seats a waiting room's people at random when the host starts (rulebook
@@ -1024,11 +1143,11 @@ pub fn random_seats(humans: &[(String, String)], rng: &mut impl rand::Rng) -> Ve
 
 /// `order[i]` is the seat of the `i`-th person who joined.
 fn seats_at(humans: &[(String, String)], order: &[usize; 4]) -> Vec<Seat> {
-    const RIVALS: [(&str, Strategy); 4] = [
-        ("Cyan Concord", Strategy::Military),
-        ("Ember Directorate", Strategy::Military),
-        ("Violet Assembly", Strategy::Economy),
-        ("Helios Compact", Strategy::Expansion),
+    const RIVALS: [(&str, BrowserProfile); 4] = [
+        ("Cyan Concord", BrowserProfile::MilitaryFocused),
+        ("Ember Directorate", BrowserProfile::MilitaryFocused),
+        ("Violet Assembly", BrowserProfile::Economy),
+        ("Helios Compact", BrowserProfile::Expansion),
     ];
     (0..4)
         .map(|seat| {

@@ -1,6 +1,6 @@
-# Galactic Reach rules maintenance
+# Heirs Ad Astra rules maintenance
 
-The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Galactic Reach 38.43 / Construct III Playtest**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
+The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the player-facing specification for **Heirs Ad Astra 39.44 / Playtest 2026-11-16**. It is semantic HTML so the exact reviewed source can ship unchanged, without a Markdown renderer or a second generated copy. Edit that file directly. Voidwright is outside this rulebook's scope.
 
 ## Read, change, verify
 
@@ -12,6 +12,12 @@ The [canonical rulebook](../../prototypes/galactic-reach/rulebook.html) is the p
 
 The rulebook is authoritative for intended play. The initial version documents existing 6.11 behavior, including exceptions, without approving those exceptions as final design. An inconsistency is a review item, not permission to silently change rules or saves. Developer notes and old READMEs are not competing rules specifications.
 
+## Game name and compatibility
+
+Use **Heirs Ad Astra** in current text, documentation, release summaries and check labels. The existing `galactic-reach` URLs, save keys, rules IDs, package paths and JavaScript identifiers remain compatibility contracts for saved games, tables and tools. Frozen engines, manuals, policies and their hashes retain their original contents. Naming cleanup does not change rules or saved-state meaning; historical reports may describe a retired award by what it scored.
+
+The pending entries `gr-focus-f1.md` and `gr-heirs-ad-astra-rename-n1.md` received a wording-only correction during the naming cleanup so the next release uses the current name. Their compatibility classifications and release behavior are unchanged; this does not relax the release process for other edits to existing entries.
+
 ## Where rules meet code
 
 | Rulebook anchor | Implementation starting points | Behavior checks |
@@ -19,7 +25,7 @@ The rulebook is authoritative for intended play. The initial version documents e
 | `#setup`, `#round` | `newState` (opening hand), `generateGalaxy`, `beginRound`, `cleanupRound`/`finishRound` (Cleanup & draw) in `app.js` | `test-cleanup-draw.cjs`, `test-long-reach.cjs`, `test-pass-and-buy.cjs`, `test-resource-actions.cjs`, `test-galactic-reach-dialogs.cjs` |
 | `#resources`, `#orders`, `#movement` | `produceAll`, `cardResources`, `movementRange`, `reachableFrom`, `applyColonizeOrder` | `test-galactic-reach.cjs`, `test-long-reach.cjs` |
 | `#building`, `#combat` | `constructAt`, `excavate`, `resolveCombat`, `colonizePlanet` | `test-galactic-reach.cjs` |
-| `#resources`, `#trade`, `#buy` | `offerTrade`, `respondTrade`, `buyCard`, `upgradeStarter`, `decommission`/`trashEligibleCards`, `increaseStorage` | `test-galactic-reach.cjs`, `test-long-reach.cjs`, `test-trash-hand.cjs` |
+| `#resources`, `#trade`, `#buy` | `offerTrade`, `respondTrade`, `buyCard`, `upgradeStarter`, `decommission`/`trashEligibleCards`, `buyCapacity` and the Capacity Module effect in `resolveCardEffect` | `test-galactic-reach.cjs`, `test-long-reach.cjs`, `test-trash-hand.cjs` |
 | `#market`, `#market-tiers` | `MARKET_TIERS`, `marketTier`, `fillMarket`, `buyCard`, `renderMarket` in `app.js`; `marketDecks` in `privateState`/`undoMark` (`adapter.js`); see [tiered market](tiered-market.md) | `test-tiered-market.cjs`, `test-unlimited-buys.cjs`, `test-shared-tables.cjs` |
 | `#politics`, `#victory` | `cleanupRound`, `calculatePrestige`, `finishRound` | `test-long-reach.cjs`, `test-pass-and-buy.cjs`, `test-resource-actions.cjs`, `test-galactic-reach-dialogs.cjs` |
 | `#shared-tables` | networked mode in `app.js` (`installNetworkClient`, `adoptServerView`), `privateState` in `adapter.js`, `crates/server/src/shared/`; see [shared tables](../shared-tables.md) | `cargo test -p server shared` |
@@ -31,8 +37,8 @@ Engine files are under `prototypes/galactic-reach/`; check scripts are under `sc
 
 - Local standalone preview: `python3 -m http.server 8000 --directory prototypes/galactic-reach`, then open `/rulebook.html` on that local server.
 - `node scripts/check-rulebook.cjs` checks section links, expected rule version, and the link from the game. `node scripts/check-rulebook.cjs dist/galactic-reach` also verifies the build contains the exact source assets.
-- `node scripts/test-rules-contract.cjs` exercises the CI policy. Locally run `node scripts/check-rules-contract.cjs origin/main --body-file /path/to/pr-body.md` against a drafted PR body; it includes tracked working-tree edits.
-- GitHub's `Rules contract` job checks every PR's grounding declaration. Known rule-bearing paths require the canonical rulebook in the diff; a declaration of changed gameplay also requires it. UI-only changes inside shared engine files are conservatively included. A reviewer must still catch logic changes elsewhere and assess whether the document update is meaningful.
+- `node scripts/test-rules-contract.cjs` exercises the CI policy. Locally run `node scripts/check-rules-contract.cjs origin/main --body-file /path/to/pr-body.md` against a drafted PR body; it checks committed changes only. The rules live in `.github/rules-contract.json` and run on the shared [review-conventions](https://github.com/bitswell-hq/review-conventions) validator, fetched once at the ref pinned in `scripts/lib/review-conventions.cjs`.
+- GitHub's `Rules contract` job checks every ready PR's grounding declaration (a draft never fails). Known rule-bearing paths require the canonical rulebook in the diff; a declaration of changed gameplay also requires it. UI-only changes inside shared engine files are conservatively included. A reviewer must still catch logic changes elsewhere and assess whether the document update is meaningful.
 - `scripts/build-web.sh` copies the HTML and CSS directly into `dist/galactic-reach/`; Docker copies that same directory. No account, external publishing service, client script, or game save is needed to read rules.
 
 The 9.14 experiment removes influence and policy voting. Settlers replace Scouts at movement 1, Explorers replace Researchers at movement 3, and Frigates move 2. Each faction starts with a Colony and one Settler on it, without a Shipyard. Resource directives and the 8.13 resource actions remain. Archived engines and manuals preserve earlier games, and v9 guest keys isolate new games. The [tutorial brief](tutorial.md) is the next stage after rules review, not an implemented tutorial.
@@ -102,3 +108,5 @@ The 36.41 feedback experiment branches from stable 33.38 independently of the un
 The 35.40 Corner Portal experiment adds nine public, straight-across paired boundary links at each of the lower-left and upper-right corners. Each crossing costs 2 movement; ordinary steps cost 1. The aligned pairing reflects (q,r) to (r,q), as requested, and keeps terrain/setup RNG unchanged. Move legality and rival routes use weighted edges; Probe, escapes and retreats keep physical hex adjacency/distance. Save35/rules40 preserve the exact 33.38 browser and engine in v33-* assets. Version 34.39 is reserved for the separate, unmerged balance experiment (#50); its rules are not included here.
 
 The 37.42 integration adopts all workstation PRs while retaining 34.39 balance rules. Aligned portal movement, feedback cards/economy/Undo and the administrator queue are combined. Fresh games use save37/rules42/native28. Full 34.39, 35.40 and 36.41 assets are frozen with hashes; all supported shared revisions keep their engine. See [integration contract](workstation-integration.md).
+
+The inward-corner-worlds experiment moves the two neutral corner centers from (9,-9)/(-9,9) to (8,-8)/(-8,8), preserving the other eleven world centers and all portal endpoints. The existing moon constraints now admit 2,071 layouts; the earlier 2,225 count above describes the old geometry. World-distance equality and all moon fairness bounds remain regression-tested. New dev games use the changed layout; saved tables retain their dealt engine.
