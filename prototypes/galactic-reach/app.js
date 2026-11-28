@@ -5188,7 +5188,7 @@ function createGalacticReach(options = {}) {
       const label = `${RESOURCE_NAMES[resource]}: ${have} of ${cap}, +${next} per round`;
       return `
       <article class="resource-box ${resource} mat-rings${matPick === resource ? ' mat-picked' : ''}" style="--resource:var(--${resource})" data-resource="${resource}"${fill?` data-fill="${fill}"`:''} aria-label="${label}${fill==='over-cap'?', above the limit':fill==='at-cap'?', full':fill==='will-cap'?', next round would pass the limit':''}">
-        ${resourceDot(resource)}
+        ${resourceDot(resource, '', true)}
         <span class="resource-name">${RESOURCE_NAMES[resource]}</span>
         <span class="mat-pips rate mat-classic" aria-hidden="true">${pips(next, was.next)}</span>
         <span class="resource-production" aria-hidden="true">+${next}</span>

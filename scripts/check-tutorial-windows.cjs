@@ -36,6 +36,7 @@ const NOTE = `(() => {
     lit: [...document.querySelectorAll('.gr-coach-target')].map(e => ({ id: e.id, text: e.textContent.trim().replace(/\\s+/g, ' '), onScreen: onScreen(e) })),
     marked: [...document.querySelectorAll('.gr-coach-goal')].map(e => ({ id: e.id, onScreen: onScreen(e) })),
     rect: [r.left, r.top, r.width, r.height].map(Math.round),
+    print: parseFloat(getComputedStyle(c.querySelector('.gr-coach-text')).fontSize),
   };
 })()`;
 
@@ -79,6 +80,8 @@ function inWindow(seen, size, window, lit) {
   assert.deepEqual(seen.lit.map(e => e.text), lit, `${size}: #${window} lights ${lit.join(', ')}`);
   for (const e of [...seen.lit, ...seen.marked]) assert(e.onScreen, `${size}: ${e.text || e.id} is on screen in #${window}`);
   assert(seen.buttons.includes('Skip lesson'), `${size}: the note in #${window} offers Skip lesson`);
+  // A note in a window prints one step larger than the table's small print, as on the table (guide.css --note-step).
+  assert(seen.print >= 13.5, `${size}: the note in #${window} prints at 13.5 px or more (${seen.print} px)`);
   assert(!/Close this window/.test(seen.text), `${size}: no stray-window note in #${window}`);
 }
 

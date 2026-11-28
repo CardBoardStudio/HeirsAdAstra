@@ -9,19 +9,28 @@
   box-shadow: 0 0 0 1px #0009, 0 0 0 4px #ffc95e70, 0 16px 38px #000e, 0 4px 10px #000a;
   font: 13px/1.4 system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
+/* A guidance note's print is one step larger than the table's small print: every size in it is
+   its old size times --note-step, so text, heading and buttons keep their proportions. Its symbols
+   (Prestige and relics in the text) stand 1.3 times the text's height, so they read as symbols rather than
+   specks; still under 24 px, they keep the small rendering (icons.js). Max's UI keeps its own
+   print (step 1, symbols at the text's height). */
+.gr-coach { --note-step: 1; font-size: calc(13px * var(--note-step)); }
+body:not(.background-stars) .gr-coach { --note-step: 1.13; }
+body:not(.background-stars) .gr-coach .hx-glyph { width: 1.3em; height: 1.3em; vertical-align: -.28em; margin-block: -.15em; }
+.gr-coach-word { white-space: nowrap; }
 .gr-coach[hidden] { display: none; }
 .gr-coach { user-select: none; -webkit-user-select: none; }
 .gr-coach[popover] { inset: auto; margin: 0; overflow: visible; }
 .gr-coach.quiet { width: min(260px, calc(100vw - 20px)); padding: 7px 11px; opacity: .92; box-shadow: 0 6px 16px #0008; }
-.gr-coach.quiet .gr-coach-text { font-size: 12px; }
-.gr-coach-eyebrow { color: #8a6a1f; font-size: 10px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
-.gr-coach-title { display: block; margin: 1px 0 3px; font: 400 17px/1.2 Georgia, 'Times New Roman', serif; }
+.gr-coach.quiet .gr-coach-text { font-size: calc(12px * var(--note-step)); }
+.gr-coach-eyebrow { color: #8a6a1f; font-size: calc(10px * var(--note-step)); font-weight: 700; letter-spacing: .09em; text-transform: uppercase; }
+.gr-coach-title { display: block; margin: 1px 0 3px; font: 400 calc(17px * var(--note-step))/1.2 Georgia, 'Times New Roman', serif; }
 .gr-coach-text { margin: 0; }
-.gr-coach-aside { margin: 4px 0 0; color: var(--coach-muted); font-size: 11.5px; }
-.gr-coach-rule { display: inline-block; margin-top: 4px; color: #6b4f12; font-size: 12px; font-weight: 600; }
+.gr-coach-aside { margin: 4px 0 0; color: var(--coach-muted); font-size: calc(11.5px * var(--note-step)); }
+.gr-coach-rule { display: inline-block; margin-top: 4px; color: #6b4f12; font-size: calc(12px * var(--note-step)); font-weight: 600; }
 .gr-coach-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .gr-coach-actions:empty { display: none; }
-.gr-coach .button { min-height: 30px; padding: 4px 10px; font-size: 12px; color: var(--coach-ink); border-color: #a89d83; }
+.gr-coach .button { min-height: calc(30px * var(--note-step)); padding: 4px 10px; font-size: calc(12px * var(--note-step)); color: var(--coach-ink); border-color: #a89d83; }
 .gr-coach .button-primary { background: #253436; color: #f7f0dd; border-color: #253436; }
 .gr-coach .button:disabled { opacity: .45; }
 .gr-coach-progress { display: flex; gap: 3px; margin: 6px 0 0; padding: 0; list-style: none; }
@@ -45,7 +54,7 @@
    at the window's top edge, in the same place, rather than scrolling away from it. */
 .tutorial-mode .gr-coach.in-dialog { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; column-gap: 14px; padding: 8px 12px; }
 .tutorial-mode .gr-coach.in-dialog :is(.gr-coach-progress, .gr-coach-eyebrow, .gr-coach-rule) { display: none; }
-.tutorial-mode .gr-coach.in-dialog .gr-coach-title { flex: 0 0 auto; margin: 0; font-size: 16px; }
+.tutorial-mode .gr-coach.in-dialog .gr-coach-title { flex: 0 0 auto; margin: 0; font-size: calc(16px * var(--note-step)); }
 .tutorial-mode .gr-coach.in-dialog .gr-coach-text { flex: 1 1 260px; }
 /* A window's own paragraph colour (the battle report's muted text) never fades the note's line. */
 #gr-coach.in-dialog .gr-coach-text { color: var(--coach-ink); }
@@ -99,10 +108,10 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
 .gr-coach:not(.docked):not(.in-dialog) { pointer-events: none; }
 .gr-coach:not(.docked):not(.in-dialog) :is(button, a) { pointer-events: auto; }
 /* A long docked note shows its first whole sentences until you choose More (guide.js fitText). */
-.gr-coach.docked { font-size: 12px; line-height: 1.38; }
-.gr-coach.docked .gr-coach-title { font-size: 16px; }
+.gr-coach.docked { font-size: calc(12px * var(--note-step)); line-height: 1.38; }
+.gr-coach.docked .gr-coach-title { font-size: calc(16px * var(--note-step)); }
 .gr-coach.docked .gr-coach-actions { gap: 4px; margin-top: 6px; }
-.gr-coach.docked .button { min-height: 26px; padding: 2px 9px; font-size: 11.5px; }
+.gr-coach.docked .button { min-height: calc(26px * var(--note-step)); padding: 2px 9px; font-size: calc(11.5px * var(--note-step)); }
 .gr-coach [data-coach="more"][hidden] { display: none; }
 .gr-coach.tight .gr-coach-eyebrow, .gr-coach.tight .gr-coach-rule { display: none; }
 .gr-coach.bare .gr-coach-text { display: none; }
@@ -119,7 +128,7 @@ body.menu-open .gr-coach:not(.in-dialog) { display: none; }
 .gr-coach, .gr-coach-pointer { transition: none !important; }
 /* Learn to play's controls: Back, Next (primary), a quieter Exit, and Skip lesson as a small link. */
 .gr-coach .button.gr-coach-quiet { border-color: transparent; color: var(--coach-muted); }
-.gr-coach .button.gr-coach-link { min-height: 0; margin-left: auto; padding: 2px 0; border: 0; background: none; color: #6b4f12; font-size: 11.5px; text-decoration: underline; }
+.gr-coach .button.gr-coach-link { min-height: 0; margin-left: auto; padding: 2px 0; border: 0; background: none; color: #6b4f12; font-size: calc(11.5px * var(--note-step)); text-decoration: underline; }
 /* The stage: spotlight, callouts and ghost drag over the table. It never takes a click. */
 .gr-stage { position: fixed; inset: 0; margin: 0; padding: 0; border: 0; width: 100vw; height: 100vh; max-width: none; max-height: none; background: none; overflow: visible; pointer-events: none; z-index: 59; }
 .gr-stage[popover] { inset: 0; }
