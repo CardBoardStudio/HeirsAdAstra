@@ -3561,6 +3561,27 @@ function createGalacticReach(options = {}) {
 
   // Protect a concrete scoring/defense opportunity, rather than reserving a full
   // excavation payment indefinitely for an Explorer many turns from any known site.
+  function aiNearbySettlement(playerId) {
+    const p=state.players[playerId],orders=aiCards(playerId).filter(c=>ALL_CARDS[c.key].order==='colonize');
+    if(!orders.length)return null;
+    const cost={biomass:Math.min(...orders.map(c=>colonyTerms(ALL_CARDS[c.key].tag,false).biomass))};
+    const cards=p.hand.filter(c=>ALL_CARDS[c.key].order==='move'),routes=new Map();
+    for(const [source,groups] of Object.entries(state.fleets))if(groups[playerId]?.settler){
+      const ships=fleetGroup(groups[playerId],'ships');
+      for(const world of state.clusters.filter(c=>c.kind==='world'&&state.planets[c.center].owner===null&&!hasBuilding(state.planets[c.center]))){
+        if(aiThreat(playerId,ships,world.center,source)>.3)continue;
+        if(source===world.center)return cost;
+        for(const card of cards){
+          const range=movementRange(ships,card);
+          if(travelDistance(source,world.center)>range)continue;
+          const path=aiPath(source,world.center,playerId,ships,avoidsHostile(ALL_CARDS[card.key].tag),range,routes);
+          if(path&&pathMovementCost(source,path)<=range)return cost;
+        }
+      }
+    }
+    return null;
+  }
+
   function aiImmediateProtection(playerId) {
     const p=state.players[playerId],keep={matter:0,energy:0,biomass:0,data:0};
     if(p.strategy==='militaryFocused') {
@@ -3570,6 +3591,8 @@ function createGalacticReach(options = {}) {
     }
     const colony=findColonizeTarget(playerId);
     if(colony&&aiCards(playerId).some(c=>ALL_CARDS[c.key].order==='colonize'))keep.biomass=state.planets[colony].owner===null?COLONY_LIFE_COST:1;
+    const nearby=aiNearbySettlement(playerId);
+    if(nearby)keep.biomass=Math.max(keep.biomass,nearby.biomass);
     if(Object.entries(state.planets).some(([coord,planet])=>planet.special==='relic'&&!planet.relicClaimed&&getFleet(coord,playerId)?.explorer&&relicKnown(state.clusters[planet.cluster],playerId)))Object.assign(keep,EXCAVATION_COST,{biomass:keep.biomass});
     if(aiColonyDefense(playerId).some(d=>d.needed>0))RESOURCES.forEach(r=>{keep[r]=Math.max(keep[r],SHIP_STATS.fleet.cost[r]||0);});
     if(!controlledPlanets(playerId).some(([,planet])=>planet.upgrade==='starbase'))Object.assign(keep,STRUCTURES.starbase.cost);
@@ -3797,8 +3820,8 @@ function createGalacticReach(options = {}) {
       }
     }
     if(state.phase==='operations'&&!p.passed&&(state.pendingConstruct||aiConstructCard(p))){
-      const investment=aiBuyInvestment(playerId);
-      for(const build of chooseAiBuild(playerId,true).filter(b=>b.score>=28))goals.push({kind:'build',build:build.kind,coord:build.coord,cost:build.cost,keep:build.score>=50?undefined:investment?.cost,priority:85+Math.min(85,build.score)*.3});
+      const investment=aiBuyInvestment(playerId),settlement=aiNearbySettlement(playerId);
+      for(const build of chooseAiBuild(playerId,true).filter(b=>b.score>=28))goals.push({kind:'build',build:build.kind,coord:build.coord,cost:build.cost,keep:build.urgent?undefined:investment?.cost||settlement||undefined,priority:85+Math.min(85,build.score)*.3});
     }
     if(state.pendingConstruct)return goals;
     if(controlledPlanets(playerId).some(([,planet])=>planet.upgrade==='starbase')){
@@ -4016,16 +4039,19 @@ function createGalacticReach(options = {}) {
       const yard=yards.find(([,p])=>p.cluster===world.id);
       const site=!yard&&world.coords.filter(coord=>canBuildStructureAt(playerId,coord,'starbase'))
         .sort((a,b)=>hexDistance(a,'0,0')-hexDistance(b,'0,0')||aiCompareCoords(a,b,playerId))[0];
-      if(site)options.push({kind:'starbase',coord:site,score:100});
+      if(site)options.push({kind:'starbase',coord:site,score:100,urgent:true});
       for(const coord of world.coords)if(coord!==site&&canBuildStructureAt(playerId,coord,'harvester')) {
         const resource=state.planets[coord].type;
         const supply=forward&&['matter','energy'].includes(resource)&&income[resource]<FOCUSED_MILITARY_POLICY.productionFloor;
         const opening=!forward&&FOCUSED_MILITARY_POLICY.openingEconomy&&['data','biomass'].includes(resource)&&income[resource]===0;
-        options.push({kind:'harvester',coord,score:opening?FOCUSED_MILITARY_POLICY.openingEconomy+(resource==='data'?1:0):!forward?25:supply?74:income[resource]===0?72:50+Math.max(0,4-income[resource])*3});
+        options.push({kind:'harvester',coord,score:opening?FOCUSED_MILITARY_POLICY.openingEconomy+(resource==='data'?1:0):!forward?25:supply?74:income[resource]===0?72:50+Math.max(0,4-income[resource])*3,urgent:Boolean(opening)});
       }
       if(!yard)continue;
-      if(!forward&&!countPlacedShips(playerId,'settler')&&canPlaceShip(playerId,'settler'))options.push({kind:'settler',coord:yard[0],score:90});
-      if(world===forward&&canPlaceShip(playerId,'fleet')&&canJoinFleet(yard[0],playerId,{fleet:1}))options.push({kind:'fleet',coord:yard[0],score:68});
+      if(!forward&&!countPlacedShips(playerId,'settler')&&canPlaceShip(playerId,'settler'))options.push({kind:'settler',coord:yard[0],score:90,urgent:true});
+      if(world===forward&&canPlaceShip(playerId,'fleet')&&canJoinFleet(yard[0],playerId,{fleet:1})){
+        const urgent=aiColonyDefense(playerId).some(d=>d.needed>0&&travelDistance(yard[0],d.coord)<=6&&(state.fleets[yard[0]]?.[playerId]?.fleet||0)<d.attackers+1);
+        options.push({kind:'fleet',coord:yard[0],score:68,urgent});
+      }
     }
     return options;
   }
@@ -4068,7 +4094,7 @@ function createGalacticReach(options = {}) {
       options.push({kind:'harvester',coord,score:planet.type==='data'&&!income.data&&state.round<=2?53:shortage&&payback>=3?(maxbot?28:10)+shortage*(maxbot?3:7)+(economy?4:0):maxbot?-1:1});
       const localYard=maxbot&&clusterHasColony(playerId,planet.cluster)&&!yards.some(([,yard])=>yard.cluster===planet.cluster);
       const forward=yards.length<2 && colonyPlanets(playerId).some(([center])=>state.planets[center].cluster===planet.cluster) && yards.every(([y])=>hexDistance(y,coord)>6);
-      if (canBuildStructureAt(playerId,coord,'starbase')) options.push({kind:'starbase',coord,score:!yards.length?50+(!p.initialShipyardCoord&&coord===aiInitialShipyard(playerId)? .1:0):localYard?58:forward?military?15:10:0});
+      if (canBuildStructureAt(playerId,coord,'starbase')) options.push({kind:'starbase',coord,score:!yards.length?50+(!p.initialShipyardCoord&&coord===aiInitialShipyard(playerId)? .1:0):localYard?58:forward?military?15:10:0,urgent:!yards.length});
     }
     for (const [coord] of yards) {
       const group=state.fleets[coord]?.[playerId]||{};
@@ -4077,7 +4103,7 @@ function createGalacticReach(options = {}) {
       const urgent=defense.filter(d=>d.needed>0&&travelDistance(coord,d.coord)<=6).sort((a,b)=>travelDistance(coord,a.coord)-travelDistance(coord,b.coord))[0];
       const desired=maxbot&&maxBotLate(playerId)?8:military?5:enemyFleets?Math.min(3,colonyPlanets(playerId).length):0;
       const alreadyStaging=urgent&&(group.fleet||0)>=urgent.attackers+1;
-      if (canPlaceShip(playerId,'fleet') && canJoinFleet(coord,playerId,{fleet:1}) && (urgent&&!alreadyStaging||fleets<desired)) options.push({kind:'fleet',coord,score:urgent&&!alreadyStaging?85-travelDistance(coord,urgent.coord)*3:military?30:27});
+      if (canPlaceShip(playerId,'fleet') && canJoinFleet(coord,playerId,{fleet:1}) && (urgent&&!alreadyStaging||fleets<desired)) options.push({kind:'fleet',coord,score:urgent&&!alreadyStaging?85-travelDistance(coord,urgent.coord)*3:military?30:27,urgent:Boolean(urgent&&!alreadyStaging)});
     }
     }
     const card=aiConstructCard(p),fundingByCost=new Map();
@@ -4089,16 +4115,18 @@ function createGalacticReach(options = {}) {
       if(!fundingByCost.has(costKey))fundingByCost.set(costKey,aiFundingPlan(p,state.pendingConstruct?null:card?.id,build.cost));
       build.funding=fundingByCost.get(costKey);
     }
-    const investment=aiBuyInvestment(playerId);
+    const investment=aiBuyInvestment(playerId),settlement=aiNearbySettlement(playerId);
     const keepsInvestment=build=>{
-      if(!investment||build.score>=50||!build.funding)return true;
+      if(!investment&&!settlement||build.urgent||!build.funding)return true;
       const funds={...p.resources};
       for(const step of build.funding.steps) {
         if(step.type==='bank'){funds[step.giveType]-=bankTradeRate(playerId,step.giveType);funds[step.getType]++;}
         else {const gain=conversionGain(p.hand.find(c=>c.id===step.card));RESOURCES.forEach(r=>{funds[r]=Math.min(limits[r],funds[r]+(gain[r]||0));});}
       }
       RESOURCES.forEach(r=>{funds[r]-=build.cost[r]||0;});
-      return canAfford({resources:funds},investment.cost);
+      const payment={...(investment?.cost||{})};
+      if(settlement)payment.biomass=Math.max(payment.biomass||0,Math.min(p.resources.biomass,settlement.biomass));
+      return canAfford({resources:funds},payment);
     };
     const ranked=options.filter(b=>b.score>2&&keepsInvestment(b)).sort((a,b)=>b.score-a.score||aiCompareCoords(a.coord,b.coord,playerId));
     return (!yards.length?ranked[0]:ranked.find(b=>b.funding)||ranked[0])||null;
@@ -4195,7 +4223,8 @@ function createGalacticReach(options = {}) {
     const targets=[],defense=aiColonyDefense(playerId);
     const add=(source,moving,goal,value,moveGroup,cannotAttack,maxRisk=Infinity,immediateOnly=false)=>{
       if (source===goal) return;
-      value+=moveGroup==='ships'?(p.strategy==='militaryFocused'?FOCUSED_MILITARY_POLICY.leaderPressure:1)*(aiLeaderPressure(playerId,state.planets[goal]?.owner)+Math.max(0,...Object.keys(state.fleets[goal]||{}).map(owner=>aiLeaderPressure(playerId,+owner)))):0;
+      // A leader owning and occupying the same hex is one target, not two bonuses.
+      value+=moveGroup==='ships'?(p.strategy==='militaryFocused'?FOCUSED_MILITARY_POLICY.leaderPressure:1)*Math.max(aiLeaderPressure(playerId,state.planets[goal]?.owner),0,...Object.keys(state.fleets[goal]||{}).map(owner=>aiLeaderPressure(playerId,+owner))):0;
       const range=movementRange(moving,card),path=aiPath(source,goal,playerId,moving,cannotAttack,range,routeCache);
       if (!path?.length) return;
       const segment=[];let spent=0,previous=source;
@@ -4228,7 +4257,11 @@ function createGalacticReach(options = {}) {
       if (f.fleet) for (const d of defense.filter(d=>d.needed&&d.coord!==source)) {
         const held=defense.find(x=>x.coord===source&&x.attackers),spare=held?Math.max(0,f.fleet-held.attackers-1):f.fleet;
         if (!spare) continue;
-        add(source,{settler:0,explorer:0,fleet:Math.min(spare,d.needed)},d.coord,100,'ships',false);
+        const reinforcing={settler:0,explorer:0,fleet:Math.min(spare,d.needed)};
+        // Use the retreat threshold on the combined defense too. Sending the same
+        // insufficient force back after withdrawing only wastes another Move.
+        if(aiThreat(playerId,reinforcing,d.coord,source)>.6)continue;
+        add(source,reinforcing,d.coord,100,'ships',false);
       }
       if (fleetCount(ships) && danger>.6) {
         // Retreat is a normal Move. Prefer a defended hex or merging with allies.
@@ -4256,7 +4289,19 @@ function createGalacticReach(options = {}) {
           if (capture && !ships.fleet && !captureFleetAt(c.center,playerId)) continue;
           if (capture && !military && !aiLeaderPressure(playerId,planet.owner)&&calculatePrestige(planet.owner)<victoryTarget()*.8 && state.clusters.some(w=>w.kind==='world'&&state.planets[w.center].owner===null)) continue;
           if (groups.some(([at,other])=>at!==source&&other[playerId].settler&&travelDistance(at,c.center)<travelDistance(source,c.center))) continue;
-          add(source,ships,c.center,42+(expansion?5:0)+(capture?military?8:2:0),'ships',avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag));
+          const plan=add(source,ships,c.center,42+(expansion?5:0)+(capture?military?8:2:0),'ships',avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag));
+          if(plan){
+            const path=aiPath(source,c.center,playerId,ships,avoidsHostile(card.tag||ALL_CARDS[card.key]?.tag),movementRange(ships,card),routeCache);
+            const turns=Math.ceil(pathMovementCost(source,path)/movementRange(ships,card));
+            plan.colonyCapture=capture;
+            if(capture)plan.score-=4*Math.max(0,turns-1);
+            else if(plan.destination===c.center&&aiThreat(playerId,ships,c.center,source)<=.3){
+              const income=aiIncome(playerId),limits=resourceLimits(playerId);
+              const forecast={...p,resources:Object.fromEntries(RESOURCES.map(r=>[r,Math.min(limits[r],p.resources[r]+income[r])]))};
+              // This forecast chooses a route only; actual actions still pay from stock.
+              plan.readySettlement=p.hand.some(order=>ALL_CARDS[order.key].order==='colonize'&&aiFundingPlan(forecast,card.id,{biomass:colonyTerms(ALL_CARDS[order.key].tag,false).biomass}));
+            }
+          }
         }
       } else if (hunters) {
         for (const [at,other] of Object.entries(state.fleets)) {
@@ -4281,7 +4326,8 @@ function createGalacticReach(options = {}) {
 
       }
     }
-    return targets.filter(t=>t.score>0).sort((a,b)=>b.score-a.score||aiCompareCoords(a.source,b.source,playerId)||aiCompareCoords(a.goal,b.goal,playerId))[0]||null;
+    const readySettlement=targets.some(t=>t.readySettlement&&t.score>0);
+    return targets.filter(t=>t.score>0&&(!readySettlement||!t.colonyCapture||t.destination===t.goal)).sort((a,b)=>b.score-a.score||aiCompareCoords(a.source,b.source,playerId)||aiCompareCoords(a.goal,b.goal,playerId))[0]||null;
   }
 
   function aiPlayCard(player, card) {
