@@ -31,7 +31,7 @@ for(const key of ['exchangeProtocol','barterNetwork','clearingHouse']){
  resumed.a.applyAction(0,{type:'finish_buy'});assert.equal(resumed.e.bankTradeRate(0,'energy'),4,'The rate expires when this Buy ends');
 }
 {
- const g=game();g.p.resources={matter:0,energy:4,biomass:3,data:0};
+ const g=game();g.p.resources={matter:2,energy:4,biomass:3,data:0};
  g.p.hand=[{id:'first',key:'exchangeProtocol'},{id:'second',key:'barterNetwork'},{id:'starter',key:'construct',starter:true}];
  g.p.buyStartHandIds=g.p.hand.map(c=>c.id);g.p.buyStartInPlayIds=[];g.p.buyStartDiscardIds=[];g.s.market=[{id:'new-copy',key:'exchangeProtocol'}];
  g.a.applyAction(0,{type:'special',card:'first',key:'exchangeProtocol',resource:'energy'});
