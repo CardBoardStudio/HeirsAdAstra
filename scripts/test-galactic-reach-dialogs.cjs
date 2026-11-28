@@ -923,7 +923,7 @@ test('Probe distinguishes all excavated sites from all discovered sites and anno
 test('Market permits repeated affordable purchases and reloads with no purchase cap',()=>{
  const storage=createStorage(),state=boot(storage).saved();
  Object.assign(state,{phase:'buy',activePlayer:0,turnStage:'buy'});
- Object.assign(state.players[0],{passed:true,hand:[],deck:[],discard:[],inPlay:[],buyStartDiscardIds:[],buyStartInPlayIds:[],buyLimit:1,resources:{matter:0,energy:6,biomass:0,data:3},resourceLimits:{matter:4,energy:10,biomass:4,data:10}});
+ Object.assign(state.players[0],{passed:true,hand:[],deck:[],discard:[],inPlay:[],buyStartDiscardIds:[],buyStartInPlayIds:[],buyLimit:1,resources:{matter:3,energy:6,biomass:0,data:0},resourceLimits:{matter:4,energy:10,biomass:4,data:10}});
  state.market=[{id:'purchase-1',key:'signalRelay'},{id:'purchase-2',key:'signalRelay'}];state.marketDecks={expensive:[],medium:[],cheap:[{id:'refill-3',key:'signalRelay'}]};
  writeSave(storage,state);let game=boot(storage);
  assert.match(game.dom.element('market-help').textContent,/as many cards as you can afford/);
@@ -1350,7 +1350,7 @@ test('Max UI Oracle hides sold-out designs, retains unaffordable deck designs an
  const game=maxCardChooser(storage),before=game.saved(),cards=game.dom.lastQuery('[data-relic-card]');
  assert.equal(cards.length,5);assert(!cards.some(b=>b.dataset.relicCard==='dysonLattice'),'A sold-out design is hidden');assert(cards.some(b=>b.disabled));const unavailable=cards.find(b=>b.dataset.relicCard==='worldEngine');assert(unavailable.disabled);unavailable.click();assert.deepEqual(game.saved(),before);
  const offer=cards.find(b=>b.dataset.relicCard==='signalRelay');assert(!offer.disabled);offer.click();assert.deepEqual(game.saved(),before,'Selecting spends nothing');game.click('relic-card-confirm');
- assert(game.saved().players[0].hand.some(c=>c.id==='oracle-copy'));assert(!game.saved().marketDecks.cheap.some(c=>c.id==='oracle-copy'));assert.equal(game.saved().players[0].resources.energy,2);assert.equal(game.saved().players[0].resources.data,3);
+ assert(game.saved().players[0].hand.some(c=>c.id==='oracle-copy'));assert(!game.saved().marketDecks.cheap.some(c=>c.id==='oracle-copy'));assert.equal(game.saved().players[0].resources.energy,2);assert.equal(game.saved().players[0].resources.data,4);
 });
 test('Max UI Echoes selects individual used cards, keeps the two-card limit and cancels freely',()=>{
  const storage=cardChooserSave('echoes'),state=JSON.parse(storage.getItem(SAVE_KEY));

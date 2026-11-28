@@ -14,7 +14,7 @@ function game(resume) {
   const a=context.createGalacticReach({headless:true,resume,random:()=>((seed=(Math.imul(seed,1664525)+1013904223)>>>0)/2**32)});
   if(!resume) {
     Object.assign(e.state,{phase:'buy',activePlayer:0});
-    const p=e.state.players[0];Object.assign(p,{hand:[],deck:[],discard:[],inPlay:[],passed:true,resources:{matter:0,energy:10,biomass:0,data:5},resourceLimits:{matter:30,energy:30,biomass:30,data:30}});
+    const p=e.state.players[0];Object.assign(p,{hand:[],deck:[],discard:[],inPlay:[],passed:true,resources:{matter:5,energy:10,biomass:0,data:0},resourceLimits:{matter:30,energy:30,biomass:30,data:30}});
     // One Cheap row of three with two cards left in its deck; the other tiers have run out (rules #market).
     e.state.market=Array.from({length:3},(_,n)=>({key:'signalRelay',id:`market-${n}`}));
     e.state.marketDecks={expensive:[],medium:[],cheap:[{key:'signalRelay',id:'refill-1'},{key:'signalRelay',id:'refill-2'}]};
@@ -37,7 +37,7 @@ const buy = g => {
   g.a.applyAction(0,{type:'finish_buy'});assert.equal(g.s.phase,'operations');assert.equal(g.s.activePlayer,1);
 }
 {
-  const g=game();g.p.resources={matter:0,energy:3,biomass:0,data:1};buy(g);
+  const g=game();g.p.resources={matter:1,energy:3,biomass:0,data:0};buy(g);
   const before=JSON.stringify(g.a.snapshotState());
   assert(!g.a.legalActions(0).some(a=>a.type==='buy'),'Insufficient resources still prevent another purchase');
   assert(!g.e.buyCard(0,'market',0));assert.equal(JSON.stringify(g.a.snapshotState()),before);

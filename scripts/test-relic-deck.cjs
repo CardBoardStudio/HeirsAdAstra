@@ -25,7 +25,7 @@ function tactics(g,t0='concentratedFire',t1='concentratedFire'){
 {
  const g=game(),c=g.c.createGalacticReach({catalog:true}),all=[...g.s.relicRow,...g.s.relicDeck];
  assert.equal(Object.keys(c.RELIC_CARDS).length,16);assert.equal(all.length,16);assert.equal(new Set(all.map(c=>c.key)).size,16);
- assert.equal(Object.values(c.MARKET_CARDS).filter(c=>!c.military).length,18);assert.equal(Object.values(c.MARKET_CARDS).filter(c=>c.military).length,9);
+ assert.equal(Object.values(c.MARKET_CARDS).filter(c=>!c.military).length,20);assert.equal(Object.values(c.MARKET_CARDS).filter(c=>c.military).length,9);
  for(const key of ['phaseShearDrive','obeliskOfAnnihilation','aegisOfSilentArchitects','memoryPrism','archiveOfTides','stellarCrucible','evergreenArk','cinderDrive'])assert(!c.RELIC_CARDS[key]);
  assert(!c.MARKET_CARDS.archivePurge);assert(![...g.s.market,...Object.values(g.s.marketDecks).flat()].some(c=>c.key==='archivePurge'));
  assert.equal(c.RELIC_CARDS.firstDawnEchoes.code,'R02');assert.equal(c.RELIC_CARDS.foldedWarehouse.code,'R13');assert.equal(c.RELIC_CARDS.oracleOfTheUnmade.code,'R24');

@@ -22,25 +22,25 @@ const big = p => { p.resourceLimits = { matter: 30, energy: 30, biomass: 30, dat
 const catalog = vm.runInContext(app + ';createGalacticReach({catalog:true})', vm.createContext({}));
 const cards = { ...catalog.ADVANCED_CARDS, ...catalog.MARKET_MILITARY };
 const codes = Object.values(cards).map(c => c.code);
-assert.equal(Object.keys(catalog.ADVANCED_CARDS).length, 25); assert.equal(Object.keys(catalog.MARKET_MILITARY).length, 9);
-assert.equal(new Set(codes).size, 34, 'Card ids are unique');
-assert.deepEqual(codes.filter(c => c[0] === 'N').sort(), Array.from({ length: 32 }, (_, i) => `N${String(i + 1).padStart(2, '0')}`).filter(c=>!['N06','N11','N12','N13','N14','N15','N24'].includes(c)));
+assert.equal(Object.keys(catalog.ADVANCED_CARDS).length, 27); assert.equal(Object.keys(catalog.MARKET_MILITARY).length, 9);
+assert.equal(new Set(codes).size, 36, 'Card ids are unique');
+assert.deepEqual(codes.filter(c => c[0] === 'N').sort(), Array.from({ length: 34 }, (_, i) => `N${String(i + 1).padStart(2, '0')}`).filter(c=>!['N06','N11','N12','N13','N14','N15','N24'].includes(c)));
 assert.deepEqual(codes.filter(c => c[0] === 'M').sort(), Array.from({ length: 10 }, (_, i) => `M${String(i + 1).padStart(2, '0')}`).filter(c=>c!=='M04'));
 for (const [key, def] of Object.entries(cards)) {
-  assert(['exchangeProtocol','barterNetwork','clearingHouse','signalRelay','surveyNetwork','tacticalBriefing','strikeVector','prefabYards','seedArk','colonyPods','procurementHub','tradeSyndicate'].includes(key)||Object.values(def.cost).some(n => n > catalog.STARTING_LIMIT), `${key} must need a raised limit`);
+  assert(['logisticsBriefing','livingArchives','exchangeProtocol','barterNetwork','clearingHouse','signalRelay','surveyNetwork','tacticalBriefing','strikeVector','prefabYards','seedArk','colonyPods','procurementHub','tradeSyndicate'].includes(key)||Object.values(def.cost).some(n => n > catalog.STARTING_LIMIT), `${key} must need a raised limit`);
   assert.equal(!!def.military, def.code[0] === 'M');
 }
 const prices = Object.values(cards).map(c => Object.values(c.cost).reduce((n, x) => n + x, 0));
 // 32.37 (Cheaper Cards): about 30% cheaper, from exactly 5 of one resource (one upgrade) to 14.
 assert.equal(Math.min(...prices), 3, 'The cheapest draw cards still cost three resources');
 assert.equal(Math.max(...prices), 14, 'Top cards stay aspirational');
-assert.equal(prices.reduce((n, p) => n + p, 0), 219, 'Price v1 reduces the eight selected designs by eleven resources total');
+assert.equal(prices.reduce((n, p) => n + p, 0), 225, 'Price v1 reduces the eight selected designs by eleven resources total');
 assert.equal(catalog.rulesVersion, 'galactic-reach/39.44');
 
-// Setup: nine face-up cards (three per price tier) from 54 cards that mix both decks; target defaults to 30.
+// Setup: nine face-up cards (three per price tier) from 58 cards that mix both decks; target defaults to 30.
 {
   const g = game(), { s } = g, decks = Object.values(s.marketDecks).flat();
-  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 54); assert.equal(s.victoryTarget, 30);
+  assert.equal(s.market.length, 9); assert.equal(s.market.length + decks.length, 58); assert.equal(s.victoryTarget, 30);
   delete s.victoryTarget; assert.equal(g.e.victoryTarget(),40,'Legacy targetless saves retain40');
   const supply = [...s.market, ...decks].map(c => c.key);
   for (const key of Object.keys(catalog.MARKET_CARDS)) assert.equal(supply.filter(k => k === key).length, 2, `${key} has two copies`);
@@ -61,7 +61,7 @@ assert.equal(catalog.rulesVersion, 'galactic-reach/39.44');
 // Starting limits can hold the specified entry cards; higher-cost cards still need capacity.
 {
   const g = game(), { s, p } = g; s.phase = 'buy'; s.activePlayer = 0; p.passed = true; p.resources = { matter: 4, energy: 4, biomass: 4, data: 4 };
-  assert(g.adapter().legalActions(0).filter(a=>a.type==='buy'&&a.source==='market').every(a=>['exchangeProtocol','barterNetwork','clearingHouse','signalRelay','surveyNetwork','tacticalBriefing','strikeVector','prefabYards','seedArk','colonyPods','procurementHub','tradeSyndicate'].includes(a.key)));
+  assert(g.adapter().legalActions(0).filter(a=>a.type==='buy'&&a.source==='market').every(a=>['logisticsBriefing','livingArchives','exchangeProtocol','barterNetwork','clearingHouse','signalRelay','surveyNetwork','tacticalBriefing','strikeVector','prefabYards','seedArk','colonyPods','procurementHub','tradeSyndicate'].includes(a.key)));
   s.market = [{ key: 'ionThrusters', id: 'ion' }];
   // Rules #storage-allocation: buy a Capacity Module, then play it on a later Operations turn.
   act(g, 0, 'buy', a => a.source === 'capacity' && a.key === 'capacityModule');
@@ -210,4 +210,4 @@ for (const stored of [0, 1, 8]) {
   assert(sim.prestige(st.winner) >= st.victoryTarget); assert(st.round > 10, 'A 40-point game takes many rounds');
   assert(st.players.some(p => p.cardsPurchased >= 3), 'Rivals buy market cards'); assert(st.players.some(p => (p.storagePurchases || 0) >= 1), 'Rivals still buy Capacity Modules; relic capacity can replace that investment for others'); assert(st.players.some(p => (p.storageUpgrades || 0) >= 1), 'Rivals still play purchased Capacity Modules');
 }
-console.log('Capacity Cards: 34 retained stable ids including three draw-two cards within starting limits, nine-card tiered market, military deck purchases, Buy cards and Wonders, one-step orders, printed Construct discounts, Capacity Module purchase and play, rival capacity targeting and a full 40-point rival game passed.');
+console.log('Capacity Cards: 34 retained stable ids including five draw-two cards within starting limits, nine-card tiered market, military deck purchases, Buy cards and Wonders, one-step orders, printed Construct discounts, Capacity Module purchase and play, rival capacity targeting and a full 40-point rival game passed.');
