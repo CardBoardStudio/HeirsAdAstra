@@ -19,3 +19,21 @@ Rules grounding: canonical `rulebook.html#computer-rivals`, `#rival-cards`, `#mi
 Use focused cases for nearby neutral settlement versus distant capture, payable versus unavailable Colonize, duplicate leader pressure, repeated reinforcement after retreat, newly sufficient reinforcements, ordinary military builds versus real emergencies, funding through bank trades, second builds, planning purity and hidden-information invariance. Confirm the failure cases against the exact baseline as well as the changed policy.
 
 Freeze the candidate before a prospective comparison on new seeds, with all seat rotations and complementary old/new policy assignments. Use the same unchanged game engine and 30-Prestige target. Retain complete archives including exact sources, full private state, engine counters, actions/events and random values, and verify every archive. Report completed and incomplete games separately, policy/profile outcomes and paired initial-position hashes. These simulated opponents are evidence about bot performance, not a calibrated human difficulty estimate.
+
+## Fresh-game result
+
+The final frozen candidate completed all 64 planned games: eight new map seeds, four seat rotations and complementary two-new/two-baseline allocations at a 30-Prestige target. All 32 complementary pairs had identical initial-position hashes. Four maps used Military Focused, Economy, Expansion and a second Economy; four used Military Focused, Military, Economy and Expansion. Every complete archive passed source, trace, patch-chain, engine-counter and random-stream verification. The card catalog, including Ascendancy Codex, and legal-action adapter matched baseline `1ef413d1fe0fef6aac0e2b96883fbb94ca34629d` exactly.
+
+| Measure | Baseline | Updated |
+| --- | ---: | ---: |
+| Wins | 34 | 30 |
+| Mean final Prestige | 21.84 | 22.28 |
+| Mean final Colonies | 2.86 | 3.26 |
+| Mean colonization actions | 1.75 | 2.04 |
+| Mean unused Colonize cards | 2.19 | 2.02 |
+
+Economy won 19 versus 16 games and averaged 26.29 versus 23.85 Prestige. Military Focused won 2 versus 7 and averaged 18.19 versus 22.06. Expansion held more Colonies (4.19 versus 3.56) but won 5 versus 7 and had nearly unchanged mean Prestige. Military won 4 each, with updated mean Prestige 22.31 versus 18.00. The combined change fixes the observed decisions and improves settlement completion; this comparison does not establish an overall strength improvement. Its Military Focused regression needs isolation before promotion. Mixed-policy games do not identify which individual fix caused a profile outcome.
+
+Twelve focused cases, six baseline-failure checks, full mechanics, 105 dialog cases, replay reconstruction, 120 browser/server matched policy decisions and the other relevant policy/archive/rules checks passed. The supplied report's two settlement positions now select the nearby neutral center, its Icarus position avoids the unchanged inadequate return, and the ordinary military build preserves its capacity investment. Anonymous local packaged rulebook navigation and 1280/390-pixel layouts passed. Static game assets packaged; full Rust/Wasm compilation was unavailable on the host because Cargo is absent.
+
+The first candidate's settlement regression exposed the missing Life-payment part before the final evaluation. Its 25 completed and two interrupted archives were retained and verified, and the corrected candidate used disjoint fresh seeds. The private inputs, frozen protocols and sources, per-game archives, checksums and verification evidence are retained in persistent output `bot-plan-completion-20261128`, with the final comparison in `confirmation-v2`. These eight map seeds provide correlated bot-match evidence, not a general human-difficulty estimate. No deployment or promotion has occurred.
