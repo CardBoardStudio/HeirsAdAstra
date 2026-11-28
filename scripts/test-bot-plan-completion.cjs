@@ -108,13 +108,18 @@ function military(){
 }
 test('Military purchases survive routine high-priority builds and their trade goals',()=>{
   const g=military(),investment=g.e.aiBuyInvestment(1);assert.equal(investment.key,'capacityModule');
-  assert.equal(g.e.chooseAiBuild(1),null,'An ordinary Fleet cannot consume the held module payment');
+  assert.deepEqual(plain(investment.cost),{matter:1,energy:1,biomass:1,data:1},'Routine future construction is not an emergency reserve');
+  const build=g.e.chooseAiBuild(1);assert.equal(build.kind,'fleet','A Fleet can use surplus beyond the real purchase price');
   const goals=g.e.aiTradeGoals(1).filter(x=>x.kind==='build');assert(goals.length);
   assert(goals.every(x=>JSON.stringify(x.keep)===JSON.stringify(investment.cost)),'Indirect build funding protects the same payment');
+  assert(g.e.performConstructOrder(1,build.coord,build.kind,g.p.hand[0]));
+  assert.equal(g.e.chooseAiBuild(1),null,'A second Fleet cannot consume the Module payment');
+  g.s.pendingConstruct=null;g.s.activePlayer=1;
   g.s.phase='buy';g.e.runAiBuy();assert(g.p.discard.some(c=>c.key==='capacityModule'));
 });
 test('Military second builds preserve the same payment; free builds can proceed',()=>{
   const g=military();g.s.pendingConstruct={playerId:1};g.p.hand=[];
+  g.p.resources.matter=2;g.p.resources.energy=2;
   g.p.deck.push({id:'established',key:'construct',starter:true,upgraded:true,level:3});
   assert.equal(g.e.aiBuyInvestment(1).key,'capacityModule');assert.equal(g.e.chooseAiBuild(1),null);
   g.s.pendingConstruct=null;g.p.hand=[{id:'free',key:'worldEngine'}];
@@ -130,6 +135,19 @@ test('Real emergency defense still precedes useful purchase savings',()=>{
   const focused=military();focused.s.fleets={[focused.forward.coords[1]]:{0:{fleet:2}}};
   assert(focused.e.aiBuyInvestment(1),'The emergency really competes with a payable purchase');
   const defender=focused.e.chooseAiBuild(1);assert.equal(defender.kind,'fleet');assert(defender.urgent);assert(defender.funding);
+});
+test('Military opening infrastructure retains its actual protected payment',()=>{
+  const g=military(),at=g.forward.coords[6];g.s.planets[at].upgrade=null;
+  const protection=g.e.aiImmediateProtection(1);
+  assert.deepEqual(plain(protection),{matter:2,energy:2,biomass:0,data:1});
+  const build=g.e.chooseAiBuild(1);assert.equal(build.kind,'starbase');assert(build.urgent);
+});
+test('Military can buy an exact-price useful tactic without reserving an extra routine Fleet',()=>{
+  const g=military();g.s.fleets={[g.forward.coords[6]]:{1:{fleet:2}}};
+  g.p.resources={matter:5,energy:0,biomass:0,data:0};g.p.resourceLimits.matter=5;
+  g.s.market=[{key:'railBattery',id:'rail'}];
+  assert.deepEqual(plain(g.e.aiImmediateProtection(1)),{matter:0,energy:0,biomass:0,data:0});
+  g.s.phase='buy';g.e.runAiBuy();assert(g.p.military.some(c=>c.id==='rail'));
 });
 test('Planning is pure, ignores enemy private cards and does not inspect own deck order',()=>{
   const g=expansion();g.p.deck=[{key:'construct',id:'a'},{key:'move',id:'b'}];

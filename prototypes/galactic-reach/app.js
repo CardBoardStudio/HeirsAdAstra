@@ -4057,7 +4057,9 @@ function createGalacticReach(options = {}) {
   }
 
   function aiFocusedMilitaryBuildCost(playerId) {
-    const build=aiFocusedMilitaryBuildOptions(playerId).sort((a,b)=>b.score-a.score)[0];
+    // Purchase protection covers actual opening/defense needs. A routine future
+    // Fleet is not a second bill added on top of the held card payment.
+    const build=aiFocusedMilitaryBuildOptions(playerId).filter(b=>b.urgent).sort((a,b)=>b.score-a.score)[0];
     return build?{...(SHIP_STATS[build.kind]?.cost||STRUCTURES[build.kind].cost)}:{};
   }
 
